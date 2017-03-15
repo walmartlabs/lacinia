@@ -52,7 +52,7 @@ responding with JSON, it is also exceptionally useful for allowing backend syste
    contributing
 
    API Documentation <http://walmartlabs.github.io/lacinia/>
-   GitHub Project <https://gecgithub01.walmart.com/clojure/graphql>
+   GitHub Project <https://github.com/walmartlabs/lacinia>
 
 
 
