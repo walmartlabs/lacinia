@@ -247,7 +247,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  (master_doc, 'comwalmartlabslacinia.tex', u'com.walmartlabs/graphql Documentation',
+  (master_doc, 'comwalmartlabslacinia.tex', u'com.walmartlabs/lacinia Documentation',
    u'eReceipts team at Walmartlabs', 'manual'),
 ]
 
@@ -277,7 +277,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'comwalmartlabslacinia', u'com.walmartlabs/graphql Documentation',
+    (master_doc, 'comwalmartlabslacinia', u'com.walmartlabs/lacinia Documentation',
      [author], 1)
 ]
 
