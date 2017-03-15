@@ -1,5 +1,9 @@
 # Lacinia
 
+
+[![Clojars Project](https://img.shields.io/clojars/v/com.walmartlabs/lacinia.svg)](https://clojars.org/com.walmartlabs/lacinia)
+
+
 This library is a full implementation of
 the [GraphQL specification](https://facebook.github.io/graphql) and aims to
 maintain _external_<sup id="a1">[1](#f1)</sup> compliance with the specification.
@@ -40,7 +44,7 @@ infrastructure (query parsing, validation, schema, and more).
 
 ## Getting Started
 
-For more detailed documentation, read the manual.
+For more detailed documentation, [read the manual](http://lacinia.readthedocs.io/en/latest/).
 
 GraphQL starts with a schema definition of exposed types.
 
