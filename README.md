@@ -111,19 +111,18 @@ Here's what the `get-hero` field resolver might look like:
 (defn get-hero [context arguments value]
   (let [{:keys [episode]} arguments]
     (if (= episode "NEWHOPE")
-      [{:id 1000
+      {:id 1000
        :name "Luke"
        :home-planet "Tatooine"
-       :appears-in ["NEWHOPE" "EMPIRE" "JEDI"]} nil]
-      [{:id 2000
+       :appears-in ["NEWHOPE" "EMPIRE" "JEDI"]}
+      {:id 2000
        :name "Lando Calrissian"
        :home-planet "Socorro"
-       :appears-in ["EMPIRE" "JEDI"]} nil])))
+       :appears-in ["EMPIRE" "JEDI"]})))
 ```
 
-The field resolver returns a tuple of two values: the resolved data value,
-and an error map.
-Here the error map is nil.
+The field resolver can simply return the resolved value.
+Field resolvers that return multiple values return a seq of values.
 
 After attaching resolvers, it is necessary to compile the schema; this
 step performs may validations, provide defaults, and organizes the schema
