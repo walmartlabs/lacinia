@@ -3,6 +3,7 @@
 
 [![Clojars Project](https://img.shields.io/clojars/v/com.walmartlabs/lacinia.svg)](https://clojars.org/com.walmartlabs/lacinia)
 
+[![CircleCI](https://circleci.com/gh/walmartlabs/lacinia/tree/master.svg?style=svg)](https://circleci.com/gh/walmartlabs/lacinia/tree/master)
 
 This library is a full implementation of
 the [GraphQL specification](https://facebook.github.io/graphql) and aims to
