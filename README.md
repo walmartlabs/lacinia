@@ -208,11 +208,9 @@ fields in the response:
 
 ## Status
 
-Because this library is aggressively targeting Clojure 1.9 and above, you should
-not use this in production until Clojure 1.9 is released. However, previous
-versions of this library which were written against earlier versions of Clojure
-are currently used in production.  It's expected that this library will receive
-a 1.0.0 release at the same time Clojure 1.9 is released.
+Although this library is used internally, in production, it is
+still considered alpha software - subject to change.
+We expect to stabilize it in the near future.
 
 ## License
 
