@@ -7,7 +7,8 @@
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [clojure-future-spec "1.9.0-alpha14"]
                  [clj-antlr "0.2.4"]
-                 [org.flatland/ordered "1.5.4"]]
+                 [org.flatland/ordered "1.5.4"
+                  :exclusions [org.clojure/tools.macro]]]
   :profiles {:dev {:dependencies [[criterium "0.4.4"]
                                   [org.clojure/data.json "0.2.6"]]}}
   :test2junit-output-dir ~(or (System/getenv "CIRCLE_TEST_REPORTS") "target/test2junit")
