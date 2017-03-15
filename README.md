@@ -126,7 +126,7 @@ The field resolver can simply return the resolved value.
 Field resolvers that return multiple values return a seq of values.
 
 After attaching resolvers, it is necessary to compile the schema; this
-step performs may validations, provide defaults, and organizes the schema
+step performs validations, provide defaults, and organizes the schema
 for efficient execution of queries.
 
 This needs only be done once, in application startup code:
