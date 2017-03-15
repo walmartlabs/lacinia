@@ -1,0 +1,11 @@
+{:interfaces {
+              :named {:fields {:name {:type String}}}}
+
+ :objects {
+           :person {:implements [:named]
+                    :fields {:name {:type String}
+                             :age {:type Int}}}
+
+           :business {:implements [:named]
+                      :fields {:name {:type String}
+                               :employee_count {:type Int}}}}}

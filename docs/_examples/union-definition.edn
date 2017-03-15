@@ -1,0 +1,16 @@
+{:objects {
+           :person {
+                    :fields {:name {:type String}
+                             :age {:type Int}}}
+
+           :photo {
+                   :fields {:imageURL {:type String}
+                            :title {:type String}
+                            :height {:type Int}
+                            :width {:type Int}}}}
+
+ :unions {:search-result {:members [:person :photo]}}
+
+ :queries {
+           :search {:type (list :search-result)
+                    :args {:term String}}}}

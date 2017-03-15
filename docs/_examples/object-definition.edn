@@ -1,0 +1,5 @@
+{:objects {
+           :product {:fields {:id {:type ID}
+                              :name {:type String}
+                              :sku {:type String}
+                              :keywords {:type (list String)}}}}

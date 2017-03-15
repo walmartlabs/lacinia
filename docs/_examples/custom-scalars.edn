@@ -1,0 +1,25 @@
+(require
+  '[clojure.spec :as s]
+  '[com.walmartlabs.lacinia :as g]
+  '[com.walmartlabs.lacinia.schema :as schema])
+
+(import
+  java.text.SimpleDateFormat
+  java.util.Date)
+
+(def date-formatter
+  "Used by custom scalar :Date."
+  (SimpleDateFormat. "yyyy-MM-dd"))
+
+(def schema
+  (schema/compile
+    {:scalars {
+               :Date {:parse (s/conformer #(.parse date-formatter %))
+                      :serialize (s/conformer #(.format date-formatter %))}}
+
+     :queries {
+               :today {:type :Date
+                       :resolve (fn [ctx args v] (Date.))}}}))
+
+(g/execute schema "{today}" nil nil)
+=> {:data {:today "2016-12-09"}}
