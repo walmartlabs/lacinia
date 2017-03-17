@@ -1,9 +1,3 @@
 test:
   override:
     - lein test2junit
-  post:
-    # TODO: Figure out how to make benchmark changes persist from commit to commit
-    - lein benchmarks --print --commit $CIRCLE_SHA1
-    - mkdir $CIRCLE_ARTIFACTS/perf
-    - cp perf/*.csv $CIRCLE_ARTIFACTS/perf
-    - mv perf/*.png $CIRCLE_ARTIFACTS/perf
