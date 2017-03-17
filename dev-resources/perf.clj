@@ -22,7 +22,8 @@
 ;; This is the standard introspection query that graphiql
 ;; executes to build the client-side UI.
 
-(def introspection-query-raw "query IntrospectionQuery {
+(def introspection-query-raw
+  "query IntrospectionQuery {
             __schema {
               queryType { name }
               mutationType { name }
@@ -94,7 +95,19 @@
           }")
 
 (def ^:private benchmark-queries
-  {:introspection {:query introspection-query-raw}})
+  {:introspection
+   {:query introspection-query-raw}
+   :basic
+   {:query "{
+   default: human { name appears_in friends { name } home_planet }
+   hope_hero: hero(episode: NEWHOPE) { id name friends { name }}
+   }"}
+   :basic-vars
+   {:query "query ($ep : episode!) {
+   default: human { name appears_in friends { name } home_planet }
+   hope_hero: hero(episode: $ep) { id name friends { name }}
+   }"
+    :vars {:ep "NEWHOPE"}}})
 
 (defmacro ^:private benchmark [expr]
   `(-> ~expr
@@ -111,11 +124,12 @@
   [benchmark-name]
   (println "Running benchmark" (name benchmark-name) "(parse) ...")
 
-  (let [query-string (get-in benchmark-queries [benchmark-name :query])
+  (let [{query-string :query
+         variables :vars} (get benchmark-queries benchmark-name)
         parse-time (benchmark (parser/parse-query compiled-schema query-string))
         parsed-query (parser/parse-query compiled-schema query-string)
         _ (println "Running benchmark" (name benchmark-name) "(exec) ...")
-        exec-time (benchmark (execute-parsed-query compiled-schema parsed-query nil nil))]
+        exec-time (benchmark (execute-parsed-query compiled-schema parsed-query variables nil))]
     [(name benchmark-name) parse-time exec-time]))
 
 (defn ^:private create-charts
