@@ -1,0 +1,14 @@
+date,commit,kind,parse,exec
+20161104,1,introspection,1.68,2.77
+20161108,2,introspection,1.75,3.3
+20161123,3,introspection,1.74,2.91
+20161123,4,introspection,1.74,2.91
+20170113,5,introspection,1.68,2.92
+20170209,6,introspection,2.00,3.72
+20170209,7,introspection,2.16,2.50
+20170213,8,introspection,1.99,5.11
+20170213,9,introspection,2.05,5.17
+20170213,10,introspection,2.00,7.71
+20170213,11,introspection,2.02,4.79
+20170224,12,introspection,2.07,3.42
+20170310,13,introspection,2.02,3.62
