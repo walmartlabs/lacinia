@@ -10,7 +10,8 @@
     [com.walmartlabs.lacinia :refer [execute execute-parsed-query]]
     [com.walmartlabs.lacinia.parser :as parser]
     [clojure.java.shell :refer [sh]]
-    [clojure.string :as str])
+    [clojure.string :as str]
+    [clojure.tools.cli :as cli])
   (:import (java.util Date)))
 
 ;; Be aware that any change to this schema will invalidate any gathered
@@ -97,7 +98,7 @@
 
 (defmacro ^:private benchmark [expr]
   `(-> ~expr
-       (c/quick-benchmark nil)
+       (c/benchmark nil)
        c/with-progress-reporting
        :mean
        first
@@ -161,3 +162,27 @@
     (when (:save options)
       (save dataset dataset-file)
       (println "Updated perf.csv"))))
+
+(def ^:private cli-opts
+  [["-s" "--save" "Update benchmark data file after running benchmarks."]
+   ["-p" "--print" "Print the table of benchmark data used to generate charts."]
+   ["-c" "--commit SHA" "Specify Git commit SHA; defaults to `git rev-parse --short HEAD`."]
+   ["-h" "--help" "This usage summary."]])
+
+(defn -main
+  [& args]
+  (let [{:keys [options errors summary]} (cli/parse-opts args cli-opts)
+        usage (fn [errors]
+                (println "lein benchmarks [options]")
+                (println summary)
+
+                (when (seq errors)
+                  (println)
+                  (run! println errors)))]
+    (cond
+      (or (:help options)
+          (seq errors))
+      (usage errors)
+
+      :else
+      (run-benchmarks options))))

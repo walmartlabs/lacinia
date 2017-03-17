@@ -13,6 +13,8 @@
                                   [incanter "1.5.7"]
                                   [org.clojure/tools.cli "0.3.5"]
                                   [org.clojure/data.json "0.2.6"]]}}
+  :aliases {"benchmarks" ["run" "-m" "perf"]}
+  :jvm-opts ["-Xmx1g"]
   :test2junit-output-dir ~(or (System/getenv "CIRCLE_TEST_REPORTS") "target/test2junit")
   :codox {:source-uri "https://github.com/walmartlabs/lacinia/blob/master/{filepath}#L{line}"
           :metadata   {:doc/format :markdown}})
