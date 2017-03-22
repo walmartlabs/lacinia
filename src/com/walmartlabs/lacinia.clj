@@ -1,7 +1,7 @@
 (ns com.walmartlabs.lacinia
   (:require [com.walmartlabs.lacinia.parser :as parser]
             [com.walmartlabs.lacinia.constants :as constants]
-            [com.walmartlabs.lacinia.executor.standard :as standard]
+            [com.walmartlabs.lacinia.executor :as executor]
             [com.walmartlabs.lacinia.validator :as validator]
             [com.walmartlabs.lacinia.internal-utils :refer [cond-let]])
   (:import (clojure.lang ExceptionInfo)))
@@ -34,7 +34,7 @@
 
     :else
     (try
-      (standard/execute-query (assoc context
+      (executor/execute-query (assoc context
                                      constants/schema-key schema
                                      constants/parsed-query-key prepared))
       (catch Exception e
