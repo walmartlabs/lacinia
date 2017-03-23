@@ -66,8 +66,7 @@ of the available options:
             :appears_in {:type (list :episode)}}}
 
   :human
-  {:fields {:home_planet {:type String}
-            :id {:type Int}
+  {:fields {:id {:type Int}
             :name {:type String}
             :home_planet {:type String}
             :appears_in {:type (list :episode)}}}}
