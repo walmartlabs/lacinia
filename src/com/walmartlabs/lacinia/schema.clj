@@ -125,6 +125,13 @@
   ([message data]
    [nil (merge {:message message} data)]))
 
+(defn ^:private named?
+  "True if a string, symbol or keyword."
+  [v]
+  (or (string? v)
+      (symbol? v)
+      (keyword? v)))
+
 ;;-------------------------------------------------------------------------------
 ;; ## Validations
 
@@ -151,7 +158,10 @@
                             seq))
 (s/def :type/union (s/keys :opt-un [:type/description]
                            :req-un [:type/members]))
-(s/def :type/enum (s/keys :opt-un [:type/description]))     ; looks incomplete
+(s/def :type/values (s/and (s/coll-of named?)
+                           seq))
+(s/def :type/enum (s/keys :opt-un [:type/description]
+                          :req-un [:type/values]))
 (s/def :type/input-object (s/keys :opt-un [:type/description]))
 (s/def :type/parse s/spec?)
 (s/def :type/serialize s/spec?)
@@ -575,7 +585,13 @@ z
 
 (defmethod compile-type :enum
   [enum schema]
-  (assoc enum :values-set (-> enum :values set)))
+  (let [values (->> enum :values (mapv name))
+        values-set (set values)]
+    (when-not (= (count values) (count values-set))
+      (throw (ex-info (format "Values defined for enum %s must be unique."
+                              (-> enum :type-name q))
+                      {:enum enum})))
+    (assoc enum :values-set values-set)))
 
 (defmethod compile-type :scalar
   [scalar schema]
