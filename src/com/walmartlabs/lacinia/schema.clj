@@ -591,7 +591,9 @@ z
       (throw (ex-info (format "Values defined for enum %s must be unique."
                               (-> enum :type-name q))
                       {:enum enum})))
-    (assoc enum :values-set values-set)))
+    (assoc enum
+           :values values
+           :values-set values-set)))
 
 (defmethod compile-type :scalar
   [scalar schema]
