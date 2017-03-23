@@ -14,12 +14,13 @@
 (defn execute-parsed-query
   "Prepares a query, by applying query variables to it, resulting in a prepared
   query which is then executed."
-  [schema parsed-query variables context]
+  [parsed-query variables context]
   {:pre [(map? parsed-query)
          (or (nil? context)
              (map? context))]}
   (cond-let
-    :let [[prepared error-result] (try
+    :let [schema (get parsed-query constants/schema-key)
+          [prepared error-result] (try
                                     [(parser/prepare-with-query-variables parsed-query variables)]
                                     (catch Exception e
                                       [nil {:errors (as-errors e)}]))]
@@ -75,4 +76,4 @@
                                     [nil {:errors (as-errors e)}]))]
     (if (some? error-result)
       error-result
-      (execute-parsed-query schema parsed variables context))))
+      (execute-parsed-query parsed variables context))))

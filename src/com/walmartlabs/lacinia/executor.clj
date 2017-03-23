@@ -260,8 +260,7 @@
 (defn execute-query
   "Entrypoint for execution of a query.
 
-  Executes a parsed query using the provided executor context
-  (via [[com.walmartlabs.lacinia.executor/executor-context]].
+  Expects the context to contain the schema and parsed query.
 
   Returns a query result, with :data and/or :errors keys."
   [context]
