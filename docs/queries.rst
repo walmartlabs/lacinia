@@ -26,5 +26,5 @@ anywhere else.
 In the GraphQL specification, it is noted that queries are idempotent; if
 the query document includes multiple queries, they are allowed to execute
 in parallel.
-This is not yet an issue for |lib| as queries execute synchronously.
+This is not yet an issue for Lacinia as queries execute synchronously.
 Future work will enable asynchronous query execution.

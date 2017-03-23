@@ -11,13 +11,13 @@ GraphQL consists of two main parts:
 The `GraphQL specification <https://facebook.github.io/graphql>`_ goes into detail about the
 format of the client query language, and the expected behavior of the server.
 
-This library, |lib|, is an implementation of the key component of the server,
+This library, Lacinia, is an implementation of the key component of the server,
 in idiomatic Clojure.
 
 The GraphQL specification includes a language to define the server-side schema; the
 ``type`` keyword is used to introduce a new kind of object.
 
-In |lib|, the schema is Clojure data: a map of keys and values; top level
+In Lacinia, the schema is Clojure data: a map of keys and values; top level
 keys indicate the type of data being defined:
 
 .. literalinclude:: ../dev-resources/star-wars-schema.edn
@@ -41,7 +41,7 @@ Often, a query will return a list of matching objects.
 
    GraphQL is intended to be used over the Internet, to allow
    clients to efficiently and flexibly obtain the data they require from GraphQL servers.
-   However, |lib| does not address network issues; it is a set of functions to be
+   However, Lacinia does not address network issues; it is a set of functions to be
    invoked by your web pipeline, be it Ring, Pedestal, or something else.
 
 

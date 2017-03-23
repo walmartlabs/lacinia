@@ -43,7 +43,7 @@ In the schema, a type can be:
 
 .. warning::
 
-   |lib| does not fully implement the spec here, which allows for more combinations of
+   Lacinia does not fully implement the spec here, which allows for more combinations of
    non-null and list than is currently supported.
 
 The built-in scalar types:
@@ -86,7 +86,7 @@ resolved value is a map containing a key matching the field's name.
 
    GraphQL forbids any names from having dashes in them.
 
-   |lib| is opinionated here: it converts field names with underscores into
+   Lacinia is opinionated here: it converts field names with underscores into
    key names with dashes.
    For example, a field named ``:user_id`` would normally be resolved using the key ``:user-id``.
 

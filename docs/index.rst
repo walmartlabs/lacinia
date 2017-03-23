@@ -1,7 +1,7 @@
 Lacinia - GraphQL for Clojure
 =============================
 
-|lib| is a library for implementing
+Lacinia is a library for implementing
 Facebook's
 `GraphQL <https://facebook.github.io/react/blog/2015/05/01/graphql-introduction.html>`_
 specification in idiomatic
@@ -97,7 +97,7 @@ should be returned in the response::
 This translates to "run the hero query; return the default hero's id and name, and friends; just return the name of each
 friend."
 
-|lib| will return this as Clojure data:
+Lacinia will return this as Clojure data:
 
 .. literalinclude:: _examples/hero-query-response.edn
    :language: clojure
@@ -106,12 +106,12 @@ friend."
 This is because R2-D2 is, of course, considered the hero of
 the Star Wars trilogy.
 
-This Clojure data can be trivially converted into JSON or other formats when |lib| is used
+This Clojure data can be trivially converted into JSON or other formats when Lacinia is used
 as part of an HTTP server application.
 
 A key takeaway: GraphQL is a contract between a client and a server; it doesn't know or care where
 the data comes from; that's the province of the field resolvers.
-That's great news: it means |lib| is equally adept at pulling data out of a single database
+That's great news: it means Lacinia is equally adept at pulling data out of a single database
 as it is at integrating and organizing data from multiple backend systems.
 
 .. _graphiql: https://github.com/graphql/graphiql

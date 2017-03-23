@@ -3,7 +3,7 @@ Overview
 
 Each query or mutation will have a root field resolver.
 Every field inside the query, mutation, or other object will have
-a field resolver: if an explicit one is not provided, |lib| creates
+a field resolver: if an explicit one is not provided, Lacinia creates
 a default one.
 
 As you might guess, the processing of queries into responses is quite recursive.
@@ -152,10 +152,10 @@ This continues as deeply as the query specifies.
 Explicit Types
 --------------
 
-For structured types, |lib| needs to know what type of data is returned by the field resolver,
+For structured types, Lacinia needs to know what type of data is returned by the field resolver,
 so that it can, as necessary, process query fragments.
 
-When the type of field is a concrete object type, |lib| automatically tags the value with
+When the type of field is a concrete object type, Lacinia automatically tags the value with
 the schema type.
 
 When the type of a field is an interface or union, it is necessary for the field resolver

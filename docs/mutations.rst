@@ -16,8 +16,8 @@ Each mutation becomes a field of the special ``:MutationRoot`` object.
 When a single query includes more than one mutation, the mutations *must* execute in the client-specified
 order.
 This is different from queries, which allow for each root query to run in parallel (though
-this is not yet supported by |lib|).
+this is not yet supported by Lacinia).
 
 Typically, mutations are only allowed when the incoming request is explicitly an HTTP POST.
-However, that is beyond the scope of |lib| (it doesn't know about the HTTP request, just
+However, that is beyond the scope of Lacinia (it doesn't know about the HTTP request, just
 the query string extracted from the HTTP request).
