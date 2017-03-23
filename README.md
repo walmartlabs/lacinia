@@ -140,6 +140,7 @@ This needs only be done once, in application startup code:
   (-> "schema.edn"
       io/resource
       slurp
+      edn/read-string
       (attach-resolvers {:get-hero get-hero
                          :get-droid (constantly {})})
       schema/compile))
