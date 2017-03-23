@@ -49,5 +49,5 @@ We respect backwards compatibility.
 We make it a top priority to ensure that anyone who writes an application using Lacinia will be free from upgrade headaches, even
 as Lacinia gains more features.
 
-We have, so far, expressly `not` documented the internal structure of compiled schema or pacrsed query, so
+We have, so far, expressly `not` documented the internal structure of compiled schema or parsed query, so
 that we can be free to be fluid in making future improvements.
