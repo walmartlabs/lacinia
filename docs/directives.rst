@@ -2,7 +2,7 @@ Directives
 ==========
 
 Directives provide a way to describe additional options to the GraphQL executor.
-Directives allow |lib| to change the incoming query based on additional criteria.
+Directives allow Lacinia to change the incoming query based on additional criteria.
 For example, we can use directives to include or skip a field if certain criteria are met.
 
 .. sidebar:: GraphQL Spec
@@ -10,6 +10,6 @@ For example, we can use directives to include or skip a field if certain criteri
    Read about directives `here <https://facebook.github.io/graphql/#sec-Language.Directives>`_
    and `here <https://facebook.github.io/graphql/#sec-Type-System.Directives>`_.
 
-Currently |lib| supports two directives: ``@skip`` and ``@include``, but future versions
+Currently Lacinia supports two directives: ``@skip`` and ``@include``, but future versions
 may include more.
 Custom directives are not yet supported.

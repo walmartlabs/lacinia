@@ -317,12 +317,5 @@ html_theme = "sphinx_rtd_theme"
 
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
-# This allows the use of |lib| in source text, which is great incase
-# we change our mind about the final name.
-
-rst_epilog = """
-.. |lib| replace:: Lacinia
-"""
-
 def setup(app):
   app.add_stylesheet("css/custom.css")

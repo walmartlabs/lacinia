@@ -1,7 +1,7 @@
 Contributing to Lacinia
 =======================
 
-We hope to build a community around |lib| and extensions and enhancements to it.
+We hope to build a community around Lacinia and extensions and enhancements to it.
 
 Contributor License Agreements
 ------------------------------
@@ -24,7 +24,7 @@ We prefer ``defn ^:private`` to ``defn-``.
 We indent with spaces, and follow default indentation patterns.
 
 We value documentation.
-|lib| docstrings are formatted with Markdown.
+Lacinia docstrings are formatted with Markdown.
 Tests can also be great documentation.
 
 Private is the default; only make vars public if there is a specific need.
