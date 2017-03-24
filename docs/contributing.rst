@@ -11,6 +11,20 @@ Any contributions made by the community, including patches, pull requests, or an
 provided in an issue, represents a transfer of intellectual property to Walmartlabs, for the sole purpose
 of maintaining and improving Lacinia.
 
+Process
+-------
+
+Our process is light: once a pull request (PR) comes in, core committers will review the
+the code and provide feedback.
+
+After at least two core committers provide the traditional feedback LGTM (looks good to me), we'll merge to master.
+
+It is the submitter's responsibility to keep a PR up to date when it has conflicts with master.
+
+Please close PRs that are not ready to merge, or need other refinements, and re-open when ready.
+
+As Lacinia's community grows, we'll extend this process as needed ... but we want to keep it light.
+
 Issue Tracking
 --------------
 
