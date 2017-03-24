@@ -73,22 +73,25 @@
   Returns a schema/ResolvedTuple of the resolved value for the node.
   The error maps in the tuple are enhanced with additional location and query-path data.
 
-  For other types of selections, returns a tuple of the value."
-  [selection context container-value]
-  (if (= :field (:selection-type selection))
-    (let [{:keys [arguments field-definition]} selection
-          schema (get context constants/schema-key)
-          resolve-context (assoc context :com.walmartlabs.lacinia/selection selection)]
-      (try
-        (let [resolve (field-selection-resolver schema selection container-value)
-              tuple (resolve resolve-context arguments container-value)]
-          (resolve-as (resolve/resolved-value tuple)
-                      (enhance-errors selection (resolve/resolve-errors tuple))))
-        (catch clojure.lang.ExceptionInfo e
-          (throw (ex-info (str "Error resolving field: " (to-message e))
-                          (ex-info-map selection (ex-data e)))))))
-    ;; Else, not a field selection:
-    (resolve-as container-value)))
+  For other types of selections, returns a ResolvedTuple of the value."
+  [selection-tuple selection]
+  (let [container-value (:resolved-value selection-tuple)]
+    (if (= :field (:selection-type selection))
+      (let [{:keys [arguments field-definition]} selection
+            {:keys [context]} selection-tuple
+            schema (get context constants/schema-key)
+            resolve-context (assoc context :com.walmartlabs.lacinia/selection selection)]
+        (try
+          (let [resolve (field-selection-resolver schema selection container-value)
+                tuple (resolve resolve-context arguments container-value)]
+            (resolve-as (resolve/resolved-value tuple)
+                        (enhance-errors selection (resolve/resolve-errors tuple))))
+          (catch clojure.lang.ExceptionInfo e
+            ;; TODO: throw-ing will be a problem once we get into async
+            (throw (ex-info (str "Error resolving field: " (to-message e))
+                            (ex-info-map selection (ex-data e)))))))
+      ;; Else, not a field selection:
+      (resolve-as container-value))))
 
 (declare ^:private resolve-and-select)
 
@@ -135,10 +138,9 @@
 
 (defmethod apply-selection :field
   [selection-tuple field-selection]
-  (let [{:keys [context resolved-value]} selection-tuple
-        {:keys [alias]} field-selection
+  (let [{:keys [alias]} field-selection
         non-nullable-field? (-> field-selection :field-definition :non-nullable?)
-        tuple (resolve-and-select context field-selection resolved-value)
+        tuple (resolve-and-select selection-tuple field-selection)
         sub-selection (resolve/resolved-value tuple)
         errors (resolve/resolve-errors tuple)
         sub-selection' (cond
@@ -171,7 +173,7 @@
     (if (contains? concrete-types actual-type)
       ;; Note: Ideally, we could pass the selection-tuple into resolve-and-select directly, rather than having
       ;; to merge the results back together. That's the refactoring note a bit below.
-      (let [resolver-result (resolve-and-select context fragment-selection resolved-value)]
+      (let [resolver-result (resolve-and-select selection-tuple fragment-selection)]
         (-> selection-tuple
             (update :value merge (resolve/resolved-value resolver-result))
             (update :errors into (resolve/resolve-errors resolver-result))))
@@ -209,9 +211,9 @@
   "Recursive resolution of a field within a containing field's resolved value.
 
   Returns a ResolverResult of the selected value and any errors."
-  [context selection value]
+  [selection-tuple selection]
   (cond-let
-    :let [result (resolve-value selection context value)
+    :let [result (resolve-value selection-tuple selection)
           resolved-value (resolve/resolved-value result)
           sub-selections (:selections selection)]
 
@@ -233,7 +235,10 @@
             (let [selected-base (with-meta (ordered-map) (meta resolved-value))
 
                   selection-tuple (reduce maybe-apply-selection
-                                          (->SelectionTuple context selected-base resolved-value [])
+                                          (assoc selection-tuple
+                                                 :value selected-base
+                                                 :resolved-value resolved-value
+                                                 :errors [])
                                           sub-selections)
 
                   {:keys [value errors]} selection-tuple]
@@ -269,7 +274,8 @@
     (reduce (fn [root-result query-node]
               (if (:disabled? query-node)
                 root-result
-                (let [result (resolve-and-select context query-node nil)
+                (let [root-selection-tuple (->SelectionTuple context (ordered-map) nil [])
+                      result (resolve-and-select root-selection-tuple query-node)
                       resolve-errors (resolve/resolve-errors result)
                       selected-data (->> result
                                          resolve/resolved-value
@@ -277,6 +283,6 @@
                                          null-to-nil)]
                   (cond-> root-result
                     true (assoc-in [:data (:alias query-node)] selected-data)
-                    (seq resolve-errors) (assoc :errors resolve-errors)))))
+                    (seq resolve-errors) (update :errors into resolve-errors)))))
             {:data nil}
             selections)))
