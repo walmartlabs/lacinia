@@ -1,10 +1,18 @@
 (ns perf
   "A namespace where we track relative performance of query parsing and execution."
   (:require
+    [incanter.core :refer :all]
+    [incanter.datasets :refer :all]
+    [incanter.io :refer :all]
+    [incanter.charts :refer :all]
     [org.example.schema :refer [star-wars-schema]]
     [criterium.core :as c]
     [com.walmartlabs.lacinia :refer [execute execute-parsed-query]]
-    [com.walmartlabs.lacinia.parser :as parser]))
+    [com.walmartlabs.lacinia.parser :as parser]
+    [clojure.java.shell :refer [sh]]
+    [clojure.string :as str]
+    [clojure.tools.cli :as cli])
+  (:import (java.util Date)))
 
 ;; Be aware that any change to this schema will invalidate any gathered
 ;; performance data.
@@ -14,7 +22,8 @@
 ;; This is the standard introspection query that graphiql
 ;; executes to build the client-side UI.
 
-(def query-raw "query IntrospectionQuery {
+(def introspection-query-raw
+  "query IntrospectionQuery {
             __schema {
               queryType { name }
               mutationType { name }
@@ -85,47 +94,127 @@
             }
           }")
 
-(def parsed-query (parser/parse-query compiled-schema query-raw))
+(def ^:private benchmark-queries
+  {:introspection
+   {:query introspection-query-raw}
+   :basic
+   {:query "
+   {
+     default: human {
+       name
+       appears_in
+       friends { name }
+       home_planet
+     }
+     hope_hero: hero(episode: NEWHOPE) {
+       id
+       name
+       friends { name }}
+   }"}
+   :basic-vars
+   {:query "
+   query ($ep : episode!) {
+     default: human {
+       name
+       appears_in
+       friends { name }
+       home_planet
+     }
+     hope_hero: hero(episode: $ep) {
+       id
+       name
+       friends { name }
+     }
+   }"
+    :vars {:ep "NEWHOPE"}}})
 
-(defn query-parse-time
+(defmacro ^:private benchmark [expr]
+  `(-> ~expr
+       (c/benchmark nil)
+       c/with-progress-reporting
+       :mean
+       first
+       ;; It's in seconds, scale up to ms
+       (* 1000.)))
+
+(defn ^:private run-benchmark
+  "Runs the benchmark, returns a tuple of the benchmark name, the mean parse time (in ms),
+   and the mean execution time (in ms)."
+  [benchmark-name]
+  (println "Running benchmark" (name benchmark-name) "(parse) ...")
+
+  (let [{query-string :query
+         variables :vars} (get benchmark-queries benchmark-name)
+        parse-time (benchmark (parser/parse-query compiled-schema query-string))
+        parsed-query (parser/parse-query compiled-schema query-string)
+        _ (println "Running benchmark" (name benchmark-name) "(exec) ...")
+        exec-time (benchmark (execute-parsed-query parsed-query variables nil))]
+    [(name benchmark-name) parse-time exec-time]))
+
+(defn ^:private create-charts
+  [dataset options]
+  (when (:print options)
+    (prn dataset))
+  (with-data dataset
+    (-> (line-chart :date :parse
+                    :title "Historical Parse Time / Operation"
+                    :group-by :kind
+                    :x-label "Date"
+                    :y-label "ms"
+                    :legend true)
+        (save "perf/parse-time.png"
+              :width 1000))
+    (-> (line-chart :date :exec
+                    :title "Historical Execution Time / Operation"
+                    :group-by :kind
+                    :x-label "Date"
+                    :y-label "ms"
+                    :legend true)
+        (save "perf/exec-time.png"
+              :width 1000))))
+
+(defn ^:private git-commit
   []
-  (let [results (c/benchmark (parser/parse-query compiled-schema query-raw)
-                             nil)]
-    (println "Query parse time:")
-    (c/report-result results)
-    results))
+  (-> (sh "git" "rev-parse" "HEAD")
+      :out
+      (or "UNKNOWN")
+      str/trim
+      (subs 0 8)))
 
-(defn query-execution-time
-  []
-  (let [results (c/benchmark (execute-parsed-query parsed-query nil nil)
-                             nil)]
-    (println "Query execution time:")
-    (c/report-result results)
-    results))
+(def ^:private dataset-file "perf/benchmarks.csv")
 
-(comment
-  (do (query-parse-time) nil)
-  (do (query-execution-time) nil)
+(defn run-benchmarks [options]
+  (let [prefix [(format "%tY%<tm%<td" (Date.))
+                (or (:commit options) (git-commit))]
+        new-benchmarks (->> (map run-benchmark (keys benchmark-queries))
+                            (map #(into prefix %)))
+        dataset (-> (read-dataset dataset-file :header true)
+                    (conj-rows new-benchmarks))]
+    (create-charts dataset options)
+    (when (:save options)
+      (save dataset dataset-file)
+      (println "Updated perf.csv"))))
 
-  )
+(def ^:private cli-opts
+  [["-s" "--save" "Update benchmark data file after running benchmarks."]
+   ["-p" "--print" "Print the table of benchmark data used to generate charts."]
+   ["-c" "--commit SHA" "Specify Git commit SHA; defaults to current commit (truncated to 8 chars)."]
+   ["-h" "--help" "This usage summary."]])
 
-;; Execution notes (not very scientific):
+(defn -main
+  [& args]
+  (let [{:keys [options errors summary]} (cli/parse-opts args cli-opts)
+        usage (fn [errors]
+                (println "lein benchmarks [options]")
+                (println summary)
 
-;; Date     - Who    - Clojure - Parse - Execute
-;; 20161104 - hlship - 1.9a13  -  1.68 - 2.77
-;; 20161108 - hlship - 1.9a13  -  1.75 - 3.3
-;; 20161123 - hlship - 1.9a14  -  1.74 - 2.91
-;; 20170113 - hlship - 1.9a14  -  1.68 - 2.92
-;; 20170209 - hlship - 1.9a14  -  2.00 - 3.72
-;; 20170209 - hlship - 1.9a14  -  2.16 - 2.50
-;; 20170213 - hlship - 1.9a14  -  1.99 - 5.11
-;; 20170213 - hlship - 1.9a14 -   2.05 - 5.17
-;; 20170213 - hlship - 1.9a14 -   2.00 - 7.71
-;; 20170213 - hlship - 1.9a14 -   2.02 - 4.79
-;; 20170224 - hlship - 1.9a14 -   2.07 - 3.42 (introspection rewrite)
-;; 20170310 - hlship - 1.8    -   2.02 - 3.62 (revert to 1.8, use future.spec)
+                (when (seq errors)
+                  (println)
+                  (run! println errors)))]
+    (cond
+      (or (:help options)
+          (seq errors))
+      (usage errors)
 
-
-;; Goal: Identify *glaring* changes in performance of query parse
-;; or query execution. Likely affected by what else is going on
-;; the computer during benchmark execution.
+      :else
+      (run-benchmarks options))))
