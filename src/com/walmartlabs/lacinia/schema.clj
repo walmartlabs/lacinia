@@ -450,7 +450,6 @@ z
                             (ensure-seq (second enforced-tuple)))
                           (filter some?)
                           (mapcat assert-and-wrap-error)
-                          distinct
                           seq)]
       (resolve-as (first enforced-tuple) all-errors))))
 

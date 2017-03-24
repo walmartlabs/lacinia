@@ -541,14 +541,9 @@
     (let [q "{ hero { friends { arch_enemy { foo } } }}"
           executed (execute *schema* q nil nil)]
       (is (= {:data {:hero {:friends [nil nil nil]}}
-              :errors [{:message "Non-nullable field was null.",
-                        :locations [{:line 1, :column 17}],
-                        :query-path [:hero :friends :arch_enemy]}
-                       {:message "Non-nullable field was null.",
-                        :locations [{:line 1, :column 17}],
-                        :query-path [:hero :friends :arch_enemy]}
-                       {:message "Non-nullable field was null.",
-                        :locations [{:line 1, :column 17}],
+              :errors [{:message "Non-nullable field was null."
+                        :locations [{:line 1
+                                     :column 17}]
                         :query-path [:hero :friends :arch_enemy]}]}
              executed)
           "nulls the first nullable object after a non-nullable field returns null")))
@@ -556,14 +551,9 @@
     (let [q "{ hero { friends { best_friend { foo } } }}"
           executed (execute *schema* q nil nil)]
       (is (= {:data {:hero {:friends [{:best_friend nil} {:best_friend nil} {:best_friend nil}]}}
-              :errors [{:message "Non-nullable field was null.",
-                        :locations [{:line 1, :column 31}],
-                        :query-path [:hero :friends :best_friend :foo]}
-                       {:message "Non-nullable field was null.",
-                        :locations [{:line 1, :column 31}],
-                        :query-path [:hero :friends :best_friend :foo]}
-                       {:message "Non-nullable field was null.",
-                        :locations [{:line 1, :column 31}],
+              :errors [{:message "Non-nullable field was null."
+                        :locations [{:line 1
+                                     :column 31}]
                         :query-path [:hero :friends :best_friend :foo]}]}
              executed)
           "nulls the first nullable object after a non-nullable field returns null")))
@@ -571,14 +561,9 @@
     (let [q "{ hero { family { arch_enemy { foo } } } }"
           executed (execute *schema* q nil nil)]
       (is (= {:data {:hero {:family [nil nil nil]}}
-              :errors [{:message "Non-nullable field was null.",
-                        :locations [{:line 1, :column 16}],
-                        :query-path [:hero :family :arch_enemy]}
-                       {:message "Non-nullable field was null.",
-                        :locations [{:line 1, :column 16}],
-                        :query-path [:hero :family :arch_enemy]}
-                       {:message "Non-nullable field was null.",
-                        :locations [{:line 1, :column 16}],
+              :errors [{:message "Non-nullable field was null."
+                        :locations [{:line 1
+                                     :column 16}],
                         :query-path [:hero :family :arch_enemy]}]}
              executed)
           "nulls the first nullable object after a non-nullable field returns null")))

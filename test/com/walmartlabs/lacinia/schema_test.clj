@@ -45,7 +45,7 @@
       (is (= [1 nil 2 nil 3]
              (first tuple)))
       ;; Redundant errors used to be removed by map-enforcer,
-      ;; but that has moved to the wrap-resolve-with-enforcer code.
+      ;; but that has moved to the the very top.
       (is (= 1
              (-> tuple second distinct count))))))
 
