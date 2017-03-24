@@ -803,7 +803,7 @@
           (throw-exception (format "Inline fragment has a type condition on unknown type %s."
                                    (q type-name)))
           (let [concrete-types (expand-fragment-type-to-concrete-types fragment-type)
-                fragment-path-term (keyword "..." (-> m :type name))
+                fragment-path-term (keyword "..." (name type-name))
                 inline-fragment (-> m
                                     (assoc :selection-type :inline-fragment
                                            :concrete-types concrete-types)
