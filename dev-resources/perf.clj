@@ -98,14 +98,33 @@
   {:introspection
    {:query introspection-query-raw}
    :basic
-   {:query "{
-   default: human { name appears_in friends { name } home_planet }
-   hope_hero: hero(episode: NEWHOPE) { id name friends { name }}
+   {:query "
+   {
+     default: human {
+       name
+       appears_in
+       friends { name }
+       home_planet
+     }
+     hope_hero: hero(episode: NEWHOPE) {
+       id
+       name
+       friends { name }}
    }"}
    :basic-vars
-   {:query "query ($ep : episode!) {
-   default: human { name appears_in friends { name } home_planet }
-   hope_hero: hero(episode: $ep) { id name friends { name }}
+   {:query "
+   query ($ep : episode!) {
+     default: human {
+       name
+       appears_in
+       friends { name }
+       home_planet
+     }
+     hope_hero: hero(episode: $ep) {
+       id
+       name
+       friends { name }
+     }
    }"
     :vars {:ep "NEWHOPE"}}})
 
@@ -166,12 +185,10 @@
 
 (defn run-benchmarks [options]
   (let [prefix [(format "%tY%<tm%<td" (Date.))
-                (-> options
-                    :commit
-                    (or (git-commit)))]
+                (or (:commit options) (git-commit))]
         new-benchmarks (->> (map run-benchmark (keys benchmark-queries))
                             (map #(into prefix %)))
-        dataset (-> (read-dataset dataset-file  :header true)
+        dataset (-> (read-dataset dataset-file :header true)
                     (conj-rows new-benchmarks))]
     (create-charts dataset options)
     (when (:save options)
