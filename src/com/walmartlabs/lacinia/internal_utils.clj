@@ -8,9 +8,6 @@
   a map to be a vector of a single map."
   [error-or-errors]
   (cond
-    (nil? error-or-errors)
-    nil
-
     (map? error-or-errors)
     [error-or-errors]
 
