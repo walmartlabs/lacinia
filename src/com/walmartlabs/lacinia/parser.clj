@@ -797,17 +797,21 @@
   (let [defaults (default-node-map sel q-path)]
     (with-exception-context (node-context defaults)
       (let [m (reduce node-reducer defaults (rest (second sel)))
-            fragment-type (get schema (:type m))
-            concrete-types (expand-fragment-type-to-concrete-types fragment-type)
-            fragment-path-term (keyword "..." (-> m :type name))
-            inline-fragment (-> m
-                                (assoc :selection-type :inline-fragment
-                                       :concrete-types concrete-types)
-                                (update :directives #(convert-directives schema %)))]
-        (normalize-selections schema
-                              inline-fragment
-                              fragment-type
-                              (-> m :query-path (conj fragment-path-term)))))))
+            type-name (:type m)
+            fragment-type (get schema type-name)]
+        (if (nil? fragment-type)
+          (throw-exception (format "Inline fragment has a type condition on unknown type %s."
+                                   (q type-name)))
+          (let [concrete-types (expand-fragment-type-to-concrete-types fragment-type)
+                fragment-path-term (keyword "..." (-> m :type name))
+                inline-fragment (-> m
+                                    (assoc :selection-type :inline-fragment
+                                           :concrete-types concrete-types)
+                                    (update :directives #(convert-directives schema %)))]
+            (normalize-selections schema
+                                  inline-fragment
+                                  fragment-type
+                                  (-> m :query-path (conj fragment-path-term)))))))))
 
 (defmethod selection :fragmentSpread
   [schema sel _type q-path]
@@ -975,6 +979,3 @@
                (throw (ex-info "Failed to parse GraphQL query."
                                {:errors failures})))))]
      (xform-query schema antlr-tree operation-name))))
-
-
-
