@@ -37,7 +37,7 @@
 
 (defn keepv
   [f coll]
-  (into [] (keep f coll)))
+  (into [] (keep f) coll))
 
 (defn hash-map-by
   "Constructs a hash map from the supplied values.
