@@ -129,7 +129,7 @@
         parse-time (benchmark (parser/parse-query compiled-schema query-string))
         parsed-query (parser/parse-query compiled-schema query-string)
         _ (println "Running benchmark" (name benchmark-name) "(exec) ...")
-        exec-time (benchmark (execute-parsed-query compiled-schema parsed-query variables nil))]
+        exec-time (benchmark (execute-parsed-query parsed-query variables nil))]
     [(name benchmark-name) parse-time exec-time]))
 
 (defn ^:private create-charts
@@ -156,10 +156,11 @@
 
 (defn ^:private git-commit
   []
-  (-> (sh "git" "rev-parse" "--short" "HEAD")
+  (-> (sh "git" "rev-parse" "HEAD")
       :out
       (or "UNKNOWN")
-      str/trim))
+      str/trim
+      (subs 0 8)))
 
 (def ^:private dataset-file "perf/benchmarks.csv")
 
@@ -180,7 +181,7 @@
 (def ^:private cli-opts
   [["-s" "--save" "Update benchmark data file after running benchmarks."]
    ["-p" "--print" "Print the table of benchmark data used to generate charts."]
-   ["-c" "--commit SHA" "Specify Git commit SHA; defaults to `git rev-parse --short HEAD`."]
+   ["-c" "--commit SHA" "Specify Git commit SHA; defaults to current commit (truncated to 8 chars)."]
    ["-h" "--help" "This usage summary."]])
 
 (defn -main
