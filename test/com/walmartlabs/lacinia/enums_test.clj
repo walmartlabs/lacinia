@@ -3,7 +3,9 @@
     [clojure.test :refer [deftest is use-fixtures]]
     [com.walmartlabs.test-schema :refer [test-schema]]
     [com.walmartlabs.lacinia :refer [execute]]
-    [com.walmartlabs.lacinia.schema :as schema]))
+    [com.walmartlabs.lacinia.schema :as schema])
+  (:import
+    (clojure.lang ExceptionInfo)))
 
 (def ^:dynamic *compiled-schema* nil)
 
@@ -40,3 +42,13 @@
             :query-path []
             :value "CLONES"}
            first-error))))
+
+(deftest enum-values-must-be-unique
+  (let [e (is (thrown? ExceptionInfo
+                       (schema/compile {:enums {:invalid {:values [:yes 'yes "yes"]}}})))]
+    (is (= (.getMessage e)
+           "Values defined for enum `invalid' must be unique."))
+    (is (= {:enum {:values [:yes 'yes "yes"]
+                   :category :enum
+                   :type-name :invalid}}
+           (ex-data e)))))

@@ -924,7 +924,7 @@
         ;; This will deviate from the spec slightly: all fragments will be transformed
         ;; and validated using the variables from the selected operation, even those that
         ;; are not referenced by the selected operation (another operate may define
-        ;; different variables). A solution might be to collected up the fragments taht
+        ;; different variables). A solution might be to collect up the fragments taht
         ;; are referenced inside the operation, validate those, discard the rest.
         schema' (assoc schema ::variables variable-definitions)]
     ;; Build the result describing the fragments and selections (or the selected operation).
@@ -932,7 +932,8 @@
     ;; from within this function call.
     {:fragments (normalize-fragment-definitions schema' nil fragmentDefinition)
      :selections (mapv #(selection schema' % root [])
-                       (rest selections))}))
+                       (rest selections))
+     constants/schema-key schema}))
 
 (defn ^:private parse-failures
   [^ParseError e]

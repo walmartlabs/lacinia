@@ -21,9 +21,9 @@
 
                                }")]
     (is (= {:data {:droid {:name "R2-D2"}}}
-           (execute-parsed-query *schema* q nil nil)))
+           (execute-parsed-query q nil nil)))
     (is (= {:data {:droid {:name "C-3PO"}}}
-           (execute-parsed-query *schema* q {:id "2000"} nil)))))
+           (execute-parsed-query q {:id "2000"} nil)))))
 
 (deftest fragments-can-reference-variables
   (let [q (parser/parse-query *schema*
@@ -41,8 +41,8 @@
      }
    }")]
     (is (= {:data {:droid {:name "R2-D2"}}}
-           (execute-parsed-query *schema* q nil nil)))
+           (execute-parsed-query q nil nil)))
     (is (= {:data {:droid {:name "C-3PO"
                            :best_friend {:name "Luke Skywalker"}}}}
-           (execute-parsed-query *schema* q {:terse false
+           (execute-parsed-query q {:terse false
                                              :id "2000"} nil)))))

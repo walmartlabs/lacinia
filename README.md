@@ -66,8 +66,7 @@ of the available options:
             :appears_in {:type (list :episode)}}}
 
   :human
-  {:fields {:home_planet {:type String}
-            :id {:type Int}
+  {:fields {:id {:type Int}
             :name {:type String}
             :home_planet {:type String}
             :appears_in {:type (list :episode)}}}}
@@ -140,6 +139,7 @@ This needs only be done once, in application startup code:
   (-> "schema.edn"
       io/resource
       slurp
+      edn/read-string
       (attach-resolvers {:get-hero get-hero
                          :get-droid (constantly {})})
       schema/compile))
