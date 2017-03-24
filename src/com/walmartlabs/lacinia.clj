@@ -1,7 +1,7 @@
 (ns com.walmartlabs.lacinia
   (:require [com.walmartlabs.lacinia.parser :as parser]
             [com.walmartlabs.lacinia.constants :as constants]
-            [com.walmartlabs.lacinia.executor.standard :as standard]
+            [com.walmartlabs.lacinia.executor :as executor]
             [com.walmartlabs.lacinia.validator :as validator]
             [com.walmartlabs.lacinia.internal-utils :refer [cond-let]])
   (:import (clojure.lang ExceptionInfo)))
@@ -14,12 +14,13 @@
 (defn execute-parsed-query
   "Prepares a query, by applying query variables to it, resulting in a prepared
   query which is then executed."
-  [schema parsed-query variables context]
+  [parsed-query variables context]
   {:pre [(map? parsed-query)
          (or (nil? context)
              (map? context))]}
   (cond-let
-    :let [[prepared error-result] (try
+    :let [schema (get parsed-query constants/schema-key)
+          [prepared error-result] (try
                                     [(parser/prepare-with-query-variables parsed-query variables)]
                                     (catch Exception e
                                       [nil {:errors (as-errors e)}]))]
@@ -34,7 +35,7 @@
 
     :else
     (try
-      (standard/execute-query (assoc context
+      (executor/execute-query (assoc context
                                      constants/schema-key schema
                                      constants/parsed-query-key prepared))
       (catch Exception e
@@ -75,4 +76,4 @@
                                     [nil {:errors (as-errors e)}]))]
     (if (some? error-result)
       error-result
-      (execute-parsed-query schema parsed variables context))))
+      (execute-parsed-query parsed variables context))))

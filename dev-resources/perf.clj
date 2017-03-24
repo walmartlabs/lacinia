@@ -97,7 +97,7 @@
 
 (defn query-execution-time
   []
-  (let [results (c/benchmark (execute-parsed-query compiled-schema parsed-query nil nil)
+  (let [results (c/benchmark (execute-parsed-query parsed-query nil nil)
                              nil)]
     (println "Query execution time:")
     (c/report-result results)
