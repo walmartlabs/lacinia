@@ -342,11 +342,9 @@
                }
              }
             }"]
-    (is (= {:errors
-            [{:message
-              "Inline fragment has a type condition on unknown type `foo'.",
-              :query-path [:human]
-              :locations [{:line 2 :column 31}]}]}
+    (is (= {:errors [{:message "Inline fragment has a type condition on unknown type `foo'."
+                      :query-path [:human]
+                      :locations [{:line 2 :column 31}]}]}
            (execute *schema* q nil nil)))))
 
 (deftest invalid-query
