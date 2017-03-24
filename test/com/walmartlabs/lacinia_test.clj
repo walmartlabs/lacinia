@@ -334,6 +334,17 @@
                           :homePlanet "Tatooine"
                           :appears_in ["NEWHOPE" "EMPIRE" "JEDI"]}
                    :leia {:appears_in ["NEWHOPE" "EMPIRE" "JEDI"]}}}
+           (execute *schema* q nil nil))))
+  (let [q "query InvalidInlineFragment {
+             human(id: \"1001\") {
+               ... on foo {
+                 name
+               }
+             }
+            }"]
+    (is (= {:errors [{:message "Inline fragment has a type condition on unknown type `foo'."
+                      :query-path [:human]
+                      :locations [{:line 2 :column 31}]}]}
            (execute *schema* q nil nil)))))
 
 (deftest invalid-query
@@ -777,5 +788,3 @@
                      :query-path [:events :lookup]}]}
                  (execute schema q2 nil nil))
               "should return error message"))))))
-
-
