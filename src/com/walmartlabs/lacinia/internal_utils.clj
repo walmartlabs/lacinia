@@ -8,9 +8,6 @@
   a map to be a vector of a single map."
   [error-or-errors]
   (cond
-    (nil? error-or-errors)
-    nil
-
     (map? error-or-errors)
     [error-or-errors]
 
@@ -40,7 +37,7 @@
 
 (defn keepv
   [f coll]
-  (into [] (keep f coll)))
+  (into [] (keep f) coll))
 
 (defn hash-map-by
   "Constructs a hash map from the supplied values.
@@ -51,7 +48,7 @@
   values
   : Seq of values from which map keys and values will be extracted."
   [key-fn values]
-  (zipmap (map key-fn values) values))
+  (into {} (map (juxt key-fn identity)) values))
 
 (defn to-message
   "Converts an exception to a message. Normally, this is the message property of the exception, but if
