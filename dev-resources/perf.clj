@@ -11,13 +11,80 @@
     [com.walmartlabs.lacinia.parser :as parser]
     [clojure.java.shell :refer [sh]]
     [clojure.string :as str]
-    [clojure.tools.cli :as cli])
+    [clojure.tools.cli :as cli]
+    [com.walmartlabs.lacinia.util :as util]
+    [com.walmartlabs.lacinia.schema :as schema]
+    [com.walmartlabs.lacinia.resolve :refer [resolve-as]])
   (:import (java.util Date)))
 
 ;; Be aware that any change to this schema will invalidate any gathered
 ;; performance data.
 
 (def compiled-schema (star-wars-schema))
+
+;; A schema to measure the peformance of errors
+(def planets-schema
+  (let [planet-data [{:name "Mercury"}
+                     {:name "Venus"}
+                     {:name "Earth"
+                      :moons [{:name "Luna"
+                               :bases [{:name "Alpha"}
+                                       {:name "Moon 1"}
+                                       {:name "月基地图"}]}]}
+                     {:name "Mars"
+                      :moons [{:name "Phobos"}
+                              {:name "Deimos"}]}
+                     {:name "Asteroid Belt"
+                      :moons (for [i (range 1 101)]
+                               {:name (str "Asteroid " i)
+                                :bases [{:name "Pad"
+                                         :destroyed? true}]})}
+                     {:name "Jupiter"
+                      :moons [{:name "Europa"
+                               :bases [{:name "Beta"
+                                        :alien? true}]}
+                              {:name "Ganymede"}
+                              {:name "Callisto"
+                               :bases [{:name "Gamma"}]}]}
+                     {:name "Saturn"
+                      :moons [{:name "Dione"}
+                              {:name "Tethys"}
+                              {:name "Titan"
+                               :bases [{:name "Omega"}]}]}
+                     {:name "Saturn"}
+                     {:name "Uranus"}]
+        resolvers {:base-name (fn [_ _ base]
+                                (resolve-as (:name base)
+                                            (cond
+                                              (:alien? base)
+                                              {:message "Europa is forbidden. Attempt no landing there."}
+
+                                              (:destroyed? base)
+                                              {:message "This base has been destroyed."})))
+                   :planets (fn [_ _ _]
+                              planet-data)}]
+    (-> '{:objects
+          {:planet
+           {:fields
+            {:name {:type (non-null String)}
+             :moons {:type (list :moon)}}}
+
+           :moon
+           {:fields
+            {:name {:type (non-null String)}
+             :bases {:type (list :base)}}}
+
+           :base
+           {:fields
+            {:name {:type (non-null String)
+                    :resolve :base-name}}}}
+
+          :queries
+          {:planets
+           {:type (list :planet)
+            :resolve :planets}}}
+        (util/attach-resolvers resolvers)
+        schema/compile)))
 
 ;; This is the standard introspection query that graphiql
 ;; executes to build the client-side UI.
@@ -97,6 +164,7 @@
 (def ^:private benchmark-queries
   {:introspection
    {:query introspection-query-raw}
+
    :basic
    {:query "
    {
@@ -111,6 +179,7 @@
        name
        friends { name }}
    }"}
+
    :basic-vars
    {:query "
    query ($ep : episode!) {
@@ -126,7 +195,13 @@
        friends { name }
      }
    }"
-    :vars {:ep "NEWHOPE"}}})
+    :vars {:ep "NEWHOPE"}}
+
+   :errors
+   ;; Test how long it take when a single deeply nested resolver resolves an error.
+   ;; Also shows the cost of the call to distinct
+   {:query "{ planets { name moons { name bases { name }}}}"
+    :schema planets-schema}})
 
 (defmacro ^:private benchmark [expr]
   `(-> ~expr
@@ -144,9 +219,11 @@
   (println "Running benchmark" (name benchmark-name) "(parse) ...")
 
   (let [{query-string :query
-         variables :vars} (get benchmark-queries benchmark-name)
-        parse-time (benchmark (parser/parse-query compiled-schema query-string))
-        parsed-query (parser/parse-query compiled-schema query-string)
+         variables :vars
+         schema :schema
+         :or {schema compiled-schema}} (get benchmark-queries benchmark-name)
+        parse-time (benchmark (parser/parse-query schema query-string))
+        parsed-query (parser/parse-query schema query-string)
         _ (println "Running benchmark" (name benchmark-name) "(exec) ...")
         exec-time (benchmark (execute-parsed-query parsed-query variables nil))]
     [(name benchmark-name) parse-time exec-time]))

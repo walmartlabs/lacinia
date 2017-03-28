@@ -70,29 +70,39 @@
   "Resolves the value for a field or fragment selection node, by passing the value to the
   appropriate resolver, and passing it through a chain of value enforcers.
 
-  Returns a schema/ResolvedTuple of the resolved value for the node.
-  The error maps in the tuple are enhanced with additional location and query-path data.
+  Returns a resolve/ResolvedTuple of the resolved value for the node.
 
-  For other types of selections, returns a tuple of the value."
-  [selection context container-value]
-  (if (= :field (:selection-type selection))
-    (let [{:keys [arguments field-definition]} selection
-          schema (get context constants/schema-key)
-          resolve-context (assoc context :com.walmartlabs.lacinia/selection selection)]
-      (try
-        (let [resolve (field-selection-resolver schema selection container-value)
-              tuple (resolve resolve-context arguments container-value)]
-          (resolve-as (resolve/resolved-value tuple)
-                      (enhance-errors selection (resolve/resolve-errors tuple))))
-        (catch clojure.lang.ExceptionInfo e
-          (throw (ex-info (str "Error resolving field: " (to-message e))
-                          (ex-info-map selection (ex-data e)))))))
-    ;; Else, not a field selection:
-    (resolve-as container-value)))
+  Any resolve errors are enhanced with details about the selection and accumulated in
+  the execution context.
+
+  For other types of selections, returns a ResolvedTuple of the value."
+  [execution-context selection]
+  (let [container-value (:resolved-value execution-context)]
+    (if (= :field (:selection-type selection))
+      (let [{:keys [arguments field-definition]} selection
+            {:keys [context]} execution-context
+            schema (get context constants/schema-key)
+            resolve-context (assoc context :com.walmartlabs.lacinia/selection selection)]
+        (try
+          (let [resolve (field-selection-resolver schema selection container-value)
+                tuple (resolve resolve-context arguments container-value)
+                errors (-> tuple resolve/resolve-errors seq)]
+            (if errors
+              (do
+                (swap! (:errors execution-context) into
+                       (enhance-errors selection errors))
+                (resolve-as (resolve/resolved-value tuple)))
+              tuple))
+          (catch clojure.lang.ExceptionInfo e
+            ;; TODO: throw-ing will be a problem once we get into async
+            (throw (ex-info (str "Error resolving field: " (to-message e))
+                            (ex-info-map selection (ex-data e)))))))
+      ;; Else, not a field selection:
+      (resolve-as container-value))))
 
 (declare ^:private resolve-and-select)
 
-(defrecord SelectionTuple
+(defrecord ExecutionContext
   [context value resolved-value errors])
 
 (defn ^:private null-to-nil
@@ -124,23 +134,26 @@
                   (null-to-nil v)))
               selected-value)))
 
+(defn ^:private accumulate-errors
+  [execution-context resolved-tuple]
+  (when-let [errors (-> resolved-tuple
+                        resolve/resolve-errors
+                        seq)]
+    (swap! (:errors execution-context) into errors)))
+
 (defmulti ^:private apply-selection
   "Applies a selection on a resolved value.
 
-  Returns the updated selection tuple."
-
-  (fn [selection-tuple selection]
+  Returns the updated selection context."
+  (fn [execution-context selection]
     (:selection-type selection)))
 
-
 (defmethod apply-selection :field
-  [selection-tuple field-selection]
-  (let [{:keys [context resolved-value]} selection-tuple
-        {:keys [alias]} field-selection
+  [execution-context field-selection]
+  (let [{:keys [alias]} field-selection
         non-nullable-field? (-> field-selection :field-definition :non-nullable?)
-        tuple (resolve-and-select context field-selection resolved-value)
+        tuple (resolve-and-select execution-context field-selection)
         sub-selection (resolve/resolved-value tuple)
-        errors (resolve/resolve-errors tuple)
         sub-selection' (cond
                          (and non-nullable-field?
                               (nil? sub-selection))
@@ -160,35 +173,29 @@
 
                          :else
                          sub-selection)]
-    (-> selection-tuple
-        (assoc-in [:value alias] sub-selection')
-        (update :errors into errors))))
+    (assoc-in execution-context [:value alias] sub-selection')))
 
 (defn ^:private maybe-apply-fragment
-  [selection-tuple fragment-selection concrete-types]
-  (let [{:keys [context resolved-value]} selection-tuple
+  [execution-context fragment-selection concrete-types]
+  (let [{:keys [context resolved-value]} execution-context
         actual-type (schema/type-tag resolved-value)]
     (if (contains? concrete-types actual-type)
-      ;; Note: Ideally, we could pass the selection-tuple into resolve-and-select directly, rather than having
-      ;; to merge the results back together. That's the refactoring note a bit below.
-      (let [resolver-result (resolve-and-select context fragment-selection resolved-value)]
-        (-> selection-tuple
-            (update :value merge (resolve/resolved-value resolver-result))
-            (update :errors into (resolve/resolve-errors resolver-result))))
+      (let [resolved-tuple (resolve-and-select execution-context fragment-selection)]
+        (update execution-context :value merge (resolve/resolved-value resolved-tuple)))
       ;; Not an applicable type
-      selection-tuple)))
+      execution-context)))
 
 (defmethod apply-selection :inline-fragment
-  [selection-tuple inline-fragment-selection]
-  (maybe-apply-fragment selection-tuple
+  [execution-context inline-fragment-selection]
+  (maybe-apply-fragment execution-context
                         inline-fragment-selection
                         (:concrete-types inline-fragment-selection)))
 
 (defmethod apply-selection :fragment-spread
-  [selection-tuple fragment-spread-selection]
+  [execution-context fragment-spread-selection]
   (let [{:keys [fragment-name]} fragment-spread-selection
-        fragment-def (get-in selection-tuple [:context constants/parsed-query-key :fragments fragment-name])]
-    (maybe-apply-fragment selection-tuple
+        fragment-def (get-in execution-context [:context constants/parsed-query-key :fragments fragment-name])]
+    (maybe-apply-fragment execution-context
                           ;; A bit of a hack:
                           (assoc fragment-spread-selection
                                  :selections (:selections fragment-def))
@@ -196,66 +203,57 @@
 
 
 (defn ^:private maybe-apply-selection
-  [selection-tuple selection]
+  [execution-context selection]
   ;; :disabled? may be set by a directive
   (if (:disabled? selection)
-    selection-tuple
-    (apply-selection selection-tuple selection)))
-
-;; Some refactoring is due here. It would be better to start with a SelectionTuple, it would make
-;; the overall process more clean and easier to follow.
+    execution-context
+    (apply-selection execution-context selection)))
 
 (defn ^:private resolve-and-select
   "Recursive resolution of a field within a containing field's resolved value.
 
-  Returns a ResolverResult of the selected value and any errors."
-  [context selection value]
+  Returns a ResolverResult of the selected value.
+  Accumulates errors in the execution context as a side-effect."
+  [execution-context selection]
   (cond-let
-    :let [result (resolve-value selection context value)
-          resolved-value (resolve/resolved-value result)
+    :let [resolved-tuple (resolve-value execution-context selection)
+          resolved-value (resolve/resolved-value resolved-tuple)
           sub-selections (:selections selection)]
 
     ;; When the value is nil, or there are no sub-selections of the object to
     ;; evaluate, then it's an early, easy finish.
     (or (nil? resolved-value)
         (empty? sub-selections))
-    result
+    resolved-tuple
 
-    :let [resolve-errors (resolve/resolve-errors result)
+    :let [selected-value-builder
           ;; This function takes the resolved value (or, a value from the sequence,
           ;; for a multiple field) and builds out the sub-structure for it, a recursive
           ;; process at the heart of GraphQL.
-          ;; It returns a tuple of the selected value
-          ;; and any errors for the selected value (or anywhere below).
-          selected-value-builder
+          ;; It returns the selected value, and adds errors to the execution-errors
+          ;; atom as a side-effect.
           (fn [resolved-value]
 
             (let [selected-base (with-meta (ordered-map) (meta resolved-value))
 
-                  selection-tuple (reduce maybe-apply-selection
-                                          (->SelectionTuple context selected-base resolved-value [])
-                                          sub-selections)
-
-                  {:keys [value errors]} selection-tuple]
-              [value errors]))]
+                  execution-context (reduce maybe-apply-selection
+                                            (assoc execution-context
+                                                   :value selected-base
+                                                   :resolved-value resolved-value)
+                                            sub-selections)]
+              (:value execution-context)))]
 
     ;; If a field, and the field's type is multiple, then it is a sequence of resolved values
     ;; that must each be selected to form proper results.
     (-> selection :field-definition :multiple?)
-    (let [tuples (map selected-value-builder resolved-value)
-          selected-values (mapv first tuples)
-          errors (->> (mapv second tuples)
-                      (reduce into resolve-errors)
-                      seqv)]
-      (resolve-as selected-values errors))
+    (let [selected-values (mapv selected-value-builder resolved-value)]
+      (resolve-as selected-values))
 
     ;; Otherwise, it is just a map but must still have selections applied, to form the selected value.
     :else
-    (let [[selected-value errors] (selected-value-builder resolved-value)
-          errors' (-> resolve-errors
-                      (into errors)
-                      seqv)]
-      (resolve-as selected-value errors'))))
+    (-> resolved-value
+        selected-value-builder
+        resolve-as)))
 
 (defn execute-query
   "Entrypoint for execution of a query.
@@ -265,18 +263,19 @@
   Returns a query result, with :data and/or :errors keys."
   [context]
   (let [schema (get context constants/schema-key)
-        selections (get-in context [constants/parsed-query-key :selections])]
-    (reduce (fn [root-result query-node]
-              (if (:disabled? query-node)
-                root-result
-                (let [result (resolve-and-select context query-node nil)
-                      resolve-errors (resolve/resolve-errors result)
-                      selected-data (->> result
-                                         resolve/resolved-value
-                                         (propogate-nulls false)
-                                         null-to-nil)]
-                  (cond-> root-result
-                    true (assoc-in [:data (:alias query-node)] selected-data)
-                    (seq resolve-errors) (assoc :errors resolve-errors)))))
-            {:data nil}
-            selections)))
+        selections (get-in context [constants/parsed-query-key :selections])
+        errors (atom [])
+        result (reduce (fn [root-result query-node]
+                         (if (:disabled? query-node)
+                           root-result
+                           (let [root-execution-context (->ExecutionContext context (ordered-map) nil errors)
+                                 result (resolve-and-select root-execution-context query-node)
+                                 selected-data (->> result
+                                                    resolve/resolved-value
+                                                    (propogate-nulls false)
+                                                    null-to-nil)]
+                             (assoc-in root-result [:data (:alias query-node)] selected-data))))
+                       {:data nil}
+                       selections)]
+    (cond-> result
+      (seq @errors) (assoc :errors (distinct @errors)))))
