@@ -140,7 +140,6 @@
   [x]
   (or (sequential? x) (set? x)))
 
-
 (defn is-internal-type-name?
   "Identifies type names that are added by introspection."
   [type-name]
