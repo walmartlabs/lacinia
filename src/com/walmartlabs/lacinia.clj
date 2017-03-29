@@ -7,7 +7,7 @@
   (:import (clojure.lang ExceptionInfo)))
 
 (defn ^:private as-errors
-  [exception]
+  [^Throwable exception]
   [(merge {:message (.getMessage exception)}
           (ex-data exception))])
 

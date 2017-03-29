@@ -62,7 +62,7 @@
 
 (defn ^:private token-name
   "Returns the rule name of a terminal node, eg. :alias or :field."
-  [^TerminalNode ctx parser]
+  [^TerminalNode ctx ^Parser parser]
   (let [sym (.getSymbol ctx)
         idx (.getType sym)]
     (when-not (neg? idx)
