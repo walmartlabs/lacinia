@@ -13,7 +13,7 @@
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.internal-utils
      :refer [cond-let ensure-seq map-vals map-kvs filter-vals deep-merge q
-             is-internal-type-name?]]
+             is-internal-type-name? sequential-or-set?]]
     [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolved-value resolve-errors resolve-as]]
     [clojure.string :as str])
   (:import
@@ -306,14 +306,14 @@
 (defn ^:private enforce-single-result
   [tuple]
   (with-resolved-value [value tuple]
-    (if-not (sequential? value)
+    (if-not (sequential-or-set? value)
       tuple
       (error "Field resolver returned a collection of values, expected only a single value."))))
 
 (defn ^:private enforce-multiple-results
   [tuple]
   (with-resolved-value [value tuple]
-    (if (sequential? value)
+    (if (sequential-or-set? value)
       tuple
       (error "Field resolver returned a single value, expected a collection of values."))))
 
