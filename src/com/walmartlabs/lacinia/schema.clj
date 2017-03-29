@@ -361,9 +361,10 @@ z
     (let [enforced-tuples (mapv #(enforcer [%])
                                 (first tuple))
           resolved-values (mapv first enforced-tuples)
-          errors (->> (keep second enforced-tuples)
-                      (mapcat ensure-seq)
-                      seq)]
+          errors  (->> enforced-tuples
+                       (into [] (comp (keep second)
+                                      (mapcat ensure-seq)))
+                       seq)]
       [resolved-values errors])))
 
 (defn ^:private coercion-enforcer
