@@ -774,10 +774,11 @@
               (normalize-selections schema
                                     m
                                     fragment-type
-                                    [path-elem])))
-        defs (map f fragment-definitions)]
-    (zipmap (map :fragment-name defs)
-            (map #(finalize-fragment-def schema %) defs))))
+                                    [path-elem])))]
+    (into {} (comp (map f)
+                   (map (juxt :fragment-name
+                              #(finalize-fragment-def schema %))))
+          fragment-definitions)))
 
 (defmulti ^:private selection
   "A recursive function that parses the ANTLR selection structure into the
