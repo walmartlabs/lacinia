@@ -96,7 +96,7 @@
 (defn ^:private coerce-to-int
   [v]
   (cond
-    (number? v) (.intValue v)
+    (number? v) (.intValue ^Number v)
     (string? v) (Integer/parseInt v)
     :else (throw (ex-info (str "Invalid Int value: " v) {:value v}))))
 
