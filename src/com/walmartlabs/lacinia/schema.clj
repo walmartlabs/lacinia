@@ -445,12 +445,11 @@ z
           resolver-errors (when is-tuple?
                             (resolve-errors raw-value))
           enforced-tuple (enforcer [enforce-value])
-          all-errors (->> (concat
-                            (ensure-seq resolver-errors)
-                            (ensure-seq (second enforced-tuple)))
-                          (filter some?)
-                          (mapcat assert-and-wrap-error)
-                          seq)]
+          all-errors (->> (sequence (comp cat
+                                          (filter some?)
+                                          (mapcat assert-and-wrap-error))
+                           [(ensure-seq resolver-errors)
+                            (ensure-seq (second enforced-tuple))]))]
       (resolve-as (first enforced-tuple) all-errors))))
 
 (defn ^:private prepare-resolver

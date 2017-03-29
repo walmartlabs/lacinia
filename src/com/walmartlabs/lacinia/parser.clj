@@ -134,12 +134,13 @@
 
 (defn ^:private xform-argument-map
   [nodes]
-  (reduce (fn [m [_ [_ k] [_ v]]]
-            (assoc m
-                   (keyword k)
-                   (xform-argument-value v)))
-          nil
-          nodes))
+  (->> nodes
+       (reduce (fn [m [_ [_ k] [_ v]]]
+                 (assoc! m
+                         (keyword k)
+                         (xform-argument-value v)))
+               (transient {}))
+       persistent!))
 
 (defn ^:private node-reducer
   "A generic reducing fn for building maps out of nodes."
@@ -163,13 +164,13 @@
     (assoc acc :fragment-name (keyword (second (second node))))
 
     :directives
-    (let [directives (map rest (rest node))]
-      (->> directives
-           (reduce (fn [acc [[_ k] v]]
-                     ;; TODO: Spec indicates that directives must be unique by name
-                     (assoc acc (keyword k) (node-reducer {} v)))
-                   {})
-           (assoc acc :directives)))
+    (->> (rest node)
+         (reduce (fn ([acc [_ [_ k] v]]
+                      ;; TODO: Spec indicates that directives must be unique by name
+                      (assoc! acc (keyword k) (node-reducer {} v))))
+                 (transient {}))
+         persistent!
+         (assoc acc :directives))
 
     :selectionSet
     ;; Keep the order of the selections (fields, inline fragments, and fragment spreads) so the
