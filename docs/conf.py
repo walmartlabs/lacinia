@@ -248,7 +248,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
   (master_doc, 'comwalmartlabslacinia.tex', u'com.walmartlabs/lacinia Documentation',
-   u'eReceipts team at Walmartlabs', 'manual'),
+   u'Walmartlabs', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of

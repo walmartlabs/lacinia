@@ -24,7 +24,7 @@ in-browser GraphQL IDE `graphiql`_.
 .. warning::
 
    This library is still under active development and should not be considered complete.
-   If you would like to contribute, please reach out to eReceipts@wal-mart.com
+   If you would like to contribute, please create a pull request.
 
 Although GraphQL is quite adept at handling requests from client web browsers and
 responding with JSON, it is also exceptionally useful for allowing backend systems to communicate.
@@ -115,4 +115,3 @@ That's great news: it means Lacinia is equally adept at pulling data out of a si
 as it is at integrating and organizing data from multiple backend systems.
 
 .. _graphiql: https://github.com/graphql/graphiql
-
