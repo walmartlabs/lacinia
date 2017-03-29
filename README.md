@@ -107,7 +107,7 @@ you don't define it.  If you don't define one, Lacinia provides a default field 
 
 Here's what the `get-hero` field resolver might look like:
 
-```
+```clojure
 (defn get-hero [context arguments value]
   (let [{:keys [episode]} arguments]
     (if (= episode "NEWHOPE")
@@ -131,13 +131,13 @@ for efficient execution of queries.
 This needs only be done once, in application startup code:
 
 
-```
-(require '[com.walmartlabs.lacinia.util :refer [attach-resolvers]]
+```clojure
+(require '[clojure.edn :as edn]
+         '[com.walmartlabs.lacinia.util :refer [attach-resolvers]]
          '[com.walmartlabs.lacinia.schema :as schema])
 
 (def star-wars-schema
   (-> "schema.edn"
-      io/resource
       slurp
       edn/read-string
       (attach-resolvers {:get-hero get-hero
@@ -148,17 +148,17 @@ This needs only be done once, in application startup code:
 With the compiled application available, it can be used to execute
 requests; this typically occurs inside a Ring handler function:
 
-```
+```clojure
 (require '[com.walmartlabs.lacinia :refer [execute]]
          '[clojure.data.json :as json])
 
 (defn handler [request]
   {:status 200
    :headers {"Content-Type" "application/json"}
-   :body
-   (->> {:request request}
-        (execute my-schema q nil)
-        json/write-str)})
+   :body (let [query (get-in request [:query-params :query])]
+           (->> {:request request}
+                (execute star-wars-schema query nil)
+                json/write-str))})
 ```
 
 Lacinia doesn't know about the web tier at all, it just knows about
@@ -180,7 +180,7 @@ It looks a lot like JSON.
 The `execute` function returns EDN data that can be easily converted to JSON.
 The :data key contains the value requested for the `hero` query in the request.
 
-```
+```clojure
 {:data
   {:hero {:id 2000
           :name "Lando Calrissian"}}}
@@ -202,7 +202,7 @@ fields in the response:
 }
 ```
 
-```
+```clojure
 {:data {:hero {:movies ["NEWHOPE" "EMPIRE" "JEDI"]}}}
 ```
 
