@@ -244,6 +244,12 @@
        (map-vals :default-value)
        (filter-vals identity)))
 
+(defn ^:private use-nested-type
+  "Replaces the :type of the def with the nested type; this is used to strip off a
+  :list or :non-null type before working on the underlying :root type."
+  [any-def]
+  (update any-def :type :type))
+
 (defmulti ^:private process-literal-argument
   "Validates a literal argument value to ensure it is compatible
   with the declared type of the field argument. Returns the underlying
@@ -334,14 +340,18 @@
       with-defaults)))
 
 (defmethod process-literal-argument :array
-  [schema argument-definition [_ arg-value]]
-  (when-not (contains-modifier? :list argument-definition)
-    (throw-exception "Provided argument value is an array, but the argument is not a list."))
-  ;; Create a fake argument to allow the individual scalar values to be processed.
-  ;; Strip off one layer of :type, what's underneath should be a :root type.
-  ;; TODO: How to handle :not-null intervening layer?
-  (let [fake-argument-def (update argument-definition :type :type)]
-    (mapv #(process-literal-argument schema fake-argument-def %) arg-value)))
+  [schema argument-definition [_ arg-value :as arg-tuple]]
+  (let [kind (-> argument-definition :type :kind)]
+    (case kind
+      :non-null
+      (recur schema (use-nested-type argument-definition) arg-tuple)
+
+      :root
+      (throw-exception "Provided argument value is an array, but the argument is not a list.")
+
+      :list
+      (let [fake-argument-def (use-nested-type argument-definition)]
+        (mapv #(process-literal-argument schema fake-argument-def %) arg-value)))))
 
 (defn ^:private decapitalize
   [s]
@@ -551,7 +561,7 @@
         literal-argument-values (construct-literal-arguments schema argument-definitions literal-args)
         dynamic-extractor (construct-dynamic-arguments-extractor schema argument-definitions dynamic-args)
         missing-keys (-> argument-definitions
-                         (as-> $ (filter-vals :non-nullable? $))
+                         (as-> $ (filter-vals non-null-kind? $))
                          keys
                          set
                          (disj* (keys literal-args))
