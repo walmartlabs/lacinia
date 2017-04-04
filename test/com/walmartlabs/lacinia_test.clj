@@ -3,10 +3,10 @@
             [clojure.spec :as s]
             [clojure.test :refer [deftest is use-fixtures testing]]
             [clojure.data.json :as json]
-            [com.walmartlabs.lacinia :refer [execute]]
+            [com.walmartlabs.lacinia :as lacinia]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.test-schema :refer [test-schema]]
-            [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace]]))
+            [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace simplify]]))
 
 (instrument-schema-namespace)
 
@@ -16,6 +16,13 @@
               (fn [f]
                 (binding [*schema* (schema/compile test-schema)]
                   (f))))
+
+(defn execute
+  "Executes the query but reduces ordered maps to normal maps, which makes
+  comparisons easier.  Other tests exist to ensure that order is maintained."
+  [schema q vars context]
+  (-> (lacinia/execute schema q vars context)
+      simplify))
 
 ;; —————————————————————————————————————————————————————————————————————————————
 ;; ## Tests
@@ -34,23 +41,17 @@
                           :name "R2-D2"
                           :appears_in ["NEWHOPE" "EMPIRE" "JEDI"]}}}
            (execute *schema* q {} nil)))
-    (is (= (json/write-str (execute *schema* q {} nil))
+    (is (= (json/write-str (lacinia/execute *schema* q {} nil))
            "{\"data\":{\"hero\":{\"id\":\"2001\",\"name\":\"R2-D2\",\"appears_in\":[\"NEWHOPE\",\"EMPIRE\",\"JEDI\"]}}}")))
   ;; Reordering fields should change response ordering
   (let [q "{ hero { name appears_in id }}"]
-    (is (= (json/write-str (execute *schema* q {} nil))
+    (is (= (json/write-str (lacinia/execute *schema* q {} nil))
            "{\"data\":{\"hero\":{\"name\":\"R2-D2\",\"appears_in\":[\"NEWHOPE\",\"EMPIRE\",\"JEDI\"],\"id\":\"2001\"}}}")))
   (let [q "{ hero { appears_in name id }}"]
-    (is (= (json/write-str (execute *schema* q {} nil))
+    (is (= (json/write-str (lacinia/execute *schema* q {} nil))
            "{\"data\":{\"hero\":{\"appears_in\":[\"NEWHOPE\",\"EMPIRE\",\"JEDI\"],\"name\":\"R2-D2\",\"id\":\"2001\"}}}"))))
 
-(deftest tagging-checks
-  (let [q "{ human(id: \"1003\") { id, name }}"
-        result (execute *schema* q nil nil)]
-    (is (= "Leia Organa"
-           (-> result :data :human :name)))
-    (is (= :human
-           (-> result :data :human schema/type-tag)))))
+
 
 (deftest mutation-query
   (let [q "mutation ($from : String, $to: String) { changeHeroName(from: $from, to: $to) { name } }"]
@@ -358,11 +359,11 @@
 (deftest error-query
   (let [q "{ human(id: \"1000\") { error_field }}"
         executed (execute *schema* q nil nil)]
-    (is (= {:errors [{:query-path [:human :error_field]
+    (is (= {:data {:human {:error_field nil}}
+            :errors [{:query-path [:human :error_field]
                       :message "Exception in error_field resolver."
                       :locations [{:line 1
-                                   :column 20}]}]
-            :data {:human {:error_field nil}}}
+                                   :column 20}]}]}
            executed)))
   (let [q "{ human(id: \"1000\") { multiple_errors_field }}"
         executed (execute *schema* q nil nil)]
@@ -449,18 +450,20 @@
 (deftest resolve-callback-failures
   (let [q "{ droid(id: \"2001\") { accessories }}"
         executed (execute *schema* q nil nil)]
-    (is (= {:query-path [:droid :accessories]
-            :message "Field resolver returned a single value, expected a collection of values."
-            :locations [{:line 1
-                         :column 20}]}
-           (-> executed :errors first))))
+    (is (= {:data {:droid {:accessories nil}}
+            :errors [{:query-path [:droid :accessories]
+                      :message "Field resolver returned a single value, expected a collection of values."
+                      :locations [{:line 1
+                                   :column 20}]}]}
+           executed)))
   (let [q "{droid(id: \"2000\") { incept_date }}"
         executed (execute *schema* q nil nil)]
-    (is (= {:query-path [:droid :incept_date]
-            :message "Field resolver returned a collection of values, expected only a single value."
-            :locations [{:line 1
-                         :column 19}]}
-           (-> executed :errors first)))))
+    (is (= {:data {:droid {:incept_date nil}}
+            :errors [{:query-path [:droid :incept_date]
+                      :message "Field resolver returned a collection of values, expected only a single value."
+                      :locations [{:line 1
+                                   :column 19}]}]}
+           executed))))
 
 (deftest int-coercion
   (let [overflow (reduce * (repeat 20 (bigint 1000)))
@@ -513,7 +516,7 @@
   ;; This triggers the non-nullable field error.
   (let [q "{ human(id: \"12345678\") { name }}"
         executed (execute *schema* q nil nil)]
-    (is (= {:data {:human nil}
+    (is (= {:data nil
             :errors [{:arguments {:id "12345678"}
                       :locations [{:column 0
                                    :line 1}]
@@ -531,7 +534,7 @@
   (testing "field declared as non-nullable resolved to null"
     (let [q "{ hero { foo }}"
           executed (execute *schema* q nil nil)]
-      (is (= {:data {:hero nil}
+      (is (= {:data nil
               :errors [{:message "Non-nullable field was null."
                         :query-path [:hero :foo]
                         :locations [{:line 1
@@ -541,7 +544,7 @@
   (testing "field declared as non-nullable resolved to null"
     (let [q "{ hero { arch_enemy { foo } }}"
           executed (execute *schema* q nil nil)]
-      (is (= {:data {:hero nil}
+      (is (= {:data nil
               :errors [{:message "Non-nullable field was null."
                         :query-path [:hero :arch_enemy]
                         :locations [{:line 1
@@ -762,14 +765,13 @@
                             :value "1003"}]}
                  (execute schema q1 nil nil))
               "should return error message")
-          (is (= {:data nil
-                  :errors
-                   [{:message
-                     "Error resolving field: Invalid value for a scalar type."
-                     :type :Event
-                     :value 1
-                     :locations [{:line 1
-                                  :column 9}]
-                     :query-path [:events :lookup]}]}
+          (is (= {:data {:events {:lookup nil}}
+                  :errors [{:locations [{:column 9
+                                         :line 1}]
+                            :message "Invalid value for a scalar type."
+                            :query-path [:events
+                                         :lookup]
+                            :type :Event
+                            :value "1"}]}
                  (execute schema q2 nil nil))
               "should return error message"))))))

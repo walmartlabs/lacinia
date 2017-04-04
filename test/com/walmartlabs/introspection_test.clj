@@ -3,8 +3,7 @@
             [com.walmartlabs.lacinia :as lacinia]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.test-schema :refer [test-schema]]
-            [clojure.walk :as walk])
-  (:import (flatland.ordered.map OrderedMap)))
+            [com.walmartlabs.test-utils :refer [simplify]]))
 
 (def ^:dynamic compiled-schema nil)
 
@@ -13,17 +12,6 @@
                 (binding [compiled-schema (schema/compile test-schema)]
                   (f))))
 
-
-(defn ^:private simplify
-  "Converts all ordered maps nested within the map into standard hash maps, which
-  makes for easier constants in the tests, and eliminates ordering problems."
-  [m]
-  (walk/postwalk
-    (fn [node]
-      (if (instance? OrderedMap node)
-        (into {} node)
-        node))
-    m))
 
 (defn ^:private execute [query]
   (simplify (lacinia/execute compiled-schema query {} nil)))
@@ -65,7 +53,7 @@
                                       :type {:kind "INTERFACE"
                                              :name "character"}}
                                      {:name "droids"
-                                      :type {:kind "LIST"
+                                      :type {:kind "NON_NULL"
                                              :name nil}}
                                      {:name "enemies"
                                       :type {:kind "LIST"
@@ -74,7 +62,7 @@
                                       :type {:kind "SCALAR"
                                              :name "String"}}
                                      {:name "family"
-                                      :type {:kind "LIST"
+                                      :type {:kind "NON_NULL"
                                              :name nil}}
                                      {:name "foo"
                                       :type {:kind "NON_NULL"
@@ -206,7 +194,7 @@
                                                               :name "character"
                                                               :ofType nil}}
                                                       {:name "droids"
-                                                       :type {:kind "LIST"
+                                                       :type {:kind "NON_NULL"
                                                               :name nil
                                                               :ofType {:enumValues []}}}
                                                       {:name "enemies"
@@ -214,7 +202,7 @@
                                                               :name nil
                                                               :ofType {:enumValues []}}}
                                                       {:name "family"
-                                                       :type {:kind "LIST"
+                                                       :type {:kind "NON_NULL"
                                                               :name nil
                                                               :ofType {:enumValues []}}}
                                                       {:name "foo"
@@ -259,7 +247,7 @@
                                                               :name "character"
                                                               :ofType nil}}
                                                       {:name "droids"
-                                                       :type {:kind "LIST"
+                                                       :type {:kind "NON_NULL"
                                                               :name nil
                                                               :ofType {:enumValues []}}}
                                                       {:name "enemies"
@@ -267,7 +255,7 @@
                                                               :name nil
                                                               :ofType {:enumValues []}}}
                                                       {:name "family"
-                                                       :type {:kind "LIST"
+                                                       :type {:kind "NON_NULL"
                                                               :name nil
                                                               :ofType {:enumValues []}}}
                                                       {:name "foo"
@@ -294,7 +282,7 @@
                                              :name "character"}}
                                      {:name "droids"
                                       :type {:fields []
-                                             :kind "LIST"
+                                             :kind "NON_NULL"
                                              :name nil}}
                                      {:name "enemies"
                                       :type {:fields []
@@ -302,7 +290,7 @@
                                              :name nil}}
                                      {:name "family"
                                       :type {:fields []
-                                             :kind "LIST"
+                                             :kind "NON_NULL"
                                              :name nil}}
                                      {:name "foo"
                                       :type {:fields []
@@ -555,9 +543,9 @@
                                       {:defaultValue nil
                                        :description nil
                                        :name "episodes"
-                                       :type {:kind "LIST"
+                                       :type {:kind "NON_NULL"
                                               :name nil
-                                              :ofType {:kind "NON_NULL"
+                                              :ofType {:kind "LIST"
                                                        :name nil
                                                        :ofType {:kind "ENUM"
                                                                 :name "episode"
@@ -758,13 +746,14 @@
                                :description nil
                                :isDeprecated false
                                :name "droids"
-                               :type {:kind "LIST"
+                               :type {:kind "NON_NULL"
                                       :name nil
-                                      :ofType {:kind "NON_NULL"
+                                      :ofType {:kind "LIST"
                                                :name nil
-                                               :ofType {:kind "INTERFACE"
-                                                        :name "character"
-                                                        :ofType nil}}}}
+                                               :ofType {:kind "NON_NULL"
+                                                        :name nil
+                                                        :ofType {:kind "INTERFACE"
+                                                                 :name "character"}}}}}
                               {:args []
                                :deprecationReason nil
                                :description nil
@@ -782,9 +771,9 @@
                                :description nil
                                :isDeprecated false
                                :name "family"
-                               :type {:kind "LIST"
+                               :type {:kind "NON_NULL"
                                       :name nil
-                                      :ofType {:kind "NON_NULL"
+                                      :ofType {:kind "LIST"
                                                :name nil
                                                :ofType {:kind "INTERFACE"
                                                         :name "character"
@@ -896,13 +885,14 @@
                                :description nil
                                :isDeprecated false
                                :name "droids"
-                               :type {:kind "LIST"
+                               :type {:kind "NON_NULL"
                                       :name nil
-                                      :ofType {:kind "NON_NULL"
+                                      :ofType {:kind "LIST"
                                                :name nil
-                                               :ofType {:kind "INTERFACE"
-                                                        :name "character"
-                                                        :ofType nil}}}}
+                                               :ofType {:kind "NON_NULL"
+                                                        :name nil
+                                                        :ofType {:kind "INTERFACE"
+                                                                 :name "character"}}}}}
                               {:args []
                                :deprecationReason nil
                                :description nil
@@ -920,9 +910,9 @@
                                :description nil
                                :isDeprecated false
                                :name "family"
-                               :type {:kind "LIST"
+                               :type {:kind "NON_NULL"
                                       :name nil
-                                      :ofType {:kind "NON_NULL"
+                                      :ofType {:kind "LIST"
                                                :name nil
                                                :ofType {:kind "INTERFACE"
                                                         :name "character"
@@ -1139,13 +1129,14 @@
                                :description nil
                                :isDeprecated false
                                :name "droids"
-                               :type {:kind "LIST"
+                               :type {:kind "NON_NULL"
                                       :name nil
-                                      :ofType {:kind "NON_NULL"
+                                      :ofType {:kind "LIST"
                                                :name nil
-                                               :ofType {:kind "INTERFACE"
-                                                        :name "character"
-                                                        :ofType nil}}}}
+                                               :ofType {:kind "NON_NULL"
+                                                        :name nil
+                                                        :ofType {:kind "INTERFACE"
+                                                                 :name "character"}}}}}
                               {:args []
                                :deprecationReason nil
                                :description nil
@@ -1171,9 +1162,9 @@
                                :description nil
                                :isDeprecated false
                                :name "family"
-                               :type {:kind "LIST"
+                               :type {:kind "NON_NULL"
                                       :name nil
-                                      :ofType {:kind "NON_NULL"
+                                      :ofType {:kind "LIST"
                                                :name nil
                                                :ofType {:kind "INTERFACE"
                                                         :name "character"

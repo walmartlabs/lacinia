@@ -1,4 +1,5 @@
-(ns com.walmartlabs.lacinia.validation.scalar-leafs)
+(ns com.walmartlabs.lacinia.validation.scalar-leafs
+  (:require [com.walmartlabs.lacinia.schema :as schema]))
 
 (defn ^:private validate-selection
   "Recursively checks if all specified fields are scalar or enum types.
@@ -27,9 +28,9 @@
 
       :else
       [{:message (format "Field \"%s\" of type \"%s\" must have a sub selection."
-                        (name (:field selection))
-                        (name (get-in selection [:field-definition :type])))
-       :locations [(:location selection)]}])))
+                         (name (:field selection))
+                         (-> selection :field-definition schema/root-type-name name))
+        :locations [(:location selection)]}])))
 
 (defn ^:private validate-fragment
   "Validates fragment once to avoid validating it separately for

@@ -7,6 +7,7 @@
     [com.walmartlabs.lacinia.schema :refer [compile tag-with-type]]
     [com.walmartlabs.lacinia :as ql]
     [com.walmartlabs.test-utils :refer [is-thrown]]
+    [com.walmartlabs.reporting :refer [report]]
     [clojure.string :as str]))
 
 (def base-schema
@@ -63,8 +64,9 @@
     ... on business { id name }
     ... on employee { id family_name }}}"
         result (execute schema q)]
-    (is (= "Field resolver returned an instance not tagged with a schema type."
-           (-> result :errors first :message)))))
+    (report result
+            (is (= "Field resolver returned an instance not tagged with a schema type."
+                   (-> result :errors first :message))))))
 
 (deftest resolves-using-concrete-type-in-spread
   (let [schema (-> base-schema

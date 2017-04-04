@@ -20,13 +20,27 @@
 
 (declare ^:private selection)
 
+(defn ^:private contains-modifier?
+  [modifier-kind any-def]
+  (loop [{kind :kind
+          nested :type} (:type any-def)]
+    (cond
+      (= :root kind)
+      false
+
+      (= kind modifier-kind)
+      true
+
+      :else
+      (recur nested))))
+
 ;; At some point, this will move to the schema when we work out how to do extensible
 ;; directives. A directive effector is invoked during the prepare phase to modify
 ;; a node based on the directive arguments.
 (def ^:private builtin-directives
-  (let [if-arg {:if {:type :Boolean
-                     :non-nullable? true
-                     :multiple? false}}]
+  (let [if-arg {:if {:type {:kind :non-null
+                            :type {:kind :root
+                                   :type :Boolean}}}}]
     {:skip {:args if-arg
             :effector (fn [node arguments]
                         (cond-> node
@@ -77,11 +91,10 @@
     (let [node (cons (->> (.getRuleIndex ^ParserRuleContext t)
                           (antlr.common/parser-rule-name p)
                           antlr.common/fast-keyword)
-                     (doall
-                       (keep (comp
-                               #(attach-location-as-meta t %)
-                               #(traverse % p))
-                             (antlr.common/children t))))]
+                     (keepv (comp
+                              #(attach-location-as-meta t %)
+                              #(traverse % p))
+                            (antlr.common/children t)))]
       (if-let [e (.exception ^ParserRuleContext t)]
         (with-meta (list :clj-antlr/error node)
           {:error (antlr.common/recognition-exception->map e)})
@@ -222,7 +235,7 @@
 
 (defn ^:private assert-not-multiple
   [argument-definition]
-  (when (:multiple? argument-definition)
+  (when (contains-modifier? :list argument-definition)
     (throw-exception "A single argument value was provided for a list argument.")))
 
 (defn ^:private collect-default-values
@@ -245,10 +258,11 @@
 (defmethod process-literal-argument :scalar
   [schema argument-definition [_ arg-value]]
   (assert-not-multiple argument-definition)
-  (let [type-name (:type argument-definition)
+  (let [type-name (schema/root-type-name argument-definition)
         scalar-type (get schema type-name)]
     (with-exception-context {:value arg-value
                              :type-name type-name}
+      ;; TODO: Special case for the all-too-popular "passed a string for an enum"
       (when-not (= :scalar (:category scalar-type))
         (throw-exception (format "A scalar value was provided for type %s, which is not a scalar type."
                                  (q type-name))
@@ -262,7 +276,7 @@
 
 (defmethod process-literal-argument :null
   [schema argument-definition arg-value]
-  (when (:non-nullable? argument-definition)
+  (when (-> argument-definition :type :kind (= :non-null))
     (throw-exception "An explicit null value was provided for a non-nullable argument."))
 
   nil)
@@ -271,21 +285,22 @@
   [schema argument-definition [_ arg-value]]
   (assert-not-multiple argument-definition)
   ;; First, make sure the category is an enum
-  (let [schema-type (get schema (:type argument-definition))]
+  (let [enum-type-name (schema/root-type-name argument-definition)
+        type-def (get schema enum-type-name)]
     (with-exception-context {:value arg-value}
-      (when-not (= :enum (:category schema-type))
+      (when-not (= :enum (:category type-def))
         (throw-exception "Enum value supplied for argument whose type is not an enum."
-                         {:argument-type (:type-name schema-type)}))
+                         {:argument-type enum-type-name}))
 
-      (or (get (:values-set schema-type) arg-value)
+      (or (get (:values-set type-def) arg-value)
           (throw-exception "Provided argument value is not member of enum type."
-                           {:allowed-values (:values-set schema-type)
-                            :enum-type (:type-name schema-type)})))))
+                           {:allowed-values (:values-set type-def)
+                            :enum-type enum-type-name})))))
 
 (defmethod process-literal-argument :object
   [schema argument-definition [_ arg-value]]
   (assert-not-multiple argument-definition)
-  (let [type-name (:type argument-definition)
+  (let [type-name (schema/root-type-name argument-definition)
         schema-type (get schema type-name)]
     (when-not (= :input-object (:category schema-type))
       (throw-exception "Input object supplied for argument whose type is not an input object."
@@ -320,18 +335,20 @@
 
 (defmethod process-literal-argument :array
   [schema argument-definition [_ arg-value]]
-  (when-not (:multiple? argument-definition)
+  (when-not (contains-modifier? :list argument-definition)
     (throw-exception "Provided argument value is an array, but the argument is not a list."))
   ;; Create a fake argument to allow the individual scalar values to be processed.
-  (let [fake-argument-def (assoc argument-definition :multiple? false)]
+  ;; Strip off one layer of :type, what's underneath should be a :root type.
+  ;; TODO: How to handle :not-null intervening layer?
+  (let [fake-argument-def (update argument-definition :type :type)]
     (mapv #(process-literal-argument schema fake-argument-def %) arg-value)))
 
 (defn ^:private decapitalize
   [s]
-  (str (-> s (subs 0 1)
+  (str (-> s
+           (subs 0 1)
            str/lower-case)
        (subs s 1)))
-
 
 (defn ^:private construct-literal-arguments
   "Converts and validates all literal arguments from their psuedo-Antlr format into
@@ -351,7 +368,7 @@
                             (catch Exception e
                               (throw-exception (format "For argument %s, %s"
                                                        (q arg-name)
-                                                       (decapitalize (.getMessage e)))
+                                                       (decapitalize (to-message e)))
                                                nil
                                                e))))))]
     (let [static-args (reduce-kv (fn [m k v]
@@ -363,35 +380,72 @@
       (when-not (empty? with-defaults)
         with-defaults))))
 
+(defn ^:private compatible-types?
+  [var-type arg-type var-has-default?]
+  (let [v-kind (:kind var-type)
+        a-kind (:kind arg-type)
+        v-type (:type var-type)
+        a-type (:type arg-type)]
+    (cond
+
+      ;; If the variable may not be null, but the argument is less precise,
+      ;; then it's ok to continue; use the next type of the variable.
+      (and (= v-kind :non-null)
+           (not= a-kind :non-null))
+      (recur v-type arg-type var-has-default?)
+
+      ;; The opposite: the argument is non-null but the variable might be null, BUT
+      ;; there's a default, then strip off a layer of argument type and continue.
+      (and (= a-kind :non-null)
+           (not= v-kind :non-null)
+           var-has-default?)
+      (recur var-type a-type var-has-default?)
+
+      ;; At this point we've stripped off non-null on the arg or var side.  We should
+      ;; be at a meeting point, either both :list or both :root.
+      (not= a-kind v-kind)
+      false
+
+      ;; Then :list, strip that off to see if the element type of the list is compatible.
+      ;; The default, if any, applied to the list, not the values inside the list.
+      ;; TODO: This feels suspect, handling of list types is probably more complex than this.
+      (not= :root a-kind)
+      (recur v-type a-type false)
+
+      ;; Because arguments and variables are always scalars, enums, or input-objects, the
+      ;; more complicated checks for unions and interfaces are not necessary.
+
+      :else
+      (= v-type a-type))))
+
 (defn ^:private type-compatible?
   "Compares a variable definition against an argument definition to ensure they are
-  compatible types."
+  compatible types. This is similar to schema/is-compatible-type? but has some special rules
+  related to arguments."
   [var-def arg-def]
-  (cond
-    (not= (select-keys var-def [:type :multiple?])
-          (select-keys arg-def [:type :multiple?]))
-    false
+  (compatible-types? (:type var-def)
+                     (:type arg-def)
+                     (-> var-def :default-value some?)))
 
-    (not (:non-nullable? arg-def))
-    true
+(defn ^:private build-type-summary
+  "Converts nested type maps into the format used in a GraphQL query."
+  [type-map]
+  (let [nested (:type type-map)]
+    (case (:kind type-map)
+      :list
+      (str "["
+           (build-type-summary nested)
+           "]")
 
-    (:non-nullable? var-def)
-    true
+      :non-null
+      (str (build-type-summary nested) "!")
 
-    ;; This last case goes a bit before the spec or reference implementation:
-    ;; if there's a default value then it's as good as the variable being
-    ;; declared non-nullable.
-    :else
-    (-> var-def :default-value some?)))
+      :root
+      (name nested))))
 
 (defn ^:private summarize-type
   [type-def]
-  (let [{:keys [type multiple? non-nullable?]} type-def
-        terms [(when multiple? "[")
-               (name type)
-               (when multiple? "]")
-               (when non-nullable? "!")]]
-    (str/join terms)))
+  (build-type-summary (:type type-def)))
 
 (defmulti ^:private process-dynamic-argument
   "Processes a dynamic argument (one whose value is at least partly defined
@@ -399,6 +453,12 @@
    and returns the extracted variable value."
   (fn [schema argument-definition [arg-type arg-value]]
     arg-type))
+
+
+(defn ^:private non-null-kind?
+  "Peeks at the kind of the provided def (field, argument, or variable) to see if it is :non-null"
+  [any-def]
+  (-> any-def :type :kind (= :non-null)))
 
 (defmethod process-dynamic-argument :variable
   [schema argument-definition [_ arg-value]]
@@ -416,38 +476,38 @@
                        {:argument-type (summarize-type argument-definition)
                         :variable-type (summarize-type variable-def)}))
 
-    (let [{:keys [non-nullable? default-value]} argument-definition
-          var-non-nullable? (:non-nullable? variable-def)
+    ;; TODO: This needs some work for the type system updates!
+    (let [{:keys [default-value]} argument-definition
+          non-nullable? (non-null-kind? argument-definition)
+          var-non-nullable? (non-null-kind? variable-def)
           var-default-value (:default-value variable-def)]
       (fn [variables]
         (cond-let
           :let [result (get variables arg-value)]
 
-          (some? result)
-          result
+               (some? result)
+               result
 
-          ;; TODO: Looking to boost this check way up and out, so that
-          ;; it isn't a query execution error, but a parse error. Also,
-          ;; this is only triggered if a variable is referenced, omitting a non-nillable
-          ;; variable should be an error, regardless.
-          var-non-nullable?
-          (throw-exception (format "No value was provided for variable %s, which is non-nullable."
+               ;; TODO: This is only triggered if a variable is referenced, omitting a non-nillable
+               ;; variable should be an error, regardless.
+               var-non-nullable?
+               (throw-exception (format "No value was provided for variable %s, which is non-nullable."
                                    (q arg-value))
                            {:variable-name arg-value})
 
-          (some? var-default-value)
-          var-default-value
+               (some? var-default-value)
+               var-default-value
 
-          (some? default-value)
-          default-value
+               (some? default-value)
+               default-value
 
-          non-nullable?
-          (throw-exception (format "Variable %s is null, but supplies the value for a non-nullable argument."
+               non-nullable?
+               (throw-exception (format "Variable %s is null, but supplies the value for a non-nullable argument."
                                    (q arg-value))
                            {:variable-name arg-value})
 
-          :else
-          nil)))))
+               :else
+               nil)))))
 
 (defn ^:private construct-dynamic-arguments-extractor
   [schema argument-definitions arguments]
@@ -464,8 +524,7 @@
                               (catch Exception e
                                 (throw-exception (format "For argument %s, %s"
                                                          (q arg-name)
-                                                         (decapitalize (or (.getMessage e)
-                                                                           (-> e class .getName))))
+                                                         (decapitalize (to-message e)))
                                                  nil
                                                  e))))))]
       (let [dynamic-args (reduce-kv (fn [m k v]
@@ -567,7 +626,8 @@
                  (reduce node-reducer defaults (rest (second selection))))
         {:keys [field alias arguments directives]} result
         field-definition (get-in type [:fields field])
-        nested-type (get schema (:type field-definition))
+        field-type (schema/root-type-name field-definition)
+        nested-type (get schema field-type)
         query-path' (conj query-path field)]
     (with-exception-context (assoc context :field field)
       (when (nil? nested-type)
@@ -597,7 +657,7 @@
                             :alias (or alias field)
                             :query-path query-path'
                             :leaf? (scalar? nested-type)
-                            :concrete-type? (-> type :category #{:object :input-object})
+                            :concrete-type? (-> type :category #{:object :input-object} some?)
                             :arguments literal-arguments
                             ::arguments-extractor dynamic-arguments-extractor
                             :field-definition field-definition)]))))
@@ -850,25 +910,22 @@
           nil
           (rest element)))
 
-(defn ^:private construct-var-def
+(defn ^:private construct-var-type-map
   [parsed]
-  (loop [var-def {:non-nullable? false
-                  :multiple? false}
-         [type value] parsed]
-    (cond
-      (= :typeName type)
-      (assoc var-def
-             :type (-> value second keyword))
+  (let [[type value] parsed]
+    (case type
+      :typeName
+      {:kind :root
+       :type (-> value second keyword)}
 
-      (= :nonNullType type)
-      (recur (assoc var-def :non-nullable? true)
-             value)
+      :nonNullType
+      {:kind :non-null
+       :type (construct-var-type-map value)}
 
-      (= :listType type)
-      (recur (assoc var-def :multiple? true)
-             (-> value second))
+      :listType
+      {:kind :list
+       :type (-> value second construct-var-type-map)}
 
-      :else
       (throw-exception "Unable to parse variable type."))))
 
 (defn ^:private compose-variable-definition
@@ -876,9 +933,11 @@
   schema-type like an argument definition."
   [schema variable-definition]
   (let [m (element->map variable-definition)
-        var-def (-> m :type first construct-var-def)
         var-name (-> m :variable first second keyword)
-        type-name (:type var-def)
+        var-def {:type (-> m :type first construct-var-type-map)
+                 :var-name var-name}
+        ;; Simulate a field definition around the raw type:
+        type-name (schema/root-type-name var-def)
         schema-type (get schema type-name)
         ; eg. [:stringvalue "\"fred\""]
         default-value (-> m :defaultValue first second)]
@@ -897,6 +956,8 @@
     [var-name (cond-> var-def
                 default-value (assoc :default-value (->> default-value
                                                          xform-argument-value
+                                                         ;; The variable definition is the right format to act as a
+                                                         ;; "fake" argument.
                                                          (process-literal-argument schema var-def))))]))
 
 (defn ^:private extract-variable-definitions
@@ -927,8 +988,8 @@
         ;; Clumsy but necessary way to let lower levels know about variable definitions.
         ;; This will deviate from the spec slightly: all fragments will be transformed
         ;; and validated using the variables from the selected operation, even those that
-        ;; are not referenced by the selected operation (another operate may define
-        ;; different variables). A solution might be to collect up the fragments taht
+        ;; are not referenced by the selected operation (another operation may define
+        ;; different variables). A solution might be to collect up the fragments that
         ;; are referenced inside the operation, validate those, discard the rest.
         schema' (assoc schema ::variables variable-definitions)]
     ;; Build the result describing the fragments and selections (or the selected operation).

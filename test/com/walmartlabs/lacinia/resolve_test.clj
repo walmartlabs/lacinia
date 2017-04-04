@@ -62,7 +62,10 @@
 
     (is (= :human (-> c1 ::graphql/selection :field)))
 
-    (is (= :human (-> c1 ::graphql/selection :field-definition :type)))
+    (is (= {:kind :non-null
+            :type {:kind :root
+                   :type :human}}
+           (-> c1 ::graphql/selection :field-definition :type)))
 
     ;; This is pretty important: can we see what else will be queried?
     ;; We're focusing in these tests on sub-fields with the root query field.

@@ -3,24 +3,6 @@
   {:no-doc true}
   (:require [clojure.string :as str]))
 
-(defn ensure-seq
-  "Errors may be nil, a single map, or a sequence of maps; this is is used to normalize
-  a map to be a vector of a single map."
-  [error-or-errors]
-  (cond
-    (map? error-or-errors)
-    [error-or-errors]
-
-    :else
-    error-or-errors))
-
-(defn seqv
-  "Returns nil if coll is empty, otherwise, returns a vector
-  of the contents of the collection."
-  [coll]
-  (and (seq coll)
-       (vec coll)))
-
 (defmacro cond-let
   "A version of `cond` that allows for `:let` terms. There is hope that someday, perhaps
   after Rich Hickey retires, this will make it into clojure.core."
@@ -38,17 +20,6 @@
 (defn keepv
   [f coll]
   (into [] (keep f) coll))
-
-(defn hash-map-by
-  "Constructs a hash map from the supplied values.
-
-  key-fn
-  : Passed a value and extracts the key for that value.
-
-  values
-  : Seq of values from which map keys and values will be extracted."
-  [key-fn values]
-  (into {} (map (juxt key-fn identity)) values))
 
 (defn to-message
   "Converts an exception to a message. Normally, this is the message property of the exception, but if

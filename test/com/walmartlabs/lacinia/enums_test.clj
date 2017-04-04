@@ -3,7 +3,8 @@
     [clojure.test :refer [deftest is use-fixtures]]
     [com.walmartlabs.test-schema :refer [test-schema]]
     [com.walmartlabs.lacinia :refer [execute]]
-    [com.walmartlabs.lacinia.schema :as schema])
+    [com.walmartlabs.lacinia.schema :as schema]
+    [com.walmartlabs.reporting :refer [report]])
   (:import
     (clojure.lang ExceptionInfo)))
 
@@ -18,11 +19,10 @@
   (execute *compiled-schema* query nil nil))
 
 (deftest can-provide-enum-as-bare-name
-  (is (= "Luke Skywalker"
-         (-> "{ hero(episode: NEWHOPE) { name }}"
-             q
-             :data
-             :hero :name))))
+  (let [response (q "{ hero(episode: NEWHOPE) { name }}")
+        hero-name (-> response :data :hero :name)]
+    (report response
+      (is (= "Luke Skywalker" hero-name)))))
 
 (deftest handling-of-invalid-enum-value
   (let [result (q "{ hero (episode: CLONES) { name }}")

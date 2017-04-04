@@ -2,7 +2,7 @@
   "Mechanisms for executing parsed queries against compiled schemas."
   (:require
     [com.walmartlabs.lacinia.internal-utils
-     :refer [seqv ensure-seq cond-let to-message map-vals remove-vals q]]
+     :refer [cond-let to-message map-vals remove-vals q]]
     [flatland.ordered.map :refer [ordered-map]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :as resolve
@@ -17,6 +17,30 @@
           {:locations [(:location field-selection)]}
           (->> (select-keys field-selection [:query-path :arguments])
                (remove-vals nil?)))))
+
+(defn ^:private assert-and-wrap-error
+  "An error returned by a resolver should be nil, a map, or a collection
+  of maps. These maps should contain a :message key, but may contain others.
+  Wrap them in a vector if necessary.
+
+  Returns nil, or a collection of one or more valid error maps."
+  [error-map-or-maps]
+  (cond
+    (nil? error-map-or-maps)
+    nil
+
+    (and (sequential? error-map-or-maps)
+         (every? (comp string? :message)
+                 error-map-or-maps))
+    error-map-or-maps
+
+    (string? (:message error-map-or-maps))
+    [error-map-or-maps]
+
+    :else
+    (throw (ex-info (str "Errors must be nil, a map, or a sequence of maps "
+                         "each containing, at minimum, a :message key.")
+                    {:error error-map-or-maps}))))
 
 (defn ^:private enhance-errors
   "Using a (resolved) collection of (wrapped) error maps, add additional data to
@@ -70,12 +94,10 @@
   "Resolves the value for a field or fragment selection node, by passing the value to the
   appropriate resolver, and passing it through a chain of value enforcers.
 
-  Returns a resolve/ResolvedTuple of the resolved value for the node.
+  Returns the resolved value.
 
   Any resolve errors are enhanced with details about the selection and accumulated in
-  the execution context.
-
-  For other types of selections, returns a ResolvedTuple of the value."
+  the execution context."
   [execution-context selection]
   (let [container-value (:resolved-value execution-context)]
     (if (= :field (:selection-type selection))
@@ -84,21 +106,23 @@
             schema (get context constants/schema-key)
             resolve-context (assoc context :com.walmartlabs.lacinia/selection selection)]
         (try
-          (let [resolve (field-selection-resolver schema selection container-value)
-                tuple (resolve resolve-context arguments container-value)
-                errors (-> tuple resolve/resolve-errors seq)]
-            (if errors
-              (do
-                (swap! (:errors execution-context) into
-                       (enhance-errors selection errors))
-                (resolve-as (resolve/resolved-value tuple)))
-              tuple))
+          (let [field-resolver (field-selection-resolver schema selection container-value)
+                resolver-result (field-resolver resolve-context arguments container-value)]
+            (when-let [errors (-> resolver-result
+                                  resolve/resolve-errors
+                                  assert-and-wrap-error
+                                  seq)]
+              (swap! (:errors execution-context) into
+                     (enhance-errors selection errors)))
+
+            (resolve/resolved-value resolver-result))
           (catch clojure.lang.ExceptionInfo e
             ;; TODO: throw-ing will be a problem once we get into async
             (throw (ex-info (str "Error resolving field: " (to-message e))
                             (ex-info-map selection (ex-data e)))))))
-      ;; Else, not a field selection:
-      (resolve-as container-value))))
+      ;; Else, not a field selection, but a fragment selection, which starts with the
+      ;; same resolved value as the containing field or selection.
+      container-value)))
 
 (declare ^:private resolve-and-select)
 
@@ -107,8 +131,14 @@
 
 (defn ^:private null-to-nil
   [v]
-  (if (= ::null v)
+  (cond
+    (vector? v)
+    (map null-to-nil v)
+
+    (= ::null v)
     nil
+
+    :else
     v))
 
 (defn ^:private propogate-nulls
@@ -128,18 +158,7 @@
     (if non-nullable? ::null nil)
 
     :else
-    (map-vals (fn [v]
-                (if (vector? v)
-                  (mapv null-to-nil v)
-                  (null-to-nil v)))
-              selected-value)))
-
-(defn ^:private accumulate-errors
-  [execution-context resolved-tuple]
-  (when-let [errors (-> resolved-tuple
-                        resolve/resolve-errors
-                        seq)]
-    (swap! (:errors execution-context) into errors)))
+    (map-vals null-to-nil selected-value)))
 
 (defmulti ^:private apply-selection
   "Applies a selection on a resolved value.
@@ -151,9 +170,10 @@
 (defmethod apply-selection :field
   [execution-context field-selection]
   (let [{:keys [alias]} field-selection
-        non-nullable-field? (-> field-selection :field-definition :non-nullable?)
-        tuple (resolve-and-select execution-context field-selection)
-        sub-selection (resolve/resolved-value tuple)
+        non-nullable-field? (-> field-selection :field-definition :type :kind (= :non-null))
+        resolver-result (resolve-and-select execution-context field-selection)
+        sub-selection (resolve/resolved-value resolver-result)
+        ;; TODO: I think some of this logic is might be able to move into the selectors.
         sub-selection' (cond
                          (and non-nullable-field?
                               (nil? sub-selection))
@@ -209,51 +229,87 @@
     execution-context
     (apply-selection execution-context selection)))
 
+(defn ^:private included-fragment-selector
+  [resolved-value callback]
+  (callback resolved-value))
+
 (defn ^:private resolve-and-select
   "Recursive resolution of a field within a containing field's resolved value.
 
   Returns a ResolverResult of the selected value.
+
   Accumulates errors in the execution context as a side-effect."
   [execution-context selection]
-  (cond-let
-    :let [resolved-tuple (resolve-value execution-context selection)
-          resolved-value (resolve/resolved-value resolved-tuple)
-          sub-selections (:selections selection)]
+  (let
+    [resolved-value (resolve-value execution-context selection)
+     sub-selections (:selections selection)
 
-    ;; When the value is nil, or there are no sub-selections of the object to
-    ;; evaluate, then it's an early, easy finish.
-    (or (nil? resolved-value)
-        (empty? sub-selections))
-    resolved-tuple
+     selected-value-builder
+     ;; This function takes the resolved value (or, a value from the list,
+     ;; for a list field) and builds out the sub-structure for it, a recursive
+     ;; process at the heart of GraphQL.
+     ;; It returns the selected value, ready to be attached to the result tree,
+     (fn [resolved-value]
+       (cond
 
-    :let [selected-value-builder
-          ;; This function takes the resolved value (or, a value from the sequence,
-          ;; for a multiple field) and builds out the sub-structure for it, a recursive
-          ;; process at the heart of GraphQL.
-          ;; It returns the selected value, and adds errors to the execution-errors
-          ;; atom as a side-effect.
-          (fn [resolved-value]
+         (= ::schema/empty-list resolved-value)
+         []
 
-            (let [selected-base (with-meta (ordered-map) (meta resolved-value))
+         (and (some? resolved-value)
+              (seq sub-selections))
+         (let [execution-context (reduce maybe-apply-selection
+                                         (assoc execution-context
+                                                :value (ordered-map)
+                                                :resolved-value resolved-value)
+                                         sub-selections)]
+           (:value execution-context))
 
-                  execution-context (reduce maybe-apply-selection
-                                            (assoc execution-context
-                                                   :value selected-base
-                                                   :resolved-value resolved-value)
-                                            sub-selections)]
-              (:value execution-context)))]
+         :else
+         resolved-value))
 
-    ;; If a field, and the field's type is multiple, then it is a sequence of resolved values
-    ;; that must each be selected to form proper results.
-    (-> selection :field-definition :multiple?)
-    (let [selected-values (mapv selected-value-builder resolved-value)]
-      (resolve-as selected-values))
+     ;; The callback is a wrapper around the builder, that handles the optional
+     ;; errors.
+     selector-callback
+     (fn
+       ([resolved-value]
+        (selected-value-builder resolved-value))
+       ([resolved-value errors]
+        (let [errors' (if (map? errors)
+                        [errors]
+                        errors)]
+          (swap! (:errors execution-context)
+                 into
+                 (enhance-errors selection errors')))
+        (selected-value-builder resolved-value)))
+     ;; In a concrete type, we know the selector from the field definition
+     ;; (a field definition on a concrete object type).  Otherwise, we need
+     ;; to use the type of the parent node's resolved value, just
+     ;; as we do to get a resolver.
+     selector (if (-> selection :selection-type (not= :field))
+                included-fragment-selector
+                (or (-> selection :field-definition :selector)
+                    (let [concrete-type-name (-> execution-context
+                                                 :resolved-value
+                                                 schema/type-tag)
+                          field-name (:field selection)]
+                      (-> execution-context
+                          :context
+                          (get constants/schema-key)
+                          (get concrete-type-name)
+                          :fields
+                          (get field-name)
+                          :selector
+                          (or (throw (ex-info "Sanity check: no selector."
+                                              {:resolved-value resolved-value
+                                               :type-name concrete-type-name
+                                               :selection selection})))))))]
 
-    ;; Otherwise, it is just a map but must still have selections applied, to form the selected value.
-    :else
-    (-> resolved-value
-        selected-value-builder
-        resolve-as)))
+    ;; Here's where it comes together.  The field's selector
+    ;; does the validations, and for list types, does the mapping.
+    ;; Eventually, individual values will be passed to the callback, which can then turn around
+    ;; and recurse down a level.  The result is a map or a list of maps.
+
+    (resolve-as (selector resolved-value selector-callback))))
 
 (defn execute-query
   "Entrypoint for execution of a query.
@@ -269,12 +325,10 @@
                          (if (:disabled? query-node)
                            root-result
                            (let [root-execution-context (->ExecutionContext context (ordered-map) nil errors)
-                                 result (resolve-and-select root-execution-context query-node)
-                                 selected-data (->> result
-                                                    resolve/resolved-value
-                                                    (propogate-nulls false)
-                                                    null-to-nil)]
-                             (assoc-in root-result [:data (:alias query-node)] selected-data))))
+                                 selected-data (->> (apply-selection root-execution-context query-node)
+                                                    :value
+                                                    (propogate-nulls false))]
+                             (update root-result :data merge selected-data))))
                        {:data nil}
                        selections)]
     (cond-> result

@@ -3,12 +3,12 @@
             [com.walmartlabs.lacinia.constants :as constants]
             [com.walmartlabs.lacinia.executor :as executor]
             [com.walmartlabs.lacinia.validator :as validator]
-            [com.walmartlabs.lacinia.internal-utils :refer [cond-let]])
+            [com.walmartlabs.lacinia.internal-utils :refer [cond-let to-message]])
   (:import (clojure.lang ExceptionInfo)))
 
 (defn ^:private as-errors
   [exception]
-  [(merge {:message (.getMessage exception)}
+  [(merge {:message (to-message exception)}
           (ex-data exception))])
 
 (defn execute-parsed-query

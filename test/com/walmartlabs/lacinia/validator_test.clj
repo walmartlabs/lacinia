@@ -390,13 +390,13 @@
   (let [e (is (thrown? Throwable
                        (schema/compile {:queries {:unknown-type {:type :not-defined}}})))
         data (ex-data e)]
-    (is (= "Field `unknown-type' of type `QueryRoot' references unknown type `not-defined'." (.getMessage e)))
+    (is (= "Field `unknown-type' in type `QueryRoot' references unknown type `not-defined'." (.getMessage e)))
     (is (= {:field {:args nil
                     :field-name :unknown-type
-                    :multiple? false
-                    :non-nullable? false
-                    :type :not-defined}
+                    :type {:kind :root
+                           :type :not-defined}}
             :field-name :unknown-type
+            :object-type :QueryRoot
             :schema-types {:object [:MutationRoot
                                     :QueryRoot]
                            :scalar [:Boolean

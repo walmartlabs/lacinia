@@ -1,11 +1,11 @@
 (ns user
-  (:require [criterium.core :as c]
+  #_(:require [criterium.core :as c]
             [com.walmartlabs.lacinia :as g]
             [org.example.schema :refer [star-wars-schema]]))
 
-(def schema (star-wars-schema))
+#_(def schema (star-wars-schema))
 
-(defn q
+#_(defn q
   ([query]
     (q query nil))
   ([query vars]
