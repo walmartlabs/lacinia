@@ -4,7 +4,7 @@
     [com.walmartlabs.test-schema :refer [test-schema]]
     [com.walmartlabs.lacinia :refer [execute]]
     [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.reporting :refer [report]])
+    [com.walmartlabs.test-reporting :refer [report]])
   (:import
     (clojure.lang ExceptionInfo)))
 

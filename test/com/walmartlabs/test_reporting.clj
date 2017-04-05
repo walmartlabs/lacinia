@@ -1,4 +1,4 @@
-(ns com.walmartlabs.reporting
+(ns com.walmartlabs.test-reporting
   "An extension for clojure.test that allows additional context to be output only
 when a test failure or error occurs."
   (:require
