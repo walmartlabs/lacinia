@@ -9,7 +9,7 @@
             [com.walmartlabs.lacinia.internal-utils
              :refer [cond-let update? q map-vals filter-vals
                      with-exception-context throw-exception to-message
-                     keepv]]
+                     keepv as-keyword]]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.lacinia.constants :as constants]
             [clojure.spec :as s])
@@ -140,7 +140,7 @@
       :floatvalue [:scalar first-value]
       :booleanvalue [:scalar first-value]
       :nullvalue [:null nil]
-      :enumValue [:enum (-> first-value second)]
+      :enumValue [:enum (-> first-value second as-keyword)]
       :objectValue [:object (xform-argument-map (next argument-value))]
       :arrayValue [:array (mapv (comp xform-argument-value second) (next argument-value))]
       :variable [:variable (-> first-value second keyword)])))
@@ -299,7 +299,8 @@
                          {:argument-type enum-type-name}))
 
       (or (get (:values-set type-def) arg-value)
-          (throw-exception "Provided argument value is not member of enum type."
+          (throw-exception (format "Provided argument value %s is not member of enum type."
+                                   (q arg-value))
                            {:allowed-values (:values-set type-def)
                             :enum-type enum-type-name})))))
 

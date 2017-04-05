@@ -136,3 +136,15 @@
   [context & body]
   `(binding [*exception-context* (merge *exception-context* ~context)]
      ~@body))
+
+(defn as-keyword
+  [v]
+  (cond
+    (keyword? v) v
+
+    (symbol? v) (-> v name keyword)
+
+    (string? v) (keyword v)
+
+    :else
+    (throw (ex-info "Can't convert value to keyword." {:value v}))))

@@ -13,7 +13,7 @@
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.internal-utils
      :refer [map-vals map-kvs filter-vals deep-merge q
-             is-internal-type-name? sequential-or-set?]]
+             is-internal-type-name? sequential-or-set? as-keyword]]
     [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolved-value resolve-errors resolve-as]]
     [clojure.string :as str])
   (:import
@@ -39,18 +39,6 @@
                  s))
              schema
              schema))
-
-(defn ^:private as-keyword
-  [v]
-  (cond
-    (keyword? v) v
-
-    (symbol? v) (-> v name keyword)
-
-    (string? v) (keyword v)
-
-    :else
-    (throw (ex-info "Unexpected type value." {:type v}))))
 
 (defn tag-with-type
   "Tags a value with a GraphQL type name, a keyword.
@@ -569,7 +557,7 @@
 
 (defmethod compile-type :enum
   [enum schema]
-  (let [values (->> enum :values (mapv name))
+  (let [values (->> enum :values (mapv as-keyword))
         values-set (set values)]
     (when-not (= (count values) (count values-set))
       (throw (ex-info (format "Values defined for enum %s must be unique."
