@@ -56,7 +56,7 @@ of the available options:
 {:enums
  {:episode
   {:description "The episodes of the original Star Wars trilogy."
-   :values ["NEWHOPE" "EMPIRE" "JEDI"]}}
+   :values [:NEWHOPE :EMPIRE :JEDI]}}
 
  :objects
  {:droid
@@ -110,7 +110,7 @@ Here's what the `get-hero` field resolver might look like:
 ```clojure
 (defn get-hero [context arguments value]
   (let [{:keys [episode]} arguments]
-    (if (= episode "NEWHOPE")
+    (if (= episode :NEWHOPE)
       {:id 1000
        :name "Luke"
        :home-planet "Tatooine"
