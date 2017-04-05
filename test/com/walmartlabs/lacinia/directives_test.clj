@@ -1,8 +1,8 @@
 (ns com.walmartlabs.lacinia.directives-test
-  (:require  [clojure.test :as t :refer [deftest is testing use-fixtures]]
-             [com.walmartlabs.lacinia.schema :as schema]
-             [com.walmartlabs.test-schema :refer [test-schema]]
-             [com.walmartlabs.lacinia :refer [execute]]))
+  (:require [clojure.test :as t :refer [deftest is testing]]
+            [com.walmartlabs.lacinia.schema :as schema]
+            [com.walmartlabs.test-schema :refer [test-schema]]
+            [com.walmartlabs.lacinia :refer [execute]]))
 
 ;;-------------------------------------------------------------------------------
 ;; ## Validation of directives (TODO)
@@ -32,12 +32,7 @@
 ;;-------------------------------------------------------------------------------
 ;; ## Execution of directives
 
-(def ^:dynamic compiled-schema)
-
-(use-fixtures :once
-              (fn [f]
-                (binding [compiled-schema (schema/compile test-schema)]
-                  (f))))
+(def compiled-schema (schema/compile test-schema))
 
 (deftest inline-fragments
   (testing "when @skip is set on an inline fragment"

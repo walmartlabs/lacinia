@@ -1,19 +1,14 @@
 (ns com.walmartlabs.introspection-test
-  (:require [clojure.test :refer [deftest testing is use-fixtures]]
+  (:require [clojure.test :refer [deftest testing is]]
             [com.walmartlabs.lacinia :as lacinia]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.test-schema :refer [test-schema]]
             [com.walmartlabs.test-utils :refer [simplify]]))
 
-(def ^:dynamic compiled-schema nil)
+(def compiled-schema (schema/compile test-schema))
 
-(use-fixtures :once
-              (fn [f]
-                (binding [compiled-schema (schema/compile test-schema)]
-                  (f))))
-
-
-(defn ^:private execute [query]
+(defn ^:private execute
+  [query]
   (simplify (lacinia/execute compiled-schema query {} nil)))
 
 (deftest simple-introspection-query

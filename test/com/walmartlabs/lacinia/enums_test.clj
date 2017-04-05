@@ -1,22 +1,21 @@
 (ns com.walmartlabs.lacinia.enums-test
   (:require
-    [clojure.test :refer [deftest is use-fixtures]]
+    [clojure.test :refer [deftest is]]
     [com.walmartlabs.test-schema :refer [test-schema]]
     [com.walmartlabs.lacinia :refer [execute]]
     [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.test-reporting :refer [report]])
+    [com.walmartlabs.test-reporting :refer [report]]
+    [com.walmartlabs.test-utils :refer [simplify]])
   (:import
     (clojure.lang ExceptionInfo)))
 
-(def ^:dynamic *compiled-schema* nil)
+(def compiled-schema (schema/compile test-schema))
 
-(use-fixtures :once
-  (fn [f]
-    (binding [*compiled-schema* (schema/compile test-schema)]
-      (f))))
 
-(defn q [query]
-  (execute *compiled-schema* query nil nil))
+
+(defn q
+  [query]
+  (simplify (execute compiled-schema query nil nil)))
 
 (deftest can-provide-enum-as-bare-name
   (let [response (q "{ hero(episode: NEWHOPE) { name }}")

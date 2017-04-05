@@ -1,20 +1,15 @@
 (ns com.walmartlabs.lacinia.variables-test
   (:require
-    [clojure.test :refer [deftest is use-fixtures]]
+    [clojure.test :refer [deftest is]]
     [com.walmartlabs.test-schema :refer [test-schema]]
     [com.walmartlabs.lacinia :refer [execute execute-parsed-query]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.parser :as parser]))
 
-(def ^:dynamic *schema* nil)
-
-(use-fixtures :once
-  (fn [f]
-    (binding [*schema* (schema/compile test-schema)]
-      (f))))
+(def compiled-schema (schema/compile test-schema))
 
 (deftest variables-can-have-default-values
-  (let [q (parser/parse-query *schema*
+  (let [q (parser/parse-query compiled-schema
                               "query ($id : String =  \"2001\") {
 
                                  droid (id : $id) { name }
@@ -26,7 +21,7 @@
            (execute-parsed-query q {:id "2000"} nil)))))
 
 (deftest fragments-can-reference-variables
-  (let [q (parser/parse-query *schema*
+  (let [q (parser/parse-query compiled-schema
                               "
    query ($terse : Boolean = true, $id : String) {
      droid (id: $id) {

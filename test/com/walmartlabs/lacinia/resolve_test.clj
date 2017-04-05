@@ -10,8 +10,6 @@
 
 (def resolve-contexts (atom []))
 
-(def ^:dynamic *compiled-schema* nil)
-
 (defn ^:private instrument-and-compile
   [schema]
   (->> schema
@@ -24,6 +22,8 @@
                      node)))
        schema/compile))
 
+(def compiled-schema (instrument-and-compile test-schema))
+
 ;; Ensure that resolve-contexts is reset to empty after each test execution.
 
 (use-fixtures
@@ -32,12 +32,6 @@
     (f)
     (swap! resolve-contexts empty)))
 
-(use-fixtures
-  :once
-  (fn [f]
-    (binding [*compiled-schema* (instrument-and-compile test-schema)]
-      (f))))
-
 
 (deftest passes-root-query-to-resolve
   (let [q "query {
@@ -45,7 +39,7 @@
                name
              }
            }"
-        query-result (execute *compiled-schema* q nil {::my-key ::my-value})
+        query-result (execute compiled-schema q nil {::my-key ::my-value})
         [c1 :as contexts] @resolve-contexts]
 
     (is (= {:data {:human {:name "Luke Skywalker"}}}
@@ -79,7 +73,7 @@
 
 (deftest passes-nested-selections-to-resolve
   (let [q "query { human(id: \"1000\") { buddies: friends { name }}}"
-        query-result (execute *compiled-schema* q nil nil)
+        query-result (execute compiled-schema q nil nil)
         [c1 c2 :as contexts] @resolve-contexts]
     (is (= {:data
             {:human
