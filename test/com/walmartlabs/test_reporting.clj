@@ -74,7 +74,8 @@ when a test failure or error occurs."
     `(report ~(into {} (map #(vector (list 'quote %) %)) data) ~@forms)
 
     (not (map? data))
-    (throw (ex-info "com.walmartlabs.reporting/report - data must be a symbol, vector or a map"
+    (throw (ex-info (str `report
+                          " - data must be a symbol, vector or a map")
                     {:data data :forms forms}))
 
     :else
