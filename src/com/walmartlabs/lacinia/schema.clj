@@ -485,9 +485,6 @@
   [schema options containing-type field]
   (let [base-resolver (or (:resolve field)
                           ((:default-field-resolver options) (:field-name field)))
-        ;; The selector is a function that is passed the resolved value and a callback.
-        ;; It enforces some validations on the value and encapsulates things like
-        ;; mapping the callback across lists.
         selector (assemble-selector schema containing-type field (:type field))]
     (assoc field
            :resolve (wrap-resolver-to-ensure-resolver-result base-resolver)
