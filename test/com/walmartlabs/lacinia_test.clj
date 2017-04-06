@@ -612,11 +612,6 @@
                executed)
             "nulls everything"))))
 
-(deftest custom-scalar-query
-  (let [q "{ now { date }}"]
-    (is (= {:data {:now {:date "A long time ago"}}}
-           (execute default-schema q nil nil)))))
-
 (deftest default-value-test
   (testing "Should use the default-value"
     (let [q "{ droid {
@@ -686,87 +681,3 @@
                  :default-value "0001"}}}}}]
     (is-thrown [e (schema/compile schema-non-nullable-with-defaults)]
       (is (= (.getMessage e) "Field `id' of type `person' is both non-nullable and has a default value.")))))
-
-(deftest custom-scalars
-  (testing "custom scalars defined as conformers"
-    (let [parse-conformer (s/conformer
-                           (fn [x]
-                             (if (and
-                                  (string? x)
-                                  (< (count x) 3))
-                               x
-                               :clojure.spec/invalid)))
-          serialize-conformer (s/conformer
-                               (fn [x]
-                                 (case x
-                                   "200" "OK"
-                                   "500" "ERROR"
-                                   :clojure.spec/invalid)))]
-      (testing "custom scalar's serializing option"
-        (let [schema (schema/compile {:scalars
-                                      {:Event {:parse parse-conformer
-                                               :serialize serialize-conformer}}
-
-                                      :objects
-                                      {:galaxy-event
-                                       {:fields {:lookup {:type :Event}}}}
-
-                                      :queries
-                                      {:events {:type :galaxy-event
-                                                :resolve (fn [ctx args v]
-                                                           {:lookup "200"})}}})
-              q "{ events { lookup }}"]
-          (is (= {:data {:events {:lookup "OK"}}} (execute schema q nil nil))
-              "should return conformed value")))
-      (testing "custom scalar's invalid value"
-        (let [schema (schema/compile {:scalars
-                                      {:Event {:parse parse-conformer
-                                               :serialize serialize-conformer}
-                                       :Id {:parse parse-conformer
-                                            :serialize (s/conformer str)}}
-
-                                      :objects
-                                      {:galaxy-event
-                                       {:fields {:lookup {:type :Event}}}
-                                       :human
-                                       {:fields {:id {:type :Id}
-                                                 :name {:type 'String}}}}
-
-                                      :queries
-                                      {:events {:type :galaxy-event
-                                                :resolve (fn [ctx args v]
-                                                           ;; type of :lookup is :Event
-                                                           ;; that is a custom scalar with
-                                                           ;; a serialize function that
-                                                           ;; deems anything other than
-                                                           ;; "200" or "500" invalid.
-                                                           ;; So value 1 should cause
-                                                           ;; an error.
-                                                           {:lookup 1})}
-                                       :human {:type '(non-null :human)
-                                               :args {:id {:type :Id}}
-                                               :resolve (fn [ctx args v]
-                                                          {:id "1000"
-                                                           :name "Luke Skywalker"})}}})
-              q1 "{ human(id: \"1003\") { id, name }}"
-              q2 "{ events { lookup }}"]
-          (is (= {:errors [{:argument :id
-                            :field :human
-                            :locations [{:column 0
-                                         :line 1}]
-                            :message "Exception applying arguments to field `human': For argument `id', scalar value is not parsable as type `Id'."
-                            :query-path []
-                            :type-name :Id
-                            :value "1003"}]}
-                 (execute schema q1 nil nil))
-              "should return error message")
-          (is (= {:data {:events {:lookup nil}}
-                  :errors [{:locations [{:column 9
-                                         :line 1}]
-                            :message "Invalid value for a scalar type."
-                            :query-path [:events
-                                         :lookup]
-                            :type :Event
-                            :value "1"}]}
-                 (execute schema q2 nil nil))
-              "should return error message"))))))
