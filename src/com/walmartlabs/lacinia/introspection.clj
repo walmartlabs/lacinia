@@ -96,8 +96,7 @@
 
 (defn ^:private resolve-enum-values
   [context _ value]
-  (let [schema (get context constants/schema-key)
-        {:keys [::category ::type-def]} value]
+  (let [{:keys [::category ::type-def]} value]
     (when (= :enum category)
       ;; Use the ordered list, not the set, in case order
       ;; has meaning (unlike elsewhere we we sort alphabetically).
@@ -107,8 +106,7 @@
 
 (defn ^:private resolve-input-fields
   [context _ value]
-  (let [schema (get context constants/schema-key)
-        type-def (::type-def value)]
+  (let [type-def (::type-def value)]
     ;; __InputValue is very close to __Field
     (when (= :input-object (:category type-def))
       (for [field-def (->> type-def :fields vals (sort-by :field-name))]

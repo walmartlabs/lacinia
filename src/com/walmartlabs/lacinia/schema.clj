@@ -375,7 +375,6 @@
   field-type-name - from the root :root kind "
   [schema object-def field-def field-type-name]
   (let [field-name (:field-name field-def)
-        type-name (:type-name object-def)
         field-type (get schema field-type-name)
         _ (when (nil? field-type)
             (throw (ex-info (format "Field %s of type %s references unknown type %s."
