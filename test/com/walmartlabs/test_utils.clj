@@ -2,7 +2,10 @@
   (:require
     [clojure.test :refer [is]]
     [clojure.spec.test :as stest]
-    [clojure.walk :as walk])
+    [clojure.walk :as walk]
+
+    ;; Needed for side effects (defines OrderedMap), do NOT remove
+    [flatland.ordered.map])
   (:import
     (flatland.ordered.map OrderedMap)))
 
