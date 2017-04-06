@@ -35,7 +35,7 @@
 (defn ^:private validate-fragment
   "Validates fragment once to avoid validating it separately for
    each selection."
-  [compiled-schema [fragment-name fragment]]
+  [compiled-schema [_ fragment]]
   (validate-selection compiled-schema fragment))
 
 (defn scalar-leafs

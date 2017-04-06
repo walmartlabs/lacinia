@@ -3,7 +3,6 @@
   (:require [clj-antlr.core :as antlr.core]
             [clj-antlr.proto :as antlr.proto]
             [clojure.java.io :as io]
-            [clojure.pprint :refer [pprint]]
             [clj-antlr.common :as antlr.common]
             [clojure.string :as str]
             [com.walmartlabs.lacinia.internal-utils
@@ -259,7 +258,7 @@
   arg-value is a tuple of argument type (:scalar, :enum, :null, :array, or :object) and
   the parsed value."
 
-  (fn [schema argument-definition [arg-type arg-value]]
+  (fn [schema argument-definition [arg-type _]]
     arg-type))
 
 (defmethod process-literal-argument :scalar
@@ -462,7 +461,7 @@
   "Processes a dynamic argument (one whose value is at least partly defined
    by a query variable) into a function that accepts the map of variable values,
    and returns the extracted variable value."
-  (fn [schema argument-definition [arg-type arg-value]]
+  (fn [schema argument-definition [arg-type _]]
     arg-type))
 
 

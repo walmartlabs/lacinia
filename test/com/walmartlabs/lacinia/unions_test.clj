@@ -2,8 +2,6 @@
   (:refer-clojure :exclude [compile])
   (:require
     [clojure.test :refer [deftest is testing]]
-    [clojure.repl :refer [pst]]
-    [clojure.pprint :refer [pprint]]
     [com.walmartlabs.lacinia.schema :refer [compile tag-with-type]]
     [com.walmartlabs.lacinia :as ql]
     [com.walmartlabs.test-utils :refer [is-thrown]]

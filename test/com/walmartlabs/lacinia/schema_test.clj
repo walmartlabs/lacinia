@@ -4,7 +4,6 @@
     [clojure.test :refer [deftest testing is are try-expr do-report]]
     [clojure.spec :as s]
     [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.lacinia.resolve :refer [resolve-as]]
     [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace]]))
 
 (instrument-schema-namespace)

@@ -44,7 +44,7 @@
         selections (:selections query-map)]
     (concat
      ;; Validate nested fragments
-     (mapcat (fn [[f-name f-definition]]
+     (mapcat (fn [[_ f-definition]]
                (validate-fragments fragments f-definition)) fragments)
      ;; Validate fragments in selections
      (mapcat (partial validate-fragments fragments) selections))))
