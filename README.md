@@ -212,6 +212,9 @@ Although this library is used internally, in production, it is
 still considered alpha software - subject to change.
 We expect to stabilize it in the near future.
 
+To use this library with Clojure 1.9, specify an exclusion like:
+`[com.walmartlabs/lacinia "x.x.x" :exclusions [clojure-future-spec]]`
+
 ## License
 
 Copyright © 2017 WalmartLabs
