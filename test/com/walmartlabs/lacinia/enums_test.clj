@@ -17,6 +17,13 @@
   [query]
   (simplify (execute compiled-schema query nil nil)))
 
+(deftest returns-enums-as-keywords
+  (is (= {:data {:hero {:appears_in [:NEWHOPE
+                                     :EMPIRE
+                                     :JEDI]
+                        :name "R2-D2"}}}
+         (q "{ hero { name appears_in }}"))))
+
 (deftest can-provide-enum-as-bare-name
   (let [response (q "{ hero(episode: NEWHOPE) { name }}")
         hero-name (-> response :data :hero :name)]
@@ -29,17 +36,17 @@
         first-error (first errors)]
     (is (-> result (contains? :data) not))
     (is (= 1 (count errors)))
-    (is (= {:allowed-values #{"EMPIRE"
-                              "JEDI"
-                              "NEWHOPE"}
+    (is (= {:allowed-values #{:EMPIRE
+                              :JEDI
+                              :NEWHOPE}
             :argument :episode
             :enum-type :episode
             :field :hero
             :locations [{:column 0
                          :line 1}]
-            :message "Exception applying arguments to field `hero': For argument `episode', provided argument value is not member of enum type."
+            :message "Exception applying arguments to field `hero': For argument `episode', provided argument value `CLONES' is not member of enum type."
             :query-path []
-            :value "CLONES"}
+            :value :CLONES}
            first-error))))
 
 (deftest enum-values-must-be-unique
