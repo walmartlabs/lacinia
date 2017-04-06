@@ -16,49 +16,7 @@
        (do-report {:type    :fail
                    :message "Expected some errors in the resolved tuple"}))))
 
-(deftest reject-nil-enforcer
-  (let [input (vector 42)]
-    (is (= input
-           (#'schema/reject-nil-enforcer input))))
 
-  (is-error? (#'schema/reject-nil-enforcer (vector nil))))
-
-(deftest enforce-single-result
-  (let [input (vector :just-me)]
-    (is (= input
-           (#'schema/enforce-single-result input))))
-
-  (is-error? (#'schema/enforce-single-result (resolve-as [1 2 3]))))
-
-(deftest map-enforcer
-  (let [enforcer (#'schema/map-enforcer #'schema/reject-nil-enforcer)]
-
-    (are [input-value output-value]
-
-      (= (vector output-value nil) (enforcer (vector input-value)))
-
-               [1 2 3] [1 2 3]
-               [] []
-        nil [])
-
-    (let [tuple (enforcer (vector [1 nil 2 nil 3]))]
-      (is (= [1 nil 2 nil 3]
-             (first tuple)))
-      ;; Redundant errors used to be removed by map-enforcer,
-      ;; but that has moved to the the very top.
-      (is (= 1
-             (-> tuple second distinct count))))))
-
-(deftest composition
-  (let [composed (#'schema/compose-enforcers
-                  #'schema/reject-nil-enforcer
-                  #'schema/enforce-single-result)]
-
-    (is (= (vector 33)
-           (composed (vector 33))))
-
-    (is-error? (composed (vector nil)))
-    (is-error? (composed (vector [1 2 3])))))
 
 (deftest schema-shape
   ;; We should renable this test if we make :fields required again
@@ -116,7 +74,7 @@
                (is (= [:fred :barney :bam-bam :pebbles] (-> d :object :implements)))))
 
   (is-thrown [e (schema/compile schema-references-unknown-type)]
-    (is (= (.getMessage e) "Field `dinosaur' of type `dino' references unknown type `raptor'."))))
+    (is (= (.getMessage e) "Field `dinosaur' in type `dino' references unknown type `raptor'."))))
 
 (deftest custom-scalars
   []

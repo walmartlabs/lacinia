@@ -1,4 +1,6 @@
-(ns com.walmartlabs.lacinia.validation.no-unused-fragments)
+(ns com.walmartlabs.lacinia.validation.no-unused-fragments
+  (:require
+    [clojure.set :as set]))
 
 (defn ^:private fragment-names-used
   "Returns a sequence of all fragment names
@@ -33,7 +35,7 @@
                                   fragments))
         f-definitions (set (keys fragments))
         f-names-used (all-fragments-used fragments selections)]
-    (for [unused-f-definition (clojure.set/difference f-definitions f-names-used)]
+    (for [unused-f-definition (set/difference f-definitions f-names-used)]
       {:message (format "Fragment \"%s\" is never used."
                         (name unused-f-definition))
        :locations [(unused-f-definition f-locations)]})))

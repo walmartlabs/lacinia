@@ -51,9 +51,9 @@
             ;; This is for resolve-nested-type, but it might actually be
             ;; a field definition, argument definition, or input value (a field of
             ;; an input object).
-            ::field-def arg-def})
+            ::type-map (:type arg-def)})
    :isDeprecated false
-   ::field-def field-def})
+   ::type-map (:type field-def)})
 
 (defn ^:private resolve-fields
   [context args object-or-interface]
@@ -115,7 +115,7 @@
         {:name (-> field-def :field-name name)
          :description (:description field-def)
          :defaultValue (:default-value field-def)
-         ::field-def field-def}))))
+         ::type-map (:type field-def)}))))
 
 (defn ^:private resolve-possible-types
   [context _ value]
@@ -128,23 +128,25 @@
 (defn ^:private resolve-nested-type
   [context _ value]
   (let [schema (get context constants/schema-key)
-        field-def (::field-def value)
-        {:keys [type multiple? non-nullable?]} field-def]
-    (cond
-      multiple?
+        {:keys [kind type]} (::type-map value)]
+    (case kind
+
+      :list
       {:kind "LIST"
-       ::field-def (assoc field-def :multiple? false)}
+       ::type-map type}
 
-      non-nullable?
+      :non-null
       {:kind "NON_NULL"
-       ::field-def (assoc field-def :non-nullable? false)}
+       ::type-map type}
 
-      :else
-      (type-name->schema-type schema type))))
+      :root
+      (type-name->schema-type schema type)
+
+      nil)))
 
 (defn ^:private resolve-of-type
   [context _ value]
-  (when (::field-def value)
+  (when (::type-map value)
     (resolve-nested-type context nil value)))
 
 (defn introspection-schema

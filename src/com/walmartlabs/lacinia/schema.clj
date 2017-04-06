@@ -12,7 +12,7 @@
     [com.walmartlabs.lacinia.introspection :as introspection]
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.internal-utils
-     :refer [cond-let ensure-seq map-vals map-kvs filter-vals deep-merge q
+     :refer [map-vals map-kvs filter-vals deep-merge q
              is-internal-type-name? sequential-or-set?]]
     [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolved-value resolve-errors resolve-as]]
     [clojure.string :as str])
@@ -57,13 +57,15 @@
   The keyword should identify a specific concrete object
   (not an interface or union) in the relevent schema."
   [x type-name]
-  (vary-meta x assoc ::graphql-type-name type-name))
+  ;; vary-meta will fail on nil, and sometimes a resolver will resolve
+  ;; nil validly, and it will be auto-tagged.
+  (when x
+    (vary-meta x assoc ::graphql-type-name type-name)))
 
 (defn type-tag
   "Returns the GraphQL type tag, previously set with [[tag-with-type]], or nil if the tag is not present."
   [x]
   (-> x meta ::graphql-type-name))
-
 
 (defn type-map
   "Reduces a compiled schema to a list of categories and the names of types in that category, useful
@@ -123,7 +125,7 @@
   ([message]
    (error message nil))
   ([message data]
-   [nil (merge {:message message} data)]))
+   (merge {:message message} data)))
 
 (defn ^:private named?
   "True if a string, symbol or keyword."
@@ -188,15 +190,6 @@
         :complex-type (s/cat :wrapping-type #{'list 'non-null}
                              :type :graphql/type-decl)))
 
-(defn ^:private type-seq
-  "Given a (possibly) complex type, eg. (list (non-null :foo)),
-  return the flattened type sequence, eg. [list non-null :foo]"
-  [type]
-  (s/assert :graphql/type-decl type)
-  (if (sequential? type)
-    (flatten type)
-    [type]))
-
 (defmulti ^:private check-compatible
   "Given two type definitions, dispatches on a vector of the category of the two types.
   'Returns true if the two types are compatible.
@@ -228,49 +221,109 @@
 ;; such as a union-vs-union (the field union must be a subset of the interface union),
 ;; or interface-union (all members of the union must implement the interface).
 
-(defn ^:private is-compatible-type? [schema i-type-name f-type-name]
-  (or (= i-type-name f-type-name)
-      (check-compatible (get schema i-type-name)
-                        (get schema f-type-name))))
+(defn ^:private is-compatible-type?
+  "Compares two field type maps (on from the interface, one from the object) for compatibility."
+  [schema interface-type object-type]
+  (let [i-kind (:kind interface-type)
+        o-kind (:kind object-type)
+        i-type (:type interface-type)
+        o-type (:type object-type)]
+    (cond
+      ;; When the object field is non-null and the interface field allows nulls that's ok,
+      ;; the object can be more specific than the interface.
+      (and (= o-kind :non-null)
+           (not= i-kind :non-null))
+      (recur schema i-kind o-type)
+
+      ;; Otherwise :list must match :list, and :root must match :root,
+      ;; and :non-null must match :non-null
+      (not= o-kind i-kind)
+      false
+
+      ;; For :list and :non-null, they match, move down a level, towards :root
+      (#{:list :non-null} o-kind)
+      (recur schema i-type o-type)
+
+      ;; Shortcut the compatible type check if the exact same type
+      (= i-type o-type)
+      true
+
+      :else
+      (check-compatible (get schema i-type)
+                        (get schema o-type)))))
 
 (defn ^:private is-assignable?
   "Returns true if the object field is type compatible with the interface field."
   [schema interface-field object-field]
-  (and (= (:multiple? interface-field) (:multiple? object-field))
-       (= (:non-nullable? interface-field) (:non-nullable? object-field))
-       (is-compatible-type? schema (:type interface-field) (:type object-field))))
+  (let [interface-type (:type interface-field)
+        object-type (:type object-field)]
+    (or (= interface-type object-type)
+        (is-compatible-type? schema interface-type object-type))))
 
 ;;-------------------------------------------------------------------------------
 ;; ## Types
 
+(defn ^:private expand-type
+  "Compiles a type from the input schema to the format used in the
+  compiled schema."
+  ;; TODO: This nested maps format works, but given the simple modifiers
+  ;; we have, just converting from nested lists to a flattened vector
+  ;; might work just as well. It would also make finding the root type
+  ;; cheap: just use last.
+  [type]
+  (cond
+    (list? type)
+    (let [[modifier next-type & anything-else] type
+          kind (get {'list :list
+                     'non-null :non-null} modifier)]
+      (when (or (nil? next-type)
+                (nil? kind)
+                (seq anything-else))
+        (throw (ex-info "Expected (list|non-null <type>)."
+                        {:type type})))
+
+      {:kind kind
+       :type (expand-type next-type)})
+
+    ;; By convention, symbols are used for pre-defined scalar types, and
+    ;; keywords are used for user-defined types, interfaces, unions, enums, etc.
+    (or (keyword? type)
+        (symbol? type))
+    {:kind :root
+     :type (as-keyword type)}
+
+    :else
+    (throw (ex-info "Could not process type."
+                    {:type type}))))
+
+(defn root-type-name
+  "For a compiled field (or argument) definition, delves down through the :type tag to find
+  the root type name, a keyword."
+  [field-def]
+  ;; In some error scenarios, the query references an unknown field and
+  ;; the field-def is nil. Without this check, this loops endlessly.
+  (when field-def
+    (loop [type-def (:type field-def)]
+      (if (-> type-def :kind (= :root))
+        (:type type-def)
+        (recur (:type type-def))))))
+
 (defn ^:private rewrite-type
-  "Rewrites the :type tag of a field (or an argument) into three keys: :type (just the keyword),
-  :non-nullable? and :multiple?."
+  "Rewrites the type tag of a field (or argument) into a nested structure of types.
+
+  types are maps with two keys, :kind and :type.
+
+  :kind may be :list, :non-null, or :root.
+
+  :type is a nested type map, or (for :root kind), the keyword name of a
+  schema type (a scalar, enum, object, etc.)."
   [field]
-  ;; TODO: This doesn't handle some variations, since either/both of
-  ;; the list and the elements of the list may be non-nullable.
-  ;; This applies non-nullable? only to the elements of a list, not to the list
-  ;; itself.
-
-  (loop [result (assoc field :multiple? false :non-nullable? false)
-         term (:type field)]
-    (cond-let
-
-      (not (list? term))
-      (assoc result :type (as-keyword term))
-
-      :let [[k more] term]
-
-      (= 'non-null k)
-      (recur (assoc result :non-nullable? true) more)
-
-      (= 'list k)
-      (recur (assoc result :multiple? true) more)
-
-      :else
+  (try
+    (update field :type expand-type)
+    (catch Throwable t
       (throw (ex-info "Could not identify type of field."
-                      {:field field
-                       :unexpected-modifier k})))))
+                      {:field field}
+                      t)))))
 
 (defn ^:private compile-arg
   "It's convinient to treat fields and arguments the same at this level."
@@ -289,221 +342,153 @@
                                 [arg-name (compile-arg arg-name arg-def)])
                               %))))
 
-;;-------------------------------------------------------------------------------
-;; ## Enforcers
-;;
-;; enforcers are just functions that are passed a tuple (a vector of resolved value and errors) and return
-;; the same tuple, or a different one (or nil).
-
-(defmacro ^:private with-resolved-value
-  [binding & body]
-  (let [[k tuple] binding]
-    `(let [~k (first ~tuple)]
-       (if (some? ~k)
-         (do ~@body)
-         ~tuple))))
-
-(defn ^:private enforce-single-result
-  [tuple]
-  (with-resolved-value [value tuple]
-    (if-not (sequential-or-set? value)
-      tuple
-      (error "Field resolver returned a collection of values, expected only a single value."))))
-
-(defn ^:private enforce-multiple-results
-  [tuple]
-  (with-resolved-value [value tuple]
-    (if (sequential-or-set? value)
-      tuple
-      (error "Field resolver returned a single value, expected a collection of values."))))
-
-(def ^:private noop-enforcer identity)
-
-(def ^:private resolved-nil [nil nil])
-
-(defn ^:private compose-enforcers
-  "enforcers may be nil, and are ordered outermost (executing last)
-  to innermost (executing first), as with clojure.core/comp.
-z
-  Each composed enforcer may return a tuple with errors.
-  Errors short-circuit the composed enforcers sequence."
-  [& enforcers]
-  (let [enforcers' (filterv some? (reverse enforcers))]
-    (if
-      (empty? enforcers')
-      noop-enforcer
-
-      (fn [resolved-tuple]
-        (loop [this-tuple resolved-tuple
-               [enforcer & remaining-enforcers] enforcers']
-          (cond-let
-            (nil? enforcer)
-            this-tuple
-
-            ;; Pass the prior value through the enforcer.
-            :let [next-tuple (enforcer this-tuple)]
-
-            ;; Terminate early when we hit any errors
-            (-> next-tuple second some?)
-            next-tuple
-
-            :else
-            (recur next-tuple remaining-enforcers)))))))
-
-(defn ^:private map-enforcer
-  "May wrap a single-value enforcer such that it maps across a collection of values.
-
-  The result is a tuple of the collection of values, and the collection of errors."
-  [enforcer]
-  {:pre [(some? enforcer)]}
-  (fn [tuple]
-    ;;Go from a tuple of a sequence of values to a sequence of tuples
-    (let [enforced-tuples (mapv #(enforcer [%])
-                                (first tuple))
-          resolved-values (mapv first enforced-tuples)
-          errors  (->> enforced-tuples
-                       (into [] (comp (keep second)
-                                      (mapcat ensure-seq)))
-                       seq)]
-      [resolved-values errors])))
-
-(defn ^:private coercion-enforcer
-  [coercion-f]
-  (fn [tuple]
-    (with-resolved-value [value tuple]
-      (-> value coercion-f vector))))
-
-(defn ^:private reject-nil-enforcer
-  [tuple]
-  (let [value (first tuple)]
-    (if (some? value)
-      tuple
-      (error "Non-nullable field was null."))))
-
-(defn ^:private auto-apply-type-enforcer
-  [type]
-  (fn [tuple]
-    (with-resolved-value [value tuple]
-      (-> value (tag-with-type type) vector))))
-
-(defn ^:private enforce-allowed-types
-  [field-type allowed-types]
-  (fn [tuple]
-    (with-resolved-value [value tuple]
-      (let [actual-type (type-tag value)]
-        (if (contains? allowed-types actual-type)
-          tuple
-          (error "Value returned from resolver has incorrect type for field."
-                 {:field-type field-type
-                  :actual-type actual-type
-                  :allowed-types allowed-types}))))))
-
-(defn ^:private enforce-type-tag
-  [tuple]
-  (with-resolved-value [value tuple]
-    (if (type-tag value)
-      tuple
-      (error "Field resolver returned an instance not tagged with a schema type."))))
-
-(defn ^:private assert-and-wrap-error
-  "An error returned by a resolver should be nil, a map, or a collection
-  of maps. These maps should contain a :message key, but may contain others.
-  Wrap them in a vector if necessary.
-
-  Returns nil, or a collection of one or more valid error maps."
-  [error-map-or-maps]
-  (cond
-    (nil? error-map-or-maps)
-    nil
-
-    (and (sequential? error-map-or-maps)
-         (every? (comp string? :message)
-                 error-map-or-maps))
-    error-map-or-maps
-
-    (string? (:message error-map-or-maps))
-    [error-map-or-maps]
-
-    :else
-    (throw (ex-info (str "Errors must be nil, a map, or a sequence of maps "
-                         "each containing, at minimum, a :message key.")
-                    {:error error-map-or-maps}))))
-
-(defn ^:private wrap-resolve-with-enforcer
-  [resolve enforcer]
+(defn ^:private wrap-resolver-to-ensure-resolver-result
+  [resolver]
   (fn [context args value]
-    ;; The resolve may return a ResolverResult; if not the first enforcer will
-    ;; convert it to one.
-    (let [raw-value (resolve context args value)
-          ;; This is a little bit of optimization; satisfies? can
-          ;; be a bit expensive.
-          is-tuple? (when raw-value
-                      (or (instance? ResolverResultImpl raw-value)
-                          (satisfies? ResolverResult raw-value)))
-          enforce-value (if is-tuple?
-                          (resolved-value raw-value)
-                          raw-value)
-          resolver-errors (when is-tuple?
-                            (resolve-errors raw-value))
-          enforced-tuple (enforcer [enforce-value])
-          all-errors (->> (sequence (comp cat
-                                          (filter some?)
-                                          (mapcat assert-and-wrap-error))
-                           [(ensure-seq resolver-errors)
-                            (ensure-seq (second enforced-tuple))]))]
-      (resolve-as (first enforced-tuple) all-errors))))
+    (let [raw-value (resolver context args value)
+          is-result? (when raw-value
+                       ;; This is a little bit of optimization; satisfies? can
+                       ;; be a bit expensive.
+                       (or (instance? ResolverResultImpl raw-value)
+                           (satisfies? ResolverResult raw-value)))]
+      (if is-result?
+        raw-value
+        (resolve-as raw-value)))))
 
-(defn ^:private prepare-resolver
-  "Prepares a field resolver to add type enforcement to a field.
+(defn ^:private compose-selectors
+  [next-selector selector-wrapper]
+  (if (some? selector-wrapper)
+    (fn invoke-wrapper [resolved-value callback]
+      (selector-wrapper resolved-value next-selector callback))
+    next-selector))
 
-  The new field resolver uniformly returns a tuple of the resolved value (or seq of values, if
-  the field type is a list) and a seq of error maps."
-  [schema field resolver]
-  (let [{:keys [type multiple? non-nullable?]} field
+(defn ^:private floor-selector
+  [resolved-value callback]
+  (callback resolved-value))
 
-        ;; :type is the name of the field's type.
-        ;; field-type is the actual type map
-        {:keys [category] :as field-type} (get schema type)
+(defn ^:private create-root-selector
+  "Creates a selector function for the :root kind, which is the point at which
+  a type refers to something in the schema.
 
-        coercion-f (when (= :scalar category)
-                     (let [serializer (:serialize field-type)]
-                       (fn [x]
-                         (let [result (s/conform serializer x)]
-                           (if-not (= result :clojure.spec/invalid)
-                             result
-                             (throw (ex-info "Invalid value for a scalar type."
-                                             {:type type
-                                              :value x})))))))
+  type - object definition containing the field
+  field - field definition
+  field-type-name - from the root :root kind "
+  [schema object-def field-def field-type-name]
+  (let [field-name (:field-name field-def)
+        type-name (:type-name object-def)
+        field-type (get schema field-type-name)
+        _ (when (nil? field-type)
+            (throw (ex-info (format "Field %s of type %s references unknown type %s."
+                                    (q field-name)
+                                    (-> object-def :type-name q)
+                                    (-> field-def :type q))
+                            {:field field-def
+                             :field-name field-name
+                             :schema-types (type-map schema)})))
+        category (:category field-type)
 
-        coerce (when coercion-f
-                 (coercion-enforcer coercion-f))
+        ;; Build up layers of checks and other logic.
+        coercion-wrapper (when (= :scalar category)
+                           (let [serializer (:serialize field-type)]
+                             (fn [resolved-value next-selector callback]
+                               (let [serialized (s/conform
+                                                  serializer resolved-value)]
+                                 (if-not (= serialized :clojure.spec/invalid)
+                                   (next-selector serialized callback)
+                                   (callback nil (error "Invalid value for a scalar type."
+                                                        {:type field-type-name
+                                                         :value (pr-str resolved-value)})))))))
+        allowed-types-wrapper (when (#{:interface :union} category)
+                                (let [member-types (:members field-type)]
+                                  (fn [resolved-value next-selector callback]
+                                    (let [actual-type (type-tag resolved-value)]
+                                      (cond
 
-        reject-nil (when non-nullable?
-                     reject-nil-enforcer)
+                                        (contains? member-types actual-type)
+                                        (next-selector resolved-value callback)
 
-        auto-apply-tag (when (#{:object :input-object} category)
-                         (auto-apply-type-enforcer type))
+                                        (nil? actual-type)
+                                        (callback nil (error "Field resolver returned an instance not tagged with a schema type."))
 
-        enforce-resolve-type (when (#{:interface :union} category)
-                               (compose-enforcers
-                                 (enforce-allowed-types type (:members field-type))
-                                 enforce-type-tag))
+                                        :else
+                                        (callback nil (error "Value returned from resolver has incorrect type for field."
+                                                             {:field-type field-type-name
+                                                              :actual-type actual-type
+                                                              :allowed-types member-types})))))))
+        apply-tag-wrapper (when (#{:object :input-object} category)
+                            (fn [resolved-value next-selector callback]
+                              (next-selector (tag-with-type resolved-value field-type-name) callback)))
+        single-result-wrapper (fn [resolved-value next-selector callback]
+                                (if (sequential-or-set? resolved-value)
+                                  (callback nil (error "Field resolver returned a collection of values, expected only a single value."))
+                                  (next-selector resolved-value callback)))]
+    (reduce compose-selectors floor-selector [coercion-wrapper
+                                              allowed-types-wrapper
+                                              apply-tag-wrapper
+                                              single-result-wrapper])))
 
-        per-value-enforcers (compose-enforcers
-                              enforce-resolve-type
-                              auto-apply-tag
-                              coerce
-                              reject-nil)
+(defn ^:private assemble-selector
+  "Assembles a selector function for a field.
 
-        enforcer (compose-enforcers
-                   (if multiple?
-                     (map-enforcer per-value-enforcers)
-                     per-value-enforcers)
+   A selector function is invoked by the executor; it represents a pipeline of operations
+   that occur before sub-selections occur on the resolved value.
 
-                   (if multiple?
-                     enforce-multiple-results
-                     enforce-single-result))]
-    (wrap-resolve-with-enforcer resolver enforcer)))
+   The selector is passed the resolved value and a callback.
+
+   The resolved value is expected to be a seq (or nil) if the field type is list.
+
+   The callback is passed the final resolved value.
+   A second, optional, argument is an error map (or seq of error maps).
+
+   The selector pipeline must return the value from the callback.
+
+   type is a type map, as via rewrite-type."
+  [schema object-type field type]
+  (case (:kind type)
+
+    :list
+    (let [next-selector (assemble-selector schema object-type field (:type type))]
+      (fn [resolved-value callback]
+        (cond
+          (nil? resolved-value)
+          (callback ::empty-list)
+
+          (not (sequential-or-set? resolved-value))
+          (callback nil (error "Field resolver returned a single value, expected a collection of values."))
+
+          :else
+          (mapv #(next-selector % callback) resolved-value))))
+
+    :non-null
+    (let [next-selector (assemble-selector schema object-type field (:type type))]
+      (when (-> field :default-value some?)
+        (throw (ex-info (format "Field %s of type %s is both non-nullable and has a default value."
+                                (-> field :field-name q)
+                                (-> object-type :type-name q))
+                        {:field-name (:field-name field)
+                         :field field})))
+      (fn [resolved-value callback]
+        (cond
+          (nil? resolved-value)
+          (callback nil (error "Non-nullable field was null."))
+
+          :else
+          (next-selector resolved-value callback))))
+
+    :root                                                   ;;
+    (create-root-selector schema object-type field (:type type))))
+
+(defn ^:private prepare-field
+  "Prepares a field for execution. Provides a default resolver, and wraps it to
+  ensure it returns a ResolverResult.
+  Adds a :selector function."
+  [schema options containing-type field]
+  (let [base-resolver (or (:resolve field)
+                          ((:default-field-resolver options) (:field-name field)))
+        selector (assemble-selector schema containing-type field (:type field))]
+    (assoc field
+           :resolve (wrap-resolver-to-ensure-resolver-result base-resolver)
+           :selector selector)))
 
 ;;-------------------------------------------------------------------------------
 ;; ## Compile schema
@@ -626,16 +611,16 @@ z
 (defmethod compile-type :input-object
   [input-object schema]
   (let [input-object' (compile-fields input-object)]
-    (doseq [[field-name field] (:fields input-object')
-            :let [field-type (:type field)
-                  type (get schema field-type)
-                  category (:category type)]]
-      (when-not type
+    (doseq [[field-name field-def] (:fields input-object')
+            :let [field-type-name (root-type-name field-def)
+                  type-def (get schema field-type-name)
+                  category (:category type-def)]]
+      (when-not type-def
         (throw (ex-info (format "Field %s of input object %s references unknown type %s."
                                 (q field-name)
                                 (-> input-object :type-name q)
-                                (q field-type))
-                        {:input-object input-object'
+                                (q field-type-name))
+                        {:input-object (:type-name input-object)
                          :field-name field-name
                          :schema-types (type-map schema)})))
 
@@ -645,56 +630,61 @@ z
         (throw (ex-info (format "Field %s of input object %s must be type scalar, enum, or input-object."
                                 (q field-name)
                                 (-> input-object :type-name q))
-                        {:input-object input-object'
+                        {:input-object (:type-name input-object)
                          :field-name field-name
-                         :type type}))))
+                         :field-type field-type-name}))))
     input-object'))
 
 (defmethod compile-type :interface
   [interface schema]
   (compile-fields interface))
 
+(defn ^:private extract-type-name
+  "Navigates a type map down to the root kind and returns the type name."
+  [type-map]
+  (if (-> type-map :kind (= :root))
+    (:type type-map)
+    (recur (:type type-map))))
+
+;; TODO: I think these checks go into create-unit-selector
 (defn ^:private verify-fields-and-args
   "Verifies that the type of every field and every field argument is valid."
-  [schema type]
-  (doseq [[field-name field] (:fields type)]
-    (when-not (get schema (:type field))
-      (throw (ex-info (format "Field %s of type %s references unknown type %s."
-                              (q field-name)
-                              (-> type :type-name q)
-                              (-> field :type q))
-                      {:field field
-                       :field-name field-name
-                       :schema-types (type-map schema)})))
-
-    (when (and (:non-nullable? field)
-               (some? (:default-value field)))
-      (throw (ex-info (format "Field %s of type %s is both non-nullable and has a default value."
-                              (q field-name)
-                              (-> type :type-name q))
-                      {:field-name field-name
-                       :field field})))
-
-    (doseq [[arg-name arg] (:args field)
-            :let [type (get schema (:type arg))]]
-      (when-not type
-        (throw (ex-info (format "Argument %s of field %s in type %s references unknown type %s."
-                                (q arg-name)
+  [schema object-def]
+  (let [object-type-name (:type-name object-def)]
+    (doseq [[field-name field-def] (:fields object-def)
+            :let [field-type-name (extract-type-name (:type field-def))]]
+      (when-not (get schema field-type-name)
+        (throw (ex-info (format "Field %s in type %s references unknown type %s."
                                 (q field-name)
-                                (-> type :type-name q)
-                                (-> arg :type q))
+                                (q object-type-name)
+                                (q field-type-name))
                         {:field-name field-name
-                         :arg-name arg-name
-                         :field field})))
+                         :object-type object-type-name
+                         :field field-def
+                         :schema-types (type-map schema)})))
 
-      (when-not (#{:scalar :enum :input-object} (:category type))
-        (throw (ex-info (format "Argument %s of field %s in type %s is not a valid argument type."
-                                (q arg-name)
-                                (q field-name)
-                                (-> type :type-name q))
-                        {:field-name field-name
-                         :arg-name arg-name
-                         :field field}))))))
+      (doseq [[arg-name arg-def] (:args field-def)
+              :let [arg-type-name (extract-type-name (:type arg-def))
+                    arg-type-def (get schema arg-type-name)]]
+        (when-not arg-type-def
+          (throw (ex-info (format "Argument %s of field %s in type %s references unknown type %s."
+                                  (q arg-name)
+                                  (q field-name)
+                                  (q object-type-name)
+                                  (-> arg-def :type q))
+                          {:field-name field-name
+                           :object-type object-type-name
+                           :arg-name arg-name
+                           :schema-types (type-map schema)})))
+
+        (when-not (#{:scalar :enum :input-object} (:category arg-type-def))
+          (throw (ex-info (format "Argument %s of field %s in type %s is not a valid argument type."
+                                  (q arg-name)
+                                  (q field-name)
+                                  (q object-type-name))
+                          {:field-name field-name
+                           :arg-name arg-name
+                           :object-type object-type-name})))))))
 
 (defn ^:private prepare-and-validate-interfaces
   "Invoked after compilation to add a :members set identifying which concrete types implement
@@ -736,15 +726,11 @@ z
                        :interface-name interface-name
                        :field-name field-name}))))
 
-  (let [fields' (reduce-kv (fn [m field-name field]
-                             (let [resolver (or (:resolve field)
-                                                ((-> options :default-field-resolver) field-name))]
-                               (assoc m field-name
-                                      (assoc field :resolve
-                                             (prepare-resolver schema field resolver)))))
-                           {}
-                           (:fields object))]
-    (assoc object :fields fields')))
+  (update object :fields #(reduce-kv (fn [m field-name field]
+                                       (assoc m field-name
+                                              (prepare-field schema options object field)))
+                                     {}
+                                     %)))
 
 (defn ^:private prepare-and-validate-objects
   "Comes very late in the compilation process to prepare objects, including validation that
@@ -818,8 +804,6 @@ z
    (compile schema {}))
   ([schema options]
    (let [options' (merge default-compile-opts options)
-         ;; TODO: Check if changing the default field resolver will break
-         ;; the introspection schema.
          introspection-schema (introspection/introspection-schema)]
      (-> schema
          (deep-merge introspection-schema)
