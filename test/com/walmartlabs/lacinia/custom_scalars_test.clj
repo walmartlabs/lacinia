@@ -32,7 +32,6 @@
   (testing "custom scalars defined as conformers"
     (let [parse-conformer (s/conformer
                            (fn [x]
-                             (prn "qoooooooo")
                              (if (and
                                   (string? x)
                                   (< (count x) 3))
