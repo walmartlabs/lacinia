@@ -67,7 +67,7 @@
   "Returns a DeferredResolverResult."
   []
   (let [realized-result (promise)
-        callback-holder (atom nil)]
+        callback-promise (promise)]
     (reify
       ResolverResult
 
@@ -81,11 +81,15 @@
       ;; We could do a bit more locking to avoid a couple of race-condition edge cases, but this is mostly to sanity
       ;; check bad application code that simply gets the contract wrong.
       (when-ready! [this callback]
-        (when (or (realized? realized-result)
-                  @callback-holder)
-          (throw (IllegalStateException. "DeferredResolverResult callback may only be set once, and only before the result is realized.")))
+        (cond
+          (realized? realized-result)
+          (when-ready! @realized-result callback)
 
-        (reset! callback-holder callback)
+          (realized? callback-promise)
+          (throw (IllegalStateException. "DeferredResolverResult callback may only be set once, and only before the result is realized."))
+
+          :else
+          (deliver callback-promise callback))
 
         this)
 
@@ -100,8 +104,7 @@
 
         (deliver realized-result (resolve-as resolved-value errors))
 
-        (when-let [callback @callback-holder]
-          (callback resolved-value errors)
-          (reset! callback-holder nil))
+        (when (realized? callback-promise)
+          (@callback-promise resolved-value errors))
 
         this))))

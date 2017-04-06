@@ -81,11 +81,4 @@
     (is (thrown? IllegalStateException
                  (when-ready! d callback2)))))
 
-(deftest may-only-add-callback-before-realized
-  (let [d (deferred-resolve)
-        callback (fn [_ _])]
-    (resolve-async! d :async-value)
-    (is (thrown? IllegalStateException
-                 (when-ready! d callback)))))
-
 
