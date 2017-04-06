@@ -1,4 +1,5 @@
-(ns com.walmartlabs.lacinia.validation.no-unused-fragments)
+(ns com.walmartlabs.lacinia.validation.no-unused-fragments
+  (:require [clojure.set])
 
 (defn ^:private fragment-names-used
   "Returns a sequence of all fragment names
