@@ -1,10 +1,9 @@
 (ns perf
   "A namespace where we track relative performance of query parsing and execution."
   (:require
-    [incanter.core :refer :all]
-    [incanter.datasets :refer :all]
-    [incanter.io :refer :all]
-    [incanter.charts :refer :all]
+    [incanter.core :refer [with-data save conj-rows]]
+    [incanter.io :refer [read-dataset]]
+    [incanter.charts :refer [line-chart]]
     [org.example.schema :refer [star-wars-schema]]
     [criterium.core :as c]
     [com.walmartlabs.lacinia :refer [execute execute-parsed-query]]

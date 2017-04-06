@@ -2,7 +2,6 @@
   (:require
     [clojure.test :refer [is]]
     [clojure.spec.test :as stest]
-    flatland.ordered.map
     [clojure.walk :as walk])
   (:import
     (flatland.ordered.map OrderedMap)))

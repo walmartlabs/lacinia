@@ -101,7 +101,7 @@
   [execution-context selection]
   (let [container-value (:resolved-value execution-context)]
     (if (= :field (:selection-type selection))
-      (let [{:keys [arguments field-definition]} selection
+      (let [{:keys [arguments]} selection
             {:keys [context]} execution-context
             schema (get context constants/schema-key)
             resolve-context (assoc context :com.walmartlabs.lacinia/selection selection)]
@@ -197,7 +197,7 @@
 
 (defn ^:private maybe-apply-fragment
   [execution-context fragment-selection concrete-types]
-  (let [{:keys [context resolved-value]} execution-context
+  (let [{:keys [resolved-value]} execution-context
         actual-type (schema/type-tag resolved-value)]
     (if (contains? concrete-types actual-type)
       (let [resolved-tuple (resolve-and-select execution-context fragment-selection)]
@@ -318,8 +318,7 @@
 
   Returns a query result, with :data and/or :errors keys."
   [context]
-  (let [schema (get context constants/schema-key)
-        selections (get-in context [constants/parsed-query-key :selections])
+  (let [selections (get-in context [constants/parsed-query-key :selections])
         errors (atom [])
         result (reduce (fn [root-result query-node]
                          (if (:disabled? query-node)
