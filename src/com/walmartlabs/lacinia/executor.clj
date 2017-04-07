@@ -357,16 +357,14 @@
   [context]
   (let [selections (get-in context [constants/parsed-query-key :selections])
         errors (atom [])
-        result (reduce (fn [root-result query-node]
-                         (if (:disabled? query-node)
-                           root-result
-                           (let [root-execution-context (->ExecutionContext context nil errors)
-                                 selected-data (->> (apply-selection root-execution-context query-node)
-                                                    ;; TODO: This will block
-                                                    resolve/resolved-value
-                                                    (propogate-nulls false))]
-                             (update root-result :data merge selected-data))))
-                       {:data nil}
-                       selections)]
-    (cond-> result
+        execution-context (->ExecutionContext context nil errors)
+        ;; TODO: This executes all the top-level selections in parallel; need something different
+        ;; for mutations, which require sequential.
+        operation-result (execute-nested-selections execution-context
+                                                    (remove :disabled? selections))
+        ;; This is the part that blocks when going async:
+        data-result (->> operation-result
+                         resolve/resolved-value
+                         (propogate-nulls false))]
+    (cond-> {:data data-result}
       (seq @errors) (assoc :errors (distinct @errors)))))
