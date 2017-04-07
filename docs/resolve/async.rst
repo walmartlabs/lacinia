@@ -52,8 +52,8 @@ matches the order in the query.
    Read about `execution <http://facebook.github.io/graphql/#sec-Normal-and-Serial-Execution>`_.
 
 For mutations, the top-level operations execute serially.
-That is, Lacinia will execute one top-level mutation entirely before
-starting the next top-level mutation.
+That is, Lacinia will execute one top-level operation entirely before
+starting the next top-level operation.
 
 Timeouts
 --------
@@ -75,3 +75,7 @@ about exceptions thrown inside some other thread.
 In the example above, any thrown exception is converted to an
 :doc:`error map <resolve-as>`.
 
+.. warning::
+
+   Not catching exceptions will lead to promises that are never delivered and that
+   will cause Lacinia to block indefinitely.
