@@ -7,7 +7,9 @@
              [com.walmartlabs.test-schema :refer [test-schema]]
              [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace simplify]])
   (:import (java.text SimpleDateFormat)
-           (java.util Date)))
+           (java.util Date)
+           (org.joda.time DateTime DateTimeConstants)
+           (org.joda.time.format DateTimeFormatter DateTimeFormat)))
 
 (instrument-schema-namespace)
 
@@ -114,13 +116,14 @@
 
 (deftest custom-scalars-with-variables
   (let [date-formatter (SimpleDateFormat. "yyyy-MM-dd")
-        parse-fn (s/conformer (fn [input] (try (.parse date-formatter input)
-                                               (catch Exception e
-                                                 :clojure.spec/invalid))))
-        serialize-fn (s/conformer (fn [output] (.format date-formatter output)))
+        parse-conformer (s/conformer (fn [input]
+                                       (try (.parse date-formatter input)
+                                            (catch Exception e
+                                              :clojure.spec/invalid))))
+        serialize-conformer (s/conformer (fn [output] (.format date-formatter output)))
         schema (schema/compile
-                {:scalars {:Date {:parse parse-fn
-                                  :serialize serialize-fn}}
+                {:scalars {:Date {:parse parse-conformer
+                                  :serialize serialize-conformer}}
 
                  :queries {:today {:type :Date
                                    :args {:asOf {:type :Date}}
@@ -148,3 +151,228 @@
                     {:asOf "abc"}
                     nil))
         "should return error message")))
+
+(defn ^:private periodic-seq
+  [^Date start ^Date end]
+  (take-while (fn [^Date date]
+                (not (.isAfter date end)))
+              (map (fn [i] (.plusDays start i)) (iterate inc 0))))
+
+(defn ^:private  sunday? [t]
+  (= (.getDayOfWeek t) (DateTimeConstants/SUNDAY)))
+
+(defn ^:private sundays [start end]
+  (let [date-range (if (and start end) (periodic-seq start end) [])]
+    (filter sunday? date-range)))
+
+(deftest custom-scalars-with-complex-types
+  (let [date-formatter (DateTimeFormat/forPattern "yyyy-MM-dd")
+        parse-conformer (s/conformer (fn [input]
+                                       (try (DateTime. (.parseDateTime date-formatter input))
+                                            (catch Exception e
+                                              :clojure.spec/invalid))))
+        serialize-conformer (s/conformer (fn [output] (.print date-formatter output)))
+        schema (schema/compile {:scalars {:Date {:parse parse-conformer
+                                                  :serialize serialize-conformer}}
+                                :queries {:sundays {:type '(list (non-null :Date))
+                                                    :args {:between {:type '(non-null (list (non-null :Date)))}}
+                                                    :resolve (fn [ctx args v]
+                                                               (let [[start end] (:between args)]
+                                                                 (sundays start end)))}}})]
+    (is (= {:data {:sundays ["2017-03-05" "2017-03-12" "2017-03-19" "2017-03-26"]}}
+           (execute schema "query ($between: [Date!]!) {
+                              sundays(between: $between)
+                            }"
+                    {:between ["2017-03-05" "2017-03-30"]}
+                    nil))
+        "should return list of serialized dates")
+    (is (= {:data {:sundays []}}
+           (execute schema "query ($between: [Date!]!) {
+                              sundays(between: $between)
+                            }"
+                    {:between ["2017-03-06" "2017-03-07"]}
+                    nil))
+        "should return empty list")
+    (is (= {:data {:sundays []}}
+           (execute schema "query ($between: [Date!]!) {
+                              sundays(between: $between)
+                            }"
+                    {:between []}
+                    nil))
+        "should return empty list (:between can be an empty list) ")
+    (is (= {:errors [{:message "No value was provided for variable `between', which is non-nullable.",
+                      :variable-name :between}]}
+           (execute schema "query ($between: [Date!]!) {
+                              sundays(between: $between)
+                            }"
+                    {:between nil}
+                    nil))
+        "should return an error")
+    (is (= {:errors [{:message "Variable `between' contains null members but supplies the value for a list that can't have any null members."
+                      :variable-name :between}]}
+           (execute schema "query ($between: [Date!]!) {
+                              sundays(between: $between)
+                            }"
+                    {:between [nil]}
+                    nil))
+        "should return an error")
+    (is (= {:errors [{:message "Variable `between' contains null members but supplies the value for a list that can't have any null members."
+                      :variable-name :between}]}
+           (execute schema "query ($between: [Date!]!) {
+                              sundays(between: $between)
+                            }"
+                    {:between ["2017-03-01" nil]}
+                    nil))
+        "should return an error")
+    (is (= {:errors [{:message "No value was provided for variable `between', which is non-nullable."
+                      :variable-name :between}]}
+           (execute schema "query ($between: [Date!]!) {
+                              sundays(between: $between)
+                            }"
+                    nil
+                    nil))
+        "should return an error"))
+
+  (testing "nested lists"
+    (let [scalars {:CustomType {:parse (s/conformer (fn [x] (name x)))
+                                :serialize (s/conformer (fn [x] (.toUpperCase x)))}}
+          schema (schema/compile {:scalars scalars
+                                  :queries {:shout {:type '(list (list (list :CustomType)))
+                                                    :args {:words {:type '(list (list (list :CustomType)))}}
+                                                    :resolve (fn [ctx args v]
+                                                               (:words args))}}})]
+      (is (= {:data {:shout [[["FOO" "BAR"]]]}}
+             (execute schema "query ($words: [[[CustomType]]]) {
+                              shout(words: $words)
+                            }"
+                      {:words [[["foo" "bar"]]]}
+                      nil))
+          "should return nested list")
+      (is (= {:errors [{:message "Variable `words' doesn't contain the correct number of (nested) lists.",
+                        :variable-name :words}]}
+             (execute schema "query ($words: [[[CustomType]]]) {
+                              shout(words: $words)
+                            }"
+                      {:words [["foo" "bar"]]}
+                      nil))
+          "should return an error")
+      (is (= {:data {:shout []}}
+             (execute schema "query ($words: [[[CustomType]]]) {
+                              shout(words: $words)
+                            }"
+                      {:words nil}
+                      nil))
+          "should return empty list")))
+
+  (testing "nested list with a non-null root element in query result"
+    (let [scalars {:CustomType {:parse (s/conformer (fn [x] (name x)))
+                                :serialize (s/conformer (fn [x] (.toUpperCase x)))}}
+          schema (schema/compile {:scalars scalars
+                                  :queries {:shout {:type '(list (list (list (non-null :CustomType))))
+                                                    :args {:words {:type '(list (list (list :CustomType)))}}
+                                                    :resolve (fn [ctx args v]
+                                                               (:words args))}}})]
+      (is (= {:data {:shout [[[nil]]]},
+              :errors [{:message "Non-nullable field was null.",
+                        :locations [{:line 1, :column 33}],
+                        :query-path [:shout],
+                        :arguments {:words [[[nil]]]}}]}
+             (execute schema "query ($words: [[[CustomType]]]) {
+                              shout(words: $words)
+                            }"
+                      {:words [[[nil]]]}
+                      nil))
+          "should return an error")
+      (is (= {:errors [{:message"Variable `words' doesn't contain the correct number of (nested) lists.",
+                        :variable-name :words}]}
+             (execute schema "query ($words: [[[CustomType]]]) {
+                              shout(words: $words)
+                            }"
+                      {:words [[nil]]}
+                      nil))
+          "should return an error")
+      (is (= {:data {:shout [[["BAR"]]]}}
+             (execute schema "query ($words: [[[CustomType]]]) {
+                              shout(words: $words)
+                            }"
+                      {:words [[["bar"]]]}
+                      nil))
+          "should return data")))
+
+  (testing "nested list with a non-null root element in query args"
+    (let [scalars {:CustomType {:parse (s/conformer (fn [x] (name x)))
+                                :serialize (s/conformer (fn [x] (.toUpperCase x)))}}
+          schema (schema/compile {:scalars scalars
+                                  :queries {:shout {:type '(list (list (list :CustomType)))
+                                                    :args {:words {:type '(list (list (list (non-null :CustomType))))}}
+                                                    :resolve (fn [ctx args v]
+                                                               (:words args))}}})]
+      (is (= {:errors [{:message "Variable `words' contains null members but supplies the value for a list that can't have any null members.",
+                        :variable-name :words}]}
+             (execute schema "query ($words: [[[CustomType!]]]) {
+                              shout(words: $words)
+                            }"
+                      {:words [[[nil]]]}
+                      nil))
+          "should return an error")
+      (is (= {:errors [{:message"Variable `words' doesn't contain the correct number of (nested) lists.",
+                        :variable-name :words}]}
+             (execute schema "query ($words: [[[CustomType!]]]) {
+                              shout(words: $words)
+                            }"
+                      {:words [["foo"]]}
+                      nil))
+          "should return an error")
+      (is (= {:errors [{:message "Exception applying arguments to field `shout': For argument `words', variable and argument are not compatible types.",
+                        :query-path []
+                        :locations [{:line 1 :column 33}]
+                        :field :shout
+                        :argument :words
+                        :argument-type "[[[CustomType!]]]"
+                        :variable-type "[[[CustomType]]]"}]}
+             (execute schema "query ($words: [[[CustomType]]]) {
+                              shout(words: $words)
+                            }"
+                      {:words [["foo"]]}
+                      nil))
+          "should return an error")
+      (is (= {:data {:shout [[["FOO"]]]}}
+             (execute schema "query ($words: [[[CustomType!]]]) {
+                              shout(words: $words)
+                            }"
+                      {:words [[["foo"]]]}
+                      nil))
+          "should return an error")))
+
+  (testing "nested non-null lists with a root list allowed to contain nulls in query args"
+    (let [scalars {:CustomType {:parse (s/conformer (fn [x] (if (some? x)
+                                                              (name x)
+                                                              :clojure.spec/invalid)))
+                                :serialize (s/conformer (fn [x] (when x (.toUpperCase x))))}}
+          schema (schema/compile {:scalars scalars
+                                  :queries {:shout {:type '(list (list (list :CustomType)))
+                                                    :args {:words {:type '(non-null (list (non-null (list (non-null (list :CustomType))))))}}
+                                                    :resolve (fn [ctx args v]
+                                                               (:words args))}}})]
+      (is (= {:data {:shout [[[nil]]]}}
+             (execute schema "query ($words: [[[CustomType]!]!]!) {
+                              shout(words: $words)
+                            }"
+                      {:words [[[nil]]]}
+                      nil))
+          "should return data")
+      (is (= {:data {:shout [[["FOO"]]]}}
+             (execute schema "query ($words: [[[CustomType]!]!]!) {
+                              shout(words: $words)
+                            }"
+                      {:words [[["foo"]]]}
+                      nil))
+          "should return data")
+      (is (= {:errors [{:message "Variable `words' doesn't contain the correct number of (nested) lists.",
+                        :variable-name :words}]}
+             (execute schema "query ($words: [[[CustomType]!]!]!) {
+                              shout(words: $words)
+                            }"
+                      {:words [[[] "foo"]]}
+                      nil))
+          "should return an error"))))
