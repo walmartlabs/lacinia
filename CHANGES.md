@@ -1,14 +1,3 @@
-## 0.15.0 -- UNRELEASED
-
-This release fleshes out the Lacinia type system to be fully compliant with the
-GraphQL type system.
-Previously, there were significant limitations when combining `list` and `not-null` modifiers on types.
-
-The internal representation of enum values has changed from string to keyword.
-You will now see a keyword, not a string, supplied as the value of an enum-typed argument
-or variable.
-
-
 ## 0.14.0 -- 29 Mar 2017
 
 This release adds some very small performance improvements.
