@@ -7,23 +7,7 @@
   "A special type returned from a field resolver that can contain a resolved value
   and/or errors."
 
-  (resolved-value [this]
-    "Returns the value resolved by the field resolver. This is typically
-    a map or a scalar; for fields that are lists, this will be
-    a seq of such values.
-
-    Will block until the ResolverResult is realized.")
-
-  (resolve-errors [this]
-    "Returns any errors that were generated while resolving the value.
-
-    This may be a single map, or a seq of maps.
-    Each map must contain a :message key and may contain additional
-    keys. Further keys are added to identify the executing field.
-
-    Will block until the ResolverResult is realized.")
-
-  (on-deliver! [this callback]
+    (on-deliver! [this callback]
     "Provides a callback that is invoked immediately after the ResolverResult is realized.
     The callback is passed the ResolverResult's value and errors.
 
@@ -49,10 +33,6 @@
 
   ResolverResult
 
-  (resolved-value [_] resolved-value)
-
-  (resolve-errors [_] resolve-errors)
-
   (on-deliver! [this callback]
     (callback resolved-value resolve-errors)
     this))
@@ -76,13 +56,6 @@
     (reify
       ResolverResult
 
-      (resolved-value [_]
-
-        (resolved-value @realized-result))
-
-      (resolve-errors [_]
-        (resolve-errors @realized-result))
-
       ;; We could do a bit more locking to avoid a couple of race-condition edge cases, but this is mostly to sanity
       ;; check bad application code that simply gets the contract wrong.
       (on-deliver! [this callback]
@@ -105,8 +78,9 @@
 
       (deliver! [this resolved-value errors]
         (when (realized? realized-result)
-          (throw (IllegalStateException. "May only realize a DeferredResolverResult once.")))
+          (throw (IllegalStateException. "May only realize a ResolverResultPromise once.")))
 
+        ;; Need to capture the results if they arrive before the call to on-deliver!
         (deliver realized-result (resolve-as resolved-value errors))
 
         (when (realized? callback-promise)

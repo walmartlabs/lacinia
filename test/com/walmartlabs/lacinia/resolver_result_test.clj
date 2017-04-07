@@ -6,16 +6,6 @@
 (deftest resolve-as-returns-resolver-result
   (is (satisfies? ResolverResult (resolve-as nil))))
 
-(deftest resolve-as-single-arg-is-value
-  (let [r (resolve-as :test-value)]
-    (is (= :test-value (resolved-value r)))
-    (is (nil? (resolve-errors r)))))
-
-(deftest resolve-as-two-args-is-value-and-errors
-  (let [r (resolve-as :test-value :an-error)]
-    (is (= :test-value (resolved-value r)))
-    (is (= :an-error (resolve-errors r)))))
-
 (defn ^:private thread-name
   []
   (.getName (Thread/currentThread)))
@@ -33,23 +23,6 @@
             :errors :some-errors
             :thread-name (thread-name)}
            (deref capture 100 nil)))))
-
-(deftest promise-exposes-value-and-errors
-  (let [p (resolve-promise)]
-    (is (identical? p
-                    (deliver! p :async-value :async-errors)))
-    (is (= :async-value
-           (resolved-value p)))
-    (is (= :async-errors)
-        (resolve-errors p))))
-
-(deftest promise-when-single-argument-is-value
-  (let [p (resolve-promise)]
-    (is (identical? p
-                    (deliver! p :async-value)))
-    (is (= :async-value
-           (resolved-value p)))
-    (is (nil? (resolve-errors p)))))
 
 (deftest promise-callback-is-invoked
   (let [p (resolve-promise)

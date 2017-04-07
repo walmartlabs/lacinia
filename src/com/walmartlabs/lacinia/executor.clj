@@ -394,9 +394,13 @@
         operation-result (if mutation?
                            (execute-nested-selections-sync execution-context enabled-selections)
                            (execute-nested-selections execution-context enabled-selections))
-        ;; This is the part that blocks when going async:
-        data-result (->> operation-result
-                         resolve/resolved-value
-                         (propogate-nulls false))]
-    (cond-> {:data data-result}
+        data-result (promise)]
+    (resolve/on-deliver! operation-result
+                         (fn [selected-data _]
+                           (->> selected-data
+                                (propogate-nulls false)
+                                (deliver data-result))))
+    ;; This will block de-ref'ing the data-result until the operaton-result is
+    ;; realized.
+    (cond-> {:data @data-result}
       (seq @errors) (assoc :errors (distinct @errors)))))
