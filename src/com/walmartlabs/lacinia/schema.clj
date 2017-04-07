@@ -15,7 +15,8 @@
      :refer [map-vals map-kvs filter-vals deep-merge q
              is-internal-type-name? sequential-or-set?]]
     [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolved-value resolve-errors resolve-as]]
-    [clojure.string :as str])
+    [clojure.string :as str]
+    [com.walmartlabs.lacinia.resolve :as resolve])
   (:import
     (com.walmartlabs.lacinia.resolve ResolverResultImpl)))
 
@@ -456,7 +457,11 @@
           (callback nil (error "Field resolver returned a single value, expected a collection of values."))
 
           :else
-          (mapv #(next-selector % callback) resolved-value))))
+          ;; So we have some privileged knowledge here: the callback returns a ResolverResult containing
+          ;; the value. So we need to combine those together into a new ResolverResult.
+          (reduce #(resolve/combine-results conj %1 %2)
+                  (resolve/resolve-as [])
+                  (mapv #(next-selector % callback) resolved-value)))))
 
     :non-null
     (let [next-selector (assemble-selector schema object-type field (:type type))]

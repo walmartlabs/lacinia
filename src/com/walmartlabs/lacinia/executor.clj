@@ -90,44 +90,50 @@
                          :value-meta (meta value)})))))
 
 
-(defn ^:private resolve-value
-  "Resolves the value for a field or fragment selection node, by passing the value to the
+(defn ^:private invoke-resolver-for-field
+  "Resolves the value for a field selection node, by passing the value to the
   appropriate resolver, and passing it through a chain of value enforcers.
 
-  Returns the resolved value.
+  Returns a ResolverResult.
+  The final ResolverResult will always contain just a resolved value; errors are handled here,
+  and not passed back in the returned ResolverResult.
 
   Any resolve errors are enhanced with details about the selection and accumulated in
   the execution context."
-  [execution-context selection]
+  [execution-context field-selection]
   (let [container-value (:resolved-value execution-context)]
-    (if (= :field (:selection-type selection))
-      (let [{:keys [arguments]} selection
+    (if (= :field (:selection-type field-selection))
+      (let [{:keys [arguments]} field-selection
             {:keys [context]} execution-context
             schema (get context constants/schema-key)
-            resolve-context (assoc context :com.walmartlabs.lacinia/selection selection)]
-        (try
-          (let [field-resolver (field-selection-resolver schema selection container-value)
-                resolver-result (field-resolver resolve-context arguments container-value)]
-            (when-let [errors (-> resolver-result
-                                  resolve/resolve-errors
-                                  assert-and-wrap-error
-                                  seq)]
-              (swap! (:errors execution-context) into
-                     (enhance-errors selection errors)))
-
-            (resolve/resolved-value resolver-result))
-          (catch clojure.lang.ExceptionInfo e
-            ;; TODO: throw-ing will be a problem once we get into async
-            (throw (ex-info (str "Error resolving field: " (to-message e))
-                            (ex-info-map selection (ex-data e)))))))
+            resolve-context (assoc context :com.walmartlabs.lacinia/selection field-selection)
+            field-resolver (field-selection-resolver schema field-selection container-value)
+            resolver-result (try
+                              (field-resolver resolve-context arguments container-value)
+                              (catch Throwable t
+                                (resolve/resolve-as nil
+                                                    (assoc (ex-data t)
+                                                           :message (to-message t)))))
+            final-result (resolve/deferred-resolve)]
+        (resolve/when-ready! resolver-result
+                             (fn [resolved-value resolve-errors]
+                               (when-let [errors (-> resolve-errors
+                                                     assert-and-wrap-error
+                                                     seq)]
+                                 (swap! (:errors execution-context) into
+                                        (enhance-errors field-selection errors)))
+                               ;; That's it for handling errors, so just resolve the value and
+                               ;; not the errors.
+                               (resolve/resolve-async! final-result resolved-value)))
+        final-result)
       ;; Else, not a field selection, but a fragment selection, which starts with the
       ;; same resolved value as the containing field or selection.
-      container-value)))
+      (resolve/resolve-as container-value))))
 
 (declare ^:private resolve-and-select)
 
 (defrecord ExecutionContext
-  [context value resolved-value errors])
+  [context resolved-value errors])
 
 (defn ^:private null-to-nil
   [v]
@@ -142,7 +148,8 @@
     v))
 
 (defn ^:private propogate-nulls
-  "When all values for a selected value are ::null, it is replaced with ::null.
+  "When all values for a selected value are ::null, it is replaced with
+  ::null (if non-nullable) or nil (if nullable).
 
   Otherwise, the selected values are a mix of real values and ::null, so replace
   the ::null values with nil."
@@ -163,7 +170,14 @@
 (defmulti ^:private apply-selection
   "Applies a selection on a resolved value.
 
-  Returns the updated selection context."
+   The execution context contains the resolved value as key :resolved-value.
+
+   Runs the selection, returning a ResolverResult of a map of key/values to add
+   to the container value.
+   For a field, the map will be a single key and value.
+   For a fragment, the map will contain multiple keys and values.
+
+   May return nil for a disabled selection."
   (fn [execution-context selection]
     (:selection-type selection)))
 
@@ -172,38 +186,37 @@
   (let [{:keys [alias]} field-selection
         non-nullable-field? (-> field-selection :field-definition :type :kind (= :non-null))
         resolver-result (resolve-and-select execution-context field-selection)
-        sub-selection (resolve/resolved-value resolver-result)
-        ;; TODO: I think some of this logic is might be able to move into the selectors.
-        sub-selection' (cond
-                         (and non-nullable-field?
-                              (nil? sub-selection))
-                         ::null
+        final-result (resolve/deferred-resolve)]
+    (resolve/when-ready! resolver-result
+                         (fn [resolved-field-value _]
+                           (let [sub-selection (cond
+                                                 (and non-nullable-field?
+                                                      (nil? resolved-field-value))
+                                                 ::null
 
-                         ;; child field was non-nullable and resolved to null,
-                         ;; but parent is nullable so let's null parent
-                         (and (= sub-selection ::null)
-                              (not non-nullable-field?))
-                         nil
+                                                 ;; child field was non-nullable and resolved to null,
+                                                 ;; but parent is nullable so let's null parent
+                                                 (and (= resolved-field-value ::null)
+                                                      (not non-nullable-field?))
+                                                 nil
 
-                         (map? sub-selection)
-                         (propogate-nulls non-nullable-field? sub-selection)
+                                                 (map? resolved-field-value)
+                                                 (propogate-nulls non-nullable-field? resolved-field-value)
 
-                         (vector? sub-selection)
-                         (mapv #(propogate-nulls non-nullable-field? %) sub-selection)
+                                                 (vector? resolved-field-value)
+                                                 (mapv #(propogate-nulls non-nullable-field? %) resolved-field-value)
 
-                         :else
-                         sub-selection)]
-    (assoc-in execution-context [:value alias] sub-selection')))
+                                                 :else
+                                                 resolved-field-value)]
+                             (resolve/resolve-async! final-result (hash-map alias sub-selection)))))
+    final-result))
 
 (defn ^:private maybe-apply-fragment
   [execution-context fragment-selection concrete-types]
   (let [{:keys [resolved-value]} execution-context
         actual-type (schema/type-tag resolved-value)]
-    (if (contains? concrete-types actual-type)
-      (let [resolved-tuple (resolve-and-select execution-context fragment-selection)]
-        (update execution-context :value merge (resolve/resolved-value resolved-tuple)))
-      ;; Not an applicable type
-      execution-context)))
+    (when (contains? concrete-types actual-type)
+      (resolve-and-select execution-context fragment-selection))))
 
 (defmethod apply-selection :inline-fragment
   [execution-context inline-fragment-selection]
@@ -225,13 +238,30 @@
 (defn ^:private maybe-apply-selection
   [execution-context selection]
   ;; :disabled? may be set by a directive
-  (if (:disabled? selection)
-    execution-context
+  (when-not (:disabled? selection)
     (apply-selection execution-context selection)))
 
 (defn ^:private included-fragment-selector
   [resolved-value callback]
   (callback resolved-value))
+
+(defn ^:private combine-map-results
+  "Left associative resolution of results, combined using merge."
+  [left-result right-result]
+  (resolve/combine-results merge left-result right-result))
+
+(defn ^:private execute-nested-selections
+  "Executes nested sub-selections once a value is resolved.
+
+  Returns a ResolverResult whose value is a map of keys and resolved values."
+  [execution-context sub-selections]
+  ;; First step is easy: convert the selections into ResolverResults.
+  ;; Then a cascade of intermediate results that combine the individual results
+  ;; in the correct order.
+  (let [selection-results (keep #(maybe-apply-selection execution-context %) sub-selections)]
+    (reduce combine-map-results
+            (resolve-as (ordered-map))
+            selection-results)))
 
 (defn ^:private resolve-and-select
   "Recursive resolution of a field within a containing field's resolved value.
@@ -241,7 +271,7 @@
   Accumulates errors in the execution context as a side-effect."
   [execution-context selection]
   (let
-    [resolved-value (resolve-value execution-context selection)
+    [resolver-result (invoke-resolver-for-field execution-context selection)
      sub-selections (:selections selection)
 
      selected-value-builder
@@ -253,19 +283,16 @@
        (cond
 
          (= ::schema/empty-list resolved-value)
-         []
+         (resolve-as [])
 
          (and (some? resolved-value)
               (seq sub-selections))
-         (let [execution-context (reduce maybe-apply-selection
-                                         (assoc execution-context
-                                                :value (ordered-map)
-                                                :resolved-value resolved-value)
-                                         sub-selections)]
-           (:value execution-context))
+         (execute-nested-selections
+           (assoc execution-context :resolved-value resolved-value)
+           sub-selections)
 
          :else
-         resolved-value))
+         (resolve/resolve-as resolved-value)))
 
      ;; The callback is a wrapper around the builder, that handles the optional
      ;; errors.
@@ -300,16 +327,26 @@
                           (get field-name)
                           :selector
                           (or (throw (ex-info "Sanity check: no selector."
-                                              {:resolved-value resolved-value
+                                              {:resolved-value resolver-result
                                                :type-name concrete-type-name
-                                               :selection selection})))))))]
+                                               :selection selection})))))))
+
+     final-result (resolve/deferred-resolve)]
 
     ;; Here's where it comes together.  The field's selector
     ;; does the validations, and for list types, does the mapping.
     ;; Eventually, individual values will be passed to the callback, which can then turn around
     ;; and recurse down a level.  The result is a map or a list of maps.
 
-    (resolve-as (selector resolved-value selector-callback))))
+    (resolve/when-ready! resolver-result
+                         (fn [resolved-value _]
+                           ;; The selector returns a ResolverResult, when it is ready,
+                           ;; then it's value transfers to the final result.
+                           (let [selector-result (selector resolved-value selector-callback)]
+                             (resolve/when-ready! selector-result
+                                                  (fn [resolved-value _]
+                                                    (resolve/resolve-async! final-result resolved-value))))))
+    final-result))
 
 (defn execute-query
   "Entrypoint for execution of a query.
@@ -323,9 +360,10 @@
         result (reduce (fn [root-result query-node]
                          (if (:disabled? query-node)
                            root-result
-                           (let [root-execution-context (->ExecutionContext context (ordered-map) nil errors)
+                           (let [root-execution-context (->ExecutionContext context nil errors)
                                  selected-data (->> (apply-selection root-execution-context query-node)
-                                                    :value
+                                                    ;; TODO: This will block
+                                                    resolve/resolved-value
                                                     (propogate-nulls false))]
                              (update root-result :data merge selected-data))))
                        {:data nil}
