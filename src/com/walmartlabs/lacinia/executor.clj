@@ -358,8 +358,7 @@
                           (get field-name)
                           :selector
                           (or (throw (ex-info "Sanity check: no selector."
-                                              {:resolved-value resolver-result
-                                               :type-name concrete-type-name
+                                              {:type-name concrete-type-name
                                                :selection selection})))))))
 
      final-result (resolve/resolve-promise)]
@@ -372,7 +371,7 @@
     (resolve/on-deliver! resolver-result
                          (fn [resolved-value _]
                            ;; The selector returns a ResolverResult, when it is ready,
-                           ;; then it's value transfers to the final result.
+                           ;; then its value transfers to the final result.
                            (let [selector-result (selector resolved-value selector-callback)]
                              (resolve/on-deliver! selector-result
                                                   (fn [resolved-value _]
