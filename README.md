@@ -203,7 +203,7 @@ fields in the response:
 ```
 
 ```clojure
-{:data {:hero {:movies ["NEWHOPE" "EMPIRE" "JEDI"]}}}
+{:data {:hero {:movies [:NEWHOPE :EMPIRE :JEDI"]}}}
 ```
 
 ## Status
