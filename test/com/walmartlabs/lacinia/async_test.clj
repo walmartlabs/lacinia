@@ -60,18 +60,18 @@
 (deftest queries-execute-in-parallel
   (let [result
         (q "{
-        n1: node(delay:100, name: \"n1\") { delay name }
-        n2: node(delay:50, name: \"n2\") { name delay  }
+        n1: node(delay:200, name: \"n1\") { delay name }
+        n2: node(delay:100, name: \"n2\") { name delay  }
         n3: node(delay:0, name: \"n3\") { name }
-        n4: node(delay:150, name: \"n4\") { name }
-        n5: node(delay:75, name: \"n5\") { name }
+        n4: node(delay:300, name: \"n4\") { name }
+        n5: node(delay:150, name: \"n5\") { name }
         }")
         actual-order @execution-order]
     ;; This shows that all the requested data did arrive, but potentially obscures
     ;; the order.
-    (is (= {:data {:n1 {:delay 100
+    (is (= {:data {:n1 {:delay 200
                         :name "n1"}
-                   :n2 {:delay 50
+                   :n2 {:delay 100
                         :name "n2"}
                    :n3 {:name "n3"}
                    :n4 {:name "n4"}
@@ -88,18 +88,18 @@
 (deftest mutations-execute-serially
   (let [result
         (q "mutation {
-        n1: mnode(delay:100, name: \"n1\") { delay name }
-        n2: mnode(delay:50, name: \"n2\") { name delay  }
+        n1: mnode(delay:200, name: \"n1\") { delay name }
+        n2: mnode(delay:100, name: \"n2\") { name delay  }
         n3: mnode(delay:0, name: \"n3\") { name }
-        n4: mnode(delay:150, name: \"n4\") { name }
-        n5: mnode(delay:75, name: \"n5\") { name }
+        n4: mnode(delay:300, name: \"n4\") { name }
+        n5: mnode(delay:150, name: \"n5\") { name }
          }")
         actual-order @execution-order]
     ;; This shows that all the requested data did arrive, but potentially obscures
     ;; the order.
-    (is (= {:data {:n1 {:delay 100
+    (is (= {:data {:n1 {:delay 200
                         :name "n1"}
-                   :n2 {:delay 50
+                   :n2 {:delay 100
                         :name "n2"}
                    :n3 {:name "n3"}
                    :n4 {:name "n4"}
