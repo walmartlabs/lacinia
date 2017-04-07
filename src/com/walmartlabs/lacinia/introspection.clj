@@ -9,12 +9,12 @@
     [com.walmartlabs.lacinia.constants :as constants]))
 
 (def ^:private category->kind
-  {:scalar "SCALAR"
-   :object "OBJECT"
-   :interface "INTERFACE"
-   :union "UNION"
-   :enum "ENUM"
-   :input-object "INPUT_OBJECT"})
+  {:scalar :SCALAR
+   :object :OBJECT
+   :interface :INTERFACE
+   :union :UNION
+   :enum :ENUM
+   :input-object :INPUT_OBJECT})
 
 (defn ^:private schema-type
   ([schema type-def]
@@ -101,7 +101,7 @@
       ;; Use the ordered list, not the set, in case order
       ;; has meaning (unlike elsewhere we we sort alphabetically).
       (for [value (get type-def :values)]
-        {:name value
+        {:name (name value)
          :isDeprecated false}))))
 
 (defn ^:private resolve-input-fields
@@ -130,11 +130,11 @@
     (case kind
 
       :list
-      {:kind "LIST"
+      {:kind :LIST
        ::type-map type}
 
       :non-null
-      {:kind "NON_NULL"
+      {:kind :NON_NULL
        ::type-map type}
 
       :root

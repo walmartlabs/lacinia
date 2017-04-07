@@ -3,6 +3,6 @@
   '[org.example.schema :refer [star-wars-schema]])
 
 (ql/execute (star-wars-schema)
-  "query { human(id: \"1001\"){ name }}"
+  "query { human(id: \"1001\") { name }}"
   nil nil)
 => {:data {:human #ordered/map([:name "Darth Vader"])}}
