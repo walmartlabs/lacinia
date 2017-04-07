@@ -14,9 +14,9 @@
     [com.walmartlabs.lacinia.internal-utils
      :refer [map-vals map-kvs filter-vals deep-merge q
              is-internal-type-name? sequential-or-set?]]
-    [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolve-as]]
-    [clojure.string :as str]
-    [com.walmartlabs.lacinia.resolve :as resolve])
+    [com.walmartlabs.lacinia.resolve :as resolve
+     :refer [ResolverResult resolve-as]]
+    [clojure.string :as str])
   (:import
     (com.walmartlabs.lacinia.resolve ResolverResultImpl)))
 
