@@ -28,57 +28,57 @@
                                      :thread-name (thread-name)}))
         r (resolve-as :a-value :some-errors)]
     (is (identical? r
-                    (when-ready! r callback)))
+                    (on-deliver! r callback)))
     (is (= {:value :a-value
             :errors :some-errors
             :thread-name (thread-name)}
            (deref capture 100 nil)))))
 
-(deftest deferred-resolve-exposes-value-and-errors
-  (let [d (deferred-resolve)]
-    (is (identical? d
-                    (resolve-async! d :async-value :async-errors)))
+(deftest promise-exposes-value-and-errors
+  (let [p (resolve-promise)]
+    (is (identical? p
+                    (deliver! p :async-value :async-errors)))
     (is (= :async-value
-           (resolved-value d)))
+           (resolved-value p)))
     (is (= :async-errors)
-        (resolve-errors d))))
+        (resolve-errors p))))
 
-(deftest deferred-resolve-single-argument-is-value
-  (let [d (deferred-resolve)]
-    (is (identical? d
-                    (resolve-async! d :async-value)))
+(deftest promise-when-single-argument-is-value
+  (let [p (resolve-promise)]
+    (is (identical? p
+                    (deliver! p :async-value)))
     (is (= :async-value
-           (resolved-value d)))
-    (is (nil? (resolve-errors d)))))
+           (resolved-value p)))
+    (is (nil? (resolve-errors p)))))
 
-(deftest deferred-callback-is-invoked
-  (let [d (deferred-resolve)
+(deftest promise-callback-is-invoked
+  (let [p (resolve-promise)
         capture (atom nil)
         callback (fn [value errors]
                    (reset! capture {:value value :errors errors}))]
-    (is (identical? d
-                    (when-ready! d callback)))
+    (is (identical? p
+                    (on-deliver! p callback)))
     (is (nil? @capture))
 
-    (is (identical? d
-                    (resolve-async! d :async-value :async-errors)))
+    (is (identical? p
+                    (deliver! p :async-value :async-errors)))
 
     (is (= {:value :async-value
             :errors :async-errors}
            @capture))))
 
-(deftest may-only-realize-once
-  (let [d (deferred-resolve)]
-    (resolve-async! d :first)
+(deftest may-only-deliver-once
+  (let [p (resolve-promise)]
+    (deliver! p :first)
     (is (thrown? IllegalStateException
-                 (resolve-async! d :second)))))
+                 (deliver! p :second)))))
 
 (deftest may-only-add-callback-once
-  (let [d (deferred-resolve)
+  (let [p (resolve-promise)
         callback1 (fn [_ _])
         callback2 (fn [_ _])]
-    (when-ready! d callback1)
+    (on-deliver! p callback1)
     (is (thrown? IllegalStateException
-                 (when-ready! d callback2)))))
+                 (on-deliver! p callback2)))))
 
 

@@ -12,11 +12,11 @@
 
 (defn delayed-result
   [delay exec-name value]
-  (let [result (resolve/deferred-resolve)
+  (let [result (resolve/resolve-promise)
         body (fn []
                (Thread/sleep delay)
                (swap! execution-order conj (keyword exec-name))
-               (resolve/resolve-async! result value))]
+               (resolve/deliver! result value))]
     (doto
       (Thread. ^Runnable body (str "test-thread-" exec-name))
       .start)
@@ -105,9 +105,6 @@
                    :n4 {:name "n4"}
                    :n5 {:name "n5"}}}
            (simplify result)))
-    ;; Even though we have proof that the field resolvers ran in a different order,
-    ;; this shows that the results from each FR was added to the response map in
-    ;; the user-requested order.
     (is (= [:n1 :n2 :n3 :n4 :n5]
            (-> result :data keys)))
     ;; :n3 doesn't appear here because it returns immediately

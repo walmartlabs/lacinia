@@ -23,22 +23,25 @@
 
     Will block until the ResolverResult is realized.")
 
-  (when-ready! [this callback]
+  (on-deliver! [this callback]
     "Provides a callback that is invoked immediately after the ResolverResult is realized.
     The callback is passed the ResolverResult's value and errors.
 
-    `when-ready!` should only be invoked once.
+    `on-deliver!` should only be invoked once.
     It returns the ResolverResult.
 
-    The callback is invoked for side-effects; it's result is ignored."))
+    On a simple ResolverResult (not a ResolverResultPromise), the callback is invoked
+    immediately.
 
-(defprotocol DeferredResolverResult
-  "A specialization of ResolverResult that supports asynchronous realization of the result."
+    The callback is invoked for side-effects; its result is ignored."))
 
-  (resolve-async!
+(defprotocol ResolverResultPromise
+  "A specialization of ResolverResult that supports asynchronous delivery of the resolved value and errors."
+
+  (deliver!
     [this value]
     [this value errors]
-    "Invoked to realized the result, triggering the callback and unblocking anyone waiting for the resolved-value or errors.
+    "Invoked to realize the ResolverResult, triggering the callback and unblocking anyone waiting for the resolved-value or errors.
 
     Returns the deferred resolver result."))
 
@@ -50,7 +53,7 @@
 
   (resolve-errors [_] resolve-errors)
 
-  (when-ready! [this callback]
+  (on-deliver! [this callback]
     (callback resolved-value resolve-errors)
     this))
 
@@ -63,8 +66,10 @@
   ([resolved-value resolver-errors]
    (->ResolverResultImpl resolved-value resolver-errors)))
 
-(defn deferred-resolve
-  "Returns a DeferredResolverResult."
+(defn resolve-promise
+  "Returns a ResolverResultPromise.
+
+   A value must be resolved and ultimately provided via [[deliver!]]."
   []
   (let [realized-result (promise)
         callback-promise (promise)]
@@ -80,25 +85,25 @@
 
       ;; We could do a bit more locking to avoid a couple of race-condition edge cases, but this is mostly to sanity
       ;; check bad application code that simply gets the contract wrong.
-      (when-ready! [this callback]
+      (on-deliver! [this callback]
         (cond
           (realized? realized-result)
-          (when-ready! @realized-result callback)
+          (on-deliver! @realized-result callback)
 
           (realized? callback-promise)
-          (throw (IllegalStateException. "DeferredResolverResult callback may only be set once, and only before the result is realized."))
+          (throw (IllegalStateException. "ResolverResultPromise callback may only be set once."))
 
           :else
           (deliver callback-promise callback))
 
         this)
 
-      DeferredResolverResult
+      ResolverResultPromise
 
-      (resolve-async! [this resolved-value]
-        (resolve-async! this resolved-value nil))
+      (deliver! [this resolved-value]
+        (deliver! this resolved-value nil))
 
-      (resolve-async! [this resolved-value errors]
+      (deliver! [this resolved-value errors]
         (when (realized? realized-result)
           (throw (IllegalStateException. "May only realize a DeferredResolverResult once.")))
 
@@ -113,10 +118,10 @@
   "Given a left and a right ResolverResult, returns a new ResolverResult that combines
   the realized values using the provided function."
   [f left-result right-result]
-  (let [combined-result (deferred-resolve)]
-    (when-ready! left-result
+  (let [combined-result (resolve-promise)]
+    (on-deliver! left-result
                  (fn [left-value _]
-                   (when-ready! right-result
+                   (on-deliver! right-result
                                 (fn [right-value _]
-                                  (resolve-async! combined-result (f left-value right-value))))))
+                                  (deliver! combined-result (f left-value right-value))))))
     combined-result))

@@ -114,8 +114,8 @@
                                 (resolve/resolve-as nil
                                                     (assoc (ex-data t)
                                                            :message (to-message t)))))
-            final-result (resolve/deferred-resolve)]
-        (resolve/when-ready! resolver-result
+            final-result (resolve/resolve-promise)]
+        (resolve/on-deliver! resolver-result
                              (fn [resolved-value resolve-errors]
                                (when-let [errors (-> resolve-errors
                                                      assert-and-wrap-error
@@ -124,7 +124,7 @@
                                         (enhance-errors field-selection errors)))
                                ;; That's it for handling errors, so just resolve the value and
                                ;; not the errors.
-                               (resolve/resolve-async! final-result resolved-value)))
+                               (resolve/deliver! final-result resolved-value)))
         final-result)
       ;; Else, not a field selection, but a fragment selection, which starts with the
       ;; same resolved value as the containing field or selection.
@@ -186,8 +186,8 @@
   (let [{:keys [alias]} field-selection
         non-nullable-field? (-> field-selection :field-definition :type :kind (= :non-null))
         resolver-result (resolve-and-select execution-context field-selection)
-        final-result (resolve/deferred-resolve)]
-    (resolve/when-ready! resolver-result
+        final-result (resolve/resolve-promise)]
+    (resolve/on-deliver! resolver-result
                          (fn [resolved-field-value _]
                            (let [sub-selection (cond
                                                  (and non-nullable-field?
@@ -208,7 +208,7 @@
 
                                                  :else
                                                  resolved-field-value)]
-                             (resolve/resolve-async! final-result (hash-map alias sub-selection)))))
+                             (resolve/deliver! final-result (hash-map alias sub-selection)))))
     final-result))
 
 (defn ^:private maybe-apply-fragment
@@ -267,16 +267,16 @@
   [execution-context previous-resolved-result sub-selection]
   ;; Let's just call the previous result "left" and the sub-selection's result "right".
   ;; However, sometimes a selection is disabled and returns nil instead of a ResolverResult.
-  (let [next-result (resolve/deferred-resolve)]
-    (resolve/when-ready! previous-resolved-result
+  (let [next-result (resolve/resolve-promise)]
+    (resolve/on-deliver! previous-resolved-result
                          (fn [left-map _]
                            ;; This is what makes it sync: we don't kick off the evaluation of the selection
                            ;; until the previous selection, left, has completed.
                            (let [sub-resolved-result (apply-selection execution-context sub-selection)]
-                             (resolve/when-ready! sub-resolved-result
+                             (resolve/on-deliver! sub-resolved-result
                                                   (fn [right-map _]
-                                                    (resolve/resolve-async! next-result
-                                                                            (merge left-map right-map)))))))
+                                                    (resolve/deliver! next-result
+                                                                      (merge left-map right-map)))))))
     ;; This will deliver after the sub-selection delivers, which is only after the previous resolved result
     ;; delivers.
     next-result))
@@ -362,21 +362,21 @@
                                                :type-name concrete-type-name
                                                :selection selection})))))))
 
-     final-result (resolve/deferred-resolve)]
+     final-result (resolve/resolve-promise)]
 
     ;; Here's where it comes together.  The field's selector
     ;; does the validations, and for list types, does the mapping.
     ;; Eventually, individual values will be passed to the callback, which can then turn around
     ;; and recurse down a level.  The result is a map or a list of maps.
 
-    (resolve/when-ready! resolver-result
+    (resolve/on-deliver! resolver-result
                          (fn [resolved-value _]
                            ;; The selector returns a ResolverResult, when it is ready,
                            ;; then it's value transfers to the final result.
                            (let [selector-result (selector resolved-value selector-callback)]
-                             (resolve/when-ready! selector-result
+                             (resolve/on-deliver! selector-result
                                                   (fn [resolved-value _]
-                                                    (resolve/resolve-async! final-result resolved-value))))))
+                                                    (resolve/deliver! final-result resolved-value))))))
     final-result))
 
 (defn execute-query
