@@ -1,12 +1,15 @@
 ## 0.15.0 -- UNRELEASED
 
+Field resolvers can now operate synchronously or asynchronously.
+
 This release fleshes out the Lacinia type system to be fully compliant with the
 GraphQL type system.
 Previously, there were significant limitations when combining `list` and `not-null` modifiers on types.
 
-The internal representation of enum values has changed from string to keyword.
-You will now see a keyword, not a string, supplied as the value of an enum-typed argument
+The internal representation of enum values has changed from String to Keyword.
+You will now see a Keyword, not a String, supplied as the value of an enum-typed argument
 or variable.
+You may need to make small changes to your field resolvers.
 
 
 ## 0.14.0 -- 29 Mar 2017
