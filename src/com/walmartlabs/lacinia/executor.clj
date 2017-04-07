@@ -253,7 +253,7 @@
 (defn ^:private execute-nested-selections
   "Executes nested sub-selections once a value is resolved.
 
-  Returns a ResolverResult whose value is a map of keys and resolved values."
+  Returns a ResolverResult whose value is a map of keys and selected values."
   [execution-context sub-selections]
   ;; First step is easy: convert the selections into ResolverResults.
   ;; Then a cascade of intermediate results that combine the individual results
@@ -262,6 +262,37 @@
     (reduce combine-map-results
             (resolve-as (ordered-map))
             selection-results)))
+
+(defn ^:private combine-selection-results-sync
+  [execution-context previous-resolved-result sub-selection]
+  ;; Let's just call the previous result "left" and the sub-selection's result "right".
+  ;; However, sometimes a selection is disabled and returns nil instead of a ResolverResult.
+  (let [next-result (resolve/deferred-resolve)]
+    (resolve/when-ready! previous-resolved-result
+                         (fn [left-map _]
+                           ;; This is what makes it sync: we don't kick off the evaluation of the selection
+                           ;; until the previous selection, left, has completed.
+                           (let [sub-resolved-result (apply-selection execution-context sub-selection)]
+                             (resolve/when-ready! sub-resolved-result
+                                                  (fn [right-map _]
+                                                    (resolve/resolve-async! next-result
+                                                                            (merge left-map right-map)))))))
+    ;; This will deliver after the sub-selection delivers, which is only after the previous resolved result
+    ;; delivers.
+    next-result))
+
+(defn ^:private execute-nested-selections-sync
+  "Used to execute top-level mutation operations in synchronous order.
+
+  sub-selections is the sequence of top-level operations to execute with disabled operations
+  removed.
+
+  Returns ResolverResult whose value is a map of keys and selected values."
+  [execution-context sub-selections]
+  ;; This could be optimized for the very common case of a single sub-selection.
+  (reduce #(combine-selection-results-sync execution-context %1 %2)
+          (resolve-as (ordered-map))
+          sub-selections))
 
 (defn ^:private resolve-and-select
   "Recursive resolution of a field within a containing field's resolved value.
@@ -355,13 +386,14 @@
 
   Returns a query result, with :data and/or :errors keys."
   [context]
-  (let [selections (get-in context [constants/parsed-query-key :selections])
+  (let [parsed-query (get context constants/parsed-query-key)
+        {:keys [selections mutation?]} parsed-query
+        enabled-selections (remove :disabled? selections)
         errors (atom [])
         execution-context (->ExecutionContext context nil errors)
-        ;; TODO: This executes all the top-level selections in parallel; need something different
-        ;; for mutations, which require sequential.
-        operation-result (execute-nested-selections execution-context
-                                                    (remove :disabled? selections))
+        operation-result (if mutation?
+                           (execute-nested-selections-sync execution-context enabled-selections)
+                           (execute-nested-selections execution-context enabled-selections))
         ;; This is the part that blocks when going async:
         data-result (->> operation-result
                          resolve/resolved-value

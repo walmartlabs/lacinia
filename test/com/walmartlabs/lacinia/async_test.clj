@@ -1,4 +1,4 @@
-(ns com.walmartlabs.lacinia.async-tests
+(ns com.walmartlabs.lacinia.async-test
   "Tests for field resolvers that return deferred ResolverResults."
   (:require
     [clojure.test :refer [deftest is use-fixtures]]
@@ -44,7 +44,13 @@
         {:node {:type :node
                 :args {:delay {:type (non-null Int)}
                        :name {:type (non-null String)}}
-                :resolve :node}}}
+                :resolve :node}}
+
+        :mutations
+        {:mnode {:type :node
+                 :args {:delay {:type (non-null Int)}
+                        :name {:type (non-null String)}}
+                 :resolve :node}}}
       (util/attach-resolvers {:node node-resolver})
       schema/compile))
 
@@ -59,7 +65,8 @@
         n3: node(delay:0, name: \"n3\") { name }
         n4: node(delay:150, name: \"n4\") { name }
         n5: node(delay:75, name: \"n5\") { name }
-        }")]
+        }")
+        actual-order @execution-order]
     ;; This shows that all the requested data did arrive, but potentially obscures
     ;; the order.
     (is (= {:data {:n1 {:delay 100
@@ -76,5 +83,32 @@
     (is (= [:n1 :n2 :n3 :n4 :n5]
            (-> result :data keys)))
     ;; :n3 doesn't appear here because it returns immediately
-    (is (= [:n2 :n5 :n1 :n4]
-           @execution-order))))
+    (is (= [:n2 :n5 :n1 :n4] actual-order))))
+
+(deftest mutations-execute-serially
+  (let [result
+        (q "mutation {
+        n1: mnode(delay:100, name: \"n1\") { delay name }
+        n2: mnode(delay:50, name: \"n2\") { name delay  }
+        n3: mnode(delay:0, name: \"n3\") { name }
+        n4: mnode(delay:150, name: \"n4\") { name }
+        n5: mnode(delay:75, name: \"n5\") { name }
+         }")
+        actual-order @execution-order]
+    ;; This shows that all the requested data did arrive, but potentially obscures
+    ;; the order.
+    (is (= {:data {:n1 {:delay 100
+                        :name "n1"}
+                   :n2 {:delay 50
+                        :name "n2"}
+                   :n3 {:name "n3"}
+                   :n4 {:name "n4"}
+                   :n5 {:name "n5"}}}
+           (simplify result)))
+    ;; Even though we have proof that the field resolvers ran in a different order,
+    ;; this shows that the results from each FR was added to the response map in
+    ;; the user-requested order.
+    (is (= [:n1 :n2 :n3 :n4 :n5]
+           (-> result :data keys)))
+    ;; :n3 doesn't appear here because it returns immediately
+    (is (= [:n1 :n2 :n4 :n5] actual-order))))
