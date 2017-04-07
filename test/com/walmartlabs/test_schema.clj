@@ -23,34 +23,34 @@
          :name       "Luke Skywalker"
          :friends    ["1002", "1003", "2000", "2001"]
          :enemies    ["1002"]
-         :appears-in ["NEWHOPE" "EMPIRE" "JEDI"]
+         :appears-in [:NEWHOPE :EMPIRE :JEDI]
          :homePlanet "Tatooine"
          :force-side  "3001"}
         {:id         "1001"
          :name       "Darth Vader"
          :friends    ["1004"]
          :enemes     ["1000"]
-         :appears-in ["NEWHOPE" "EMPIRE" "JEDI"]
+         :appears-in [:NEWHOPE :EMPIRE :JEDI]
          :homePlanet "Tatooine"
          :force-side  "3000"}
         {:id         "1003"
          :name       "Leia Organa"
          :friends    ["1000", "1002", "2000", "2001"]
          :enemies    ["1001"]
-         :appears-in ["NEWHOPE" "EMPIRE" "JEDI"]
+         :appears-in [:NEWHOPE :EMPIRE :JEDI]
          :homePlanet "Alderaan"
          :force-side  "3001"}
         {:id         "1002"
          :name       "Han Solo"
          :friends    ["1000", "1003", "2001"]
          :enemies    ["1001"]
-         :appears-in ["NEWHOPE" "EMPIRE" "JEDI"]
+         :appears-in [:NEWHOPE :EMPIRE :JEDI]
          :force-side  "3001"}
         {:id         "1004"
          :name       "Wilhuff Tarkin"
          :friends    ["1001"]
          :enemies    ["1000"]
-         :appears-in ["NEWHOPE"]
+         :appears-in [:NEWHOPE]
          :force-side  "3000"}
         ]
        (hash-map-by :id)
@@ -60,12 +60,12 @@
   (->> [{:id               "2001"
          :name             "R2-D2"
          :friends          ["1000", "1002", "1003"]
-         :appears-in       ["NEWHOPE" "EMPIRE" "JEDI"]
+         :appears-in       [:NEWHOPE :EMPIRE :JEDI]
          :primary-function "ASTROMECH"}
         {:id               "2000"
          :name             "C-3PO"
          :friends          ["1000", "1002", "1003", "2001"]
-         :appears-in       ["NEWHOPE" "EMPIRE" "JEDI"]
+         :appears-in       [:NEWHOPE :EMPIRE :JEDI]
          :primary-function "PROTOCOL"}
         ]
        (hash-map-by :id)
@@ -117,7 +117,7 @@
 (defn get-hero
   "Usually retrieves the undisputed hero of the Star Wars trilogy, R2-D2."
   [episode]
-  (get-character (if (= "NEWHOPE" episode)
+  (get-character (if (= :NEWHOPE episode)
                    "1000"                                   ; luke
                    "2001"                                   ; r2d2
                    )))
@@ -133,7 +133,7 @@
   {:enums
    {:episode
     {:description "The episodes of the original Star Wars trilogy."
-     :values ["NEWHOPE" "EMPIRE" "JEDI"]}}
+     :values [:NEWHOPE :EMPIRE :JEDI]}}
 
    :scalars
    {:Date

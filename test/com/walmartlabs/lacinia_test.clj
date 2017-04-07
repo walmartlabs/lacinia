@@ -33,7 +33,7 @@
   (let [q "{ hero { id name appears_in } }"]
     (is (= {:data {:hero {:id "2001"
                           :name "R2-D2"
-                          :appears_in ["NEWHOPE" "EMPIRE" "JEDI"]}}}
+                          :appears_in [:NEWHOPE :EMPIRE :JEDI]}}}
            (execute default-schema q {} nil)))
     (is (= (json/write-str (lacinia/execute default-schema q {} nil))
            "{\"data\":{\"hero\":{\"id\":\"2001\",\"name\":\"R2-D2\",\"appears_in\":[\"NEWHOPE\",\"EMPIRE\",\"JEDI\"]}}}")))
@@ -132,18 +132,18 @@
             }"]
     (is (= {:data {:hero {:name "R2-D2"
                           :friends [{:name "Luke Skywalker"
-                                     :appears_in ["NEWHOPE" "EMPIRE" "JEDI"]
+                                     :appears_in [:NEWHOPE :EMPIRE :JEDI]
                                      :friends [{:name "Han Solo"}
                                                {:name "Leia Organa"}
                                                {:name "C-3PO"}
                                                {:name "R2-D2"}]}
                                     {:name "Han Solo"
-                                     :appears_in ["NEWHOPE" "EMPIRE" "JEDI"]
+                                     :appears_in [:NEWHOPE :EMPIRE :JEDI]
                                      :friends [{:name "Luke Skywalker"}
                                                {:name "Leia Organa"}
                                                {:name "R2-D2"}]}
                                     {:name "Leia Organa"
-                                     :appears_in ["NEWHOPE" "EMPIRE" "JEDI"]
+                                     :appears_in [:NEWHOPE :EMPIRE :JEDI]
                                      :friends [{:name "Luke Skywalker"}
                                                {:name "Han Solo"}
                                                {:name "C-3PO"}
@@ -170,12 +170,14 @@
                            :friends [{:name "Darth Vader"}]}}}
            (execute default-schema q nil nil))))
   (let [q "mutation { addHeroEpisodes(id: \"1004\", episodes: []) { name appears_in } }"]
-    (is (= {:data {:addHeroEpisodes {:name "Wilhuff Tarkin" :appears_in ["NEWHOPE"]}}}
+    (is (= {:data {:addHeroEpisodes {:name "Wilhuff Tarkin" :appears_in [:NEWHOPE]}}}
            (execute default-schema q nil nil)))))
 
 (deftest enum-query
   (let [q "mutation { addHeroEpisodes(id: \"1004\", episodes: [JEDI]) { name appears_in } }"]
-    (is (= {:data {:addHeroEpisodes {:name "Wilhuff Tarkin" :appears_in ["NEWHOPE" "JEDI"]}}}
+    (is (= {:data {:addHeroEpisodes {:appears_in [:NEWHOPE
+                                                  :JEDI]
+                                     :name "Wilhuff Tarkin"}}}
            (execute default-schema q nil nil)))))
 
 (deftest not-found-query
@@ -308,7 +310,7 @@
                           :homePlanet "Tatooine"}
                    :leia {:name "Leia Organa"
                           :homePlanet "Alderaan"
-                          :appears_in ["NEWHOPE" "EMPIRE" "JEDI"]}}}
+                          :appears_in [:NEWHOPE :EMPIRE :JEDI]}}}
            (execute default-schema q nil nil))))
   (let [q "query UseFragment {
              luke: human(id: \"1000\") {
@@ -327,8 +329,8 @@
            }"]
     (is (= {:data {:luke {:name "Luke Skywalker"
                           :homePlanet "Tatooine"
-                          :appears_in ["NEWHOPE" "EMPIRE" "JEDI"]}
-                   :leia {:appears_in ["NEWHOPE" "EMPIRE" "JEDI"]}}}
+                          :appears_in [:NEWHOPE :EMPIRE :JEDI]}
+                   :leia {:appears_in [:NEWHOPE :EMPIRE :JEDI]}}}
            (execute default-schema q nil nil))))
   (let [q "query InvalidInlineFragment {
              human(id: \"1001\") {
@@ -646,12 +648,12 @@
                                             {:name "Han Solo"}
                                             {:name "Leia Organa"}
                                             {:name "R2-D2"}]
-                                  :appears_in ["NEWHOPE" "EMPIRE" "JEDI"]}
+                                  :appears_in [:NEWHOPE :EMPIRE :JEDI]}
                        :r2d2 {:name "R2-D2"
                               :friends [{:name "Luke Skywalker"}
                                         {:name "Han Solo"}
                                         {:name "Leia Organa"}]
-                              :appears_in ["NEWHOPE" "EMPIRE" "JEDI"]}}}
+                              :appears_in [:NEWHOPE :EMPIRE :JEDI]}}}
                (execute default-schema q nil nil))))
       (testing "Should use the value provided by user"
         (let [q "{ droid(id: \"2000\") {
