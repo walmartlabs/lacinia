@@ -87,15 +87,3 @@
           (@callback-promise resolved-value errors))
 
         this))))
-
-(defn combine-results
-  "Given a left and a right ResolverResult, returns a new ResolverResult that combines
-  the realized values using the provided function."
-  [f left-result right-result]
-  (let [combined-result (resolve-promise)]
-    (on-deliver! left-result
-                 (fn [left-value _]
-                   (on-deliver! right-result
-                                (fn [right-value _]
-                                  (deliver! combined-result (f left-value right-value))))))
-    combined-result))

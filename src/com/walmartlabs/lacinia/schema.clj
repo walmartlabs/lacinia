@@ -13,7 +13,8 @@
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.internal-utils
      :refer [map-vals map-kvs filter-vals deep-merge q
-             is-internal-type-name? sequential-or-set?]]
+             is-internal-type-name? sequential-or-set?
+             combine-results]]
     [com.walmartlabs.lacinia.resolve :as resolve
      :refer [ResolverResult resolve-as]]
     [clojure.string :as str])
@@ -459,7 +460,7 @@
           :else
           ;; So we have some privileged knowledge here: the callback returns a ResolverResult containing
           ;; the value. So we need to combine those together into a new ResolverResult.
-          (reduce #(resolve/combine-results conj %1 %2)
+          (reduce #(combine-results conj %1 %2)
                   (resolve/resolve-as [])
                   (mapv #(next-selector % callback) resolved-value)))))
 
