@@ -21,7 +21,7 @@
     (com.walmartlabs.lacinia.resolve ResolverResultImpl)))
 
 ;; When using Clojure 1.9 alpha, the dependency on clojure-future-spec can be excluded,
-;; an this code will not trigger; any? will come out of clojure.core as normal.
+;; and this code will not trigger; any? will come out of clojure.core as normal.
 (when (-> *clojure-version* :minor (< 9))
   (require '[clojure.future :refer [any?]]))
 
