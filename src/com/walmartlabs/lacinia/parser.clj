@@ -500,7 +500,7 @@
       (process-literal-argument schema {:type argument-definition} [:scalar result])
 
       :else
-      nil)))
+      result)))
 
 (defmethod process-dynamic-argument :variable
   [schema argument-definition [_ arg-value]]
