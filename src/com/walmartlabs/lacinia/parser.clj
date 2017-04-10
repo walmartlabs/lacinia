@@ -465,11 +465,42 @@
   (fn [schema argument-definition [arg-type _]]
     arg-type))
 
-
 (defn ^:private non-null-kind?
   "Peeks at the kind of the provided def (field, argument, or variable) to see if it is :non-null"
   [any-def]
   (-> any-def :type :kind (= :non-null)))
+
+(defn ^:private process-result
+  "Checks result against variable kind, iterates over nested types, and applies respective
+  actions, if necessary, e.g. parse for custom scalars."
+  [schema result argument-type arg-value]
+  (let [nested-type (:type argument-type)
+        scalar-type? (and (= :root (:kind argument-type))
+                          (scalar? (get schema nested-type)))
+        list-type? (= :list (:kind argument-type))
+        non-null-kind? (= :non-null (:kind argument-type))]
+    (cond
+      ;; we can only hit this if we iterate over list members
+      (and (nil? result) non-null-kind?)
+      (throw-exception (format "Variable %s contains null members but supplies the value for a list that can't have any null members."
+                               (q arg-value))
+                       {:variable-name arg-value})
+
+      list-type?
+      (if (not (sequential? result))
+        (throw-exception (format "Variable %s doesn't contain the correct number of (nested) lists."
+                                 (q arg-value))
+                         {:variable-name arg-value})
+        (mapv #(process-result schema % nested-type arg-value) result))
+
+      (and (some? result) (map? nested-type))
+      (recur schema result nested-type arg-value)
+
+      (and (some? result) scalar-type?)
+      (process-literal-argument schema {:type argument-type} [:scalar result])
+
+      :else
+      result)))
 
 (defmethod process-dynamic-argument :variable
   [schema argument-definition [_ arg-value]]
@@ -486,39 +517,37 @@
       (throw-exception "Variable and argument are not compatible types."
                        {:argument-type (summarize-type argument-definition)
                         :variable-type (summarize-type variable-def)}))
-
-    ;; TODO: This needs some work for the type system updates!
     (let [{:keys [default-value]} argument-definition
           non-nullable? (non-null-kind? argument-definition)
           var-non-nullable? (non-null-kind? variable-def)
           var-default-value (:default-value variable-def)]
       (fn [variables]
         (cond-let
-          :let [result (get variables arg-value)]
+         :let [result (get variables arg-value)]
 
-               (some? result)
-               result
+         (some? result)
+         (process-result schema result (:type argument-definition) arg-value)
 
-               ;; TODO: This is only triggered if a variable is referenced, omitting a non-nillable
-               ;; variable should be an error, regardless.
-               var-non-nullable?
-               (throw-exception (format "No value was provided for variable %s, which is non-nullable."
-                                   (q arg-value))
-                           {:variable-name arg-value})
+         ;; TODO: This is only triggered if a variable is referenced, omitting a non-nillable
+         ;; variable should be an error, regardless.
+         var-non-nullable?
+         (throw-exception (format "No value was provided for variable %s, which is non-nullable."
+                                  (q arg-value))
+                          {:variable-name arg-value})
 
-               (some? var-default-value)
-               var-default-value
+         (some? var-default-value)
+         var-default-value
 
-               (some? default-value)
-               default-value
+         (some? default-value)
+         default-value
 
-               non-nullable?
-               (throw-exception (format "Variable %s is null, but supplies the value for a non-nullable argument."
-                                   (q arg-value))
-                           {:variable-name arg-value})
+         non-nullable?
+         (throw-exception (format "Variable %s is null, but supplies the value for a non-nullable argument."
+                                  (q arg-value))
+                          {:variable-name arg-value})
 
-               :else
-               nil)))))
+         :else
+         nil)))))
 
 (defn ^:private construct-dynamic-arguments-extractor
   [schema argument-definitions arguments]
@@ -951,7 +980,7 @@
         ;; Simulate a field definition around the raw type:
         type-name (schema/root-type-name var-def)
         schema-type (get schema type-name)
-        ; eg. [:stringvalue "\"fred\""]
+        ;; eg. [:stringvalue "\"fred\""]
         default-value (-> m :defaultValue first second)]
     (with-exception-context {:var-name var-name
                              :type-name type-name
