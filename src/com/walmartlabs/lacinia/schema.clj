@@ -98,6 +98,12 @@
     (string? v) (Double/parseDouble v)
     :else (throw (ex-info (str "Invalid Float value: " v) {:value v}))))
 
+(defn ^:private coerce-to-boolean
+  [v]
+  (cond
+    (instance? Boolean v) v
+    (string? v) (Boolean/parseBoolean v)))
+
 (def default-scalar-transformers
   {:String {:parse (conformer str)
             :serialize (conformer str)}
@@ -105,7 +111,7 @@
            :serialize (conformer coerce-to-float)}
    :Int {:parse (conformer #(Integer/parseInt %))
          :serialize (conformer coerce-to-int)}
-   :Boolean {:parse (conformer #(Boolean/parseBoolean %))
+   :Boolean {:parse (conformer coerce-to-boolean)
              :serialize (conformer #(Boolean/valueOf %))}
    :ID {:parse (conformer str)
         :serialize (conformer str)}})
