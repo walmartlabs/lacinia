@@ -473,12 +473,12 @@
 (defn ^:private process-result
   "Checks result against variable kind, iterates over nested types, and applies respective
   actions, if necessary, e.g. parse for custom scalars."
-  [schema result argument-definition arg-value]
-  (let [next-type (:type argument-definition)
-        scalar-type? (and (= :root (:kind argument-definition))
-                          (scalar? (get schema next-type)))
-        list-type? (= :list (:kind argument-definition))
-        non-null-kind? (= :non-null (:kind argument-definition))]
+  [schema result argument-type arg-value]
+  (let [nested-type (:type argument-type)
+        scalar-type? (and (= :root (:kind argument-type))
+                          (scalar? (get schema nested-type)))
+        list-type? (= :list (:kind argument-type))
+        non-null-kind? (= :non-null (:kind argument-type))]
     (cond
       ;; we can only hit this if we iterate over list members
       (and (nil? result) non-null-kind?)
@@ -491,13 +491,13 @@
         (throw-exception (format "Variable %s doesn't contain the correct number of (nested) lists."
                                  (q arg-value))
                          {:variable-name arg-value})
-        (mapv #(process-result schema % next-type arg-value) result))
+        (mapv #(process-result schema % nested-type arg-value) result))
 
-      (and (some? result) (map? next-type))
-      (process-result schema result next-type arg-value)
+      (and (some? result) (map? nested-type))
+      (recur schema result nested-type arg-value)
 
       (and (some? result) scalar-type?)
-      (process-literal-argument schema {:type argument-definition} [:scalar result])
+      (process-literal-argument schema {:type argument-type} [:scalar result])
 
       :else
       result)))
