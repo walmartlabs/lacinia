@@ -11,10 +11,13 @@
 (def execution-order (atom []))
 
 (defn delayed-result
-  [delay exec-name value]
+  [wait-for exec-name value]
   (let [result (resolve/resolve-promise)
         body (fn []
-               (Thread/sleep delay)
+               (when (and wait-for
+                          (not= wait-for :any))
+                 (while (-> @execution-order set (contains? wait-for) not)
+                   (Thread/sleep 20)))
                (swap! execution-order conj (keyword exec-name))
                (resolve/deliver! result value))]
     (doto
@@ -31,24 +34,24 @@
 
 (defn node-resolver
   [_ args _]
-  (if (-> args :delay zero?)
-    args
-    (delayed-result (:delay args) (:name args) args)))
+  (let [wait (:wait args)]
+    (if (some? wait)
+      (delayed-result (keyword wait) (:name args) args)
+      args)))
 
 (def compiled-schema
   (-> '{:objects
         {:node
-         {:fields {:delay {:type Int}
-                   :name {:type String}}}}
+         {:fields {:name {:type String}}}}
         :queries
         {:node {:type :node
-                :args {:delay {:type (non-null Int)}
+                :args {:wait {:type String}
                        :name {:type (non-null String)}}
                 :resolve :node}}
 
         :mutations
         {:mnode {:type :node
-                 :args {:delay {:type (non-null Int)}
+                 :args {:wait {:type String}
                         :name {:type (non-null String)}}
                  :resolve :node}}}
       (util/attach-resolvers {:node node-resolver})
@@ -60,11 +63,11 @@
 (deftest queries-execute-in-parallel
   (let [result
         (q "{
-        n1: node(delay:400, name: \"n1\") {  name }
-        n2: node(delay:200, name: \"n2\") { name   }
-        n3: node(delay:0, name: \"n3\") { name }
-        n4: node(delay:600, name: \"n4\") { name }
-        n5: node(delay:300, name: \"n5\") { name }
+        n1: node(wait: \"n5\", name: \"n1\") {  name }
+        n2: node(wait: \"any\", name: \"n2\") { name}
+        n3: node(name: \"n3\") { name }
+        n4: node(wait: \"n1\", name: \"n4\") { name }
+        n5: node(wait: \"n2\", name: \"n5\") { name }
         }")
         actual-order @execution-order]
     ;; This shows that all the requested data did arrive, but potentially obscures
@@ -84,13 +87,16 @@
     (is (= [:n2 :n5 :n1 :n4] actual-order))))
 
 (deftest mutations-execute-serially
+  ;; This test is of questionable utility.
+  ;; Originally the threads operated with sleeps, but that was unpredictable
+  ;; on the CI server for some reason.
   (let [result
         (q "mutation {
-        n1: mnode(delay:200, name: \"n1\") {  name }
-        n2: mnode(delay:100, name: \"n2\") { name   }
-        n3: mnode(delay:0, name: \"n3\") { name }
-        n4: mnode(delay:300, name: \"n4\") { name }
-        n5: mnode(delay:150, name: \"n5\") { name }
+        n1: mnode(wait: \"any\",  name: \"n1\") {  name }
+        n2: mnode(wait: \"any\" name: \"n2\") { name }
+        n3: mnode( name: \"n3\") { name }
+        n4: mnode(wait: \"any\",  name: \"n4\") { name }
+        n5: mnode(wait: \"any\", name: \"n5\") { name }
          }")
         actual-order @execution-order]
     ;; This shows that all the requested data did arrive, but potentially obscures
