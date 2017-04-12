@@ -1,9 +1,6 @@
 (ns perf
   "A namespace where we track relative performance of query parsing and execution."
   (:require
-    [incanter.core :refer [with-data save conj-rows]]
-    [incanter.io :refer [read-dataset]]
-    [incanter.charts :refer [line-chart]]
     [org.example.schema :refer [star-wars-schema]]
     [criterium.core :as c]
     [com.walmartlabs.lacinia :refer [execute execute-parsed-query]]
@@ -11,9 +8,12 @@
     [clojure.java.shell :refer [sh]]
     [clojure.string :as str]
     [clojure.tools.cli :as cli]
+    [clojure.data.csv :as csv]
     [com.walmartlabs.lacinia.util :as util]
     [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.lacinia.resolve :refer [resolve-as]])
+    [com.walmartlabs.lacinia.resolve :refer [resolve-as]]
+    [clojure.java.io :as io]
+    [clojure.pprint :as pprint])
   (:import (java.util Date)))
 
 ;; Be aware that any change to this schema will invalidate any gathered
@@ -227,28 +227,6 @@
         exec-time (benchmark (execute-parsed-query parsed-query variables nil))]
     [(name benchmark-name) parse-time exec-time]))
 
-(defn ^:private create-charts
-  [dataset options]
-  (when (:print options)
-    (prn dataset))
-  (with-data dataset
-    (-> (line-chart :date :parse
-                    :title "Historical Parse Time / Operation"
-                    :group-by :kind
-                    :x-label "Date"
-                    :y-label "ms"
-                    :legend true)
-        (save "perf/parse-time.png"
-              :width 1000))
-    (-> (line-chart :date :exec
-                    :title "Historical Execution Time / Operation"
-                    :group-by :kind
-                    :x-label "Date"
-                    :y-label "ms"
-                    :legend true)
-        (save "perf/exec-time.png"
-              :width 1000))))
-
 (defn ^:private git-commit
   []
   (-> (sh "git" "rev-parse" "HEAD")
@@ -259,21 +237,38 @@
 
 (def ^:private dataset-file "perf/benchmarks.csv")
 
+(defn read-dataset
+  []
+  (let [[header-row & raw-data]
+        (-> (io/file dataset-file)
+            io/reader
+            csv/read-csv)
+        parse-double (fn [row ix]
+                       (update row ix #(Double/parseDouble %)))]
+    (into [header-row]
+          (->> raw-data
+               (mapv #(parse-double % 3))
+               (mapv #(parse-double % 4))))))
+
 (defn run-benchmarks [options]
   (let [prefix [(format "%tY%<tm%<td" (Date.))
                 (or (:commit options) (git-commit))]
         new-benchmarks (->> (map run-benchmark (keys benchmark-queries))
                             (map #(into prefix %)))
-        dataset (-> (read-dataset dataset-file :header true)
-                    (conj-rows new-benchmarks))]
-    (create-charts dataset options)
-    (when (:save options)
-      (save dataset dataset-file)
-      (println "Updated perf.csv"))))
+        dataset (into (read-dataset) new-benchmarks)]
+
+    (when (:print options)
+      (pprint/write dataset :right-margin 100)
+      println
+      (flush))
+
+    (with-open [w (-> dataset-file io/file io/writer)]
+      (csv/write-csv w dataset))
+
+    (println "Updated" dataset-file)))
 
 (def ^:private cli-opts
-  [["-s" "--save" "Update benchmark data file after running benchmarks."]
-   ["-p" "--print" "Print the table of benchmark data used to generate charts."]
+  [["-p" "--print" "Print the table of benchmark data used to generate charts."]
    ["-c" "--commit SHA" "Specify Git commit SHA; defaults to current commit (truncated to 8 chars)."]
    ["-h" "--help" "This usage summary."]])
 

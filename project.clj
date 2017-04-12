@@ -10,7 +10,7 @@
                  [org.flatland/ordered "1.5.4"
                   :exclusions [org.clojure/tools.macro]]]
   :profiles {:dev {:dependencies [[criterium "0.4.4"]
-                                  [incanter "1.5.7"]
+                                  [org.clojure/data.csv "0.1.3"]
                                   [org.clojure/tools.cli "0.3.5"]
                                   [org.clojure/data.json "0.2.6"]]}}
   :aliases {"benchmarks" ["run" "-m" "perf"]}
