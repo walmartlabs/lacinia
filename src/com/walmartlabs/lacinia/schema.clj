@@ -13,14 +13,15 @@
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.internal-utils
      :refer [map-vals map-kvs filter-vals deep-merge q
-             is-internal-type-name? sequential-or-set? as-keyword]]
-    [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolved-value resolve-errors resolve-as]]
+             is-internal-type-name? sequential-or-set? as-keyword
+             combine-results]]
+    [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolve-as]]
     [clojure.string :as str])
   (:import
     (com.walmartlabs.lacinia.resolve ResolverResultImpl)))
 
 ;; When using Clojure 1.9 alpha, the dependency on clojure-future-spec can be excluded,
-;; an this code will not trigger; any? will come out of clojure.core as normal.
+;; and this code will not trigger; any? will come out of clojure.core as normal.
 (when (-> *clojure-version* :minor (< 9))
   (require '[clojure.future :refer [any?]]))
 
@@ -450,7 +451,11 @@
           (callback nil (error "Field resolver returned a single value, expected a collection of values."))
 
           :else
-          (mapv #(next-selector % callback) resolved-value))))
+          ;; So we have some privileged knowledge here: the callback returns a ResolverResult containing
+          ;; the value. So we need to combine those together into a new ResolverResult.
+          (reduce #(combine-results conj %1 %2)
+                  (resolve-as [])
+                  (mapv #(next-selector % callback) resolved-value)))))
 
     :non-null
     (let [next-selector (assemble-selector schema object-type field (:type type))]

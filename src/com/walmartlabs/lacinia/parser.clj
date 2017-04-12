@@ -517,6 +517,7 @@
       (throw-exception "Variable and argument are not compatible types."
                        {:argument-type (summarize-type argument-definition)
                         :variable-type (summarize-type variable-def)}))
+
     (let [{:keys [default-value]} argument-definition
           non-nullable? (non-null-kind? argument-definition)
           var-non-nullable? (non-null-kind? variable-def)
@@ -930,19 +931,6 @@
        (filter #(= (first %) element-type))
        first))
 
-(defn ^:private operation-root
-  "From an operation definition, determine the root object to query.
-  This is normally the ::schema/query type, but can be ::schema/mutation
-  if explicitly indicated in the query."
-  [schema operation-definition]
-  (let [op-type (find-element operation-definition :operationType)
-        k (if (and op-type
-                   (= "mutation" (-> op-type second second)))
-            constants/mutation-root
-            ;; Otherwise implicitly or explicitly a query
-            constants/query-root)]
-    (get schema k)))
-
 (defn ^:private element->map
   "Maps a parsed element to a map."
   [element]
@@ -1019,7 +1007,20 @@
         operation
         (select-operation operationDefinition operation-name)
 
-        root (operation-root schema operation)
+        op-type (find-element operation :operationType)
+
+        ;; Can only be a mutation if the leading keyword is provided as is "mutation".
+        mutation? (and op-type
+                       (-> op-type
+                           second
+                           second
+                           (= "mutation")))
+
+        root-key (if mutation?
+               constants/mutation-root
+               constants/query-root)
+
+        root (get schema root-key)
 
         variable-definitions (extract-variable-definitions schema operation)
 
@@ -1039,6 +1040,7 @@
     {:fragments (normalize-fragment-definitions schema' nil fragmentDefinition)
      :selections (mapv #(selection schema' % root [])
                        (rest selections))
+     :mutation? mutation?
      constants/schema-key schema}))
 
 (defn ^:private parse-failures

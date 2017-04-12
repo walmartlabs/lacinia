@@ -97,24 +97,6 @@ For example, you might have an ``:lineItem`` query of type ``:LineItem``, and Li
 A query ``{lineItem(id:"12345") { product }}}`` is not valid: it is not possible to return a Product directly,
 you **must** select fields within Product:  ``{lineItem(id:"12345") { product { name upc price }}}```.
 
-
-Resolver Result
----------------
-
-A field resolver usually just returns the resolved value, or (for a list type) a seq of resolved values.
-
-Field resolvers should not throw exceptions; instead, if there is a problem generating the resolved value,
-they should use the ``com.walmartlabs.lacinia.resolve/resolve-as`` function to return a ResolverResult value.
-
-.. sidebar:: Why not just throw an exception?
-
-    Exceptions are a terrible way to deal with control flow issues, even in the
-    presence of actual failures.
-    More importantly, the ResolverResult approach allows more than a single error, and keeps the
-    door open for planned extensions that will support asynchronous query execution.
-
-Errors will be exposed as the top-level ``:errors`` key of the execution result.
-
 Resolving Collections
 ---------------------
 

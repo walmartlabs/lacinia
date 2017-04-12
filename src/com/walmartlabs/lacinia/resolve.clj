@@ -4,32 +4,86 @@
 ;; This can be extended in the future to encompass a value that may be resolved
 ;; asynchronously.
 (defprotocol ResolverResult
-  "A complex returned from a field resolver that can contain a resolved value
+  "A special type returned from a field resolver that can contain a resolved value
   and/or errors."
 
-  (resolved-value [this]
-    "Returns the value resolved by the field resolver. This is typically
-    a map or a scalar; for fields that are lists, this will be
-    a seq of such values.")
+    (on-deliver! [this callback]
+    "Provides a callback that is invoked immediately after the ResolverResult is realized.
+    The callback is passed the ResolverResult's value and errors.
 
-  (resolve-errors [this]
-    "Returns any errors that were generated while resolving the value.
+    `on-deliver!` should only be invoked once.
+    It returns the ResolverResult.
 
-    This may be a single map, or a seq of maps.
-    Each map must contain a :message key and may contain additional
-    keys. Further keys are added to identify the executing field."))
+    On a simple ResolverResult (not a ResolverResultPromise), the callback is invoked
+    immediately.
+
+    The callback is invoked for side-effects; its result is ignored."))
+
+(defprotocol ResolverResultPromise
+  "A specialization of ResolverResult that supports asynchronous delivery of the resolved value and errors."
+
+  (deliver!
+    [this value]
+    [this value errors]
+    "Invoked to realize the ResolverResult, triggering the callback and unblocking anyone waiting for the resolved-value or errors.
+
+    Returns the deferred resolver result."))
 
 (defrecord ^:private ResolverResultImpl [resolved-value resolve-errors]
 
   ResolverResult
 
-  (resolved-value [_] resolved-value)
-
-  (resolve-errors [_] resolve-errors))
+  (on-deliver! [this callback]
+    (callback resolved-value resolve-errors)
+    this))
 
 (defn resolve-as
-  "Invoked by field resolvers to wrap a simple return value as a ResolverResult."
+  "Invoked by field resolvers to wrap a simple return value as a ResolverResult.
+
+  This is an immediately realized ResolverResult."
   ([resolved-value]
    (resolve-as resolved-value nil))
   ([resolved-value resolver-errors]
    (->ResolverResultImpl resolved-value resolver-errors)))
+
+(defn resolve-promise
+  "Returns a ResolverResultPromise.
+
+   A value must be resolved and ultimately provided via [[deliver!]]."
+  []
+  (let [realized-result (promise)
+        callback-promise (promise)]
+    (reify
+      ResolverResult
+
+      ;; We could do a bit more locking to avoid a couple of race-condition edge cases, but this is mostly to sanity
+      ;; check bad application code that simply gets the contract wrong.
+      (on-deliver! [this callback]
+        (cond
+          (realized? realized-result)
+          (on-deliver! @realized-result callback)
+
+          (realized? callback-promise)
+          (throw (IllegalStateException. "ResolverResultPromise callback may only be set once."))
+
+          :else
+          (deliver callback-promise callback))
+
+        this)
+
+      ResolverResultPromise
+
+      (deliver! [this resolved-value]
+        (deliver! this resolved-value nil))
+
+      (deliver! [this resolved-value errors]
+        (when (realized? realized-result)
+          (throw (IllegalStateException. "May only realize a ResolverResultPromise once.")))
+
+        ;; Need to capture the results if they arrive before the call to on-deliver!
+        (deliver realized-result (resolve-as resolved-value errors))
+
+        (when (realized? callback-promise)
+          (@callback-promise resolved-value errors))
+
+        this))))

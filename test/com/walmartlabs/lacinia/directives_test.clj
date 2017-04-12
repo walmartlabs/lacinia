@@ -208,7 +208,7 @@
                  id
                }
              }"]
-      (is (= {:data nil}
+      (is (= {:data {}}
              (execute compiled-schema q {:skip true} nil))
           "should return no data")
       (is (= {:data {:human {:id "1001"}}}
