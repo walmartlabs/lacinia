@@ -237,12 +237,14 @@
 
 (def ^:private dataset-file "perf/benchmarks.csv")
 
-(defn read-dataset
+(defn ^:private read-dataset
   []
   (let [[header-row & raw-data]
         (-> (io/file dataset-file)
             io/reader
             csv/read-csv)
+        ;; read-csv reads all columns as strings, so we need to do some
+        ;; work to get them back to numbers.
         parse-double (fn [row ix]
                        (update row ix #(Double/parseDouble %)))]
     (into [header-row]
@@ -250,7 +252,8 @@
                (mapv #(parse-double % 3))
                (mapv #(parse-double % 4))))))
 
-(defn run-benchmarks [options]
+(defn ^:private run-benchmarks
+  [options]
   (let [prefix [(format "%tY%<tm%<td" (Date.))
                 (or (:commit options) (git-commit))]
         new-benchmarks (->> (map run-benchmark (keys benchmark-queries))
