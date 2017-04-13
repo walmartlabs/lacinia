@@ -339,16 +339,20 @@
 
 (defn ^:private wrap-resolver-to-ensure-resolver-result
   [resolver]
-  (fn [context args value]
-    (let [raw-value (resolver context args value)
-          is-result? (when raw-value
-                       ;; This is a little bit of optimization; satisfies? can
-                       ;; be a bit expensive.
-                       (or (instance? ResolverResultImpl raw-value)
-                           (satisfies? ResolverResult raw-value)))]
-      (if is-result?
-        raw-value
-        (resolve-as raw-value)))))
+  ;; If a resolver reports its type as ResolverResult, then we don't
+  ;; need to wrap it. This can really add up for all the default resolvers.
+  (if (-> resolver meta :tag (identical? ResolverResult))
+    resolver
+    (fn [context args value]
+      (let [raw-value (resolver context args value)
+            is-result? (when raw-value
+                         ;; This is a little bit of optimization; satisfies? can
+                         ;; be a bit expensive.
+                         (or (instance? ResolverResultImpl raw-value)
+                             (satisfies? ResolverResult raw-value)))]
+        (if is-result?
+          raw-value
+          (resolve-as raw-value))))))
 
 (defn ^:private compose-selectors
   [next-selector selector-wrapper]
@@ -775,16 +779,22 @@
 
 (s/def ::compile-options (s/keys :opt-un [::default-field-resolver]))
 
+(defn default-field-resolver
+  "The default for the :default-field-resolver option, this
+  is a function that accepts a field name (a keyword) and
+  returns a field resolver function for the field. This includes
+  the default behavior of converting underscores in the field name
+  into dashes."
+  [field-name]
+  (let [hyphenized-field (-> field-name
+                             name
+                             (str/replace "_" "-")
+                             keyword)]
+    ^ResolverResult (fn [_ _ v]
+                      (resolve-as (get v hyphenized-field)))))
 
 (def ^:private default-compile-opts
-  {:default-field-resolver
-   (fn [field-name]
-     (let [hyphenized-field (-> field-name
-                                name
-                                (str/replace "_" "-")
-                                keyword)]
-       (fn [_ _ v]
-         (get v hyphenized-field))))})
+  {:default-field-resolver default-field-resolver})
 
 (defn compile
   "Compiles a schema, verifies its correctness, and inlines all types.
