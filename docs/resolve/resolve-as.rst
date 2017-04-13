@@ -38,3 +38,22 @@ This first parameter is the resolved value, which may be ``nil``.
 
 The order in which errors appear in the ``:errors`` key of the response is not specified;
 however, Lacinia does remove duplicate errors.
+
+Tagging Resolvers
+-----------------
+
+If you write a function that *always* returns a ResolverResult, you should set the tag of the
+function to be ``com.walmartlabs.lacinia.resolve/ResolverResult``.
+Doing so enables an optimization inside Lacinia - it can skip the code that checks to see if
+the function did in fact return a ResolverResult and wrap it in a ResolverResult if not.
+
+Unfortunately, because of how Clojure handles function meta-data, you need to write your
+function as follows:
+
+.. literalinclude:: ../_examples/tagged-resolver.edn
+   :language: clojure
+
+This places the type tag on the function, not on the symbol (as normally happens with `defn`).
+
+It doesn't matter whether the function invokes `resolve-as` or `resolve-promise`, but returning
+nil or a bare value will cause runtime exceptions, so be careful.

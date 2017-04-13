@@ -1,0 +1,5 @@
+(require '[com.walmartlabs.lacinia.resolve :refer [resolve-as ResolverResult]])
+
+(def customer-resolver
+  ^ResolverResult (fn [context args value]
+                    (resolve-as ...)))
