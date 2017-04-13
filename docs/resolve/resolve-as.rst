@@ -53,7 +53,7 @@ function as follows:
 .. literalinclude:: ../_examples/tagged-resolver.edn
    :language: clojure
 
-This places the type tag on the function, not on the symbol (as normally happens with `defn`).
+This places the type tag on the function, not on the symbol (as normally happens with ``defn``).
 
-It doesn't matter whether the function invokes `resolve-as` or `resolve-promise`, but returning
+It doesn't matter whether the function invokes ``resolve-as`` or ``resolve-promise``, but returning
 nil or a bare value will cause runtime exceptions, so be careful.
