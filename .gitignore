@@ -14,3 +14,4 @@ pom.xml.asc
 _build
 .DS_Store
 build.xml
+.Rapp.history
