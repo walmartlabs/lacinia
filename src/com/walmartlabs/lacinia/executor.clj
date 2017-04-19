@@ -14,9 +14,9 @@
    (ex-info-map field-selection {}))
   ([field-selection m]
    (merge m
-          {:locations [(:location field-selection)]}
-          (->> (select-keys field-selection [:query-path :arguments])
-               (remove-vals nil?)))))
+          (remove-vals nil? {:locations [(:location field-selection)]
+                             :query-path (:query-path field-selection)
+                             :arguments (:reportable-arguments field-selection)}))))
 
 (defn ^:private assert-and-wrap-error
   "An error returned by a resolver should be nil, a map, or a collection

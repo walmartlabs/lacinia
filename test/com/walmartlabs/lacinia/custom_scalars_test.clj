@@ -276,7 +276,7 @@
               :errors [{:message "Non-nullable field was null.",
                         :locations [{:line 1, :column 33}],
                         :query-path [:shout],
-                        :arguments {:words [[[nil]]]}}]}
+                        :arguments {:words '$words}}]}
              (execute schema "query ($words: [[[CustomType]]]) {
                               shout(words: $words)
                             }"

@@ -154,6 +154,20 @@
                (transient {}))
        persistent!))
 
+(declare ^:private extract-reportable-arguments)
+
+(defn ^:private extract-reportable-argument-value
+  [[arg-type v]]
+  (case arg-type
+    :variable (symbol (str \$ (name v)))
+    :array (mapv extract-reportable-argument-value v)
+    :object (extract-reportable-arguments v)
+    v))
+
+(defn ^:private extract-reportable-arguments
+  [arg-map]
+  (map-vals extract-reportable-argument-value arg-map))
+
 (defn ^:private node-reducer
   "A generic reducing fn for building maps out of nodes."
   [acc [k :as node]]
@@ -165,7 +179,10 @@
     (assoc acc :alias (keyword (second (second node))))
 
     :arguments
-    (assoc acc :arguments (xform-argument-map (rest node)))
+    (let [args (xform-argument-map (rest node))]
+      (assoc acc
+             :arguments args
+             :reportable-arguments (extract-reportable-arguments args)))
 
     :typeCondition
     ;; Part of inline fragments and fragment definitions
@@ -665,7 +682,7 @@
         context (node-context defaults)
         result (with-exception-context context
                  (reduce node-reducer defaults (rest (second selection))))
-        {:keys [field alias arguments directives]} result
+        {:keys [field alias arguments reportable-arguments directives]} result
         field-definition (get-in type [:fields field])
         field-type (schema/root-type-name field-definition)
         nested-type (get schema field-type)
@@ -699,6 +716,7 @@
                             :query-path query-path'
                             :leaf? (scalar? nested-type)
                             :concrete-type? (-> type :category #{:object :input-object} some?)
+                            :reportable-arguments reportable-arguments
                             :arguments literal-arguments
                             ::arguments-extractor dynamic-arguments-extractor
                             :field-definition field-definition)]))))
