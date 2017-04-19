@@ -1,3 +1,5 @@
+## 0.16.0 -- UNRELEASED
+
 ## 0.15.0 -- 19 Apr 2017
 
 Field resolvers can now operate synchronously or asynchronously.

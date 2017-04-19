@@ -5,6 +5,10 @@
 
 [![CircleCI](https://circleci.com/gh/walmartlabs/lacinia/tree/master.svg?style=svg)](https://circleci.com/gh/walmartlabs/lacinia/tree/master)
 
+[Manual](http://lacinia.readthedocs.io/en/latest/)
+
+[API Documentation](http://walmartlabs.github.io/lacinia/)
+
 This library is a full implementation of
 the [GraphQL specification](https://facebook.github.io/graphql) and aims to
 maintain _external_<sup id="a1">[1](#f1)</sup> compliance with the specification.

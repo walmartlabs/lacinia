@@ -44,6 +44,11 @@ Often, a query will return a list of matching objects.
    However, Lacinia does not address network issues; it is a set of functions to be
    invoked by your web pipeline, be it Ring, Pedestal, or something else.
 
+   The library `com.walmartlabs/pedestal-lacinia <https://github.com/walmartlabs/pedestal-lacinia>`_
+   provides the necessary bits when building a server based on
+   `Pedestal <https://github.com/pedestal/pedestal>`_, including an easy way to
+   optionally expose a `GraphiQL IDE <https://github.com/graphql/graphiql>`_.
+
 
 Using the API
 -------------
@@ -75,7 +80,7 @@ This query can be stated as `just provide the name of the human with id '1001'`.
 
 This is a successful query, it returns a map with a ``:data`` key.
 A failed query would return a map with an ``:errors`` key.
-A query can even be partially succesful, returning as much data as it can, but also errors.
+A query can even be partially successful, returning as much data as it can, but also errors.
 
 Inside ``:data`` is a key corresponding to the query, ``:human``, whose value is the single
 matching human.  Other queries might return a list of matches.
