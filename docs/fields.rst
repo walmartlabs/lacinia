@@ -41,11 +41,6 @@ In the schema, a type can be:
 - A non-nillable version of any of the above: ``(non-null X)``
 - A list of any of the above: ``(list X)``
 
-.. warning::
-
-   Lacinia does not fully implement the spec here, which allows for more combinations of
-   non-null and list than is currently supported.
-
 The built-in scalar types:
 
 .. sidebar:: GraphQL Spec
