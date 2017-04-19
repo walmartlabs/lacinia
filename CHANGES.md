@@ -1,4 +1,4 @@
-## 0.15.0 -- UNRELEASED
+## 0.15.0 -- 19 Apr 2017
 
 Field resolvers can now operate synchronously or asynchronously.
 
@@ -10,6 +10,8 @@ The internal representation of enum values has changed from String to Keyword.
 You will now see a Keyword, not a String, supplied as the value of an enum-typed argument
 or variable.
 You may need to make small changes to your field resolvers.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/2?closed=1)
 
 
 ## 0.14.0 -- 29 Mar 2017
