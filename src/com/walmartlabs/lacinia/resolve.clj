@@ -1,8 +1,6 @@
 (ns com.walmartlabs.lacinia.resolve
   "Complex results for field resolver functions.")
 
-;; This can be extended in the future to encompass a value that may be resolved
-;; asynchronously.
 (defprotocol ResolverResult
   "A special type returned from a field resolver that can contain a resolved value
   and/or errors."
@@ -25,7 +23,7 @@
   (deliver!
     [this value]
     [this value errors]
-    "Invoked to realize the ResolverResult, triggering the callback and unblocking anyone waiting for the resolved-value or errors.
+    "Invoked to realize the ResolverResult, triggering the callback to receive the value and errors.
 
     Returns the deferred resolver result."))
 
