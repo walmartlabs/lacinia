@@ -167,6 +167,8 @@ requests; this typically occurs inside a Ring handler function:
 
 Lacinia doesn't know about the web tier at all, it just knows about
 parsing and executing queries against a compiled schema.
+A companion library, [pedestal-lacinia](https://github.com/walmartlabs/pedestal-lacinia),
+is one way to expose your schema on the web.
 
 User queries are provided as the body of a request with the content type application/graphql.
 It looks a lot like JSON.
@@ -207,12 +209,12 @@ fields in the response:
 ```
 
 ```clojure
-{:data {:hero {:movies [:NEWHOPE :EMPIRE :JEDI"]}}}
+{:data {:hero {:movies [:NEWHOPE :EMPIRE :JEDI]}}}
 ```
 
 ## Status
 
-Although this library is used internally, in production, it is
+Although this library is used in production at Walmart, it is
 still considered alpha software - subject to change.
 We expect to stabilize it in the near future.
 
