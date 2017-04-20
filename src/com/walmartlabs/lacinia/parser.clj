@@ -739,9 +739,9 @@
 
     (and single-op?
          operation-name
-         (or (not (< 2 (count (second first-op))))
+         (or (not (< 2 (count first-op)))
              (not= operation-name
-                   (-> first-op second (nth 2) second))))
+                   (-> first-op (nth 2) second))))
 
     (throw-exception "Single operation did not provide a matching name."
                      {:op-name operation-name})
@@ -751,8 +751,8 @@
 
     :let [operation (some #(when (= operation-name
                                     ;; We can only check named documents
-                                    (and (< 2 (count (second %)))
-                                         (-> % second (nth 2) second)))
+                                    (and (< 2 (count %))
+                                         (-> % (nth 2) second)))
                              %)
                           operations)]
 

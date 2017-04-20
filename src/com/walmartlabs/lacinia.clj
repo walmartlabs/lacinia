@@ -68,10 +68,10 @@
   : Additional data that will ultimately be passed to resolver functions.
 
   This function parses the query and invokes [[execute-parsed-query]]."
-  [schema query variables context]
+  [schema query variables context & [operation-name]]
   {:pre [(string? query)]}
   (let [[parsed error-result] (try
-                                  [(parser/parse-query schema query)]
+                                  [(parser/parse-query schema query operation-name)]
                                   (catch ExceptionInfo e
                                     [nil {:errors (as-errors e)}]))]
     (if (some? error-result)
