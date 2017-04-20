@@ -14,8 +14,8 @@
 (defn execute
   "Executes the query but reduces ordered maps to normal maps, which makes
   comparisons easier.  Other tests exist to ensure that order is maintained."
-  [schema q vars context]
-  (-> (lacinia/execute schema q vars context)
+  [schema q vars context & [operation-name]]
+  (-> (lacinia/execute schema q vars context operation-name)
       simplify))
 
 ;; —————————————————————————————————————————————————————————————————————————————
@@ -53,6 +53,19 @@
            (execute default-schema q {:from "Han Solo"
                                        :to "Solo"}
                     nil)))))
+
+(deftest operation-name
+  ;; Standard query with operation name
+  (let [q "query heroNameQuery { hero { id name } } query dummyQuery { hero { id } }"]
+    (is (= {:data {:hero {:id "2001" :name "R2-D2"}}}
+           (execute default-schema q {} nil "heroNameQuery"))))
+
+  (let [q "mutation changeHeroNameMutation ($from : String, $to: String) { changeHeroName(from: $from, to: $to) { name } }
+           query dummyQuery { hero { id } }"]
+    (is (= {:data {:changeHeroName {:name "Solo"}}}
+           (execute default-schema q {:from "Han Solo"
+                                      :to "Solo"}
+                    nil "changeHeroNameMutation")))))
 
 (deftest null-value-mutation
   (letfn [(reset-value []
