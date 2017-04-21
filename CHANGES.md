@@ -1,5 +1,7 @@
 ## 0.16.0 -- UNRELEASED
 
+The function `com.walmartlabs.lacinia.schema/as-conformer' is now public.
+
 ## 0.15.0 -- 19 Apr 2017
 
 Field resolvers can now operate synchronously or asynchronously.
