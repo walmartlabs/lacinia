@@ -17,6 +17,8 @@ Enum values must be unique, otherwise an exception is thrown when compiling the 
 
 Enum values must be GraphQL Names: they may contain only letters, numbers, and underscores.
 
+Enums `are` case sensitive; by convention they are in all upper-case.
+
 When an enum type is used as an argument, the value provided to the field resolver function
 will be a keyword, regardless of whether the enum values were defined using strings, keywords, or symbols.
 
