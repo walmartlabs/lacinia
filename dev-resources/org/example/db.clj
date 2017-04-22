@@ -51,9 +51,9 @@
 
 
 (def ^:private hero-data
-  {"NEWHOPE" "2001"
-   "EMPIRE" "1002"
-   "JEDI" "1000"})
+  {:NEWHOPE "2001"
+   :EMPIRE "1002"
+   :JEDI "1000"})
 
 (defn ^:private first-match [data key value]
   (-> (filter #(= (get % key) value) data)
@@ -61,7 +61,7 @@
 
 (defn  resolve-hero
   [ctx args value]
-  (let [episode (:episode args "NEWHOPE")
+  (let [episode (:episode args :NEWHOPE)
         hero-id (get hero-data episode)]
     (first-match character-data :id hero-id)))
 

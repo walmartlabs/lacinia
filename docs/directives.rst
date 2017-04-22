@@ -10,6 +10,6 @@ For example, we can use directives to include or skip a field if certain criteri
    Read about directives `here <https://facebook.github.io/graphql/#sec-Language.Directives>`_
    and `here <https://facebook.github.io/graphql/#sec-Type-System.Directives>`_.
 
-Currently Lacinia supports two directives: ``@skip`` and ``@include``, but future versions
+Currently Lacinia supports just the two standard directives: ``@skip`` and ``@include``, but future versions
 may include more.
 Custom directives are not yet supported.
