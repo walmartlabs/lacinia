@@ -13,8 +13,12 @@
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :refer [resolve-as]]
     [clojure.java.io :as io]
-    [clojure.pprint :as pprint])
-  (:import (java.util Date)))
+    [clojure.pprint :as pprint]
+    [com.walmartlabs.test-utils :refer [simplify]]
+    [clojure.walk :as walk]
+    [clojure.edn :as edn])
+  (:import
+    (java.util Date)))
 
 ;; Be aware that any change to this schema will invalidate any gathered
 ;; performance data.
@@ -160,9 +164,16 @@
             }
           }")
 
+(defn ^:private read-edn
+  [file]
+  (-> (io/resource file)
+      slurp
+      edn/read-string))
+
 (def ^:private benchmark-queries
   {:introspection
-   {:query introspection-query-raw}
+   {:query introspection-query-raw
+    :expected (read-edn "introspection.edn")}
 
    :basic
    {:query "
@@ -177,7 +188,8 @@
        id
        name
        friends { name }}
-   }"}
+   }"
+    :expected (read-edn "basic.edn")}
 
    :basic-vars
    {:query "
@@ -194,13 +206,15 @@
        friends { name }
      }
    }"
-    :vars {:ep "NEWHOPE"}}
+    :vars {:ep "NEWHOPE"}
+    :expected (read-edn "basic-vars.edn")}
 
    :errors
    ;; Test how long it take when a single deeply nested resolver resolves an error.
    ;; Also shows the cost of the call to distinct
    {:query "{ planets { name moons { name bases { name }}}}"
-    :schema planets-schema}})
+    :schema planets-schema
+    :expected (read-edn "errors.edn")}})
 
 (defmacro ^:private benchmark [expr]
   `(-> ~expr
@@ -219,11 +233,17 @@
 
   (let [{query-string :query
          variables :vars
-         schema :schema
+         :keys [schema expected]
          :or {schema compiled-schema}} (get benchmark-queries benchmark-name)
         parse-time (benchmark (parser/parse-query schema query-string))
         parsed-query (parser/parse-query schema query-string)
-        _ (println "Running benchmark" (name benchmark-name) "(exec) ...")
+        actual-result (simplify (execute-parsed-query parsed-query variables nil))
+        _ (do
+            (when-not (= actual-result expected)
+              (println "Benchmark returned unexpected result:\n\n")
+              (pprint/pprint actual-result)
+              (throw (IllegalStateException. "Benchmark did not return expected result.")))
+            (println "Running benchmark" (name benchmark-name) "(exec) ..."))
         exec-time (benchmark (execute-parsed-query parsed-query variables nil))]
     [(name benchmark-name) parse-time exec-time]))
 
