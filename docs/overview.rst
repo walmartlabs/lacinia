@@ -14,6 +14,9 @@ format of the client query language, and the expected behavior of the server.
 This library, Lacinia, is an implementation of the key component of the server,
 in idiomatic Clojure.
 
+Schema
+------
+
 The GraphQL specification includes a language to define the server-side schema; the
 ``type`` keyword is used to introduce a new kind of object.
 
@@ -37,16 +40,33 @@ But how to access that data?  That's accomplished using one of three queries:
 In this example, each query returns a single instance of the matching object.
 Often, a query will return a list of matching objects.
 
-Using the API
--------------
+Injecting Data
+--------------
+
+The schema defines the *shape* of the data that can be queried, but leaves out where that data comes from.
+Unlike an object/relational mapping layer, where we might discuss database tables and rows, GraphQL (and
+by extension, Lacinia) has *no* idea where the data comes from.
+
+That's the realm of the :doc:`field resolver function <resolve/index>`.
+Since EDN files are just data, we leave placeholder keywords in the EDN data and attach the
+actual functions once the EDN data is read into memory.
+
+Compiling the Schema
+--------------------
 
 The schema starts as a data structure, we need to add in the field resolver and then *compile* the result.
 
 .. literalinclude:: ../dev-resources/org/example/schema.clj
     :language: clojure
 
+The ``attach-resolvers`` function walks the schema tree and replaces the values for ``:resolve`` keys.
+With actual functions in place, the schema can be compiled for execution.
+
 Compilation performs a number of checks, applies defaults, merges in introspection data about the schema,
 and performs a number of other operations to ready the schema for use.
+
+Executing Queries
+-----------------
 
 With that in place, we can now execute queries.
 
