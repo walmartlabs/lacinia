@@ -13,13 +13,15 @@
 
 (def schema
   (schema/compile
-    {:scalars {
-               :Date {:parse (s/conformer #(.parse date-formatter %))
-                      :serialize (s/conformer #(.format date-formatter %))}}
+    {:scalars
+     {:Date
+      {:parse (schema/as-conformer #(.parse date-formatter %))
+       :serialize (schema/as-conformer #(.format date-formatter %))}}
 
-     :queries {
-               :today {:type :Date
-                       :resolve (fn [ctx args v] (Date.))}}}))
+     :queries
+     {:today
+      {:type :Date
+       :resolve (fn [ctx args v] (Date.))}}}))
 
 (g/execute schema "{today}" nil nil)
 => {:data {:today "2016-12-09"}}

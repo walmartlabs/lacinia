@@ -71,10 +71,13 @@
        ;; all the values have been filtered out.
        (filter-vals seq)))
 
-(defn ^:private conformer
-  "Creates a conformer that returns
-  :clojure.spec/invalid when the value fails
-  to conform."
+(defn as-conformer
+  "Creates a clojure.spec/conformer as a wrapper around the supplied function.
+
+  The function is only invoked if the value to be conformed is non-nil.
+
+  Any exception thrown by the function is silently caught and the returned conformer
+  will return :clojure.spec/invalid."
   [f]
   (s/conformer
     (fn [x]
@@ -105,16 +108,16 @@
     (string? v) (Boolean/parseBoolean v)))
 
 (def default-scalar-transformers
-  {:String {:parse (conformer str)
-            :serialize (conformer str)}
-   :Float {:parse (conformer #(Double/parseDouble %))
-           :serialize (conformer coerce-to-float)}
-   :Int {:parse (conformer #(Integer/parseInt %))
-         :serialize (conformer coerce-to-int)}
-   :Boolean {:parse (conformer coerce-to-boolean)
-             :serialize (conformer #(Boolean/valueOf %))}
-   :ID {:parse (conformer str)
-        :serialize (conformer str)}})
+  {:String {:parse (as-conformer str)
+            :serialize (as-conformer str)}
+   :Float {:parse (as-conformer #(Double/parseDouble %))
+           :serialize (as-conformer coerce-to-float)}
+   :Int {:parse (as-conformer #(Integer/parseInt %))
+         :serialize (as-conformer coerce-to-int)}
+   :Boolean {:parse (as-conformer coerce-to-boolean)
+             :serialize (as-conformer #(Boolean/valueOf %))}
+   :ID {:parse (as-conformer str)
+        :serialize (as-conformer str)}})
 
 (defn ^:private error
   ([message]
