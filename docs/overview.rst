@@ -14,6 +14,9 @@ format of the client query language, and the expected behavior of the server.
 This library, Lacinia, is an implementation of the key component of the server,
 in idiomatic Clojure.
 
+Schema
+------
+
 The GraphQL specification includes a language to define the server-side schema; the
 ``type`` keyword is used to introduce a new kind of object.
 
@@ -37,29 +40,33 @@ But how to access that data?  That's accomplished using one of three queries:
 In this example, each query returns a single instance of the matching object.
 Often, a query will return a list of matching objects.
 
-.. note::
+Injecting Data
+--------------
 
-   GraphQL is intended to be used over the Internet, to allow
-   clients to efficiently and flexibly obtain the data they require from GraphQL servers.
-   However, Lacinia does not address network issues; it is a set of functions to be
-   invoked by your web pipeline, be it Ring, Pedestal, or something else.
+The schema defines the *shape* of the data that can be queried, but leaves out where that data comes from.
+Unlike an object/relational mapping layer, where we might discuss database tables and rows, GraphQL (and
+by extension, Lacinia) has *no* idea where the data comes from.
 
-   The library `com.walmartlabs/pedestal-lacinia <https://github.com/walmartlabs/pedestal-lacinia>`_
-   provides the necessary bits when building a server based on
-   `Pedestal <https://github.com/pedestal/pedestal>`_, including an easy way to
-   optionally expose a `GraphiQL IDE <https://github.com/graphql/graphiql>`_.
+That's the realm of the :doc:`field resolver function <resolve/index>`.
+Since EDN files are just data, we leave placeholder keywords in the EDN data and attach the
+actual functions once the EDN data is read into memory.
 
-
-Using the API
--------------
+Compiling the Schema
+--------------------
 
 The schema starts as a data structure, we need to add in the field resolver and then *compile* the result.
 
 .. literalinclude:: ../dev-resources/org/example/schema.clj
     :language: clojure
 
+The ``attach-resolvers`` function walks the schema tree and replaces the values for ``:resolve`` keys.
+With actual functions in place, the schema can be compiled for execution.
+
 Compilation performs a number of checks, applies defaults, merges in introspection data about the schema,
-and performs a number of other operations to ready the schema for use executing queries.
+and performs a number of other operations to ready the schema for use.
+
+Executing Queries
+-----------------
 
 With that in place, we can now execute queries.
 
@@ -73,8 +80,12 @@ With that in place, we can now execute queries.
 
    In most examples, for conciseness, a standard (unordered) map is shown.
 
-The query string is parsed and matched against the queries.
-In GraphQL, queries can pass arguments (such as ``id``) and they identify which fields
+The query string is parsed and matched against the queries defined in the schema.
+
+The two nils are variables to be used executing the query, and an application context.
+
+In GraphQL, queries can pass arguments (such as ``id``) and queries identify
+exactly which fields
 of the matching objects are to be returned.
 This query can be stated as `just provide the name of the human with id '1001'`.
 
@@ -86,9 +97,6 @@ Inside ``:data`` is a key corresponding to the query, ``:human``, whose value is
 matching human.  Other queries might return a list of matches.
 Since we requested just a slice of a full human object, just the human's name, the map has just a single
 ``:name`` key.
-
-Of course, in a real application, you would only create the compiled schema once, and keep it around
-to handle many requests.
 
 .. [#order] This shouldn't be strictly necessary (JSON and EDN don't normally care about key order, and
    keys can appear in arbitrary order),

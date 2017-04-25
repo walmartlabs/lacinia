@@ -1,8 +1,10 @@
 (require
-  '[com.walmartlabs.lacinia :as ql]
+  '[com.walmartlabs.lacinia :refer [execute]]
   '[org.example.schema :refer [star-wars-schema]])
 
-(ql/execute (star-wars-schema)
+(def compiled-schema (star-wars-schema))
+
+(execute compiled-schema
   "query { human(id: \"1001\") { name }}"
   nil nil)
 => {:data {:human #ordered/map([:name "Darth Vader"])}}
