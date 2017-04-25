@@ -195,7 +195,7 @@
     :directives
     (->> (rest node)
          (reduce (fn ([acc [_ [_ k] v]]
-                      ;; TODO: Spec indicates that directives must be unique by name
+                       ;; TODO: Spec indicates that directives must be unique by name
                       (assoc! acc (keyword k) (node-reducer {} v))))
                  (transient {}))
          persistent!
@@ -495,39 +495,39 @@
     :let [nested-type (:type argument-type)
           kind (:kind argument-type)]
 
-         ;; we can only hit this if we iterate over list members
-         (and (nil? result) (= :non-null kind))
-         (throw-exception (format "Variable %s contains null members but supplies the value for a list that can't have any null members."
-                                  (q arg-value))
-                          {:variable-name arg-value})
+    ;; we can only hit this if we iterate over list members
+    (and (nil? result) (= :non-null kind))
+    (throw-exception (format "Variable %s contains null members but supplies the value for a list that can't have any null members."
+                             (q arg-value))
+                     {:variable-name arg-value})
 
-         (= :list (:kind argument-type))
-         (if (not (sequential? result))
-           (throw-exception (format "Variable %s doesn't contain the correct number of (nested) lists."
-                                    (q arg-value))
-                            {:variable-name arg-value})
-           (mapv #(process-result schema % nested-type arg-value) result))
+    (= :list (:kind argument-type))
+    (if (not (sequential? result))
+      (throw-exception (format "Variable %s doesn't contain the correct number of (nested) lists."
+                               (q arg-value))
+                       {:variable-name arg-value})
+      (mapv #(process-result schema % nested-type arg-value) result))
 
-         (nil? result)
-         nil
+    (nil? result)
+    nil
 
-         (map? nested-type)
-         (recur schema result nested-type arg-value)
+    (map? nested-type)
+    (recur schema result nested-type arg-value)
 
-         :let [category (when (= :root kind)
-                          (get-in schema [nested-type :category]))]
+    :let [category (when (= :root kind)
+                     (get-in schema [nested-type :category]))]
 
-         (= category :scalar)
-         (process-literal-argument schema {:type argument-type} [:scalar result])
+    (= category :scalar)
+    (process-literal-argument schema {:type argument-type} [:scalar result])
 
-         ;; enums have to be handled carefully because they are likely strings in
-         ;; the variable map.
+    ;; enums have to be handled carefully because they are likely strings in
+    ;; the variable map.
 
-         (= category :enum)
-         (process-literal-argument schema {:type argument-type} [:enum (as-keyword result)])
+    (= category :enum)
+    (process-literal-argument schema {:type argument-type} [:enum (as-keyword result)])
 
-         :else
-         (throw (IllegalStateException. "Sanity check - no option in process-result."))))
+    :else
+    (throw (IllegalStateException. "Sanity check - no option in process-result."))))
 
 (defmethod process-dynamic-argument :variable
   [schema argument-definition [_ arg-value]]
@@ -551,36 +551,36 @@
           var-default-value (:default-value variable-def)]
       (fn [variables]
         (cond-let
-         :let [result (get variables arg-value)]
+          :let [result (get variables arg-value)]
 
-              ;; So, when a client provides variables, sometimes you get a string
-              ;; when you expect a keyword for an enum. Can't help that, when the alue
-              ;; comes from a variable, there's no mechanism until we reach right here to convert it
-              ;; to a keyword.
+          ;; So, when a client provides variables, sometimes you get a string
+          ;; when you expect a keyword for an enum. Can't help that, when the alue
+          ;; comes from a variable, there's no mechanism until we reach right here to convert it
+          ;; to a keyword.
 
-              (some? result)
-              (process-result schema result (:type argument-definition) arg-value)
+          (some? result)
+          (process-result schema result (:type argument-definition) arg-value)
 
-              ;; TODO: This is only triggered if a variable is referenced, omitting a non-nillable
-              ;; variable should be an error, regardless.
-              var-non-nullable?
-              (throw-exception (format "No value was provided for variable %s, which is non-nullable."
-                                  (q arg-value))
-                          {:variable-name arg-value})
+          ;; TODO: This is only triggered if a variable is referenced, omitting a non-nillable
+          ;; variable should be an error, regardless.
+          var-non-nullable?
+          (throw-exception (format "No value was provided for variable %s, which is non-nullable."
+                                   (q arg-value))
+                           {:variable-name arg-value})
 
-              (some? var-default-value)
-              var-default-value
+          (some? var-default-value)
+          var-default-value
 
-              (some? default-value)
-              default-value
+          (some? default-value)
+          default-value
 
-              non-nullable?
-              (throw-exception (format "Variable %s is null, but supplies the value for a non-nullable argument."
-                                  (q arg-value))
-                          {:variable-name arg-value})
+          non-nullable?
+          (throw-exception (format "Variable %s is null, but supplies the value for a non-nullable argument."
+                                   (q arg-value))
+                           {:variable-name arg-value})
 
-              :else
-              nil)))))
+          :else
+          nil)))))
 
 (defn ^:private construct-dynamic-arguments-extractor
   [schema argument-definitions arguments]
@@ -1050,8 +1050,8 @@
                            (= "mutation")))
 
         root-key (if mutation?
-               constants/mutation-root
-               constants/query-root)
+                   constants/mutation-root
+                   constants/query-root)
 
         root (get schema root-key)
 
