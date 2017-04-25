@@ -501,7 +501,7 @@
                              (q arg-value))
                      {:variable-name arg-value})
 
-    (= :list (:kind argument-type))
+    (= :list kind)
     (if (not (sequential? result))
       (throw-exception (format "Variable %s doesn't contain the correct number of (nested) lists."
                                (q arg-value))

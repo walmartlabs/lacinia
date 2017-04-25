@@ -14,8 +14,10 @@
 
 
 (defn q
-  [query]
-  (simplify (execute compiled-schema query nil nil)))
+  ([query]
+    (q query nil))
+  ([query vars]
+   (simplify (execute compiled-schema query vars nil))))
 
 (deftest returns-enums-as-keywords
   (is (= {:data {:hero {:appears_in [:NEWHOPE
@@ -58,3 +60,9 @@
                    :category :enum
                    :type-name :invalid}}
            (ex-data e)))))
+
+
+(deftest converts-var-value-from-string-to-enum
+  (is (= {:data {:hero {:name "Luke Skywalker"}}}
+         (q "query ($ep : episode!) { hero (episode: $ep) { name }}"
+            {:ep "NEWHOPE"}))))
