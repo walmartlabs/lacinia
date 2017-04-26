@@ -75,7 +75,7 @@
   "Creates a clojure.spec/conformer as a wrapper around the supplied function.
 
   The function is only invoked if the value to be conformed is non-nil.
-
+]
   Any exception thrown by the function is silently caught and the returned conformer
   will return :clojure.spec/invalid."
   [f]
@@ -488,11 +488,14 @@
   ensure it returns a ResolverResult.
   Adds a :selector function."
   [schema options containing-type field]
-  (let [base-resolver (or (:resolve field)
+  (let [provided-resolver (:resolve field)
+        base-resolver (or provided-resolver
                           ((:default-field-resolver options) (:field-name field)))
-        selector (assemble-selector schema containing-type field (:type field))]
+        selector (assemble-selector schema containing-type field (:type field))
+        wrapped-resolver (cond-> (wrap-resolver-to-ensure-resolver-result base-resolver)
+                           (nil? provided-resolver) (vary-meta assoc ::default-resolver true))]
     (assoc field
-           :resolve (wrap-resolver-to-ensure-resolver-result base-resolver)
+           :resolve wrapped-resolver
            :selector selector)))
 
 ;;-------------------------------------------------------------------------------

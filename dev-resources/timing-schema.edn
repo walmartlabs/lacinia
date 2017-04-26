@@ -1,0 +1,16 @@
+{:objects
+ {:Fast
+  {:fields {:simple {:type String}
+            :slow {:type :Slow
+                   :resolve :resolve-slow}}}
+  :Slow
+  {:fields {:simple {:type String}}}}
+
+ :queries
+ {:root {:type (non-null Fast)
+         :args {:delay {:type Int}
+                :value {:type String
+                        :default-value "fast!"}
+                :nested-value {:type String
+                               :default-value "slow!!"}}
+         :resolve :resolve-fast}}}
