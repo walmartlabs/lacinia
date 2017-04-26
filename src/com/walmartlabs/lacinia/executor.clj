@@ -383,7 +383,9 @@
 
   Expects the context to contain the schema and parsed query.
 
-  Returns a query result, with :data and/or :errors keys."
+  Returns a ResolverResult whose value is the query result, with :data and/or :errors keys.
+
+  This should generally not be invoked by user code; see [[execute-parsed-query]]."
   [context]
   (let [parsed-query (get context constants/parsed-query-key)
         {:keys [selections mutation?]} parsed-query
@@ -393,13 +395,11 @@
         operation-result (if mutation?
                            (execute-nested-selections-sync execution-context enabled-selections)
                            (execute-nested-selections execution-context enabled-selections))
-        data-result (promise)]
+        response-result (resolve/resolve-promise)]
     (resolve/on-deliver! operation-result
                          (fn [selected-data _]
-                           (->> selected-data
-                                (propogate-nulls false)
-                                (deliver data-result))))
-    ;; This will block de-ref'ing the data-result until the operaton-result is
-    ;; realized.
-    (cond-> {:data @data-result}
-      (seq @errors) (assoc :errors (distinct @errors)))))
+                           (let [data (propogate-nulls false selected-data)]
+                             (resolve/deliver! response-result
+                                               (cond-> {:data data}
+                                                 (seq @errors) (assoc :errors (distinct @errors)))))))
+    response-result))
