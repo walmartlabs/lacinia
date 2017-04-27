@@ -75,7 +75,7 @@
   "Creates a clojure.spec/conformer as a wrapper around the supplied function.
 
   The function is only invoked if the value to be conformed is non-nil.
-]
+
   Any exception thrown by the function is silently caught and the returned conformer
   will return :clojure.spec/invalid."
   [f]

@@ -89,13 +89,6 @@
                          :value value
                          :value-meta (meta value)})))))
 
-(defmacro ^:private now
-  []
-  `(System/currentTimeMillis))
-
-(def ^:private conj-nil
-  (fnil conj []))
-
 (defn ^:private invoke-resolver-for-field
   "Resolves the value for a field selection node, by passing the value to the
   appropriate resolver, and passing it through a chain of value enforcers.
@@ -121,7 +114,7 @@
             field-resolver (field-selection-resolver schema field-selection container-value)
             start-ms (when (and (some? timings)
                                 (not (-> field-resolver meta ::schema/default-resolver)))
-                       (now))
+                       (System/currentTimeMillis))
             resolver-result (try
                               (field-resolver resolve-context arguments container-value)
                               (catch Throwable t
@@ -132,7 +125,7 @@
         (resolve/on-deliver! resolver-result
                              (fn [resolved-value resolve-errors]
                                (when start-ms
-                                 (let [finish-ms (now)
+                                 (let [finish-ms (System/currentTimeMillis)
                                        elapsed-ms (- finish-ms start-ms)
                                        timing {:start start-ms
                                                :finish finish-ms
@@ -145,7 +138,7 @@
                                    ;; times because of multiple top-level operations.
                                    (swap! timings
                                           update-in (conj (:query-path field-selection) :execution/timings)
-                                          conj-nil timing)))
+                                          (fnil conj []) timing)))
 
                                (when-let [errors (-> resolve-errors
                                                      assert-and-wrap-error
