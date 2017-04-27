@@ -1,0 +1,22 @@
+{:objects
+ {:man
+  {:fields {:name {:type String}}}
+
+  :machine
+  {:fields {:serial {:type String}}}}
+
+ :unions
+ {:all {:members [:man :machine]}}
+
+ :queries
+ {:get_man
+  {:type :man
+   :resolve :get-man}
+
+  :get_machine
+  {:type :machine
+   :resolve :get-machine}
+
+  :get_all
+  {:type (list :all)
+   :resolve :get-all}}}

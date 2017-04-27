@@ -5,7 +5,11 @@
     [clojure.walk :as walk]
 
     ;; Needed for side effects (defines OrderedMap), do NOT remove
-    [flatland.ordered.map])
+    [flatland.ordered.map]
+    [clojure.java.io :as io]
+    [clojure.edn :as edn]
+    [com.walmartlabs.lacinia.util :as util]
+    [com.walmartlabs.lacinia.schema :as schema])
   (:import
     (flatland.ordered.map OrderedMap)))
 
@@ -63,3 +67,12 @@
         :else
         node))
     m))
+
+(defn compile-schema
+  "Reads a schema EDN file, attaches resolvers, and compiles the schema."
+  [resource-path resolvers]
+  (-> (io/resource resource-path)
+      slurp
+      edn/read-string
+      (util/attach-resolvers resolvers)
+      schema/compile))
