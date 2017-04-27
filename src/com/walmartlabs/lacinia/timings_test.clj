@@ -10,7 +10,7 @@
     [com.walmartlabs.lacinia :refer [execute]]
     [com.walmartlabs.lacinia.schema :as schema]))
 
-(def ^:private enable-timing {:com.walmartlabs.lacinia/enable-timing true})
+(def ^:private enable-timing {:com.walmartlabs.lacinia/enable-timing? true})
 
 (defn ^:private resolve-fast
   [_ args _]

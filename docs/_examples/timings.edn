@@ -6,7 +6,7 @@
   luke: human(id: \"1000\") { friends { name }}
   leia: human(id: \"1003\") { name }
 }" nil
-  {::lacinia/enable-timing true})
+  {::lacinia/enable-timing? true})
 =>
 {:data {:luke {:friends [{:name "Han Solo"} {:name "Leia Organa"} {:name "C-3PO"} {:name "R2-D2"}]},
         :leia {:name "Leia Organa"}},

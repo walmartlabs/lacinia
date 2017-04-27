@@ -97,7 +97,7 @@
   The final ResolverResult will always contain just a resolved value; errors are handled here,
   and not passed back in the returned ResolverResult.
 
-  Optinally updates the timings inside the execution-context with start/finish/elapsed time
+  Optionally updates the timings inside the execution-context with start/finish/elapsed time
   (in milliseconds). Timing checks only occur when enabled (timings is non-nil)
   and not for default resolvers.
 
@@ -113,7 +113,7 @@
             resolve-context (assoc context :com.walmartlabs.lacinia/selection field-selection)
             field-resolver (field-selection-resolver schema field-selection container-value)
             start-ms (when (and (some? timings)
-                                (not (-> field-resolver meta ::schema/default-resolver)))
+                                (not (-> field-resolver meta ::schema/default-resolver?)))
                        (System/currentTimeMillis))
             resolver-result (try
                               (field-resolver resolve-context arguments container-value)
@@ -419,7 +419,7 @@
         {:keys [selections mutation?]} parsed-query
         enabled-selections (remove :disabled? selections)
         errors (atom [])
-        timings (when (:com.walmartlabs.lacinia/enable-timing context)
+        timings (when (:com.walmartlabs.lacinia/enable-timing? context)
                   (atom {}))
         execution-context (->ExecutionContext context nil errors timings)
         operation-result (if mutation?

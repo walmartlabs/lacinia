@@ -493,7 +493,7 @@
                           ((:default-field-resolver options) (:field-name field)))
         selector (assemble-selector schema containing-type field (:type field))
         wrapped-resolver (cond-> (wrap-resolver-to-ensure-resolver-result base-resolver)
-                           (nil? provided-resolver) (vary-meta assoc ::default-resolver true))]
+                           (nil? provided-resolver) (vary-meta assoc ::default-resolver? true))]
     (assoc field
            :resolve wrapped-resolver
            :selector selector)))
