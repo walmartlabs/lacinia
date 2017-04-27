@@ -8,12 +8,21 @@
 }" nil
   {::lacinia/enable-timing? true})
 =>
-{:data {:luke {:friends [{:name "Han Solo"} {:name "Leia Organa"} {:name "C-3PO"} {:name "R2-D2"}]},
-        :leia {:name "Leia Organa"}},
+{:data {:luke {:friends [{:name "Han Solo"}
+                         {:name "Leia Organa"}
+                         {:name "C-3PO"}
+                         {:name "R2-D2"}]}
+        :leia {:name "Leia Organa"}}
  :extensions
  {:timing
+  {:QueryRoot
+   {:human [{:start 1493245557504
+             :finish 1493245557504
+             :elapsed 0}
+            {:start 1493245557507
+             :finish 1493245557507
+             :elapsed 0}]}}
   {:human
-   {:execution/timings [{:start 1493245557504, :finish 1493245557504, :elapsed 0}
-                        {:start 1493245557507, :finish 1493245557507, :elapsed 0}],
-    :friends
-    {:execution/timings [{:start 1493245557505, :finish 1493245557505, :elapsed 0}]}}}}}
+   {:friends [{:start 1493245557505
+               :finish 1493245557505
+               :elapsed 0}]}}}}
