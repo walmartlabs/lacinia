@@ -41,7 +41,7 @@
       (catch Exception e
         ;; Include a nil :data key to indicate that it is an execution time
         ;; exception, rather than a query parse/prepare/validation exception.
-        {:data   nil
+        {:data nil
          :errors (as-errors e)}))))
 
 
