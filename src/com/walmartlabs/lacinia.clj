@@ -36,8 +36,8 @@
     :else
     (try
       (executor/execute-query (assoc context
-                                constants/schema-key schema
-                                constants/parsed-query-key prepared))
+                                     constants/schema-key schema
+                                     constants/parsed-query-key prepared))
       (catch Exception e
         ;; Include a nil :data key to indicate that it is an execution time
         ;; exception, rather than a query parse/prepare/validation exception.
