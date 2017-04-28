@@ -36,12 +36,12 @@
     :else
     (try
       (executor/execute-query (assoc context
-                                     constants/schema-key schema
-                                     constants/parsed-query-key prepared))
+                                constants/schema-key schema
+                                constants/parsed-query-key prepared))
       (catch Exception e
         ;; Include a nil :data key to indicate that it is an execution time
         ;; exception, rather than a query parse/prepare/validation exception.
-        {:data nil
+        {:data   nil
          :errors (as-errors e)}))))
 
 
@@ -68,12 +68,14 @@
   : Additional data that will ultimately be passed to resolver functions.
 
   This function parses the query and invokes [[execute-parsed-query]]."
-  [schema query variables context & [{:keys [operation-name] :as opts}]]
-  {:pre [(string? query)]}
-  (let [[parsed error-result] (try
-                                  [(parser/parse-query schema query operation-name)]
-                                  (catch ExceptionInfo e
-                                    [nil {:errors (as-errors e)}]))]
-    (if (some? error-result)
-      error-result
-      (execute-parsed-query parsed variables context))))
+  ([schema query variables context]
+   (execute schema query variables context {}))
+  ([schema query variables context {:keys [operation-name] :as options}]
+   {:pre [(string? query)]}
+   (let [[parsed error-result] (try
+                                 [(parser/parse-query schema query operation-name)]
+                                 (catch ExceptionInfo e
+                                   [nil {:errors (as-errors e)}]))]
+     (if (some? error-result)
+       error-result
+       (execute-parsed-query parsed variables context)))))
