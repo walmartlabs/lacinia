@@ -11,7 +11,8 @@
                      keepv as-keyword]]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.lacinia.constants :as constants]
-            [clojure.spec :as s])
+            [clojure.spec :as s]
+            [com.walmartlabs.lacinia.resolve :as resolve])
   (:import (org.antlr.v4.runtime.tree ParseTree TerminalNode)
            (org.antlr.v4.runtime Parser ParserRuleContext Token)
            (clj_antlr ParseError)
@@ -686,6 +687,21 @@
                   (assoc m k (convert-directive k v)))]
     (reduce-kv reducer nil directives)))
 
+(def ^:private typename-field-definition
+  "A psuedo field definition that exists to act as a placeholder when the
+  __typename metafield is encountered."
+  {:type {:kind :non-null
+          :type {:kind :root
+                 :type :String}}
+
+   :resolve (fn [_ _ value]
+              (-> value
+                  schema/type-tag
+                  resolve/resolve-as))
+
+   :selector (fn [resolved-value callback]
+               (callback resolved-value))})
+
 (defn ^:private convert-field-selection
   "Converts a parsed field selection into a normalized form, ready for validation
   and execution.
@@ -698,7 +714,10 @@
         result (with-exception-context context
                  (reduce node-reducer defaults (rest (second selection))))
         {:keys [field alias arguments reportable-arguments directives]} result
-        field-definition (get-in type [:fields field])
+        is-typename-metafield? (= field :__typename)
+        field-definition (if is-typename-metafield?
+                           typename-field-definition
+                           (get-in type [:fields field]))
         field-type (schema/root-type-name field-definition)
         nested-type (get schema field-type)
         query-path' (conj query-path field)]
@@ -730,7 +749,8 @@
                             :alias (or alias field)
                             :query-path query-path'
                             :leaf? (scalar? nested-type)
-                            :concrete-type? (-> type :category #{:object :input-object} some?)
+                            :concrete-type? (or is-typename-metafield?
+                                                (-> type :category #{:object :input-object} some?))
                             :reportable-arguments reportable-arguments
                             :arguments literal-arguments
                             ::arguments-extractor dynamic-arguments-extractor
