@@ -58,14 +58,20 @@
   ;; Standard query with operation name
   (let [q "query heroNameQuery { hero { id name } } query dummyQuery { hero { id } }"]
     (is (= {:data {:hero {:id "2001" :name "R2-D2"}}}
-           (execute default-schema q {} nil "heroNameQuery"))))
+           (execute default-schema q {} nil {:operation-name "heroNameQuery"}))))
+
+  (let [q "query heroNameQuery { hero { id name } } query dummyQuery { hero { id } }"]
+    (is (= {:errors [{:message "Multiple operations requested but operation-name not found.",
+                      :op-count 2,
+                      :operation-name "notAQuery"}]}
+           (execute default-schema q {} nil {:operation-name "notAQuery"}))))
 
   (let [q "mutation changeHeroNameMutation ($from : String, $to: String) { changeHeroName(from: $from, to: $to) { name } }
            query dummyQuery { hero { id } }"]
     (is (= {:data {:changeHeroName {:name "Solo"}}}
            (execute default-schema q {:from "Han Solo"
                                       :to "Solo"}
-                    nil "changeHeroNameMutation")))))
+                    nil {:operation-name "changeHeroNameMutation"})))))
 
 (deftest null-value-mutation
   (letfn [(reset-value []
