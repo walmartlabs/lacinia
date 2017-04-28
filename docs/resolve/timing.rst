@@ -2,7 +2,7 @@ Resolver Timing
 ===============
 
 It can be very interesting to know where your queries are spending their time; Lacinia
-can help you here; when enabled, Lacinia will collect start/stop and elapsed time for each
+can help you here; when enabled, Lacinia will collect start and finish timestamps, and elapsed time, for each
 resolver function that gets invoked.
 
 Timing collection is enabled using the key, ``:com.walmartlabs.lacinia/enable-timing?``, in the application context:
