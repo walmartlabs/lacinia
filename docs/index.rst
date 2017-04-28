@@ -48,6 +48,7 @@ responding with JSON, it is also exceptionally useful for allowing backend syste
    introspection
    samples
    clojure
+   resources
 
    contributing
 
@@ -78,7 +79,8 @@ The schema defines all the data that could possibly be queried by a client.
 To make this schema useful, :doc:`field resolvers <resolve/index>` must be added to it.
 These functions are responsible for doing the real work
 (querying databases, communicating with other servers, and so forth).
-These are attached to the schema after it is read from an EDN file.
+These are attached to the schema after it is read from an EDN file, using
+the placeholder keywords in the schema, such as ``:resolve :droid``.
 
 The client uses the GraphQL query language to specify exactly what data
 should be returned in the response::
@@ -108,6 +110,19 @@ the Star Wars trilogy.
 
 This Clojure data can be trivially converted into JSON or other formats when Lacinia is used
 as part of an HTTP server application.
+
+.. note::
+
+   GraphQL is intended to be used over the Internet, to allow
+   clients to efficiently and flexibly obtain the data they require from GraphQL servers.
+   However, Lacinia does not address network issues; it is a set of functions to be
+   invoked by your web pipeline, be it Ring, Pedestal, or something else.
+
+   The library `com.walmartlabs/pedestal-lacinia <https://github.com/walmartlabs/pedestal-lacinia>`_
+   provides the necessary bits when building a server based on
+   `Pedestal <https://github.com/pedestal/pedestal>`_, including an easy way to
+   optionally expose a `GraphiQL IDE <https://github.com/graphql/graphiql>`_.
+
 
 A key takeaway: GraphQL is a contract between a client and a server; it doesn't know or care where
 the data comes from; that's the province of the field resolvers.

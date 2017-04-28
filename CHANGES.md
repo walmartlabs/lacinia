@@ -1,12 +1,14 @@
 ## 0.16.0 -- UNRELEASED
 
+The function `com.walmartlabs.lacinia.schema/as-conformer' is now public.
+
 ## 0.15.0 -- 19 Apr 2017
 
 Field resolvers can now operate synchronously or asynchronously.
 
 This release fleshes out the Lacinia type system to be fully compliant with the
 GraphQL type system.
-Previously, there were significant limitations when combining `list` and `not-null` modifiers on types.
+Previously, there were significant limitations when combining `list` and `non-null` modifiers on types.
 
 The internal representation of enum values has changed from String to Keyword.
 You will now see a Keyword, not a String, supplied as the value of an enum-typed argument

@@ -22,6 +22,7 @@ In some cases, a field resolver may need to perform additional queries against a
     :hidden:
 
     overview
+    attach
     resolve-as
     async
     examples

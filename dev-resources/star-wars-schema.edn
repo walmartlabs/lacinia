@@ -16,7 +16,8 @@
    :fields {:id {:type String}
             :name {:type String}
             :appears_in {:type (list :episode)}
-            :friends {:type (list :character)}
+            :friends {:type (list :character)
+                      :resolve :friends}
             :primary_function {:type (list String)}}}
 
   :human
@@ -24,17 +25,21 @@
    :fields {:id {:type String}
             :name {:type String}
             :appears_in {:type (list :episode)}
-            :friends {:type (list :character)}
+            :friends {:type (list :character)
+                      :resolve :friends}
             :home_planet {:type String}}}}
 
  :queries
  {:hero {:type (non-null :character)
-         :args {:episode {:type :episode}}}
+         :args {:episode {:type :episode}}
+         :resolve :hero}
 
   :human {:type (non-null :human)
           :args {:id {:type String
-                      :default-value "1001"}}}
+                      :default-value "1001"}}
+          :resolve :human}
 
   :droid {:type :droid
           :args {:id {:type String
-                      :default-value "2001"}}}}}
+                      :default-value "2001"}}
+          :resolve :droid}}}

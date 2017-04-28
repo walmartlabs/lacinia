@@ -41,11 +41,6 @@ In the schema, a type can be:
 - A non-nillable version of any of the above: ``(non-null X)``
 - A list of any of the above: ``(list X)``
 
-.. warning::
-
-   Lacinia does not fully implement the spec here, which allows for more combinations of
-   non-null and list than is currently supported.
-
 The built-in scalar types:
 
 .. sidebar:: GraphQL Spec
@@ -67,7 +62,7 @@ The built-in scalar types:
   compiled schema.
 
 Field Resolver
-^^^^^^^^^^^^^^
+--------------
 
 The ``:resolve`` key identifies the field resolver function, used to provide the actual data.
 
@@ -90,14 +85,12 @@ resolved value is a map containing a key matching the field's name.
    key names with dashes.
    For example, a field named ``:user_id`` would normally be resolved using the key ``:user-id``.
 
-A resolve keyword or function may be provided on a field inside an
+A field resolver function may be provided on a field inside an
 :doc:`object definition <objects>`, or
 inside a :doc:`query definition <queries>` or
-:doc:`mutation definition <mutations>`.  No resolve should be provided
+:doc:`mutation definition <mutations>`.  No field resolver function should be provided
 in the fields of an :doc:`interface definition <interfaces>`: if provided in an interface
 definition, the resolve will be silently ignored.
-
-More commonly, ``:resolve`` can be a function.
 
 .. sidebar:: Field Resolvers
 
@@ -113,7 +106,7 @@ to be returned in the response.
 The query is a tree, and the leaves of that tree will always be simple scalar values.
 
 Arguments
-^^^^^^^^^
+---------
 
 A field may define arguments using the ``:args`` key; this is a map from argument name to
 an argument definition.
@@ -126,8 +119,10 @@ Argument definitions define a value for ``:type``, and may optionally provide a 
 Arguments do **not** have resolvers, as they represent explicit data from the client
 passed to the field.
 
+Arguments may also have a ``:default-value``.
+
 
 Description
-^^^^^^^^^^^
+-----------
 
 A field may include a ``:description`` key; the value is a string exposed through :doc:`introspection`.

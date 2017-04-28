@@ -5,7 +5,7 @@ Input Objects
 
    Read about `input objects <https://facebook.github.io/graphql/#sec-Input-Objects>`_.
 
-In some cases, it is desirable for a query to include arguments with more complex data than a single argument.
+In some cases, it is desirable for a query to include arguments with more complex data than a single value.
 A typical example would be passing a bundle of values as part of a
 :doc:`mutation <mutations>` operation (rather than an unmanageable number of individual field arguments).
 

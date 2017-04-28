@@ -10,10 +10,10 @@
             :width {:type Int}}}}
 
  :unions
- {:search-result
+ {:search_result
   {:members [:person :photo]}}
 
  :queries
  {:search
-  {:type (list :search-result)
+  {:type (list :search_result)
    :args {:term String}}}}

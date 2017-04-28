@@ -10,12 +10,12 @@
   [context args _]
   (let [{:keys [id]} args
         {:keys [connection]} context
-        resolved-promise (resolve/resolve-promise)]
+        result (resolve/resolve-promise)]
     (thread
       (try
-        (resolve/deliver! resolved-promise (get-user connection id))
+        (resolve/deliver! result (get-user connection id))
         (catch Throwable t
-          (resolve/deliver! resolved-promise nil
+          (resolve/deliver! result nil
             {:message (str "Exception: " (.getMessage t))}))))
 
-    resolved-promise))
+    result))

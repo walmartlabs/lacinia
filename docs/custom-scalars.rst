@@ -37,3 +37,5 @@ Here is an example that defines and uses a custom ``:Date`` scalar type:
    the ``SimpleDateFormat`` class is not thread safe. It does not properly report
    unparseable values.
 
+The function ``com.walmartlabs.lacinia.schema/as-conformer`` is an easy way to wrap a function as a conformer.
+
