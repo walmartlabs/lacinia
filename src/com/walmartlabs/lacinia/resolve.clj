@@ -10,7 +10,7 @@
     The callback is passed the ResolverResult's value and errors.
 
     `on-deliver!` should only be invoked once.
-    It returns the ResolverResult.
+    It returns `this`.
 
     On a simple ResolverResult (not a ResolverResultPromise), the callback is invoked
     immediately.
@@ -25,7 +25,7 @@
     [this value errors]
     "Invoked to realize the ResolverResult, triggering the callback to receive the value and errors.
 
-    Returns the deferred resolver result."))
+    Returns `this`."))
 
 (defrecord ^:private ResolverResultImpl [resolved-value resolve-errors]
 

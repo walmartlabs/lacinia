@@ -3,7 +3,8 @@
             [com.walmartlabs.lacinia.constants :as constants]
             [com.walmartlabs.lacinia.executor :as executor]
             [com.walmartlabs.lacinia.validator :as validator]
-            [com.walmartlabs.lacinia.internal-utils :refer [cond-let to-message]])
+            [com.walmartlabs.lacinia.internal-utils :refer [cond-let to-message]]
+            [com.walmartlabs.lacinia.resolve :as resolve])
   (:import (clojure.lang ExceptionInfo)))
 
 (defn ^:private as-errors
@@ -11,9 +12,12 @@
   [(merge {:message (to-message exception)}
           (ex-data exception))])
 
-(defn execute-parsed-query
+(defn execute-parsed-query-async
   "Prepares a query, by applying query variables to it, resulting in a prepared
-  query which is then executed."
+  query which is then executed.
+
+  Returns a [[ResolverResult]] around the response value (with :data and/or :errors keys)."
+  {:added "0.16.0"}
   [parsed-query variables context]
   {:pre [(map? parsed-query)
          (or (nil? context)
@@ -26,24 +30,31 @@
                                       [nil {:errors (as-errors e)}]))]
 
     (some? error-result)
-    error-result
+    (resolve/resolve-as error-result)
 
     :let [validation-errors (validator/validate schema prepared {})]
 
     (seq validation-errors)
-    {:errors validation-errors}
+    (resolve/resolve-as {:errors validation-errors})
 
     :else
-    (try
-      (executor/execute-query (assoc context
-                                     constants/schema-key schema
-                                     constants/parsed-query-key prepared))
-      (catch Exception e
-        ;; Include a nil :data key to indicate that it is an execution time
-        ;; exception, rather than a query parse/prepare/validation exception.
-        {:data nil
-         :errors (as-errors e)}))))
+    (executor/execute-query (assoc context
+                                   constants/schema-key schema
+                                   constants/parsed-query-key prepared))))
 
+(defn execute-parsed-query
+  "Prepares a query, by applying query variables to it, resulting in a prepared
+  query which is then executed.
+
+  Returns a response value with :data and/or :errors keys."
+  [parsed-query variables context]
+  (let [response-promise (promise)
+        response-result (execute-parsed-query-async parsed-query variables context)]
+    (resolve/on-deliver! response-result
+                         (fn [response _]
+                           (deliver response-promise response)))
+    ;; Block on that deliver, then return the final result.
+    @response-promise))
 
 (defn execute
   "Given a compiled schema and a query string, attempts to execute it.
