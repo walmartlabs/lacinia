@@ -14,8 +14,8 @@
 (defn execute
   "Executes the query but reduces ordered maps to normal maps, which makes
   comparisons easier.  Other tests exist to ensure that order is maintained."
-  [schema q vars context & [operation-name]]
-  (-> (lacinia/execute schema q vars context operation-name)
+  [schema q vars context & [options]]
+  (-> (lacinia/execute schema q vars context options)
       simplify))
 
 ;; —————————————————————————————————————————————————————————————————————————————
