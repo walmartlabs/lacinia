@@ -676,7 +676,7 @@
                                   (q arg-name)
                                   (q field-name)
                                   (q object-type-name)
-                                  (-> arg-def :type q))
+                                  (q arg-type-name))
                           {:field-name field-name
                            :object-type object-type-name
                            :arg-name arg-name

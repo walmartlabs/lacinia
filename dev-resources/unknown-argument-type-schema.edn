@@ -1,0 +1,6 @@
+{:queries
+ {:example
+  {:type String
+   :args
+   ;; Note: UUID is not declared, but it inside the `list` qualifier:
+   {:id {:type (list UUID)}}}}}
