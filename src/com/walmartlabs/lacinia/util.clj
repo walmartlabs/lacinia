@@ -1,6 +1,8 @@
 (ns com.walmartlabs.lacinia.util
   "Useful utility functions."
-  (:require clojure.walk))
+  (:require
+    clojure.walk
+    [com.walmartlabs.lacinia.internal-utils :refer [to-message]]))
 
 (defn attach-resolvers
   "Given a GraphQL schema and a map of keywords to resolver fns, replace
@@ -25,7 +27,7 @@
            :else
            ;; If resolver-k is not a keyword, it must be a sequence,
            ;; in which first element is a key that points to a resolver
-           ;; factory in resolver-m and subsequent elements are arguments
+           ;; factory in resolver-m and subsequent elements are argumentsc
            ;; for the given factory.
            [:resolve (apply resolver (rest resolver-k))]))
        node))
@@ -47,3 +49,11 @@
                                  (update :serialize #(get transform-m % %)))))
                     {}
                     (:scalars schema))))
+
+(defn as-error-map
+  "Converts an exception into an error map, including a :message key, plus
+  any additional keys and values via `ex-data`."
+  {:added "0.16.0"}
+  [^Throwable t]
+  (merge {:message (to-message t)}
+         (ex-data t)))
