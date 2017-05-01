@@ -11,8 +11,7 @@
     [com.walmartlabs.lacinia.util :as util]
     [com.walmartlabs.lacinia.schema :as schema])
   (:import
-    (flatland.ordered.map OrderedMap)
-    (com.walmartlabs.lacinia.schema CoercionError)))
+    (clojure.lang IPersistentMap)))
 
 (defmacro is-thrown
   "Expects the expression to thrown an exception.
@@ -59,8 +58,7 @@
   (walk/postwalk
     (fn [node]
       (cond
-        (or (instance? OrderedMap node)
-            (instance? CoercionError node))
+        (instance? IPersistentMap node)
         (into {} node)
 
         (seq? node)

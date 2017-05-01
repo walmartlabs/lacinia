@@ -5,4 +5,8 @@
  :queries
  {:test {:type :LimitedInt
          :args {:in {:type (non-null Int)}}
+         :resolve :test-query}
+
+  :dupe {:type Int
+         :args {:in {:type LimitedInt}}
          :resolve :test-query}}}

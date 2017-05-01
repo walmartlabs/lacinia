@@ -371,11 +371,11 @@
 (defrecord ^:private CoercionError
   [message])
 
-(defn coercion-error
-  "Returns a special record that indicates an error coercing a scalar value.
+(defn coercion-failure
+  "Returns a special record that indicates a failure coercing a scalar value.
   This may be returned from a scalar's :parse or :serialize callback.
 
-  A coercion error includes a message key, and may also include additional data.
+  A coercion failure includes a message key, and may also include additional data.
 
   message
   : A message string presentable to a user.
@@ -384,11 +384,13 @@
   : An optional map of additional details about the failure."
   {:added "0.16.0"}
   ([message]
-   (coercion-error message nil))
+   (coercion-failure message nil))
   ([message data]
    (merge (->CoercionError message) data)))
 
-(defn ^:private is-error?
+(defn is-coercion-failure?
+  "Is this a coercion error created by [[coercion-failure]]?"
+  {:added "0.16.0"}
   [v]
   (instance? CoercionError v))
 
@@ -416,20 +418,21 @@
         coercion-wrapper (when (= :scalar category)
                            (let [serializer (:serialize field-type)]
                              (fn [resolved-value next-selector callback]
-                               (cond-let
-                                 :let [serialized (s/conform
-                                                  serializer resolved-value)]
+                               (let
+                                 [serialized (s/conform serializer resolved-value)]
+                                 (cond
 
-                                 (= serialized :clojure.spec/invalid)
-                                 (callback nil (error "Invalid value for a scalar type."
-                                                      {:type field-type-name
-                                                       :value (pr-str resolved-value)}))
+                                   (= serialized :clojure.spec/invalid)
+                                   (callback nil (error "Invalid value for a scalar type."
+                                                        {:type field-type-name
+                                                         :value (pr-str resolved-value)}))
 
-                                 (is-error? serialized)
-                                 (callback nil serialized)
+                                   (is-coercion-failure? serialized)
+                                   (callback nil serialized)
 
-                                 :else
-                                 (next-selector serialized callback)))))
+                                   :else
+                                   (next-selector serialized callback))))))
+
         allowed-types-wrapper (when (#{:interface :union} category)
                                 (let [member-types (:members field-type)]
                                   (fn [resolved-value next-selector callback]
