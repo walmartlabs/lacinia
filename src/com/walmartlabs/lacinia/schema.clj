@@ -495,7 +495,6 @@
         wrapped-resolver (cond-> (wrap-resolver-to-ensure-resolver-result base-resolver)
                            (nil? provided-resolver) (vary-meta assoc ::default-resolver? true))]
     (assoc field
-           :containing-type-name (:type-name containing-type)
            :resolve wrapped-resolver
            :selector selector)))
 

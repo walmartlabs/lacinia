@@ -1,5 +1,5 @@
-Resolver Timing
-===============
+Timing Resolvers
+================
 
 It can be very interesting to know where your queries are spending their time; Lacinia
 can help you here; when enabled, Lacinia will collect start and finish timestamps, and elapsed time, for each
@@ -10,17 +10,17 @@ Timing collection is enabled using the key, ``:com.walmartlabs.lacinia/enable-ti
 .. literalinclude:: /_examples/timings.edn
    :language: clojure
 
-.. sidebar:: Extensions key?
+.. sidebar:: Extension key?
 
    GraphQL supports a third response key, ``extensions``, as
    described in `the spec <https://facebook.github.io/graphql/#sec-Response-Format>`_.
    It exists just for this kind of extra information in the response.
 
 Timings are returned in a tree structure below the ``:extensions`` key of the response.
-The tree structure reflects the structure of the schema (not the query).
+The tree structure reflects the structure of the *query* (not the schema).
 
 We can see here that the ``human`` query operation's resolver was invoked twice, and the ``friends`` field's
-resolver (inside the ``human`` type) was invoked just once.
+resolver was invoked just once.
 Only explicitly added resolve functions are timed; default resolve functions are trivial and not included.
 
 For each invocation, values are identified for the start and finish time (in standard format, milliseconds since the epoch),

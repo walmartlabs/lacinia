@@ -55,13 +55,13 @@
 
 (deftest does-not-collect-timing-for-default-resolvers
   (let [result (q "{ root(delay: 50) { simple slow { simple }}}" enable-timing)]
-    (is (= nil (-> result :extensions :timing :Fast :simple))
+    (is (= nil (-> result :extensions :timing :root :simple))
         "Some timings were collected.")))
 
 (deftest collects-timing-for-provided-resolvers
   (doseq [delay [25 50 75]
           :let [result (q (str "{ root(delay: " delay ") { slow { simple }}}") enable-timing)
-                timings (get-in result [:extensions :timing :Fast :slow])
+                timings (get-in result [:extensions :timing :root :slow :execution/timings])
                 elapsed-time (-> timings first :elapsed)]]
     ;; Allow for a bit of overhead; Thread/sleep is quite inexact.
     (is (<= delay elapsed-time (+ delay 10)))
@@ -75,7 +75,7 @@
                      tortoise: root(delay: 50) { slow { simple }}
                    }"
                   enable-timing)
-        elapsed-times (->> (get-in result [:extensions :timing :Fast :slow])
+        elapsed-times (->> (get-in result [:extensions :timing :root :slow :execution/timings])
                            (mapv :elapsed))]
     (is (= 2 (count elapsed-times)))
     (is (<= 5 (elapsed-times 0) 15))

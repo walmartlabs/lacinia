@@ -130,10 +130,14 @@
                                        timing {:start start-ms
                                                :finish finish-ms
                                                ;; This is just a convienience:
-                                               :elapsed elapsed-ms}
-                                       {:keys [field-name containing-type-name]} (:field-definition field-selection)]
+                                               :elapsed elapsed-ms}]
+                                   ;; The extra key is to handle a case where we time, say, [:hero] and [:hero :friends]
+                                   ;; That will leave :friends as one child of :hero, and :execution/timings as another.
+                                   ;; The timings are always a list; we don't know if the field is resolved once,
+                                   ;; resolved multiple times because it is inside a nested value, or resolved multiple
+                                   ;; times because of multiple top-level operations.
                                    (swap! timings
-                                          update-in [containing-type-name field-name]
+                                          update-in (conj (:query-path field-selection) :execution/timings)
                                           (fnil conj []) timing)))
 
                                (when-let [errors (-> resolve-errors
