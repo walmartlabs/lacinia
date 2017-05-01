@@ -14,7 +14,7 @@
     [com.walmartlabs.lacinia.internal-utils
      :refer [map-vals map-kvs filter-vals deep-merge q
              is-internal-type-name? sequential-or-set? as-keyword
-             combine-results]]
+             combine-results cond-let]]
     [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolve-as]]
     [clojure.string :as str])
   (:import
@@ -368,6 +368,30 @@
   [resolved-value callback]
   (callback resolved-value))
 
+(defrecord ^:private CoercionError
+  [message])
+
+(defn coercion-error
+  "Returns a special record that indicates an error coercing a scalar value.
+  This may be returned from a scalar's :parse or :serialize callback.
+
+  A coercion error includes a message key, and may also include additional data.
+
+  message
+  : A message string presentable to a user.
+
+  data
+  : An optional map of additional details about the failure."
+  {:added "0.16.0"}
+  ([message]
+   (coercion-error message nil))
+  ([message data]
+   (merge (->CoercionError message) data)))
+
+(defn ^:private is-error?
+  [v]
+  (instance? CoercionError v))
+
 (defn ^:private create-root-selector
   "Creates a selector function for the :root kind, which is the point at which
   a type refers to something in the schema.
@@ -392,13 +416,20 @@
         coercion-wrapper (when (= :scalar category)
                            (let [serializer (:serialize field-type)]
                              (fn [resolved-value next-selector callback]
-                               (let [serialized (s/conform
+                               (cond-let
+                                 :let [serialized (s/conform
                                                   serializer resolved-value)]
-                                 (if-not (= serialized :clojure.spec/invalid)
-                                   (next-selector serialized callback)
-                                   (callback nil (error "Invalid value for a scalar type."
-                                                        {:type field-type-name
-                                                         :value (pr-str resolved-value)})))))))
+
+                                 (= serialized :clojure.spec/invalid)
+                                 (callback nil (error "Invalid value for a scalar type."
+                                                      {:type field-type-name
+                                                       :value (pr-str resolved-value)}))
+
+                                 (is-error? serialized)
+                                 (callback nil serialized)
+
+                                 :else
+                                 (next-selector serialized callback)))))
         allowed-types-wrapper (when (#{:interface :union} category)
                                 (let [member-types (:members field-type)]
                                   (fn [resolved-value next-selector callback]

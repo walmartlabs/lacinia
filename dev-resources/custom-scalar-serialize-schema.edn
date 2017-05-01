@@ -1,0 +1,8 @@
+{:scalars
+ {:LimitedInt {:parse :parse
+               :serialize :serialize}}
+
+ :queries
+ {:test {:type :LimitedInt
+         :args {:in {:type (non-null Int)}}
+         :resolve :test-query}}}

@@ -1,11 +1,14 @@
 (ns com.walmartlabs.lacinia.custom-scalars-test
-  (:require  [clojure.test :as t]
-             [clojure.spec :as s]
-             [clojure.test :refer [deftest is testing]]
-             [com.walmartlabs.lacinia :as lacinia]
-             [com.walmartlabs.lacinia.schema :as schema]
-             [com.walmartlabs.test-schema :refer [test-schema]]
-             [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace simplify]])
+  (:require [clojure.test :as t]
+            [clojure.spec :as s]
+            [clojure.test :refer [deftest is testing]]
+            [com.walmartlabs.lacinia :as lacinia]
+            [com.walmartlabs.lacinia.schema :as schema]
+            [com.walmartlabs.test-schema :refer [test-schema]]
+            [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace simplify]]
+            [clojure.java.io :as io]
+            [clojure.edn :as edn]
+            [com.walmartlabs.lacinia.util :as util])
   (:import (java.text SimpleDateFormat)
            (java.util Date)
            (org.joda.time DateTime DateTimeConstants)
@@ -376,3 +379,37 @@
                       {:words [[[] "foo"]]}
                       nil))
           "should return an error"))))
+
+(deftest use-of-coercion-error
+  (let [schema (-> "custom-scalar-serialize-schema.edn"
+                   io/resource
+                   slurp
+                   edn/read-string
+                   (util/attach-resolvers {:test-query
+                                           (fn [_ args _]
+                                             (:in args))})
+                   (util/attach-scalar-transformers
+                     {:parse (schema/as-conformer identity)
+                      :serialize (schema/as-conformer
+                                   (fn [v]
+                                     (if (< v 5)
+                                       v
+                                       (schema/coercion-error "5 is too big."))))})
+                   schema/compile)]
+    (is (= {:data {:test 4}}
+           (execute schema
+                    "{ test (in:4) }"
+                    nil
+                    nil)))
+
+
+    (is (= {:data {:test nil}
+            :errors [{:arguments {:in "5"}
+                      :locations [{:column 0
+                                   :line 1}]
+                      :message "5 is too big."
+                      :query-path [:test]}]}
+           (execute schema
+                    "{ test (in:5) }"
+                    nil
+                    nil)))))
