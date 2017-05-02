@@ -8,7 +8,7 @@ Defining custom scalars may allow users to better model their domain.
    Read about `custom scalars <https://facebook.github.io/graphql/#sec-Scalars>`_.
 
 
-To define a custom scalar, you must provide implementations, in your schema, for two operations:
+To define a custom scalar, you must provide implementations, in your schema, for two transforming operations:
 
 parse
   parses query arguments and coerces them into their scalar types according to the schema.
@@ -34,8 +34,25 @@ Here is an example that defines and uses a custom ``:Date`` scalar type:
 .. warning::
 
    This is just an simplified example used to illustrate the broad strokes. It is not thread safe, because
-   the ``SimpleDateFormat`` class is not thread safe. It does not properly report
-   unparseable values.
+   the ``SimpleDateFormat`` class is not thread safe.
 
 The function ``com.walmartlabs.lacinia.schema/as-conformer`` is an easy way to wrap a function as a conformer.
+
+Handling Invalid Values
+-----------------------
+
+Especially when parsing an input string into a value, there can be problems, including invalid user input.
+
+When using ``as-conformer``, any exception thrown by the function will be consumed and converted into ``:clojure.spec/invalid-value``.
+Lacinia will generate a default error message, and an error map will be added to the ``:errors`` response key.
+
+If you want more control, you can use the function ``com.walmartlabs.lacinia.schema/coercion-failure``, which allows you
+to provide a customized message and even additional data for the error map.
+
+Attaching Scalar Transformers
+-----------------------------
+
+As with field resolvers, the pair of transformers for each scalar have no place in an EDN file as they are functions.
+Instead, the transformers can be attached after reading the schema from an EDN file, using the function
+``com.walmartlabs.lacinia.util/attach-scalar-transformers``.
 
