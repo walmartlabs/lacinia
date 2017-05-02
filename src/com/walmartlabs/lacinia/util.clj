@@ -27,7 +27,7 @@
            :else
            ;; If resolver-k is not a keyword, it must be a sequence,
            ;; in which first element is a key that points to a resolver
-           ;; factory in resolver-m and subsequent elements are argumentsc
+           ;; factory in resolver-m and subsequent elements are arguments
            ;; for the given factory.
            [:resolve (apply resolver (rest resolver-k))]))
        node))
