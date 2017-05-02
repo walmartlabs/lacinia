@@ -368,7 +368,7 @@
   [resolved-value callback]
   (callback resolved-value))
 
-(defrecord ^:private CoercionError
+(defrecord ^:private CoercionFailure
   [message])
 
 (defn coercion-failure
@@ -386,13 +386,13 @@
   ([message]
    (coercion-failure message nil))
   ([message data]
-   (merge (->CoercionError message) data)))
+   (merge (->CoercionFailure message) data)))
 
 (defn is-coercion-failure?
   "Is this a coercion error created by [[coercion-failure]]?"
   {:added "0.16.0"}
   [v]
-  (instance? CoercionError v))
+  (instance? CoercionFailure v))
 
 (defn ^:private create-root-selector
   "Creates a selector function for the :root kind, which is the point at which
