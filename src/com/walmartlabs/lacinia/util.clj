@@ -1,6 +1,8 @@
 (ns com.walmartlabs.lacinia.util
   "Useful utility functions."
-  (:require clojure.walk))
+  (:require
+    clojure.walk
+    [com.walmartlabs.lacinia.internal-utils :refer [to-message map-vals]]))
 
 (defn attach-resolvers
   "Given a GraphQL schema and a map of keywords to resolver fns, replace
@@ -33,17 +35,26 @@
 
 
 (defn attach-scalar-transformers
-  "Given a GraphQL schema and a map of keywords to scalar transform
-  maps containing :parse and/or :serialize keys pointing to functions,
-  replace each placeholder keyword in the schema with the actual
-  function."
+  "Given a GraphQL schema, attaches functions in the transform-m map to the schema.
+
+  Inside each scalar definition, the :parse and :serialize keys are replaced with
+  values from the transform-m map.
+
+  In the initial schema, use a keyword for the :parse and :serialize keys, then
+  provide a corresponding value in transform-m."
   [schema transform-m]
-  (assoc schema :scalars
-         (reduce-kv (fn [schema' k v]
-                      (assoc schema'
-                             k
-                             (-> v
-                                 (update :parse #(get transform-m % %))
-                                 (update :serialize #(get transform-m % %)))))
-                    {}
-                    (:scalars schema))))
+  (let [transform #(get transform-m % %)]
+    (update schema :scalars
+            #(map-vals (fn [scalar-def]
+                         (-> scalar-def
+                             (update :parse transform)
+                             (update :serialize transform)))
+                       %))))
+
+(defn as-error-map
+  "Converts an exception into an error map, including a :message key, plus
+  any additional keys and values via `ex-data`."
+  {:added "0.16.0"}
+  [^Throwable t]
+  (merge {:message (to-message t)}
+         (ex-data t)))

@@ -3,14 +3,14 @@
             [com.walmartlabs.lacinia.constants :as constants]
             [com.walmartlabs.lacinia.executor :as executor]
             [com.walmartlabs.lacinia.validator :as validator]
-            [com.walmartlabs.lacinia.internal-utils :refer [cond-let to-message]]
+            [com.walmartlabs.lacinia.internal-utils :refer [cond-let]]
+            [com.walmartlabs.lacinia.util :refer [as-error-map]]
             [com.walmartlabs.lacinia.resolve :as resolve])
   (:import (clojure.lang ExceptionInfo)))
 
 (defn ^:private as-errors
   [exception]
-  [(merge {:message (to-message exception)}
-          (ex-data exception))])
+  {:errors [(as-error-map exception)]})
 
 (defn execute-parsed-query-async
   "Prepares a query, by applying query variables to it, resulting in a prepared
@@ -27,7 +27,7 @@
           [prepared error-result] (try
                                     [(parser/prepare-with-query-variables parsed-query variables)]
                                     (catch Exception e
-                                      [nil {:errors (as-errors e)}]))]
+                                      [nil (as-errors e)]))]
 
     (some? error-result)
     (resolve/resolve-as error-result)
@@ -86,7 +86,7 @@
    (let [[parsed error-result] (try
                                  [(parser/parse-query schema query operation-name)]
                                  (catch ExceptionInfo e
-                                   [nil {:errors (as-errors e)}]))]
+                                   [nil (as-errors e)]))]
      (if (some? error-result)
        error-result
        (execute-parsed-query parsed variables context)))))

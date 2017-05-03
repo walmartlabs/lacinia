@@ -1,11 +1,14 @@
 (ns com.walmartlabs.lacinia.custom-scalars-test
-  (:require  [clojure.test :as t]
-             [clojure.spec :as s]
-             [clojure.test :refer [deftest is testing]]
-             [com.walmartlabs.lacinia :as lacinia]
-             [com.walmartlabs.lacinia.schema :as schema]
-             [com.walmartlabs.test-schema :refer [test-schema]]
-             [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace simplify]])
+  (:require [clojure.test :as t]
+            [clojure.spec :as s]
+            [clojure.test :refer [deftest is testing]]
+            [com.walmartlabs.lacinia :as lacinia]
+            [com.walmartlabs.lacinia.schema :as schema]
+            [com.walmartlabs.test-schema :refer [test-schema]]
+            [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace simplify]]
+            [clojure.java.io :as io]
+            [clojure.edn :as edn]
+            [com.walmartlabs.lacinia.util :as util])
   (:import (java.text SimpleDateFormat)
            (java.util Date)
            (org.joda.time DateTime DateTimeConstants)
@@ -376,3 +379,61 @@
                       {:words [[[] "foo"]]}
                       nil))
           "should return an error"))))
+
+(deftest use-of-coercion-error
+  (let [schema (-> "custom-scalar-serialize-schema.edn"
+                   io/resource
+                   slurp
+                   edn/read-string
+                   (util/attach-resolvers {:test-query
+                                           (fn [_ args _]
+                                             (:in args))})
+                   (util/attach-scalar-transformers
+                     {:parse (schema/as-conformer (fn [s]
+                                                    (if (= "5" s)
+                                                      (schema/coercion-failure "Just don't like 5.")
+                                                      (Integer/parseInt s))))
+                      :serialize (schema/as-conformer
+                                   (fn [v]
+                                     (if (< v 5)
+                                       v
+                                       (schema/coercion-failure "5 is too big."))))})
+                   schema/compile)]
+    (testing "parsers"
+      (is (= {:data {:dupe 4}}
+             (execute schema
+                      "{ dupe (in:4) }"
+                      nil
+                      nil)))
+
+      (is (= {:errors [{:argument :in
+                        :field :dupe
+                        :locations [{:column 0
+                                     :line 1}]
+                        :message "Exception applying arguments to field `dupe': For argument `in', just don't like 5."
+                        :query-path []
+                        :type-name :LimitedInt
+                        :value "5"}]}
+             (execute schema
+                      "{ dupe (in: 5) }"
+                      nil
+                      nil))))
+
+    (testing "serializers"
+      (is (= {:data {:test 4}}
+             (execute schema
+                      "{ test (in:4) }"
+                      nil
+                      nil)))
+
+
+      (is (= {:data {:test nil}
+              :errors [{:arguments {:in "5"}
+                        :locations [{:column 0
+                                     :line 1}]
+                        :message "5 is too big."
+                        :query-path [:test]}]}
+             (execute schema
+                      "{ test (in:5) }"
+                      nil
+                      nil))))))

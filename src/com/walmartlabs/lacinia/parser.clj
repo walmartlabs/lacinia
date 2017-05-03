@@ -293,10 +293,18 @@
                          {:category (:category scalar-type)}))
 
       (let [coerced (-> scalar-type :parse (s/conform arg-value))]
-        (when (= ::s/invalid coerced)
+        (cond
+
+          (= ::s/invalid coerced)
           (throw-exception (format "Scalar value is not parsable as type %s."
-                                   (q type-name))))
-        coerced))))
+                                   (q type-name)))
+
+          (schema/is-coercion-failure? coerced)
+          (throw-exception (:message coerced)
+                           (dissoc coerced :message))
+
+          :else
+          coerced)))))
 
 (defmethod process-literal-argument :null
   [schema argument-definition arg-value]
