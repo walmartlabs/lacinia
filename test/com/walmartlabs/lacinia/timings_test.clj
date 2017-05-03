@@ -64,7 +64,7 @@
                 timings (get-in result [:extensions :timing :root :slow :execution/timings])
                 elapsed-time (-> timings first :elapsed)]]
     ;; Allow for a bit of overhead; Thread/sleep is quite inexact.
-    (is (<= delay elapsed-time (+ delay 10)))
+    (is (<= delay elapsed-time (* delay 10)))
     ;; Check that :start and :finish are both present and add up
     (is (= elapsed-time
            (- (-> timings first :finish)
@@ -78,6 +78,6 @@
         elapsed-times (->> (get-in result [:extensions :timing :root :slow :execution/timings])
                            (mapv :elapsed))]
     (is (= 2 (count elapsed-times)))
-    (is (<= 5 (elapsed-times 0) 15))
-    (is (<= 50 (elapsed-times 1) 60))))
+    (is (<= 5 (elapsed-times 0)))
+    (is (<= 50 (elapsed-times 1)))))
 
