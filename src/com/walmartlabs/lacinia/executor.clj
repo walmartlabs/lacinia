@@ -89,7 +89,6 @@
                          :value value
                          :value-meta (meta value)})))))
 
-
 (defn ^:private invoke-resolver-for-field
   "Resolves the value for a field selection node, by passing the value to the
   appropriate resolver, and passing it through a chain of value enforcers.
@@ -98,16 +97,24 @@
   The final ResolverResult will always contain just a resolved value; errors are handled here,
   and not passed back in the returned ResolverResult.
 
+  Optionally updates the timings inside the execution-context with start/finish/elapsed time
+  (in milliseconds). Timing checks only occur when enabled (timings is non-nil)
+  and not for default resolvers.
+
   Any resolve errors are enhanced with details about the selection and accumulated in
   the execution context."
   [execution-context field-selection]
   (let [container-value (:resolved-value execution-context)]
     (if (= :field (:selection-type field-selection))
-      (let [{:keys [arguments]} field-selection
+      (let [timings (:timings execution-context)
+            {:keys [arguments]} field-selection
             {:keys [context]} execution-context
             schema (get context constants/schema-key)
             resolve-context (assoc context :com.walmartlabs.lacinia/selection field-selection)
             field-resolver (field-selection-resolver schema field-selection container-value)
+            start-ms (when (and (some? timings)
+                                (not (-> field-resolver meta ::schema/default-resolver?)))
+                       (System/currentTimeMillis))
             resolver-result (try
                               (field-resolver resolve-context arguments container-value)
                               (catch Throwable t
@@ -117,6 +124,22 @@
             final-result (resolve/resolve-promise)]
         (resolve/on-deliver! resolver-result
                              (fn [resolved-value resolve-errors]
+                               (when start-ms
+                                 (let [finish-ms (System/currentTimeMillis)
+                                       elapsed-ms (- finish-ms start-ms)
+                                       timing {:start start-ms
+                                               :finish finish-ms
+                                               ;; This is just a convienience:
+                                               :elapsed elapsed-ms}]
+                                   ;; The extra key is to handle a case where we time, say, [:hero] and [:hero :friends]
+                                   ;; That will leave :friends as one child of :hero, and :execution/timings as another.
+                                   ;; The timings are always a list; we don't know if the field is resolved once,
+                                   ;; resolved multiple times because it is inside a nested value, or resolved multiple
+                                   ;; times because of multiple top-level operations.
+                                   (swap! timings
+                                          update-in (conj (:query-path field-selection) :execution/timings)
+                                          (fnil conj []) timing)))
+
                                (when-let [errors (-> resolve-errors
                                                      assert-and-wrap-error
                                                      seq)]
@@ -133,7 +156,12 @@
 (declare ^:private resolve-and-select)
 
 (defrecord ExecutionContext
-  [context resolved-value errors])
+  ;; context and resolved-value change constantly during the process
+  ;; errors is an Atom containing a vector, which accumulates
+  ;; error-maps during execution.
+  ;; timings is usually nil, or may be an Atom containing an empty map, which
+  ;; accumulates timing data during execution.
+  [context resolved-value errors timings])
 
 (defn ^:private null-to-nil
   [v]
@@ -383,23 +411,26 @@
 
   Expects the context to contain the schema and parsed query.
 
-  Returns a query result, with :data and/or :errors keys."
+  Returns a ResolverResult whose value is the query result, with :data and/or :errors keys.
+
+  This should generally not be invoked by user code; see [[execute-parsed-query]]."
   [context]
   (let [parsed-query (get context constants/parsed-query-key)
         {:keys [selections mutation?]} parsed-query
         enabled-selections (remove :disabled? selections)
         errors (atom [])
-        execution-context (->ExecutionContext context nil errors)
+        timings (when (:com.walmartlabs.lacinia/enable-timing? context)
+                  (atom {}))
+        execution-context (->ExecutionContext context nil errors timings)
         operation-result (if mutation?
                            (execute-nested-selections-sync execution-context enabled-selections)
                            (execute-nested-selections execution-context enabled-selections))
-        data-result (promise)]
+        response-result (resolve/resolve-promise)]
     (resolve/on-deliver! operation-result
                          (fn [selected-data _]
-                           (->> selected-data
-                                (propogate-nulls false)
-                                (deliver data-result))))
-    ;; This will block de-ref'ing the data-result until the operaton-result is
-    ;; realized.
-    (cond-> {:data @data-result}
-      (seq @errors) (assoc :errors (distinct @errors)))))
+                           (let [data (propogate-nulls false selected-data)]
+                             (resolve/deliver! response-result
+                                               (cond-> {:data data}
+                                                 timings (assoc-in [:extensions :timing] @timings)
+                                                 (seq @errors) (assoc :errors (distinct @errors)))))))
+    response-result))

@@ -2,6 +2,12 @@
 
 The function `com.walmartlabs.lacinia.schema/as-conformer' is now public.
 
+New function `com.walmartlabs.lacinia/execute-parsed-query-async`.
+
+Lacinia can now, optionally, collect timing information about
+field resolver functions. This information is returned in the
+`:extensions :timings` key of the response.
+
 ## 0.15.0 -- 19 Apr 2017
 
 Field resolvers can now operate synchronously or asynchronously.
