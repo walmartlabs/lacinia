@@ -5,7 +5,7 @@
 
 [![CircleCI](https://circleci.com/gh/walmartlabs/lacinia/tree/master.svg?style=svg)](https://circleci.com/gh/walmartlabs/lacinia/tree/master)
 
-[Manual](http://lacinia.readthedocs.io/en/latest/)
+[Lacinia Manual](http://lacinia.readthedocs.io/en/latest/)
 
 [API Documentation](http://walmartlabs.github.io/lacinia/)
 
@@ -27,12 +27,10 @@ It provides:
   executed data structure based on the query.
 - A query parser.  Given a compliant GraphQL query, yield a Clojure data structure.
 - A query validator.
-- A built-in query execution engine (using a naive serial execution path).
+- A built-in query execution engine, with asynchronous execution support.
   Given a query and a schema, traverse the query and return a data
   structure. This data structure will typically be serialized to JSON and
-  returned. This engine implements a protocol -- because this library is
-  backend agnostic, you're free to implement your own and optimize for your
-  use-case.
+  returned.
 
 Core philosophies:
 - Data, not macros.  Schemas are data and you can manipulate them as such.
@@ -44,7 +42,7 @@ infrastructure (query parsing, validation, schema, and more).
   with a webserver at all).
 - No magic.  Use this for full query execution lifecycle or use the portions
   you want.
-- Embrace `clojure.spec` internally and externally.  For instance, user custom
+- Embrace `clojure.spec` internally and externally.  For instance, custom
   scalar types are expected to be defined as conformers.
 
 ## Getting Started
@@ -218,8 +216,10 @@ Although this library is used in production at Walmart, it is
 still considered alpha software - subject to change.
 We expect to stabilize it in the near future.
 
-To use this library with Clojure 1.9, specify an exclusion like:
-`[com.walmartlabs/lacinia "x.x.x" :exclusions [clojure-future-spec]]`
+To use this library with Clojure 1.9-alpha14, specify an exclusion like:
+`[com.walmartlabs/lacinia "x.x.x" :exclusions [clojure-future-spec]]`.
+
+More details are [in the manual](http://lacinia.readthedocs.io/en/latest/clojure.html).
 
 ## License
 

@@ -1,6 +1,11 @@
 Resolver Timing
 ===============
 
+.. caution::
+
+  This feature is experimental, and subject to change. Feedback is encouraged!
+
+
 When scaling a service, it is invaluable to know where queries are spending their execution time; Lacinia
 can help you here; when enabled, Lacinia will collect start and finish timestamps, and elapsed time, for each
 resolver function that is invoked during execution of the query.
@@ -10,7 +15,7 @@ Timing collection is enabled using the key, ``:com.walmartlabs.lacinia/enable-ti
 .. literalinclude:: /_examples/timings.edn
    :language: clojure
 
-.. sidebar:: Extension key?
+.. sidebar:: Extensions key?
 
    GraphQL supports a third response key, ``extensions``, as
    described in `the spec <https://facebook.github.io/graphql/#sec-Response-Format>`_.
