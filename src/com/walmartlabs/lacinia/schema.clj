@@ -522,11 +522,14 @@
   ensure it returns a ResolverResult.
   Adds a :selector function."
   [schema options containing-type field]
-  (let [base-resolver (or (:resolve field)
+  (let [provided-resolver (:resolve field)
+        base-resolver (or provided-resolver
                           ((:default-field-resolver options) (:field-name field)))
-        selector (assemble-selector schema containing-type field (:type field))]
+        selector (assemble-selector schema containing-type field (:type field))
+        wrapped-resolver (cond-> (wrap-resolver-to-ensure-resolver-result base-resolver)
+                           (nil? provided-resolver) (vary-meta assoc ::default-resolver? true))]
     (assoc field
-           :resolve (wrap-resolver-to-ensure-resolver-result base-resolver)
+           :resolve wrapped-resolver
            :selector selector)))
 
 ;;-------------------------------------------------------------------------------
@@ -710,7 +713,7 @@
                                   (q arg-name)
                                   (q field-name)
                                   (q object-type-name)
-                                  (-> arg-def :type q))
+                                  (q arg-type-name))
                           {:field-name field-name
                            :object-type object-type-name
                            :arg-name arg-name
