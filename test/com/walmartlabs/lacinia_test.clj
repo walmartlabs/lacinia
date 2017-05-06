@@ -1,6 +1,5 @@
 (ns com.walmartlabs.lacinia-test
-  (:require [clojure.spec :as s]
-            [clojure.test :refer [deftest is testing]]
+  (:require [clojure.test :refer [deftest is testing]]
             [clojure.data.json :as json]
             [com.walmartlabs.lacinia :as lacinia]
             [com.walmartlabs.lacinia.schema :as schema]

@@ -15,7 +15,6 @@
     [clojure.java.io :as io]
     [clojure.pprint :as pprint]
     [com.walmartlabs.test-utils :refer [simplify]]
-    [clojure.walk :as walk]
     [clojure.edn :as edn])
   (:import
     (java.util Date)))
