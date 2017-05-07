@@ -3,7 +3,6 @@
   (:require
     [clojure.test :refer [deftest is]]
     [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.lacinia.util :as util]
     [com.walmartlabs.lacinia :refer [execute]]
     [com.walmartlabs.test-utils :refer [simplify compile-schema]]))
 

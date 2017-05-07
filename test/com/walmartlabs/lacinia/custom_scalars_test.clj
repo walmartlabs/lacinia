@@ -1,6 +1,5 @@
 (ns com.walmartlabs.lacinia.custom-scalars-test
-  (:require [clojure.test :as t]
-            [clojure.spec :as s]
+  (:require [clojure.spec :as s]
             [clojure.test :refer [deftest is testing]]
             [com.walmartlabs.lacinia :as lacinia]
             [com.walmartlabs.lacinia.schema :as schema]
