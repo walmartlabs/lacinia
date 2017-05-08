@@ -9,7 +9,7 @@
   (:import
     (clojure.lang ExceptionInfo)))
 
-(def compiled-schema (schema/compile test-schema))
+(def compiled-schema (schema/compile test-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))
 
 
 

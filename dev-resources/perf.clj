@@ -246,6 +246,17 @@
         exec-time (benchmark (execute-parsed-query parsed-query variables nil))]
     [(name benchmark-name) parse-time exec-time]))
 
+(defn ^:private test-benchmark
+  [benchmark-name]
+  (let [{query-string :query
+         variables :vars
+         :keys [schema expected]
+         :or {schema compiled-schema}} (get benchmark-queries benchmark-name)
+        actual-result (simplify (execute schema query-string variables nil))]
+    (when-not (= actual-result expected)
+      (println "Benchmark returned unexpected result:\n\n")
+      (pprint/pprint actual-result))))
+
 (defn ^:private git-commit
   []
   (-> (sh "git" "rev-parse" "HEAD")

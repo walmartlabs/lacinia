@@ -1,3 +1,12 @@
+## 0.17.0 -- UNRELEASED
+
+The default mapping from field name to field resolver has simplified;
+it is now a direct mapping, without converting underscores to dashes.
+The old behavior is still available via an option to
+`com.walmartlabs.lacinia.schema/compile`.
+
+Please update your applications carefully.
+
 ## 0.16.0 -- 3 May 2017
 
 The function `com.walmartlabs.lacinia.schema/as-conformer` is now public.

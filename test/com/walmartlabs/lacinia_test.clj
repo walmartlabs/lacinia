@@ -8,7 +8,7 @@
 
 (instrument-schema-namespace)
 
-(def default-schema (schema/compile test-schema))
+(def default-schema (schema/compile test-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))
 
 (defn execute
   "Executes the query but reduces ordered maps to normal maps, which makes
@@ -505,7 +505,7 @@
                                     :float 4
                                     :string-float "3.0"
                                     :id 500})}}}
-        compiled-schema (schema/compile schema)
+        compiled-schema (schema/compile schema {:default-field-resolver schema/hyphenating-default-field-resolver})
         q "{ test { int string bool float id string_int float_int string_float}}"
         query-result (execute compiled-schema q nil nil)]
     (is (= clojure.lang.BigInt

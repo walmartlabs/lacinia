@@ -819,19 +819,26 @@
 
 (s/def ::compile-options (s/keys :opt-un [::default-field-resolver]))
 
+
+
 (defn default-field-resolver
-  "The default for the :default-field-resolver option, this
-  is a function that accepts a field name (a keyword) and
-  returns a field resolver function for the field. This includes
-  the default behavior of converting underscores in the field name
-  into dashes."
+  "The default for the :default-field-resolver option, this is a direct conversion of the
+  field name to a keyword."
   [field-name]
-  (let [hyphenized-field (-> field-name
-                             name
-                             (str/replace "_" "-")
-                             keyword)]
-    ^ResolverResult (fn [_ _ v]
-                      (resolve-as (get v hyphenized-field)))))
+  ^ResolverResultImpl
+  (fn [_ _ v]
+    (resolve-as (get v field-name))))
+
+(defn hyphenating-default-field-resolver
+  "An alternative to [[default-field-resolver]], this converts underscores in the field name
+  into hyphens.  At one time, this was the default behavior."
+  {:added "0.17.0"}
+  [field-name]
+  (-> field-name
+      name
+      (str/replace "_" "-")
+      keyword
+      default-field-resolver))
 
 (def ^:private default-compile-opts
   {:default-field-resolver default-field-resolver})
@@ -844,8 +851,7 @@
   :default-field-resolver
 
   : A function that accepts a field name (as a keyword) and converts it into the
-    default field resolver. The default implementation translates
-    underscores in the name to dashes to form a keyword key.
+    default field resolver; this defaults to [[default-field-resolver]].
 
   Produces a form ready to be used in executing a query."
   ([schema]
