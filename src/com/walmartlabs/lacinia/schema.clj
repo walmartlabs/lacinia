@@ -822,8 +822,8 @@
 
 
 (defn default-field-resolver
-  "The default for the :default-field-resolver option, this is a direct conversion of the
-  field name to a keyword."
+  "The default for the :default-field-resolver option, this uses the field name as the key into
+  the resolved value."
   [field-name]
   ^ResolverResultImpl
   (fn [_ _ v]
