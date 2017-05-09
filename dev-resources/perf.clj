@@ -257,6 +257,12 @@
       (println "Benchmark returned unexpected result:\n\n")
       (pprint/pprint actual-result))))
 
+(defn ^:private test-benchmarks
+  []
+  (doseq [benchmark-name (keys benchmark-queries)]
+    (println "Testing" benchmark-name)
+    (test-benchmark benchmark-name)))
+
 (defn ^:private git-commit
   []
   (-> (sh "git" "rev-parse" "HEAD")
@@ -284,6 +290,7 @@
 
 (defn ^:private run-benchmarks
   [options]
+  (test-benchmarks)
   (let [prefix [(format "%tY%<tm%<td" (Date.))
                 (or (:commit options) (git-commit))]
         new-benchmarks (->> (map run-benchmark (keys benchmark-queries))
