@@ -702,13 +702,12 @@
           :type {:kind :root
                  :type :String}}
 
-   :resolve (fn [_ _ value]
-              (-> value
-                  schema/type-tag
+   :resolve (fn [context _ _]
+              (-> context
+                  :com.walmartlabs.lacinia/container-type-name
                   resolve/resolve-as))
 
-   :selector (fn [resolved-value callback]
-               (callback resolved-value))})
+   :selector schema/floor-selector})
 
 (defn ^:private convert-field-selection
   "Converts a parsed field selection into a normalized form, ready for validation

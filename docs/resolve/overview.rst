@@ -141,5 +141,8 @@ then each individual resolved value must be tagged with its concrete type.
 It is allowed and expected that different values in the collection will have
 different concrete types.
 
+When a field resolver is invoked, the context value for key ``:com.walmartlabs.lacinia/container-type-name``
+will be the name of the concrete type (a keyword) for the resolved value.
+
 .. [#root-value] Or, in practice, a sequence of maps.
    In theory, an operation type could be a scalar, but use cases for this are rare.

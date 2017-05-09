@@ -61,34 +61,31 @@
   When the field selection is on an abstract type (an interface or union),
   then the concrete type is extracted from the value instead, and the corresponding
   field of the concrete type is used as the source for the field resolver."
-  [schema field-selection value]
+  [schema field-selection resolved-type value]
   (cond-let
     (:concrete-type? field-selection)
     (-> field-selection :field-definition :resolve)
 
-    :let [{:keys [field]} field-selection
-          type-name (schema/type-tag value)]
+    :let [{:keys [field]} field-selection]
 
-    (nil? type-name)
+    (nil? resolved-type)
     (throw (ex-info "Sanity check: value type tag is nil on abstract type."
-                    {:value value
-                     :value-meta (meta value)}))
+                    {:value value}))
 
-    :let [type (get schema type-name)]
+    :let [type (get schema resolved-type)]
 
     (nil? type)
     (throw (ex-info "Sanity check: invalid type tag on value."
-                    {:type-name type-name
-                     :value value
-                     :value-meta (meta value)}))
+                    {:type-name resolved-type
+                     :value value}))
 
     :else
     (or (get-in type [:fields field :resolve])
         (throw (ex-info "Sanity check: field not present."
-                        {:type type-name
-                         :value value
-                         :value-meta (meta value)})))))
+                        {:type resolved-type
+                         :value value})))))
 
+(require '[clojure.pprint :refer [pprint]])
 (defn ^:private invoke-resolver-for-field
   "Resolves the value for a field selection node, by passing the value to the
   appropriate resolver, and passing it through a chain of value enforcers.
@@ -110,8 +107,11 @@
             {:keys [arguments]} field-selection
             {:keys [context]} execution-context
             schema (get context constants/schema-key)
-            resolve-context (assoc context :com.walmartlabs.lacinia/selection field-selection)
-            field-resolver (field-selection-resolver schema field-selection container-value)
+            resolved-type (:resolved-type execution-context)
+            resolve-context (assoc context
+                                   :com.walmartlabs.lacinia/container-type-name resolved-type
+                                   :com.walmartlabs.lacinia/selection field-selection)
+            field-resolver (field-selection-resolver schema field-selection resolved-type container-value)
             start-ms (when (and (some? timings)
                                 (not (-> field-resolver meta ::schema/default-resolver?)))
                        (System/currentTimeMillis))
@@ -122,6 +122,10 @@
                                                     (assoc (ex-data t)
                                                            :message (to-message t)))))
             final-result (resolve/resolve-promise)]
+        (when (nil? resolver-result)
+          (pprint (assoc (select-keys execution-context [:resolved-value :resolved-type])
+                         :field-selection field-selection
+                         :field-resolver field-resolver)))
         (resolve/on-deliver! resolver-result
                              (fn [resolved-value resolve-errors]
                                (when start-ms
@@ -156,12 +160,12 @@
 (declare ^:private resolve-and-select)
 
 (defrecord ExecutionContext
-  ;; context and resolved-value change constantly during the process
+  ;; context, resolved-value, and resolved-type change constantly during the process
   ;; errors is an Atom containing a vector, which accumulates
   ;; error-maps during execution.
   ;; timings is usually nil, or may be an Atom containing an empty map, which
   ;; accumulates timing data during execution.
-  [context resolved-value errors timings])
+  [context resolved-value resolved-type errors timings])
 
 (defn ^:private null-to-nil
   [v]
@@ -231,6 +235,7 @@
                                                  (map? resolved-field-value)
                                                  (propogate-nulls non-nullable-field? resolved-field-value)
 
+                                                 ;; TODO: We also support sets
                                                  (vector? resolved-field-value)
                                                  (mapv #(propogate-nulls non-nullable-field? %) resolved-field-value)
 
@@ -242,7 +247,7 @@
 (defn ^:private maybe-apply-fragment
   [execution-context fragment-selection concrete-types]
   (let [{:keys [resolved-value]} execution-context
-        actual-type (schema/type-tag resolved-value)]
+        actual-type (:resolved-type execution-context)]
     (when (contains? concrete-types actual-type)
       (resolve-and-select execution-context fragment-selection))))
 
@@ -268,10 +273,6 @@
   ;; :disabled? may be set by a directive
   (when-not (:disabled? selection)
     (apply-selection execution-context selection)))
-
-(defn ^:private included-fragment-selector
-  [resolved-value callback]
-  (callback resolved-value))
 
 (defn ^:private combine-map-results
   "Left associative resolution of results, combined using merge."
@@ -337,8 +338,8 @@
      ;; This function takes the resolved value (or, a value from the list,
      ;; for a list field) and builds out the sub-structure for it, a recursive
      ;; process at the heart of GraphQL.
-     ;; It returns the selected value, ready to be attached to the result tree,
-     (fn [resolved-value]
+     ;; It returns the selected value, ready to be attached to the result tree.
+     (fn [resolved-value resolved-type]
        (cond
 
          (= ::schema/empty-list resolved-value)
@@ -347,7 +348,9 @@
          (and (some? resolved-value)
               (seq sub-selections))
          (execute-nested-selections
-           (assoc execution-context :resolved-value resolved-value)
+           (assoc execution-context
+                  :resolved-value resolved-value
+                  :resolved-type resolved-type)
            sub-selections)
 
          :else
@@ -357,42 +360,42 @@
      ;; errors.
      selector-callback
      (fn
-       ([resolved-value]
-        (selected-value-builder resolved-value))
-       ([resolved-value errors]
+       ([resolved-value resolved-type]
+        (selected-value-builder resolved-value resolved-type))
+       ([resolved-value resolved-type errors]
         (let [errors' (if (map? errors)
                         [errors]
                         errors)]
           (swap! (:errors execution-context)
                  into
                  (enhance-errors selection errors')))
-        (selected-value-builder resolved-value)))
+        (selected-value-builder resolved-value resolved-type)))
      ;; In a concrete type, we know the selector from the field definition
      ;; (a field definition on a concrete object type).  Otherwise, we need
      ;; to use the type of the parent node's resolved value, just
      ;; as we do to get a resolver.
-     selector (if (-> selection :selection-type (not= :field))
-                included-fragment-selector
+     resolved-type (:resolved-type execution-context)
+     is-fragment? (-> selection :selection-type (not= :field))
+     selector (if is-fragment?
+                schema/floor-selector
                 (or (-> selection :field-definition :selector)
-                    (let [concrete-type-name (-> execution-context
-                                                 :resolved-value
-                                                 schema/type-tag)
-                          field-name (:field selection)]
+                    (let [field-name (:field selection)]
                       (-> execution-context
                           :context
                           (get constants/schema-key)
-                          (get concrete-type-name)
+                          (get resolved-type)
                           :fields
                           (get field-name)
                           :selector
                           (or (throw (ex-info "Sanity check: no selector."
-                                              {:type-name concrete-type-name
+                                              {:type-name resolved-type
                                                :selection selection})))))))
 
      final-result (resolve/resolve-promise)]
 
     ;; Here's where it comes together.  The field's selector
     ;; does the validations, and for list types, does the mapping.
+    ;; It also figures out the field type.
     ;; Eventually, individual values will be passed to the callback, which can then turn around
     ;; and recurse down a level.  The result is a map or a list of maps.
 
@@ -400,7 +403,11 @@
                          (fn [resolved-value _]
                            ;; The selector returns a ResolverResult, when it is ready,
                            ;; then its value transfers to the final result.
-                           (let [selector-result (selector resolved-value selector-callback)]
+                           (let [selector-result (selector resolved-value
+                                                           ;; When recursing into a fragment, the resolved value
+                                                           ;; and resolved type do not change.
+                                                           (when is-fragment? resolved-type)
+                                                           selector-callback)]
                              (resolve/on-deliver! selector-result
                                                   (fn [resolved-value _]
                                                     (resolve/deliver! final-result resolved-value))))))
@@ -421,7 +428,9 @@
         errors (atom [])
         timings (when (:com.walmartlabs.lacinia/enable-timing? context)
                   (atom {}))
-        execution-context (->ExecutionContext context nil errors timings)
+        execution-context (map->ExecutionContext {:context context
+                                                  :errors errors
+                                                  :timings timings})
         operation-result (if mutation?
                            (execute-nested-selections-sync execution-context enabled-selections)
                            (execute-nested-selections execution-context enabled-selections))

@@ -5,6 +5,11 @@ it is now a direct mapping, without converting underscores to dashes.
 The old behavior is still available via an option to
 `com.walmartlabs.lacinia.schema/compile`.
 
+The function `com.walmartlabs.lacinia.schema/tag-with-type` has changed; it
+now returns an entirely different value (rather than the same value with
+different meta-data). This is to allow resolved values that are not maps
+(or sequences of maps).  The related function `com.walmartlabs.lacinia.schema/type-tag` has been removed.
+
 Please update your applications carefully.
 
 ## 0.16.0 -- 3 May 2017

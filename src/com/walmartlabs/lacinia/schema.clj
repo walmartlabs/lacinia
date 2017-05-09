@@ -14,7 +14,8 @@
     [com.walmartlabs.lacinia.internal-utils
      :refer [map-vals map-kvs filter-vals deep-merge q
              is-internal-type-name? sequential-or-set? as-keyword
-             combine-results]]
+             combine-results
+             ->TaggedValue is-tagged-value? extract-value extract-type-tag]]
     [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolve-as]]
     [clojure.string :as str])
   (:import
@@ -44,17 +45,17 @@
 (defn tag-with-type
   "Tags a value with a GraphQL type name, a keyword.
   The keyword should identify a specific concrete object
-  (not an interface or union) in the relevent schema."
-  [x type-name]
-  ;; vary-meta will fail on nil, and sometimes a resolver will resolve
-  ;; nil validly, and it will be auto-tagged.
-  (when x
-    (vary-meta x assoc ::graphql-type-name type-name)))
+  (not an interface or union) in the relevent schema.
 
-(defn type-tag
-  "Returns the GraphQL type tag, previously set with [[tag-with-type]], or nil if the tag is not present."
-  [x]
-  (-> x meta ::graphql-type-name))
+  Returns a new wrapper instance that combines the value and the type name."
+  [x type-name]
+  ;; In some cases, the resolver for a field may tag a value even though it
+  ;; gets re-tagged automatically.
+  (if (is-tagged-value? x)
+    (if (= type-name (extract-type-tag x))
+      x
+      (->TaggedValue (extract-value x) type-name))
+    (->TaggedValue x type-name)))
 
 (defn type-map
   "Reduces a compiled schema to a list of categories and the names of types in that category, useful
@@ -360,13 +361,13 @@
 (defn ^:private compose-selectors
   [next-selector selector-wrapper]
   (if (some? selector-wrapper)
-    (fn invoke-wrapper [resolved-value callback]
-      (selector-wrapper resolved-value next-selector callback))
+    (fn invoke-wrapper [resolved-value resolved-type callback]
+      (selector-wrapper resolved-value resolved-type next-selector callback))
     next-selector))
 
-(defn ^:private floor-selector
-  [resolved-value callback]
-  (callback resolved-value))
+(defn ^:nodoc floor-selector
+  [resolved-value resolved-type callback]
+  (callback resolved-value resolved-type))
 
 (defrecord ^:private CoercionFailure
   [message])
@@ -417,49 +418,56 @@
         ;; Build up layers of checks and other logic.
         coercion-wrapper (when (= :scalar category)
                            (let [serializer (:serialize field-type)]
-                             (fn [resolved-value next-selector callback]
+                             (fn [resolved-value resolved-type next-selector callback]
                                (let
                                  [serialized (s/conform serializer resolved-value)]
                                  (cond
 
                                    (= serialized :clojure.spec/invalid)
-                                   (callback nil (error "Invalid value for a scalar type."
-                                                        {:type field-type-name
+                                   (callback nil nil (error "Invalid value for a scalar type."
+                                                            {:type field-type-name
                                                          :value (pr-str resolved-value)}))
 
                                    (is-coercion-failure? serialized)
-                                   (callback nil serialized)
+                                   (callback nil nil serialized)
 
                                    :else
-                                   (next-selector serialized callback))))))
+                                   (next-selector serialized resolved-type callback))))))
 
         allowed-types-wrapper (when (#{:interface :union} category)
                                 (let [member-types (:members field-type)]
-                                  (fn [resolved-value next-selector callback]
-                                    (let [actual-type (type-tag resolved-value)]
-                                      (cond
+                                  (fn [resolved-value resolved-type next-selector callback]
+                                    (cond
 
-                                        (contains? member-types actual-type)
-                                        (next-selector resolved-value callback)
+                                      (contains? member-types resolved-type)
+                                      (next-selector resolved-value resolved-type callback)
 
-                                        (nil? actual-type)
-                                        (callback nil (error "Field resolver returned an instance not tagged with a schema type."))
+                                      (nil? resolved-type)
+                                      (callback nil nil (error "Field resolver returned an instance not tagged with a schema type."))
 
-                                        :else
-                                        (callback nil (error "Value returned from resolver has incorrect type for field."
-                                                             {:field-type field-type-name
-                                                              :actual-type actual-type
-                                                              :allowed-types member-types})))))))
-        apply-tag-wrapper (when (#{:object :input-object} category)
-                            (fn [resolved-value next-selector callback]
-                              (next-selector (tag-with-type resolved-value field-type-name) callback)))
-        single-result-wrapper (fn [resolved-value next-selector callback]
+                                      :else
+                                      (callback nil nil (error "Value returned from resolver has incorrect type for field."
+                                                               {:field-type field-type-name
+                                                                :actual-type resolved-type
+                                                                :allowed-types member-types}))))))
+        unwrap-tagged-type-wrapper (fn [resolved-value resolved-type next-selector callback]
+                                     (if (is-tagged-value? resolved-value)
+                                       (next-selector (extract-value resolved-value)
+                                                      (extract-type-tag resolved-value) callback)
+                                       (next-selector resolved-value resolved-type callback)))
+        apply-static-type-wrapper (when (#{:object :input-object} category)
+                                    (fn [resolved-value resolved-type next-selector callback]
+                                      ;; TODO: Maybe a check that if the resolved value is tagged, that the tag matches
+                                      ;; the expected tag?
+                                      (next-selector resolved-value field-type-name callback)))
+        single-result-wrapper (fn [resolved-value resolved-type next-selector callback]
                                 (if (sequential-or-set? resolved-value)
-                                  (callback nil (error "Field resolver returned a collection of values, expected only a single value."))
-                                  (next-selector resolved-value callback)))]
+                                  (callback nil nil (error "Field resolver returned a collection of values, expected only a single value."))
+                                  (next-selector resolved-value resolved-type callback)))]
     (reduce compose-selectors floor-selector [coercion-wrapper
                                               allowed-types-wrapper
-                                              apply-tag-wrapper
+                                              unwrap-tagged-type-wrapper
+                                              apply-static-type-wrapper
                                               single-result-wrapper])))
 
 (defn ^:private assemble-selector
@@ -483,20 +491,20 @@
 
     :list
     (let [next-selector (assemble-selector schema object-type field (:type type))]
-      (fn [resolved-value callback]
+      (fn [resolved-value resolved-type callback]
         (cond
           (nil? resolved-value)
-          (callback ::empty-list)
+          (callback ::empty-list nil)
 
           (not (sequential-or-set? resolved-value))
-          (callback nil (error "Field resolver returned a single value, expected a collection of values."))
+          (callback nil nil (error "Field resolver returned a single value, expected a collection of values."))
 
           :else
           ;; So we have some privileged knowledge here: the callback returns a ResolverResult containing
           ;; the value. So we need to combine those together into a new ResolverResult.
           (reduce #(combine-results conj %1 %2)
                   (resolve-as [])
-                  (mapv #(next-selector % callback) resolved-value)))))
+                  (mapv #(next-selector % resolved-type callback) resolved-value)))))
 
     :non-null
     (let [next-selector (assemble-selector schema object-type field (:type type))]
@@ -506,13 +514,13 @@
                                 (-> object-type :type-name q))
                         {:field-name (:field-name field)
                          :field field})))
-      (fn [resolved-value callback]
+      (fn [resolved-value resolved-type callback]
         (cond
           (nil? resolved-value)
-          (callback nil (error "Non-nullable field was null."))
+          (callback nil nil (error "Non-nullable field was null."))
 
           :else
-          (next-selector resolved-value callback))))
+          (next-selector resolved-value resolved-type callback))))
 
     :root                                                   ;;
     (create-root-selector schema object-type field (:type type))))

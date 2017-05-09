@@ -54,7 +54,7 @@
          :force-side  "3000"}
         ]
        (hash-map-by :id)
-       (map-vals #(schema/tag-with-type % :human))))
+       (map-vals #(assoc % ::type :human))))
 
 (def droids-data
   (->> [{:id               "2001"
@@ -69,7 +69,7 @@
          :primary-function "PROTOCOL"}
         ]
        (hash-map-by :id)
-       (map-vals #(schema/tag-with-type % :droid))))
+       (map-vals #(assoc % ::type :droid))))
 
 (def force-data
   (->> [{:id "3000"
@@ -79,13 +79,19 @@
          :name "light"
          :members ["1000" "1003" "1002"]}]
        (hash-map-by :id)
-       (map-vals #(schema/tag-with-type % :force))))
+       (map-vals #(assoc % ::type :force))))
+
+(defn with-tag
+  [v]
+  (if-let [type (::type v)]
+    (schema/tag-with-type v type)
+    v))
 
 (defn get-character
   "Gets a character."
   [k]
-  (or (get humans-data k)
-      (get droids-data k)))
+  (with-tag (or (get humans-data k)
+                (get droids-data k))))
 
 (defn find-by-name
   [n]
@@ -106,7 +112,7 @@
 (defn get-force-data
   "Gets side of the force that character is on."
   [k]
-  (get force-data k))
+  (with-tag (get force-data k)))
 
 (defn get-force-members
   "Gets the members of a force side."
@@ -281,23 +287,26 @@
                      :resolve (fn [ctx args v]
                                 (let [{:keys [from to]} args]
                                   (-> (find-by-name from)
-                                      (assoc :name to))))}
+                                      (assoc :name to)
+                                      with-tag)))}
     :addHeroEpisodes {:type :character
                       :args {:id {:type '(non-null String)}
                              :episodes {:type '(non-null (list :episode))}
                              :does_nothing {:type 'String}}
                       :resolve (fn [ctx args v]
-                                 (let [{:keys [id episodes]} args
-                                       hero (get humans-data id)]
-                                   (update hero :appears-in concat episodes)))}
+                                 (with-tag
+                                   (let [{:keys [id episodes]} args
+                                         hero (get humans-data id)]
+                                     (update hero :appears-in concat episodes))))}
     :changeHeroHomePlanet {:type :human
                            :args {:id {:type '(non-null String)}
                                   :newHomePlanet {:type 'String}}
                            :resolve (fn [ctx args v]
-                                      (let [hero (get humans-data (:id args))]
-                                        (if (contains? args :newHomePlanet)
-                                          (assoc hero :homePlanet (:newHomePlanet args))
-                                          hero)))}}
+                                      (with-tag
+                                        (let [hero (get humans-data (:id args))]
+                                          (if (contains? args :newHomePlanet)
+                                            (assoc hero :homePlanet (:newHomePlanet args))
+                                            hero))))}}
 
    :queries
    {:hero {:type '(non-null :character)
