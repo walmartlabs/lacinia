@@ -26,8 +26,8 @@
                        :name "General Products"})
 
 (def example-employee {:id "2000"
-                       :given-name "Louis"
-                       :family-name "Wu"
+                       :given_name "Louis"
+                       :family_name "Wu"
                        :employer example-business})
 
 (defn resolve-search

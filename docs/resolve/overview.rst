@@ -111,18 +111,9 @@ In the majority of cases, there is a direct mapping from a field name (in the sc
 of the resolved value.
 
 When the ``:resolve`` key for a field is not specified, a default resolver
-is provided:
-
-* A key is formed, by converting any underscores in the field name to dashes.
-
-* A function is created, that simply extracts the key from the container resolved value,
-  and returns a resolved value tuple.
+is provided automatically; this default resolver simply expects the resolved value to be a map
+containing a key that exactly matches the field name.
  
-For example, if the field's name is ``:updated_at``, then
-the default resolver will extract the ``:updated-at`` key.
-
-This works well in cases where the resolved value contains the expected key with the correct type.
-
 Nested Fields
 -------------
 

@@ -10,6 +10,7 @@
                  [org.flatland/ordered "1.5.4"
                   :exclusions [org.clojure/tools.macro]]]
   :profiles {:dev {:dependencies [[criterium "0.4.4"]
+                                  [org.clojure/test.check "0.9.0"]
                                   [joda-time "2.9.7"]
                                   [org.clojure/data.csv "0.1.3"]
                                   [org.clojure/tools.cli "0.3.5"]

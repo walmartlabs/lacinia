@@ -71,19 +71,7 @@ in GraphQL, the client query identifies which fields from the resolved value are
 (and often, renamed) to form the response value.
 
 ``:resolve`` is optional; when not provided it is assumed that the containing field's
-resolved value is a map containing a key matching the field's name.
-
-.. tip::
-
-   Clojure conventions are to name things as ``names-with-dashes`` rather than ``CamelCase``.
-   However, it is perfectly valid to mix and match, to fit the expectations of your
-   clients; nothing prevents a keyword from having mixed case, e.g., ``:Product``.
-
-   GraphQL forbids any names from having dashes in them.
-
-   Lacinia is opinionated here: it converts field names with underscores into
-   key names with dashes.
-   For example, a field named ``:user_id`` would normally be resolved using the key ``:user-id``.
+resolved value is a map containing a key exactly matching the field's name.
 
 A field resolver function may be provided on a field inside an
 :doc:`object definition <objects>`, or
