@@ -175,9 +175,11 @@
   (instance? TaggedValue v))
 
 (defn extract-value
+  {:added "0.17.0"}
   [^TaggedValue v]
   (.value v))
 
 (defn extract-type-tag
+  {:added "0.17.0"}
   [^TaggedValue v]
   (.tag v))
