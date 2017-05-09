@@ -85,7 +85,6 @@
                         {:type resolved-type
                          :value value})))))
 
-(require '[clojure.pprint :refer [pprint]])
 (defn ^:private invoke-resolver-for-field
   "Resolves the value for a field selection node, by passing the value to the
   appropriate resolver, and passing it through a chain of value enforcers.
@@ -122,10 +121,6 @@
                                                     (assoc (ex-data t)
                                                            :message (to-message t)))))
             final-result (resolve/resolve-promise)]
-        (when (nil? resolver-result)
-          (pprint (assoc (select-keys execution-context [:resolved-value :resolved-type])
-                         :field-selection field-selection
-                         :field-resolver field-resolver)))
         (resolve/on-deliver! resolver-result
                              (fn [resolved-value resolve-errors]
                                (when start-ms
