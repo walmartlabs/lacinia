@@ -100,57 +100,53 @@
   Any resolve errors are enhanced with details about the selection and accumulated in
   the execution context."
   [execution-context field-selection]
-  (let [container-value (:resolved-value execution-context)]
-    (if (= :field (:selection-type field-selection))
-      (let [timings (:timings execution-context)
-            {:keys [arguments]} field-selection
-            {:keys [context]} execution-context
-            schema (get context constants/schema-key)
-            resolved-type (:resolved-type execution-context)
-            resolve-context (assoc context
-                                   :com.walmartlabs.lacinia/container-type-name resolved-type
-                                   :com.walmartlabs.lacinia/selection field-selection)
-            field-resolver (field-selection-resolver schema field-selection resolved-type container-value)
-            start-ms (when (and (some? timings)
-                                (not (-> field-resolver meta ::schema/default-resolver?)))
-                       (System/currentTimeMillis))
-            resolver-result (try
-                              (field-resolver resolve-context arguments container-value)
-                              (catch Throwable t
-                                (resolve/resolve-as nil
-                                                    (assoc (ex-data t)
-                                                           :message (to-message t)))))
-            final-result (resolve/resolve-promise)]
-        (resolve/on-deliver! resolver-result
-                             (fn [resolved-value resolve-errors]
-                               (when start-ms
-                                 (let [finish-ms (System/currentTimeMillis)
-                                       elapsed-ms (- finish-ms start-ms)
-                                       timing {:start start-ms
-                                               :finish finish-ms
-                                               ;; This is just a convienience:
-                                               :elapsed elapsed-ms}]
-                                   ;; The extra key is to handle a case where we time, say, [:hero] and [:hero :friends]
-                                   ;; That will leave :friends as one child of :hero, and :execution/timings as another.
-                                   ;; The timings are always a list; we don't know if the field is resolved once,
-                                   ;; resolved multiple times because it is inside a nested value, or resolved multiple
-                                   ;; times because of multiple top-level operations.
-                                   (swap! timings
-                                          update-in (conj (:query-path field-selection) :execution/timings)
-                                          (fnil conj []) timing)))
+  (let [timings (:timings execution-context)
+        {:keys [arguments]} field-selection
+        container-value (:resolved-value execution-context)
+        {:keys [context]} execution-context
+        schema (get context constants/schema-key)
+        resolved-type (:resolved-type execution-context)
+        resolve-context (assoc context
+                               :com.walmartlabs.lacinia/container-type-name resolved-type
+                               :com.walmartlabs.lacinia/selection field-selection)
+        field-resolver (field-selection-resolver schema field-selection resolved-type container-value)
+        start-ms (when (and (some? timings)
+                            (not (-> field-resolver meta ::schema/default-resolver?)))
+                   (System/currentTimeMillis))
+        resolver-result (try
+                          (field-resolver resolve-context arguments container-value)
+                          (catch Throwable t
+                            (resolve/resolve-as nil
+                                                (assoc (ex-data t)
+                                                       :message (to-message t)))))
+        final-result (resolve/resolve-promise)]
+    (resolve/on-deliver! resolver-result
+                         (fn [resolved-value resolve-errors]
+                           (when start-ms
+                             (let [finish-ms (System/currentTimeMillis)
+                                   elapsed-ms (- finish-ms start-ms)
+                                   timing {:start start-ms
+                                           :finish finish-ms
+                                           ;; This is just a convienience:
+                                           :elapsed elapsed-ms}]
+                               ;; The extra key is to handle a case where we time, say, [:hero] and [:hero :friends]
+                               ;; That will leave :friends as one child of :hero, and :execution/timings as another.
+                               ;; The timings are always a list; we don't know if the field is resolved once,
+                               ;; resolved multiple times because it is inside a nested value, or resolved multiple
+                               ;; times because of multiple top-level operations.
+                               (swap! timings
+                                      update-in (conj (:query-path field-selection) :execution/timings)
+                                      (fnil conj []) timing)))
 
-                               (when-let [errors (-> resolve-errors
-                                                     assert-and-wrap-error
-                                                     seq)]
-                                 (swap! (:errors execution-context) into
-                                        (enhance-errors field-selection errors)))
-                               ;; That's it for handling errors, so just resolve the value and
-                               ;; not the errors.
-                               (resolve/deliver! final-result resolved-value)))
-        final-result)
-      ;; Else, not a field selection, but a fragment selection, which starts with the
-      ;; same resolved value as the containing field or selection.
-      (resolve/resolve-as container-value))))
+                           (when-let [errors (-> resolve-errors
+                                                 assert-and-wrap-error
+                                                 seq)]
+                             (swap! (:errors execution-context) into
+                                    (enhance-errors field-selection errors)))
+                           ;; That's it for handling errors, so just resolve the value and
+                           ;; not the errors.
+                           (resolve/deliver! final-result resolved-value)))
+    final-result))
 
 (declare ^:private resolve-and-select)
 
@@ -326,9 +322,8 @@
   Accumulates errors in the execution context as a side-effect."
   [execution-context selection]
   (let
-    [resolver-result (invoke-resolver-for-field execution-context selection)
+    [is-fragment? (-> selection :selection-type (not= :field))
      sub-selections (:selections selection)
-
      selected-value-builder
      ;; This function takes the resolved value (or, a value from the list,
      ;; for a list field) and builds out the sub-structure for it, a recursive
@@ -370,7 +365,6 @@
      ;; to use the type of the parent node's resolved value, just
      ;; as we do to get a resolver.
      resolved-type (:resolved-type execution-context)
-     is-fragment? (-> selection :selection-type (not= :field))
      selector (if is-fragment?
                 schema/floor-selector
                 (or (-> selection :field-definition :selector)
@@ -384,29 +378,29 @@
                           :selector
                           (or (throw (ex-info "Sanity check: no selector."
                                               {:type-name resolved-type
-                                               :selection selection})))))))
+                                               :selection selection})))))))]
 
-     final-result (resolve/resolve-promise)]
+    ;; For fragments, we start with a single value and it passes right through to
+    ;; sub-selections, without changing value or type.
+    (if is-fragment?
+      (selector (:resolved-value execution-context)
+                resolved-type
+                selector-callback)
 
-    ;; Here's where it comes together.  The field's selector
-    ;; does the validations, and for list types, does the mapping.
-    ;; It also figures out the field type.
-    ;; Eventually, individual values will be passed to the callback, which can then turn around
-    ;; and recurse down a level.  The result is a map or a list of maps.
+      ;; Here's where it comes together.  The field's selector
+      ;; does the validations, and for list types, does the mapping.
+      ;; It also figures out the field type.
+      ;; Eventually, individual values will be passed to the callback, which can then turn around
+      ;; and recurse down a level.  The result is a map or a list of maps.
 
-    (resolve/on-deliver! resolver-result
-                         (fn [resolved-value _]
-                           ;; The selector returns a ResolverResult, when it is ready,
-                           ;; then its value transfers to the final result.
-                           (let [selector-result (selector resolved-value
-                                                           ;; When recursing into a fragment, the resolved value
-                                                           ;; and resolved type do not change.
-                                                           (when is-fragment? resolved-type)
-                                                           selector-callback)]
-                             (resolve/on-deliver! selector-result
-                                                  (fn [resolved-value _]
-                                                    (resolve/deliver! final-result resolved-value))))))
-    final-result))
+      (let [final-result (resolve/resolve-promise)]
+        (resolve/on-deliver! (invoke-resolver-for-field execution-context selection)
+                             (fn [resolved-value _]
+                               (let [selector-result (selector resolved-value nil selector-callback)]
+                                 (resolve/on-deliver! selector-result
+                                                      (fn [resolved-value _]
+                                                        (resolve/deliver! final-result resolved-value))))))
+        final-result))))
 
 (defn execute-query
   "Entrypoint for execution of a query.
