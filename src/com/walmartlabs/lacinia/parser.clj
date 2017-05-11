@@ -515,7 +515,7 @@
       (throw-exception (format "Variable %s doesn't contain the correct number of (nested) lists."
                                (q arg-value))
                        {:variable-name arg-value})
-      (mapv #(process-result schema % nested-type arg-value) result))
+      (mapv #(determine-result-type schema % nested-type arg-value) result))
 
     (nil? result)
     nil
@@ -523,20 +523,34 @@
     (map? nested-type)
     (recur schema result nested-type arg-value)
 
-    :let [category (when (= :root kind)
-                     (get-in schema [nested-type :category]))]
+    :let [category (get-in schema [nested-type :category])]
 
     (= category :scalar)
-    (process-literal-argument schema {:type argument-type} [:scalar result])
+    [:scalar result]
 
     ;; enums have to be handled carefully because they are likely strings in
     ;; the variable map.
 
     (= category :enum)
-    (process-literal-argument schema {:type argument-type} [:enum (as-keyword result)])
+    [:enum (as-keyword result)]
+
+    (= category :input-object)
+    [:object (let [object-fields (get-in schema [nested-type :fields])]
+               (reduce (fn [acc k]
+                         (let [v (get result k)
+                               field-type (get object-fields k)]
+                           (assoc acc k (determine-result-type schema v field-type arg-value))))
+                       {}
+                       (keys result)))]
 
     :else
     (throw (IllegalStateException. "Sanity check - no option in process-result."))))
+
+(defn ^:private process-result
+  "Checks result against variable kind, iterates over nested types, and applies respective
+  actions, if necessary, e.g. parse for custom scalars."
+  [schema result argument-type arg-value]
+  (process-literal-argument schema {:type argument-type} (determine-result-type schema result argument-type arg-value)))
 
 (defmethod process-dynamic-argument :variable
   [schema argument-definition [_ arg-value]]
