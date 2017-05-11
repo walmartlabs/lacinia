@@ -496,9 +496,7 @@
   [any-def]
   (-> any-def :type :kind (= :non-null)))
 
-(defn ^:private process-result
-  "Checks result against variable kind, iterates over nested types, and applies respective
-  actions, if necessary, e.g. parse for custom scalars."
+(defn ^:private determine-result-type
   [schema result argument-type arg-value]
   (cond-let
     :let [nested-type (:type argument-type)
