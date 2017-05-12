@@ -496,9 +496,7 @@
   [any-def]
   (-> any-def :type :kind (= :non-null)))
 
-(defn ^:private process-result
-  "Checks result against variable kind, iterates over nested types, and applies respective
-  actions, if necessary, e.g. parse for custom scalars."
+(defn ^:private construct-literal-argument
   [schema result argument-type arg-value]
   (cond-let
     :let [nested-type (:type argument-type)
@@ -515,28 +513,42 @@
       (throw-exception (format "Variable %s doesn't contain the correct number of (nested) lists."
                                (q arg-value))
                        {:variable-name arg-value})
-      (mapv #(process-result schema % nested-type arg-value) result))
+      [:array (mapv #(construct-literal-argument schema % nested-type arg-value) result)])
 
     (nil? result)
-    nil
+    [:null nil]
 
     (map? nested-type)
     (recur schema result nested-type arg-value)
 
-    :let [category (when (= :root kind)
-                     (get-in schema [nested-type :category]))]
+    :let [category (get-in schema [nested-type :category])]
 
     (= category :scalar)
-    (process-literal-argument schema {:type argument-type} [:scalar result])
+    [:scalar result]
 
     ;; enums have to be handled carefully because they are likely strings in
     ;; the variable map.
 
     (= category :enum)
-    (process-literal-argument schema {:type argument-type} [:enum (as-keyword result)])
+    [:enum (as-keyword result)]
+
+    (= category :input-object)
+    [:object (let [object-fields (get-in schema [nested-type :fields])]
+               (reduce (fn [acc k]
+                         (let [v (get result k)
+                               field-type (get object-fields k)]
+                           (assoc acc k (construct-literal-argument schema v field-type arg-value))))
+                       {}
+                       (keys result)))]
 
     :else
-    (throw (IllegalStateException. "Sanity check - no option in process-result."))))
+    (throw (IllegalStateException. "Sanity check - no option in construct-literal-argument."))))
+
+(defn ^:private substitute-variable
+  "Checks result against variable kind, iterates over nested types, and applies respective
+  actions, if necessary, e.g. parse for custom scalars."
+  [schema result argument-type arg-value]
+  (process-literal-argument schema {:type argument-type} (construct-literal-argument schema result argument-type arg-value)))
 
 (defmethod process-dynamic-argument :variable
   [schema argument-definition [_ arg-value]]
@@ -568,7 +580,7 @@
           ;; to a keyword.
 
           (some? result)
-          (process-result schema result (:type argument-definition) arg-value)
+          (substitute-variable schema result (:type argument-definition) arg-value)
 
           ;; TODO: This is only triggered if a variable is referenced, omitting a non-nillable
           ;; variable should be an error, regardless.

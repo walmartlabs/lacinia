@@ -1257,7 +1257,13 @@
                                            :name nil
                                            :ofType {:kind :SCALAR
                                                     :name "Int"
-                                                    :ofType nil}}}]
+                                                    :ofType nil}}}
+                                   {:defaultValue nil
+                                    :description  nil
+                                    :name         "name"
+                                    :type         {:kind   :SCALAR
+                                                   :name   "String"
+                                                   :ofType nil}}]
                      :interfaces []
                      :kind :INPUT_OBJECT
                      :name "nestedInputObject"

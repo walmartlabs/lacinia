@@ -158,6 +158,7 @@
    :input-objects
    {:nestedInputObject ;; used for testing argument coercion and validation
     {:fields {:integerArray {:type '(list Int)}
+              :name {:type 'String}
               :date {:type :Date}}}
 
     :testInputObject ;; used for testing argument coercion and validation
