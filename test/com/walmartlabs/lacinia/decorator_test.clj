@@ -25,8 +25,8 @@
 
 (deftest decorator-is-applied
   (let [result (execute schema "{ get_node { name description }}")]
-    ;; :description is via a default field resolver it is not decorated
-    ;; :name is via an explicit field resolver, it's implementation is wrapped with the decorator
+    ;; :description is via a default field resolver, it is not decorated
+    ;; :name is via an explicit field resolver, its implementation is wrapped with the decorator
     (is (= {:data {:get_node {:description "node-description"
                               :name "RESOLVE<NODE-NAME>"}}}
            result))))
