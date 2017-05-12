@@ -513,10 +513,10 @@
       (throw-exception (format "Variable %s doesn't contain the correct number of (nested) lists."
                                (q arg-value))
                        {:variable-name arg-value})
-      (mapv #(construct-literal-argument schema % nested-type arg-value) result))
+      [:array (mapv #(construct-literal-argument schema % nested-type arg-value) result)])
 
     (nil? result)
-    nil
+    [:null nil]
 
     (map? nested-type)
     (recur schema result nested-type arg-value)
