@@ -496,7 +496,7 @@
   [any-def]
   (-> any-def :type :kind (= :non-null)))
 
-(defn ^:private determine-result-type
+(defn ^:private construct-literal-argument
   [schema result argument-type arg-value]
   (cond-let
     :let [nested-type (:type argument-type)
@@ -513,7 +513,7 @@
       (throw-exception (format "Variable %s doesn't contain the correct number of (nested) lists."
                                (q arg-value))
                        {:variable-name arg-value})
-      (mapv #(determine-result-type schema % nested-type arg-value) result))
+      (mapv #(construct-literal-argument schema % nested-type arg-value) result))
 
     (nil? result)
     nil
@@ -537,18 +537,18 @@
                (reduce (fn [acc k]
                          (let [v (get result k)
                                field-type (get object-fields k)]
-                           (assoc acc k (determine-result-type schema v field-type arg-value))))
+                           (assoc acc k (construct-literal-argument schema v field-type arg-value))))
                        {}
                        (keys result)))]
 
     :else
-    (throw (IllegalStateException. "Sanity check - no option in process-result."))))
+    (throw (IllegalStateException. "Sanity check - no option in construct-literal-argument."))))
 
-(defn ^:private process-result
+(defn ^:private substitute-variable
   "Checks result against variable kind, iterates over nested types, and applies respective
   actions, if necessary, e.g. parse for custom scalars."
   [schema result argument-type arg-value]
-  (process-literal-argument schema {:type argument-type} (determine-result-type schema result argument-type arg-value)))
+  (process-literal-argument schema {:type argument-type} (construct-literal-argument schema result argument-type arg-value)))
 
 (defmethod process-dynamic-argument :variable
   [schema argument-definition [_ arg-value]]
@@ -580,7 +580,7 @@
           ;; to a keyword.
 
           (some? result)
-          (process-result schema result (:type argument-definition) arg-value)
+          (substitute-variable schema result (:type argument-definition) arg-value)
 
           ;; TODO: This is only triggered if a variable is referenced, omitting a non-nillable
           ;; variable should be an error, regardless.
