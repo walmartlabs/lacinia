@@ -6,9 +6,11 @@ The old behavior is still available via an option to
 `com.walmartlabs.lacinia.schema/compile`.
 
 The function `com.walmartlabs.lacinia.schema/tag-with-type` has changed; it
-now returns an entirely different value (rather than the same value with
-different meta-data). This is to allow resolved values that are not maps
-(or sequences of maps).  The related function `com.walmartlabs.lacinia.schema/type-tag` has been removed.
+now returns a special wrapper value (rather than the same value with
+different metadata). This is to allow resolved values that do not
+support metadata, such as Java objects.
+
+The related function `com.walmartlabs.lacinia.schema/type-tag` has been removed.
 
 Please update your applications carefully.
 
