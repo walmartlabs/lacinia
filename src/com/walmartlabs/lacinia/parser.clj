@@ -1160,7 +1160,9 @@
   "Given a previously parsed query, this returns a map of two keys:
 
   :type
-  : Either :query or :mutation.
+  : The type of request: currently, either :query or :mutation, but
+    other values (such as :subscription) could concievably be added
+    in the future.
 
   :operations
   : The names of the top-level operations, as set of keywords."
