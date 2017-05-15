@@ -9,6 +9,8 @@ Lacinia :doc:`ResolverResult promise <async>`.
 Other potential uses include client authentication and authorization, logging, metrics collection, or other
 cross-cutting concerns.
 
+Only explicit resolver functions are decorated; default decorator functions are used as is, not decorated.
+
 The decorator function is provided as the ``:decorator`` key of the ``com.walmart.lacinia.schema/compile` options map.
 
 The function is passed the object name, field name, and resolver provided in the schema.
@@ -22,7 +24,7 @@ Here's a simplified example of converting from a core.async channel to a Resolve
 .. literalinclude:: ../_examples/decorator.edn
    :language: clojure
 
-A full implementation may want to be more focused (perhaps driven by meta-data on the
-function); this decorator will be applied to all
+A full implementation may want to be more focused, for performance reasons (perhaps driven by meta-data on the
+function); this decorator will be applied to all non-default
 resolver functions in the schema, *including* those that are part of the
 :doc:`Introspection Schema <../introspection>`.
