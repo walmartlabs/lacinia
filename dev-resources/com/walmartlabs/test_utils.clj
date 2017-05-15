@@ -3,11 +3,9 @@
     [clojure.test :refer [is]]
     [clojure.spec.test :as stest]
     [clojure.walk :as walk]
-
-    ;; Needed for side effects (defines OrderedMap), do NOT remove
-    [flatland.ordered.map]
     [clojure.java.io :as io]
     [clojure.edn :as edn]
+    [com.walmartlabs.lacinia :as lacinia]
     [com.walmartlabs.lacinia.util :as util]
     [com.walmartlabs.lacinia.schema :as schema])
   (:import
@@ -70,9 +68,17 @@
 
 (defn compile-schema
   "Reads a schema EDN file, attaches resolvers, and compiles the schema."
-  [resource-path resolvers]
-  (-> (io/resource resource-path)
-      slurp
-      edn/read-string
-      (util/attach-resolvers resolvers)
-      schema/compile))
+  ([resource-path resolvers]
+   (compile-schema resource-path resolvers {}))
+  ([resource-path resolvers options]
+   (-> (io/resource resource-path)
+       slurp
+       edn/read-string
+       (util/attach-resolvers resolvers)
+       (schema/compile options))))
+
+(defn execute
+  ([compiled-schema query]
+    (execute compiled-schema query nil nil))
+  ([compiled-schema query vars context]
+    (simplify (lacinia/execute compiled-schema query vars context))))

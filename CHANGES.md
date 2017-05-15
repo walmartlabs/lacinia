@@ -14,6 +14,11 @@ The related function `com.walmartlabs.lacinia.schema/type-tag` has been removed.
 
 Please update your applications carefully.
 
+`compile` now has a new option, `:decorator`.
+The decorator is a callback applied to all non-default field resolvers.
+The primary use case is to adapt the return value of a field resolver,
+for example, from a core.async channel to a Lacinia ResolverResult.
+
 ## 0.16.0 -- 3 May 2017
 
 The function `com.walmartlabs.lacinia.schema/as-conformer` is now public.
