@@ -1,0 +1,20 @@
+{:interfaces
+ {:character
+  {:fields
+   {:name {:type String}}}}
+
+ :objects
+ {:droid
+  {:implements [:character]
+   :fields {:name {:type String}
+            :power {:type String}}}
+
+  :human
+  {:implements [:character]
+   :fields {:name {:type String}
+            :home_world {:type String}}}}
+
+ :queries
+ {:characters
+  {:type (list :character)
+   :resolve :resolve-characters}}}

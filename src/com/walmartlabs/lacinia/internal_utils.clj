@@ -162,3 +162,24 @@
                                 (fn [right-value _]
                                   (deliver! combined-result (f left-value right-value))))))
     combined-result))
+
+;; NOTE: Parked these things here since namespace reloading in Cursive
+;; can get jammed on new class definitions, causing instance? to fail.
+
+(deftype TaggedValue [value tag])
+
+(defn is-tagged-value?
+  "Returns true if the value is a tagged value (combining an underlying value with a type tag)."
+  {:added "0.17.0"}
+  [v]
+  (instance? TaggedValue v))
+
+(defn extract-value
+  {:added "0.17.0"}
+  [^TaggedValue v]
+  (.value v))
+
+(defn extract-type-tag
+  {:added "0.17.0"}
+  [^TaggedValue v]
+  (.tag v))

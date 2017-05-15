@@ -2,7 +2,7 @@
   :description "A GraphQL server implementation in Clojure"
   :license {:name "Apache, Version 2.0"
             :url "http://www.apache.org/licenses/LICENSE-2.0"}
-  :plugins [[lein-codox "0.10.2"]
+  :plugins [[lein-codox "0.10.3"]
             [test2junit "1.2.5"]]
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [clojure-future-spec "1.9.0-alpha14"]

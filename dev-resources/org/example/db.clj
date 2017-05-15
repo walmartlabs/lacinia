@@ -2,9 +2,12 @@
   (:require
     [com.walmartlabs.lacinia.schema :as schema]))
 
+(defn ^:private tagged
+  [x]
+  (schema/tag-with-type x (::type x)))
 
 (def ^:private humans-data
-  (map #(schema/tag-with-type % :human)
+  (map #(assoc % ::type :human)
        [{:id "1000"
          :name "Luke Skywalker"
          :friends ["1002", "1003", "2000", "2001"]
@@ -35,7 +38,7 @@
          :force_side "3000"}]))
 
 (def ^:private droids-data
-  (map #(schema/tag-with-type % :droid)
+  (map #(assoc % ::type :droid)
        [{:id "2001"
          :name "R2-D2"
          :friends ["1000", "1002", "1003"]
@@ -57,7 +60,8 @@
 
 (defn ^:private first-match [data key value]
   (-> (filter #(= (get % key) value) data)
-      first))
+      first
+      tagged))
 
 (defn  resolve-hero
   [ctx args value]
