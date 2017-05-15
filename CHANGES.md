@@ -19,6 +19,10 @@ The decorator is a callback applied to all non-default field resolvers.
 The primary use case is to adapt the return value of a field resolver,
 for example, from a core.async channel to a Lacinia ResolverResult.
 
+New function: `com.walmartlabs.lacinia.parser/operations`: extracts
+from a parsed query the type (mutation or query) and the set of
+operations.
+
 ## 0.16.0 -- 3 May 2017
 
 The function `com.walmartlabs.lacinia.schema/as-conformer` is now public.
