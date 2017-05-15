@@ -25,7 +25,7 @@
 
 (defn create-schema
   []
-  (-> (io/resource "sample-scheam.edn")
+  (-> (io/resource "sample-schema.edn")
     slurp
     edn/read-string
     (utils/attach-resolvers {...})
