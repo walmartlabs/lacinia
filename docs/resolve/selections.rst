@@ -60,6 +60,7 @@ The query can be visualized as a tree of selections:
       sname [label="name"]
       shriends [label="friends"]
       shappears_in [label="appears_in"]
+      shname[label="name"]
       splanet [label="home_planet"]
 
       sqr -> shero
