@@ -533,13 +533,15 @@
   (let [provided-resolver (:resolve field)
         {:keys [default-field-resolver decorator]} options
         field-name (:field-name field)
+        type-name (:type-name containing-type)
         base-resolver (if provided-resolver
-                        (decorator (:type-name containing-type) field-name provided-resolver)
+                        (decorator type-name field-name provided-resolver)
                         (default-field-resolver field-name))
         selector (assemble-selector schema containing-type field (:type field))
         wrapped-resolver (cond-> (wrap-resolver-to-ensure-resolver-result base-resolver)
                            (nil? provided-resolver) (vary-meta assoc ::default-resolver? true))]
     (assoc field
+           :type-name type-name
            :resolve wrapped-resolver
            :selector selector)))
 
@@ -751,9 +753,11 @@
                        implementors (->> objects
                                          (filter #(-> % :implements interface-name))
                                          (map :type-name)
-                                         set)]
+                                         set)
+                       fields' (map-vals #(assoc % :type-name interface-name)
+                                         (:fields interface))]
                    (-> interface
-                       (assoc :members implementors)
+                       (assoc :members implementors :fields fields')
                        (dissoc :resolve)))))))
 
 (defn ^:private prepare-and-validate-object

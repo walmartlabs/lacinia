@@ -7,7 +7,8 @@
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :as resolve
      :refer [resolve-as]]
-    [com.walmartlabs.lacinia.constants :as constants]))
+    [com.walmartlabs.lacinia.constants :as constants])
+  (:import (clojure.lang PersistentQueue)))
 
 (defn ^:private ex-info-map
   ([field-selection]
@@ -108,7 +109,7 @@
         resolved-type (:resolved-type execution-context)
         resolve-context (assoc context
                                :com.walmartlabs.lacinia/container-type-name resolved-type
-                               :com.walmartlabs.lacinia/selection field-selection)
+                               constants/selection-key field-selection)
         field-resolver (field-selection-resolver schema field-selection resolved-type container-value)
         start-ms (when (and (some? timings)
                             (not (-> field-resolver meta ::schema/default-resolver?)))
@@ -432,3 +433,48 @@
                                                  timings (assoc-in [:extensions :timing] @timings)
                                                  (seq @errors) (assoc :errors (distinct @errors)))))))
     response-result))
+
+(defn ^:private node-selections
+  [parsed-query node]
+  (case (:selection-type node)
+
+    (:field :inline-fragment) (:selections node)
+
+    :fragment-spread
+    (let [{:keys [fragment-name]} node]
+      (get-in parsed-query [:fragments fragment-name :selections]))))
+
+(defn selections-seq
+  "A width-first traversal of selections tree, returning a lazy sequence
+  of qualified field names.  A qualified field name is a namespaced keyword,
+  the namespace is the containing type, e.g. :User/name."
+  {:added "0.17.0"}
+  [context]
+  (let [parsed-query (get context constants/parsed-query-key)
+        selection (get context constants/selection-key)
+        step (fn step [queue]
+               (when (seq queue)
+                 (let [node (peek queue)]
+                   (cons node
+                         (step (into (pop queue)
+                                     (node-selections parsed-query node)))))))
+        to-field-name (fn [node]
+                        (let [field-def (:field-definition node)]
+                          (keyword
+                            (-> field-def :type-name name)
+                            (-> field-def :field-name name))))]
+    (->> (conj PersistentQueue/EMPTY selection)
+         step
+         ;; remove the first node (the selection); just interested
+         ;; in what's beneath the selection
+         next
+         (filter #(= :field (:selection-type %)))
+         (map to-field-name))))
+
+(defn selects-field?
+  "Invoked by a field resolver to determine if a particular field is selected anywhere within the selection
+   tree (that is, at any depth)."
+  {:added "0.17.0"}
+  [context field-name]
+  (boolean (some #(= field-name %) (selections-seq context))))
+
