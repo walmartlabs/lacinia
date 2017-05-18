@@ -444,6 +444,13 @@
     (let [{:keys [fragment-name]} node]
       (get-in parsed-query [:fragments fragment-name :selections]))))
 
+(defn ^:private to-field-name
+  [node]
+  (let [field-def (:field-definition node)]
+    (keyword
+      (-> field-def :type-name name)
+      (-> field-def :field-name name))))
+
 (defn selections-seq
   "A width-first traversal of selections tree, returning a lazy sequence
   of qualified field names.  A qualified field name is a namespaced keyword,
@@ -477,4 +484,46 @@
   {:added "0.17.0"}
   [context field-name]
   (boolean (some #(= field-name %) (selections-seq context))))
+
+(defn ^:private build-selections-map
+  "Builds the selections map for a field selection node."
+  [parsed-query selections]
+  (reduce (fn [m selection]
+            (case (:selection-type selection)
+
+              :field
+              (assoc m (to-field-name selection)
+                     (let [arguments (:arguments selection)
+                           nested-map (build-selections-map parsed-query (:selections selection))]
+                       (cond-> nil
+                         (not (empty? arguments)) (assoc :args arguments)
+                         (not (empty? nested-map)) (assoc :selections nested-map))))
+
+              :inline-fragment
+              (merge m (build-selections-map parsed-query (:selections selection)))
+
+              :fragment-spread
+              (let [{:keys [fragment-name]} selection
+                    fragment-selections (get-in parsed-query [:fragments fragment-name :selections])]
+                (merge m (build-selections-map parsed-query fragment-selections)))))
+          {}
+          selections))
+
+(defn selections-tree
+  "Constructs a tree of the selections below the current field.
+
+   Returns a map where the keys are qualified field names (the selections for this field).
+   For each such field is a map with two optional keys; :args and :selections.
+   :args is the arguments that will be passed to that field's resolver.
+   :selections is the nested selection tree.
+
+   Each key is present only if value is provided; for scalar fields with no arguments, the
+   value will be nil.
+
+   Fragments are flattened into containing fields, as with `selections-seq`."
+  {:added "0.17.0"}
+  [context]
+  (let [parsed-query (get context constants/parsed-query-key)
+        selection (get context constants/selection-key)]
+    (build-selections-map parsed-query (:selections selection))))
 

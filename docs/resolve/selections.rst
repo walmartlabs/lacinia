@@ -89,18 +89,19 @@ These last two are leaf nodes, because they are scalar values.
 The list of ``characters`` (from the ``friends`` field) then has its ``name`` field selected.
 The response then constructs up bottom to top.
 
-Optimizing
-----------
+Previewing Selections
+---------------------
 
 A field resolver can "preview" what fields will be selected below it in the selections tree.
+This is a tool frequently used to optimize data retrieval operations.
 
 As an example, lets assume a starting configuration where the ``hero`` field resolver fetches just the
 basic data for a hero (``id``, ``name``, ``home_planet``, etc.) and the
 ``friends`` resolver does a second query against the database to fetch the list of friends.
 
-That's two database queries. Perhaps we can simplify by getting rid of the
+That's two database queries. Perhaps we can optimize things by getting rid of the
 ``friends`` resolver, and doing a join to fetch the hero and friends at the same time.
-The ``hero`` resolver can just make sure there's a ``:friends`` key in the map, and
+The ``hero`` resolver can just ensures there's a ``:friends`` key in the map (with the fetched friend values), and
 the default field resolver for the ``friends`` field will access it.
 
 That's simpler, but costly when ``friends`` is not part of the query.
@@ -117,5 +118,26 @@ can determine if a particular field appears `anywhere` below ``hero`` in the sel
 ``selects-field?`` identifies fields even inside nested or named fragments,
 ``(executor/selects-field? context :human/home_planet)`` would return true.
 
+It is also possible to get `all` the fields that will be selected, using ``selections-seq``.
+This a lazy, breadth-first navigation of all fields in the selection tree.
+
+In the sequence of field names, any fragments are collapsed into their containing fields.
+
+This level of detail may be insufficient, in which case the function ``selections-tree``
+can be used.
+
+This function builds a recursive structure that identifies the entire tree structure.
+For the above query, it would return the following structure:
+
+.. literalinclude:: ../_examples/selections-tree.edn
+   :language: clojure
+
+This shows, for example, that ``:character/name`` is used in two different ways (inside the
+``hero`` query itself, and within the ``friends`` field).
+
+For fields with arguments, an ``:args`` key is present, with the exact values which will be
+supplied to the the nested field's resolver.
+
+Fields with neither arguments nor sub-selections are represented as nil.
 
 
