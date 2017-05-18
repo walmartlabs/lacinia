@@ -8,3 +8,4 @@ Other Resources
 * A talk at `Clojure/West 2017 <http://2017.clojurewest.org/clojure-graphql/>`_: `Power to the (Mobile) People: Clojure and GraphQL`
   is available on `YouTube <https://www.youtube.com/watch?v=I0vVkQfmy9w&list=PLZdCLR02grLp4W4ySd1sHPOsK83gvqBQp&index=16>`_.
 
+* An good introductory `Blog Post by James Borden <https://jborden.github.io/2017/05/15/using-lacinia>`_.

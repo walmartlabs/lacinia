@@ -19,11 +19,15 @@ The decorator is a callback applied to all non-default field resolvers.
 The primary use case is to adapt the return value of a field resolver,
 for example, from a core.async channel to a Lacinia ResolverResult.
 
-New functions `com.walmartlabs.lacinia.executor/selects-field` and
+New functions `com.walmartlabs.lacinia.executor/selects-field?` and
 `selections-seq` allow a field resolver to determine what fields will be
 accessed in the selection tree.
 This allows field resolvers to optimize data they may fetch from an
 external resource.
+
+New function: `com.walmartlabs.lacinia.parser/operations`: extracts
+from a parsed query the type (mutation or query) and the set of
+operations.
 
 ## 0.16.0 -- 3 May 2017
 

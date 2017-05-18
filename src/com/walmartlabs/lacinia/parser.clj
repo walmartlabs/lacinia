@@ -1155,3 +1155,21 @@
                (throw (ex-info "Failed to parse GraphQL query."
                                {:errors failures})))))]
      (xform-query schema antlr-tree operation-name))))
+
+(defn operations
+  "Given a previously parsed query, this returns a map of two keys:
+
+  :type
+  : The type of request: currently, either :query or :mutation, but
+    other values (such as :subscription) could concievably be added
+    in the future.
+
+  :operations
+  : The names of the top-level operations, as set of keywords."
+  {:added "0.17.0"}
+  [parsed-query]
+  (let [{:keys [mutation? selections]} parsed-query]
+    {:type (if mutation? :mutation :query)
+     :operations (->> selections
+                      (map (comp :field-name :field-definition))
+                      set)}))
