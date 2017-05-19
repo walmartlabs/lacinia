@@ -149,9 +149,9 @@
       edn/read-string))
 
 (deftest captures-arguments
-  (is (= {:root/detail {:args {:int_arg 5
+  (is (= {:Root/detail {:args {:int_arg 5
                                :string_arg "frodo"}}
-          :root/tree nil}
+          :Root/tree nil}
          (extract-tree "{ root: get_root {
               tree
               detail(int_arg: 5, string_arg: \"frodo\")
@@ -162,9 +162,9 @@
 (deftest captures-arguments-from-vars
   ;; Because the tree is prepared, the actual values are visible
   ;; even for variable-driven fields.
-  (is (= {:root/detail {:args {:int_arg 42
+  (is (= {:Root/detail {:args {:int_arg 42
                                :string_arg "samwise"}}
-          :root/tree nil}
+          :Root/tree nil}
          (extract-tree "query($int_var: Int, $string_var: String) {
            root: get_root {
              tree

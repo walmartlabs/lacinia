@@ -1,5 +1,5 @@
 {:objects
- {:root
+ {:Root
   {:fields
    {:tree {:type String}
     :detail {:type String
@@ -7,5 +7,5 @@
              {:int_arg {:type Int}
               :string_arg {:type String}}}}}}
  :queries
- {:get_root {:type :root
+ {:get_root {:type :Root
              :resolve :root-resolve}}}
