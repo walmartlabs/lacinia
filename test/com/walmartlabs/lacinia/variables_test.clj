@@ -52,9 +52,9 @@
   (execute vars-schema q vars nil))
 
 (deftest int-rejects-non-integer-value
-  (is (= {:errors [{:message "Scalar value is not parsable as type `Int'."
+  (is (= {:errors [{:message "Invalid Int value."
                     :type-name :Int
-                    :value 42.0}]}
+                    :value "42.0"}]}
          (query "query ($IntVar: Int) { root (int: $IntVar) { int }}"
                 {:IntVar 42.0}))))
 
