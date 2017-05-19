@@ -88,37 +88,94 @@
         (catch Exception _
           ::s/invalid)))))
 
-(defn ^:private coerce-to-int
+(defn ^:private parse-int
   [v]
   (cond
-    (number? v) (.intValue ^Number v)
+    (integer? v)
+    (if (<= Integer/MIN_VALUE v Integer/MAX_VALUE)
+      (int v)
+      (throw (ex-info "Int value outside of allowed 32 bit integer range." {:value v})))
+
     (string? v) (Integer/parseInt v)
-    :else (throw (ex-info (str "Invalid Int value: " v) {:value v}))))
+
+    :else (throw (ex-info "Invalid Int value." {:value v}))))
+
+(defn ^:private serialize-int
+  [v]
+  (cond
+    ;; Spec: should attempt to coerce raw values to int
+    (string? v)
+    (recur (Integer/parseInt v))
+
+    (and (number? v)
+         (<= Integer/MIN_VALUE v Integer/MAX_VALUE))
+    (int v)
+
+    :else
+    (throw (ex-info "Int value outside of allowed 32 bit integer range." {:value v}))))
 
 (defn ^:private coerce-to-float
   [v]
   (cond
-    (number? v) (double v)
-    (string? v) (Double/parseDouble v)
-    :else (throw (ex-info (str "Invalid Float value: " v) {:value v}))))
+    (instance? Double v)
+    v
 
-(defn ^:private coerce-to-boolean
+    ;; Spec: should coerce non-floating-point raw values as result coercion and for input coercion
+    (and (number? v))
+    (double v)
+
+    (string? v)
+    (Double/parseDouble v)
+
+    :else
+    (throw (ex-info "Invalid Float value." {:value v}))))
+
+(defn ^:private string->boolean
+  [^String s]
+  (case s
+    "true" true
+    "false" false
+    (throw (ex-info "Boolean string must be `true' or `false'." {:value s}))))
+
+(defn ^:private parse-boolean
+  [v]
+  (cond
+    (instance? Boolean v)
+    v
+
+    (string? v)
+    (string->boolean v)
+
+    :else
+    (throw (ex-info "Invalid Boolean value." {:value v}))))
+
+(defn ^:private serialize-boolean
   [v]
   (cond
     (instance? Boolean v) v
-    (string? v) (Boolean/parseBoolean v)))
+
+    ;; Spec: coerce non-boolean raw values to Boolean when possible.
+    (number? v)
+    (not (zero? v))
+
+    (string? v) (string->boolean v)
+
+    :else
+    (throw (ex-info "Invalid Boolean value." {:value v}))))
 
 (def default-scalar-transformers
-  {:String {:parse (as-conformer str)
-            :serialize (as-conformer str)}
-   :Float {:parse (as-conformer #(Double/parseDouble %))
-           :serialize (as-conformer coerce-to-float)}
-   :Int {:parse (as-conformer #(Integer/parseInt %))
-         :serialize (as-conformer coerce-to-int)}
-   :Boolean {:parse (as-conformer coerce-to-boolean)
-             :serialize (as-conformer #(Boolean/valueOf %))}
-   :ID {:parse (as-conformer str)
-        :serialize (as-conformer str)}})
+  (let [str-conformer (as-conformer str)
+        float-conformer (as-conformer coerce-to-float)]
+    {:String {:parse str-conformer
+              :serialize str-conformer}
+     :Float {:parse float-conformer
+             :serialize float-conformer}
+     :Int {:parse (as-conformer parse-int)
+           :serialize (as-conformer serialize-int)}
+     :Boolean {:parse (as-conformer parse-boolean)
+               :serialize (as-conformer serialize-boolean)}
+     :ID {:parse str-conformer
+          :serialize str-conformer}}))
 
 (defn ^:private error
   ([message]

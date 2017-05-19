@@ -525,8 +525,18 @@
            (class (get-in query-result [:data :test :float_int]))))
     (is (= java.lang.Integer
            (class (get-in query-result [:data :test :string_int]))))
-    (is (= java.lang.Integer
-           (class (get-in query-result [:data :test :int]))))
+    ;; Values out of range are are dropped with an error:
+    (is (nil? (get-in query-result [:data :test :int])))
+    ;; TODO: It would be nice to capture some of the details provided in the exception thrown by a failed coercion
+    (is (= [{:locations [{:column 7
+                          :line 1}]
+             :message "Invalid value for a scalar type."
+             :query-path [:test
+                          :int]
+             :type :Int
+             ;; This is the pr-str of the value:
+             :value "1000000000000000000000000000000000000000000000000000000000000N"}]
+           (:errors query-result)))
     (is (= java.lang.Double
            (class (get-in query-result [:data :test :float]))))
     (is (= java.lang.Double
