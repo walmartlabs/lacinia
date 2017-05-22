@@ -31,6 +31,32 @@
 
 (s/check-asserts true)
 
+(defrecord ^:private CoercionFailure
+  [message])
+
+(defn coercion-failure
+  "Returns a special record that indicates a failure coercing a scalar value.
+  This may be returned from a scalar's :parse or :serialize callback.
+
+  A coercion failure includes a message key, and may also include additional data.
+
+  message
+  : A message string presentable to a user.
+
+  data
+  : An optional map of additional details about the failure."
+  {:added "0.16.0"}
+  ([message]
+   (coercion-failure message nil))
+  ([message data]
+   (merge (->CoercionFailure message) data)))
+
+(defn is-coercion-failure?
+  "Is this a coercion error created by [[coercion-failure]]?"
+  {:added "0.16.0"}
+  [v]
+  (instance? CoercionFailure v))
+
 (defn ^:private map-types
   "Maps the types of the schema that match the provided category, but leaves
    the rest unchanged."
@@ -78,47 +104,121 @@
   The function is only invoked if the value to be conformed is non-nil.
 
   Any exception thrown by the function is silently caught and the returned conformer
-  will return :clojure.spec/invalid."
+  will return :clojure.spec/invalid or a [[coercion-failure]]."
   [f]
   (s/conformer
     (fn [x]
       (try
         (when (some? x)
           (f x))
-        (catch Exception _
-          ::s/invalid)))))
+        (catch Exception e
+          (if-some [message (.getMessage e)]
+            (coercion-failure message (ex-data e))
+            ::s/invalid))))))
 
-(defn ^:private coerce-to-int
+(defn ^:private invalid-scalar
+  [type-name value]
+  (ex-info (format "Invalid %s value." (name type-name))
+           {:value (pr-str value)}))
+
+(defmacro ^:private catch-as-invalid
+  [& body]
+  `(try
+     ~@body
+     (catch Throwable _#
+       ::s/invalid)))
+
+(defn ^:private parse-int
   [v]
   (cond
-    (number? v) (.intValue ^Number v)
-    (string? v) (Integer/parseInt v)
-    :else (throw (ex-info (str "Invalid Int value: " v) {:value v}))))
+    (integer? v)
+    (if (<= Integer/MIN_VALUE v Integer/MAX_VALUE)
+      (int v)
+      (throw (ex-info "Int value outside of allowed 32 bit integer range." {:value v})))
+
+    (string? v) (catch-as-invalid (Integer/parseInt v))
+
+    :else (throw (invalid-scalar :Int v))))
+
+(defn ^:private serialize-int
+  [v]
+  (cond
+    ;; Spec: should attempt to coerce raw values to int
+    (string? v)
+    (let [v' (catch-as-invalid (Integer/parseInt v))]
+      (if (keyword? v')
+        v'
+        (recur v')))
+
+    (and (number? v)
+         (<= Integer/MIN_VALUE v Integer/MAX_VALUE))
+    (int v)
+
+    :else
+    (throw (ex-info "Int value outside of allowed 32 bit integer range." {:value (pr-str v)}))))
 
 (defn ^:private coerce-to-float
   [v]
   (cond
-    (number? v) (double v)
-    (string? v) (Double/parseDouble v)
-    :else (throw (ex-info (str "Invalid Float value: " v) {:value v}))))
+    (instance? Double v)
+    v
 
-(defn ^:private coerce-to-boolean
+    ;; Spec: should coerce non-floating-point raw values as result coercion and for input coercion
+    (and (number? v))
+    (double v)
+
+    (string? v)
+    (catch-as-invalid (Double/parseDouble v))
+
+    :else
+    (throw (invalid-scalar :Float v))))
+
+(defn ^:private string->boolean
+  [^String s]
+  (case s
+    "true" true
+    "false" false
+    (throw (ex-info "Boolean string must be `true' or `false'." {:value s}))))
+
+(defn ^:private parse-boolean
+  [v]
+  (cond
+    (instance? Boolean v)
+    v
+
+    (string? v)
+    (string->boolean v)
+
+    :else
+    (throw (invalid-scalar :Boolean v))))
+
+(defn ^:private serialize-boolean
   [v]
   (cond
     (instance? Boolean v) v
-    (string? v) (Boolean/parseBoolean v)))
+
+    ;; Spec: coerce non-boolean raw values to Boolean when possible.
+    (number? v)
+    (not (zero? v))
+
+    (string? v) (string->boolean v)
+
+    :else
+    (throw (invalid-scalar :Boolean v))))
 
 (def default-scalar-transformers
-  {:String {:parse (as-conformer str)
-            :serialize (as-conformer str)}
-   :Float {:parse (as-conformer #(Double/parseDouble %))
-           :serialize (as-conformer coerce-to-float)}
-   :Int {:parse (as-conformer #(Integer/parseInt %))
-         :serialize (as-conformer coerce-to-int)}
-   :Boolean {:parse (as-conformer coerce-to-boolean)
-             :serialize (as-conformer #(Boolean/valueOf %))}
-   :ID {:parse (as-conformer str)
-        :serialize (as-conformer str)}})
+  (let [str-conformer (as-conformer str)
+        float-conformer (as-conformer coerce-to-float)]
+    {:String {:parse str-conformer
+              :serialize str-conformer}
+     :Float {:parse float-conformer
+             :serialize float-conformer}
+     :Int {:parse (as-conformer parse-int)
+           :serialize (as-conformer serialize-int)}
+     :Boolean {:parse (as-conformer parse-boolean)
+               :serialize (as-conformer serialize-boolean)}
+     :ID {:parse str-conformer
+          :serialize str-conformer}}))
 
 (defn ^:private error
   ([message]
@@ -369,32 +469,6 @@
   [resolved-value resolved-type callback]
   (callback resolved-value resolved-type))
 
-(defrecord ^:private CoercionFailure
-  [message])
-
-(defn coercion-failure
-  "Returns a special record that indicates a failure coercing a scalar value.
-  This may be returned from a scalar's :parse or :serialize callback.
-
-  A coercion failure includes a message key, and may also include additional data.
-
-  message
-  : A message string presentable to a user.
-
-  data
-  : An optional map of additional details about the failure."
-  {:added "0.16.0"}
-  ([message]
-   (coercion-failure message nil))
-  ([message data]
-   (merge (->CoercionFailure message) data)))
-
-(defn is-coercion-failure?
-  "Is this a coercion error created by [[coercion-failure]]?"
-  {:added "0.16.0"}
-  [v]
-  (instance? CoercionFailure v))
-
 (defn ^:private create-root-selector
   "Creates a selector function for the :root kind, which is the point at which
   a type refers to something in the schema.
@@ -426,7 +500,7 @@
                                    (= serialized :clojure.spec/invalid)
                                    (callback nil nil (error "Invalid value for a scalar type."
                                                             {:type field-type-name
-                                                         :value (pr-str resolved-value)}))
+                                                             :value (pr-str resolved-value)}))
 
                                    (is-coercion-failure? serialized)
                                    (callback nil nil serialized)

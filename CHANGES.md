@@ -1,5 +1,8 @@
 ## 0.17.0 -- UNRELEASED
 
+Lacinia now better implements the specification, in terms of parsing
+and serializing scalars.
+
 The default mapping from field name to field resolver has simplified;
 it is now a direct mapping, without converting underscores to dashes.
 The old behavior is still available via an option to

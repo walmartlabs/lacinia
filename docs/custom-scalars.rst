@@ -49,6 +49,22 @@ Lacinia will generate a default error message, and an error map will be added to
 If you want more control, you can use the function ``com.walmartlabs.lacinia.schema/coercion-failure``, which allows you
 to provide a customized message and even additional data for the error map.
 
+Scalars and Variables
+---------------------
+
+.. sidebar:: GraphQL Spec
+
+   Read about `variables <http://facebook.github.io/graphql/#sec-Language.Variables>`_.
+
+When using variables, the scalar parser will be provided not with a string per-se, but
+with a Clojure value: a native Long, Double, or Boolean. In this case, the parser
+is, not so much parsing, as validating and transforming.
+
+For example, the built-in ``Int`` parser handles strings and all kinds of numbers
+(including non-integers). It also ensures that ``Int`` values are, as identified in
+the `specification <http://facebook.github.io/graphql/#sec-Int>`_, limited to signed
+32 bit numbers.
+
 Attaching Scalar Transformers
 -----------------------------
 
