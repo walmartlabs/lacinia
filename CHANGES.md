@@ -23,7 +23,7 @@ New function: `com.walmartlabs.lacinia.parser/operations`: extracts
 from a parsed query the type (mutation or query) and the set of
 operations.
 
-Several new functions were added to `com.walmartlabs.lacinia.executor` to
+Several new *experimental* functions were added to `com.walmartlabs.lacinia.executor` to
 expose details about the selections tree; this functions can be invoked
 from a field resolver to preview what fields will be selected below
 the field.

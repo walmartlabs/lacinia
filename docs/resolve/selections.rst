@@ -92,6 +92,10 @@ The response then constructs up bottom to top.
 Previewing Selections
 ---------------------
 
+.. warning::
+
+   This functionality is new and somewhat experimental, and so subject to change. Feedback is encouraged!
+
 A field resolver can "preview" what fields will be selected below it in the selections tree.
 This is a tool frequently used to optimize data retrieval operations.
 
