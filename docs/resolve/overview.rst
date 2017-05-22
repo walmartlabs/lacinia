@@ -54,22 +54,7 @@ It allows some global state to be passed down into field resolvers; the
 context is initially provided to ``com.walmartlabs.lacinia/execute``.
 The initial application context may even be nil.
 
-Before invoking a field resolver, the context is extended with an additional key:
-
-``:com.walmartlabs.lacinia/selection``
-    The field selection from the parsed GraphQL query.
-
-The field selection can be used to optimize what data is needed from an external store; in SQL terms,
-knowing what data the client needs means that unnecessary table joins can be avoided, or the
-queries otherwise optimized.
-
-.. warning::
-
-    An example of this is forthcoming.
-
-    A forthcoming API will allow the field selection to be queried for relevant data.
-
-Many resolvers can ignore the context.
+Many resolvers can simply ignore the context.
 
 Field Arguments
 ```````````````
@@ -113,6 +98,9 @@ of the resolved value.
 When the ``:resolve`` key for a field is not specified, a default resolver
 is provided automatically; this default resolver simply expects the resolved value to be a map
 containing a key that exactly matches the field name.
+
+It is even possible to customize this default field resolver, as an option passed to
+`com.walmartlabs.lacina.schema/compile`.
  
 Nested Fields
 -------------

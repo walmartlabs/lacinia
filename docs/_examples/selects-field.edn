@@ -1,0 +1,9 @@
+
+(require
+  '[com.walmartlabs.lacinia.executor :as executor])
+
+(defn resolve-hero
+  [context args _]
+  (if (executor/selects-field? context :character/friends)
+    (fetch-hero-with-friends args)
+    (fetch-hero args)))

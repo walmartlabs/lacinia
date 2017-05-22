@@ -1,0 +1,11 @@
+{:objects
+ {:Root
+  {:fields
+   {:tree {:type String}
+    :detail {:type String
+             :args
+             {:int_arg {:type Int}
+              :string_arg {:type String}}}}}}
+ :queries
+ {:get_root {:type :Root
+             :resolve :root-resolve}}}
