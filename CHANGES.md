@@ -1,4 +1,4 @@
-## 0.17.0 -- UNRELEASED
+## 0.17.0 -- 22 May 2017
 
 Lacinia now better implements the specification, in terms of parsing
 and serializing scalars.
@@ -27,9 +27,11 @@ from a parsed query the type (mutation or query) and the set of
 operations.
 
 Several new *experimental* functions were added to `com.walmartlabs.lacinia.executor` to
-expose details about the selections tree; this functions can be invoked
+expose details about the selections tree; these functions can be invoked
 from a field resolver to preview what fields will be selected below
 the field.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/4)
 
 ## 0.16.0 -- 3 May 2017
 
