@@ -1,3 +1,5 @@
+## 0.18.0 -- UNRELEASED
+
 ## 0.17.0 -- 22 May 2017
 
 Lacinia now better implements the specification, in terms of parsing

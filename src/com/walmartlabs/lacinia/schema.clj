@@ -83,7 +83,7 @@
       (->TaggedValue (extract-value x) type-name))
     (->TaggedValue x type-name)))
 
-(defn type-map
+(defn ^:no-doc type-map
   "Reduces a compiled schema to a list of categories and the names of types in that category, useful
   for exception reporting."
   [schema]
@@ -395,7 +395,7 @@
     (throw (ex-info "Could not process type."
                     {:type type}))))
 
-(defn root-type-name
+(defn ^:no-doc root-type-name
   "For a compiled field (or argument) definition, delves down through the :type tag to find
   the root type name, a keyword."
   [field-def]
@@ -465,7 +465,7 @@
       (selector-wrapper resolved-value resolved-type next-selector callback))
     next-selector))
 
-(defn ^:nodoc floor-selector
+(defn ^:no-doc floor-selector
   [resolved-value resolved-type callback]
   (callback resolved-value resolved-type))
 
@@ -960,7 +960,7 @@
 
   Produces a form ready to be used in executing a query."
   ([schema]
-   (compile schema {}))
+   (compile schema nil))
   ([schema options]
    (let [options' (merge default-compile-opts options)
          introspection-schema (introspection/introspection-schema)]
@@ -970,4 +970,4 @@
 
 (s/fdef compile
         :args (s/cat :schema ::schema-object
-                     :options (s/? ::compile-options)))
+                     :options (s/? (s/nilable ::compile-options))))
