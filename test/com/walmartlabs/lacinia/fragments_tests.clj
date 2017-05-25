@@ -26,8 +26,20 @@
            name
            ... on droid { power }
            ... on human { home_world }
-           }
-           }"))))
+           }}"))))
+
+(deftest inline-fragments-merged
+  (is (= {:data {:characters [{:name "R2-D2"
+                               :power "AC"
+                               :id nil}
+                              {:name "Luke"
+                               :home_world "Tatooine"}]}}
+         (q "{ characters {
+               name
+               ... on droid { power }
+               ... on human { home_world }
+               ... on droid { id }
+             }}"))))
 
 (deftest named-fragments
   (is (= {:data {:characters [{:name "R2-D2"

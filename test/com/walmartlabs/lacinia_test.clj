@@ -27,6 +27,9 @@
   (let [q "query { hero { id name } }"]
     (is (= {:data {:hero {:id "2001" :name "R2-D2"}}}
            (execute default-schema q {} nil))))
+  (let [q "query { hero { id } hero { name }}"]
+    (is (= {:data {:hero {:id "2001" :name "R2-D2"}}}
+           (execute default-schema q {} nil))))
   ;; We can omit the `query' piece if it's the only selection
   (let [q "{ hero { id name appears_in } }"]
     (is (= {:data {:hero {:id "2001"
@@ -42,8 +45,6 @@
   (let [q "{ hero { appears_in name id }}"]
     (is (= (json/write-str (lacinia/execute default-schema q {} nil))
            "{\"data\":{\"hero\":{\"appears_in\":[\"NEWHOPE\",\"EMPIRE\",\"JEDI\"],\"name\":\"R2-D2\",\"id\":\"2001\"}}}"))))
-
-
 
 (deftest mutation-query
   (let [q "mutation ($from : String, $to: String) { changeHeroName(from: $from, to: $to) { name } }"]
@@ -110,6 +111,23 @@
                hero {
                  id
                  name
+                 friends {
+                   name
+                 }
+               }
+             }"]
+    (is (= {:data {:hero {:id "2001"
+                          :name "R2-D2"
+                          :friends [{:name "Luke Skywalker"}
+                                    {:name "Han Solo"}
+                                    {:name "Leia Organa"}]}}}
+           (execute default-schema q {} nil))))
+  (let [q "query HeroNameAndFriendsQuery {
+               hero {
+                 id
+                 name
+               }
+               hero {
                  friends {
                    name
                  }
@@ -236,6 +254,16 @@
              }
            }"]
     (is (= {:data {:luke {:name "Luke Skywalker"}}}
+           (execute default-schema q nil nil))))
+  (let [q "query FetchLukeAliased {
+             luke: human(id: \"1000\") {
+               name
+             }
+             luke: human(id: \"1000\") {
+               id
+             }
+           }"]
+    (is (= {:data {:luke {:name "Luke Skywalker" :id "1000"}}}
            (execute default-schema q nil nil)))))
 
 (deftest double-aliased-query

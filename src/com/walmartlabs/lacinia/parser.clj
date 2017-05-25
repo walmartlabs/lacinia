@@ -1068,7 +1068,6 @@
           (map #(compose-variable-definition schema %)
                (rest var-definitions)))))
 
-
 (defn ^:private xform-query
   "Given an output tree of sexps from clj-antlr, traverses and reforms into a
   form expected by the executor."
