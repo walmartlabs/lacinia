@@ -267,7 +267,7 @@
     (apply-selection execution-context selection)))
 
 (defn ^:private combine-map-results
-  "Left associative resolution of results, combined using merge."
+  "Left associative resolution of results, combined using deep-merge."
   [left-result right-result]
   (combine-results deep-merge left-result right-result))
 
