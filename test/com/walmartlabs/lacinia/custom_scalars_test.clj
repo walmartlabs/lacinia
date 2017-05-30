@@ -1,5 +1,5 @@
 (ns com.walmartlabs.lacinia.custom-scalars-test
-  (:require [clojure.spec :as s]
+  (:require [clojure.spec.alpha :as s]
             [clojure.test :refer [deftest is testing]]
             [com.walmartlabs.lacinia :as lacinia]
             [com.walmartlabs.lacinia.schema :as schema]
@@ -33,13 +33,13 @@
                                   (string? x)
                                   (< (count x) 3))
                                x
-                               :clojure.spec/invalid)))
+                               :clojure.spec.alpha/invalid)))
           serialize-conformer (s/conformer
                                (fn [x]
                                  (case x
                                    "200" "OK"
                                    "500" "ERROR"
-                                   :clojure.spec/invalid)))]
+                                   :clojure.spec.alpha/invalid)))]
       (testing "custom scalar's serializing option"
         (let [schema (schema/compile {:scalars
                                       {:Event {:parse parse-conformer
@@ -114,7 +114,7 @@
         parse-conformer (s/conformer (fn [input]
                                        (try (.parse date-formatter input)
                                             (catch Exception e
-                                              :clojure.spec/invalid))))
+                                              :clojure.spec.alpha/invalid))))
         serialize-conformer (s/conformer (fn [output] (.format date-formatter output)))
         schema (schema/compile
                 {:scalars {:Date {:parse parse-conformer

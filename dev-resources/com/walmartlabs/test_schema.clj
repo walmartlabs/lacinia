@@ -2,7 +2,7 @@
   (:require [com.walmartlabs.lacinia.schema :as schema ]
             [com.walmartlabs.lacinia.resolve :refer [resolve-as]]
             [com.walmartlabs.lacinia.internal-utils :refer [ map-vals]]
-            [clojure.spec :as s]))
+            [clojure.spec.alpha :as s]))
 
 ;; —————————————————————————————————————————————————————————————————————————————
 ;; ## Helpers
