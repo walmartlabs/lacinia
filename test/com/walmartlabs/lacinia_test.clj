@@ -141,6 +141,23 @@
            (execute default-schema q {} nil))))
   (let [q "query HeroNameAndFriendsQuery {
                hero {
+                 friends {
+                   id
+                 }
+               }
+               hero {
+                 friends {
+                   name
+                 }
+               }
+             }"]
+    (is (= {:data {:hero {:friends
+                          [{:name "Luke Skywalker" :id "1000"}
+                           {:name "Han Solo" :id "1002"}
+                           {:name "Leia Organa" :id "1003"}]}}}
+           (execute default-schema q {} nil))))
+  (let [q "query HeroNameAndFriendsQuery {
+               hero {
                  id
                  name
                  friends {

@@ -90,10 +90,16 @@
 
 (defn deep-merge
   "Like merge, but merges maps recursively."
-  [& maps]
-  (if (every? (some-fn nil? map?) maps)
-    (apply merge-with deep-merge maps)
-    (last maps)))
+  [& xs]
+  (cond
+    (every? sequential? xs)
+    (apply map deep-merge xs)
+
+    (every? (some-fn nil? map?) xs)
+    (apply merge-with deep-merge xs)
+
+    :else
+    (last xs)))
 
 (defn update?
   "If the value inside m at k is non-nil, then it is updated, otherwise,
