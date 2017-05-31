@@ -1,5 +1,5 @@
 (require
-  '[clojure.spec :as s]
+  '[clojure.spec.alpha :as s]
   '[com.walmartlabs.lacinia :as g]
   '[com.walmartlabs.lacinia.schema :as schema])
 

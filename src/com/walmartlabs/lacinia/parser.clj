@@ -11,7 +11,7 @@
                      keepv as-keyword]]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.lacinia.constants :as constants]
-            [clojure.spec :as s]
+            [clojure.spec.alpha :as s]
             [com.walmartlabs.lacinia.resolve :as resolve])
   (:import (org.antlr.v4.runtime.tree ParseTree TerminalNode)
            (org.antlr.v4.runtime Parser ParserRuleContext Token)

@@ -8,7 +8,7 @@
   schema, and pre-computing many defaults."
   (:refer-clojure :exclude [compile])
   (:require
-    [clojure.spec :as s]
+    [clojure.spec.alpha :as s]
     [com.walmartlabs.lacinia.introspection :as introspection]
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.internal-utils
@@ -497,7 +497,7 @@
                                  [serialized (s/conform serializer resolved-value)]
                                  (cond
 
-                                   (= serialized :clojure.spec/invalid)
+                                   (= serialized :clojure.spec.alpha/invalid)
                                    (callback nil nil (error "Invalid value for a scalar type."
                                                             {:type field-type-name
                                                              :value (pr-str resolved-value)}))

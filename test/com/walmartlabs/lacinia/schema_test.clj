@@ -2,7 +2,7 @@
   "Tests schema functions."
   (:require
     [clojure.test :refer [deftest testing is are try-expr do-report]]
-    [clojure.spec :as s]
+    [clojure.spec.alpha :as s]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace]]))
 
@@ -104,7 +104,7 @@
                                      :queries
                                      {:events {:type :Event
                                                :resolve (constantly "200")}}})]
-                 (let [problems (:clojure.spec/problems (ex-data e))]
+                 (let [problems (:clojure.spec.alpha/problems (ex-data e))]
                    (is (= 1 (count problems))
                        "should find one invalid conformer")
                    (is (= {:in [0
