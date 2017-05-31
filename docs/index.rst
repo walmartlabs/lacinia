@@ -118,7 +118,7 @@ as part of an HTTP server application.
    However, Lacinia does not address network issues; it is a set of functions to be
    invoked by your web pipeline, be it Ring, Pedestal, or something else.
 
-   The library `com.walmartlabs/pedestal-lacinia <https://github.com/walmartlabs/pedestal-lacinia>`_
+   The library `com.walmartlabs/lacinia-pedestal <https://github.com/walmartlabs/lacinia-pedestal>`_
    provides the necessary bits when building a server based on
    `Pedestal <https://github.com/pedestal/pedestal>`_, including an easy way to
    optionally expose a `GraphiQL IDE <https://github.com/graphql/graphiql>`_.

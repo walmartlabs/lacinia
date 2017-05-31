@@ -10,40 +10,37 @@
 [API Documentation](http://walmartlabs.github.io/lacinia/)
 
 This library is a full implementation of
-the [GraphQL specification](https://facebook.github.io/graphql) and aims to
-maintain _external_<sup id="a1">[1](#f1)</sup> compliance with the specification.
+Facebook's [GraphQL specification](https://facebook.github.io/graphql).
 
-It should be viewed as roughly analogous to
-the
+Lacinia should be viewed as roughly analogous to the
 [official reference JavaScript implementation](https://github.com/graphql/graphql-js/).
 In other words, it is a backend-agnostic GraphQL query execution engine.
+Lacinia is not an Object Relational Mapper ... it's simply the implementation of a contract
+sitting between the GraphQL client and your data.
 
-It provides:
+Lacinia features:
 
-- A *pure data* schema definition DSL. Define the GraphQL schema your server
-  exposes using data (a simple EDN file will do). Process and augment your
-  schema with ordinary functions prior to handing it to this library. Add
-  entry-points (known as _resolvers_) to populate an
-  executed data structure based on the query.
-- A query parser.  Given a compliant GraphQL query, yield a Clojure data structure.
-- A query validator.
-- A built-in query execution engine, with asynchronous execution support.
-  Given a query and a schema, traverse the query and return a data
-  structure. This data structure will typically be serialized to JSON and
-  returned.
+- An [EDN](https://github.com/edn-format/edn)-based schema language.
 
-Core philosophies:
-- Data, not macros.  Schemas are data and you can manipulate them as such.
-- It's impossible for this core library to make
-assumptions about every backend it might be running on. Define your own
-execution path to optimize backend queries and leverage the underlying
-infrastructure (query parsing, validation, schema, and more).
-- Webserver agnostic. You can use use this with any Clojure web stack (or not
-  with a webserver at all).
-- No magic.  Use this for full query execution lifecycle or use the portions
-  you want.
-- Embrace `clojure.spec` internally and externally.  For instance, custom
-  scalar types are expected to be defined as conformers.
+- High performance parser for GraphQL queries, built on [Antlr4](http://www.antlr.org/).
+
+- Efficient and asynchronous query execution.
+
+- Full support for GraphQL types, interfaces, unions, enums, input objects, and custom scalars.
+
+- Full support of inline and named query fragments.
+
+- Full support for GraphQL Schema Introspection.
+
+Lacinia has been developed with a set of core philosophies:
+
+- Prefer data over macros and other tricks. Compose your schema in whatever mix of data and code works for you.
+
+- Embrace Clojure: Use EDN data, keywords, functions, and persistent data structures.
+
+- Keep it simple: You provide the schema and a handful of functions to resolve data, and Lacinia does the rest.
+
+- Do the right thing: apply reasonable defaults without a lot of "magic".
 
 ## Getting Started
 
@@ -51,7 +48,7 @@ For more detailed documentation, [read the manual](http://lacinia.readthedocs.io
 
 GraphQL starts with a schema definition of exposed types.
 
-A schema starts as an EDN file; the example below demonstrates several
+A schema starts as an EDN file; the example below demonstrates a small subset
 of the available options:
 
 ```clojure
@@ -85,7 +82,7 @@ of the available options:
 
 A schema alone describes what data is available to clients, but doesn't identify where
 the data comes from; that's the job of a field resolver, provided by the
-:resolve key inside files such as the :hero and :droid query.
+:resolve key inside fields such as the :hero and :droid query.
 
 The values here, :get-hero and :get-droid, are placeholders; the startup code
 of the application will use
@@ -93,7 +90,7 @@ of the application will use
 field resolver function.
 
 A field resolver is just a function which is passed the application context,
-a map of arguments to values, and a resolved value from a
+a map of arguments values, and a resolved value from a
 parent field.
 The field resolver returns a value. If it's a scalar type, it should return a value
 that conforms to the defined type in the schema.
@@ -103,9 +100,9 @@ The field resolver is totally responsible for obtaining the data from whatever
 external store you use: whether it is a database, a web service, or something
 else.
 
-
 It's important to understand that _every_ field has a field resolver, even if
-you don't define it.  If you don't define one, Lacinia provides a default field resolver.
+you don't define it explicitly.  If you don't supply a field resolver,
+Lacinia provides a default field resolver, customized to the field.
 
 Here's what the `get-hero` field resolver might look like:
 
@@ -115,16 +112,19 @@ Here's what the `get-hero` field resolver might look like:
     (if (= episode :NEWHOPE)
       {:id 1000
        :name "Luke"
-       :home-planet "Tatooine"
-       :appears-in ["NEWHOPE" "EMPIRE" "JEDI"]}
+       :home_planet "Tatooine"
+       :appears_in ["NEWHOPE" "EMPIRE" "JEDI"]}
       {:id 2000
        :name "Lando Calrissian"
-       :home-planet "Socorro"
-       :appears-in ["EMPIRE" "JEDI"]})))
+       :home_planet "Socorro"
+       :appears_in ["EMPIRE" "JEDI"]})))
 ```
 
-The field resolver can simply return the resolved value.
-Field resolvers that return multiple values return a seq of values.
+In this greatly simplified example, the field resolver can simply return the resolved value.
+Field resolvers that return multiple values return a list, vector, or set of values.
+
+In real applications, a field resolver might execute a query against a database,
+or send a request to another web service.
 
 After attaching resolvers, it is necessary to compile the schema; this
 step performs validations, provide defaults, and organizes the schema
@@ -157,19 +157,18 @@ requests; this typically occurs inside a Ring handler function:
 (defn handler [request]
   {:status 200
    :headers {"Content-Type" "application/json"}
-   :body (let [query (get-in request [:query-params :query])]
-           (->> {:request request}
-                (execute star-wars-schema query nil)
-                json/write-str))})
+   :body (let [query (get-in request [:query-params :query])
+               result (execute star-wars-schema query nil nil)]
+           (json/write-str result)})
 ```
 
 Lacinia doesn't know about the web tier at all, it just knows about
 parsing and executing queries against a compiled schema.
-A companion library, [pedestal-lacinia](https://github.com/walmartlabs/pedestal-lacinia),
+A companion library, [lacinia-pedestal](https://github.com/walmartlabs/lacinia-pedestal),
 is one way to expose your schema on the web.
 
-User queries are provided as the body of a request with the content type application/graphql.
-It looks a lot like JSON.
+User queries are provided as the body of a request with the content type `application/graphql`.
+The GraphQL query language is designed to look familiar to someone who is versant in JSON.
 
 ```
 {
@@ -226,10 +225,3 @@ More details are [in the manual](http://lacinia.readthedocs.io/en/latest/clojure
 Copyright © 2017 WalmartLabs
 
 Distributed under the Apache License, Version 2.0.
-
-## Footnotes
-
-<b id="f1">[1]</b> External compliance means that the edges should perform the
-same as another GraphQL library, but the internal algorithms to achieve that
-result may be different and deviate from specification in order to work in a
-functional way. [↩](#a1)
