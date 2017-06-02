@@ -2,7 +2,7 @@
   "Mechanisms for executing parsed queries against compiled schemas."
   (:require
     [com.walmartlabs.lacinia.internal-utils
-     :refer [cond-let to-message map-vals remove-vals q combine-results]]
+     :refer [cond-let to-message map-vals remove-vals q combine-results deep-merge]]
     [flatland.ordered.map :refer [ordered-map]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :as resolve
@@ -267,9 +267,9 @@
     (apply-selection execution-context selection)))
 
 (defn ^:private combine-map-results
-  "Left associative resolution of results, combined using merge."
+  "Left associative resolution of results, combined using deep-merge."
   [left-result right-result]
-  (combine-results merge left-result right-result))
+  (combine-results deep-merge left-result right-result))
 
 (defn ^:private execute-nested-selections
   "Executes nested sub-selections once a value is resolved.
