@@ -12,7 +12,8 @@
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.lacinia.constants :as constants]
             [clojure.spec.alpha :as s]
-            [com.walmartlabs.lacinia.resolve :as resolve])
+            [com.walmartlabs.lacinia.resolve :as resolve]
+            [flatland.ordered.map :refer [ordered-map]])
   (:import (org.antlr.v4.runtime.tree ParseTree TerminalNode)
            (org.antlr.v4.runtime Parser ParserRuleContext Token)
            (clj_antlr ParseError)
@@ -895,17 +896,62 @@
           prepare-dynamic-arguments? (apply-dynamic-arguments variables)
           prepare-nested-selections? (prepare-nested-selections variables))))))
 
+(defn ^:private to-selection-key
+  "The selection key only applies to fields (not fragments) and
+  consists of the field name or alias, and the arguments."
+  [selection]
+  (let [{:keys [:selection-type :alias]} selection]
+    (if (= selection-type :field)
+      alias
+      ;; TODO: This may be too simplified ... worried about loss of data when merging things together
+      ;; at runtime.
+      (gensym "fragment-"))))
+
+(declare ^:private coalesce-selections)
+
+(defn ^:private merge-selections [first-selection second-selection]
+  (when-not (= (:reportable-arguments first-selection)
+               (:reportable-arguments second-selection))
+    (let [{:keys [type-name field-name]} (:field-definition first-selection)]
+      (throw (ex-info (format "Different selections of field %s of type %s have incompatible arguments."
+                              (q field-name) (q type-name))
+                      {:object-name type-name
+                       :field-name field-name
+                       :arguments (:reportable-arguments first-selection)
+                       :incompatible-arguments (:reportable-arguments second-selection)}))))
+  (let [combined-selections (coalesce-selections (concat (:selections first-selection)
+                                                         (:selections second-selection)))]
+    (-> first-selection
+        (assoc :selections combined-selections)
+        ;; Merge in the meta-data which may include prepare processing annotations
+        (vary-meta merge (meta second-selection)))))
+
+(defn ^:private coalesce-selections
+  "It is possible to name the same field more than once, and then identify different
+  selections within that field. The results should merge together, and match the query
+  order as closely as possible. This is tricky, and recursive."
+  [selections]
+  (if (= 1 (count selections))
+    selections
+    (let [selection-keys (mapv to-selection-key selections)
+          selection-tuples (mapv vector selection-keys selections)
+          reducer (fn [m [selection-key selection]]
+                    (if-let [prev-selection (get m selection-key)]
+                      (assoc m selection-key (merge-selections prev-selection selection))
+                      (assoc m selection-key selection)))]
+      (vals (reduce reducer (ordered-map) selection-tuples)))))
 
 (defn ^:private normalize-selections
   "Starting with a selection (a field or fragment) recursively normalize any nested selections selections,
   and handle marking the node for any necessary prepare phase operations."
   [schema m type query-path]
-  (-> m
-      (update? :selections
-               (fn [sub-selections]
-                 ;; Strict evaluation, since exceptions may be thrown:
-                 (mapv #(selection schema % type query-path) sub-selections)))
-      mark-node-for-prepare))
+  (let [sub-selections (:selections m)]
+    (mark-node-for-prepare
+      (if (seq sub-selections)
+        (assoc m :selections (->> sub-selections
+                                  (mapv #(selection schema % type query-path))
+                                  coalesce-selections))
+        m))))
 
 (defn ^:private expand-fragment-type-to-concrete-types
   "Expands a single type to a set of concrete types names.  For unions, this is
@@ -1105,13 +1151,14 @@
         ;; are not referenced by the selected operation (another operation may define
         ;; different variables). A solution might be to collect up the fragments that
         ;; are referenced inside the operation, validate those, discard the rest.
-        schema' (assoc schema ::variables variable-definitions)]
+        schema' (assoc schema ::variables variable-definitions)
+        ]
     ;; Build the result describing the fragments and selections (or the selected operation).
     ;; Explicitly defeat some lazy evaulation, to ensure that validation exceptions are thrown
     ;; from within this function call.
     {:fragments (normalize-fragment-definitions schema' nil fragmentDefinition)
-     :selections (mapv #(selection schema' % root [])
-                       (rest selections))
+     :selections (coalesce-selections (mapv #(selection schema' % root [])
+                                            (rest selections)))
      :mutation? mutation?
      constants/schema-key schema}))
 

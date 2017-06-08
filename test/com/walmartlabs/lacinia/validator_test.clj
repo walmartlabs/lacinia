@@ -34,41 +34,6 @@
                         :locations [{:line 4, :column 23}]}]}
              (execute compiled-schema q {} nil))))
     (let [q "query NestedQuery {
-             human(id: \"1000\") {
-               name
-               friends {
-                 name
-                 appears_in
-                 friends
-               }
-             }
-             human(id: \"1003\") {
-               name
-             }
-            }"]
-      (is (= {:errors [{:message "Field \"friends\" of type \"character\" must have a sub selection.",
-                        :locations [{:line 4, :column 23}]}]}
-             (execute compiled-schema q {} nil))))
-    (let [q "query NestedQuery {
-             human(id: \"1000\") {
-               name
-               friends {
-                 name
-                 appears_in
-                 friends
-               }
-             }
-             human(id: \"1003\") {
-               name
-               friends
-             }
-            }"]
-      (is (= {:errors [{:message "Field \"friends\" of type \"character\" must have a sub selection.",
-                        :locations [{:line 4, :column 23}]}
-                       {:message "Field \"friends\" of type \"character\" must have a sub selection.",
-                        :locations [{:line 10, :column 31}]}]}
-             (execute compiled-schema q {} nil))))
-    (let [q "query NestedQuery {
              hero {
                name
                friends {
