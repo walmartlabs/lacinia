@@ -72,3 +72,35 @@
     }
   }
 }"))))
+
+(deftest fragments-merge-into-selection
+  (is (= {:data {:luke {:friends [{:forceSide {:id "3001"
+                                               :name "light"}
+                                   :homePlanet nil
+                                   :name "Han Solo"}
+                                  {:forceSide {:id "3001"
+                                               :name "light"}
+                                   :homePlanet "Alderaan"
+                                   :name "Leia Organa"}
+                                  {:forceSide nil
+                                   :name "C-3PO"}
+                                  {:forceSide nil
+                                   :name "R2-D2"}]
+                        :name "Luke Skywalker"}}}
+         (q "
+{
+  luke: human(id: \"1000\") {
+    name
+
+    friends {
+      name
+    }
+  }
+
+  luke: human(id: \"1000\") {
+    friends {
+      ... on human { homePlanet }
+      forceSide { id name }
+    }
+  }
+}"))))
