@@ -913,7 +913,7 @@
   (when-not (= (:reportable-arguments first-selection)
                (:reportable-arguments second-selection))
     (let [{:keys [type-name field-name]} (:field-definition first-selection)]
-      (throw (ex-info (format "Different selections of field %s of type %s have incompatible arguments."
+      (throw (ex-info (format "Different selections of field %s of type %s have incompatible arguments. Use alias names if this is intentional."
                               (q field-name) (q type-name))
                       {:object-name type-name
                        :field-name field-name

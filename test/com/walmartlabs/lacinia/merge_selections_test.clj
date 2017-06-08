@@ -54,7 +54,7 @@
   (is (= {:errors [{:arguments nil
                     :field-name :human
                     :incompatible-arguments {:id "1000"}
-                    :message "Different selections of field `human' of type `QueryRoot' have incompatible arguments."
+                    :message "Different selections of field `human' of type `QueryRoot' have incompatible arguments. Use alias names if this is intentional."
                     :object-name :QueryRoot}]}
          (q "
 {
