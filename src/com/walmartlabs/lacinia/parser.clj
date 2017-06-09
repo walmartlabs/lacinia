@@ -827,6 +827,10 @@
     (last operation)
     (recur (last operation))))
 
+(def ^:private prepare-keys
+  "Seq of keys associated with prepare phase operations."
+  [::prepare-directives? ::prepare-dynamic-arguments? ::prepare-nested-selections? ::needs-prepare?])
+
 (defn ^:private mark-node-for-prepare
   "Marks up a node so that it will, during the prepare phase, have the
   proper operations performed on it.  A node may have directives,
@@ -920,14 +924,16 @@
                        :arguments (:reportable-arguments first-selection)
                        :incompatible-arguments (:reportable-arguments second-selection)}))))
   (let [combined-selections (coalesce-selections (concat (:selections first-selection)
-                                                         (:selections second-selection)))]
+                                                         (:selections second-selection)))
+        prepare-values (select-keys second-selection prepare-keys)]
     (-> first-selection
         (assoc :selections combined-selections)
-        ;; Merge in the meta-data which may include prepare processing annotations
-        (vary-meta merge (meta second-selection)))))
+        (cond->
+          (seq prepare-values) (-> (merge prepare-values)
+                                   (assoc ::needs-prepare? true))))))
 
 (defn ^:private coalesce-selections
-  "It is possible to name the same field more than once, and then identify different
+  "It is possible to select the same field more than once, and then identify different
   selections within that field. The results should merge together, and match the query
   order as closely as possible. This is tricky, and recursive."
   [selections]
@@ -939,7 +945,9 @@
                     (if-let [prev-selection (get m selection-key)]
                       (assoc m selection-key (merge-selections prev-selection selection))
                       (assoc m selection-key selection)))]
-      (vals (reduce reducer (ordered-map) selection-tuples)))))
+      (->> selection-tuples
+           (reduce reducer (ordered-map))
+           vals))))
 
 (defn ^:private normalize-selections
   "Starting with a selection (a field or fragment) recursively normalize any nested selections selections,
@@ -1043,7 +1051,8 @@
         (update :directives #(convert-directives schema %))
         mark-node-for-prepare)))
 
-(defn ^:private find-element [container element-type]
+(defn ^:private find-element
+  [container element-type]
   (->> container
        next
        (filter #(= (first %) element-type))
@@ -1154,7 +1163,7 @@
         schema' (assoc schema ::variables variable-definitions)
         ]
     ;; Build the result describing the fragments and selections (or the selected operation).
-    ;; Explicitly defeat some lazy evaulation, to ensure that validation exceptions are thrown
+    ;; Explicitly defeat some lazy evaluation, to ensure that validation exceptions are thrown
     ;; from within this function call.
     {:fragments (normalize-fragment-definitions schema' nil fragmentDefinition)
      :selections (coalesce-selections (mapv #(selection schema' % root [])

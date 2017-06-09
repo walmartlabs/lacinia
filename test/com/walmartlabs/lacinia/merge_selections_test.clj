@@ -1,12 +1,16 @@
 (ns com.walmartlabs.lacinia.merge-selections-test
-  "Tests for merging of selections."
+  "Queries may include the same fields (with or without aliases) repeated multiple times and they should merge together.
+
+  Earlier versions of Lacinia would tend to overwrite the earlier fields with the later ones."
   (:require
     [clojure.test :refer [deftest is]]
     [com.walmartlabs.test-utils :refer [default-schema execute]]))
 
 (defn ^:private q
-  [query-string]
-  (execute default-schema query-string nil nil))
+  ([query-string]
+   (q query-string nil))
+  ([query-string vars]
+   (execute default-schema query-string vars nil)))
 
 (deftest immediate-field-merge
   ;; Default for human is 1001 - Darth Vader
@@ -49,6 +53,33 @@
     }
   }
 }"))))
+
+(deftest nested-merge-with-vars
+  (is (= {:data {:human {:friends [{:forceSide {:name "light"}
+                                    :name "Han Solo"}
+                                   {:forceSide {:name "light"}
+                                    :name "Leia Organa"}
+                                   {:forceSide nil
+                                    :name "C-3PO"}
+                                   {:forceSide nil
+                                    :name "R2-D2"}]
+                         :name "Luke Skywalker"}}}
+         (q "
+query ($who : String) {
+  human(id: $who) {
+    name
+
+    friends {
+      name
+    }
+  }
+
+  human (id: $who) {
+    friends {
+      forceSide { name }
+    }
+  }
+}" {:who "1000"}))))
 
 (deftest conflicting-arguments-are-identified
   (is (= {:errors [{:arguments nil
