@@ -1,5 +1,9 @@
 ## 0.18.0 -- UNRELEASED
 
+`com.walmartlabs.lacinia.schema/tag-with-type` now uses metadata in the majority of cases
+(as it did in 0.16.0), resorting to a wrapper type only when
+the value is a Java object that doesn't support metadata.
+
 ## 0.17.0 -- 22 May 2017
 
 Lacinia now better implements the specification, in terms of parsing

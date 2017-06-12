@@ -23,6 +23,7 @@ In some cases, a field resolver may need to perform additional queries against a
 
     overview
     attach
+    type-tags
     resolve-as
     async
     selections
