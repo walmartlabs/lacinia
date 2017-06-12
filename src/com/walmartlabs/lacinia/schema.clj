@@ -14,12 +14,13 @@
     [com.walmartlabs.lacinia.internal-utils
      :refer [map-vals map-kvs filter-vals deep-merge q
              is-internal-type-name? sequential-or-set? as-keyword
-             combine-results
+             combine-results cond-let
              ->TaggedValue is-tagged-value? extract-value extract-type-tag]]
     [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolve-as]]
     [clojure.string :as str])
   (:import
-    (com.walmartlabs.lacinia.resolve ResolverResultImpl)))
+    (com.walmartlabs.lacinia.resolve ResolverResultImpl)
+    (clojure.lang IMeta IObj)))
 
 ;; When using Clojure 1.9 alpha, the dependency on clojure-future-spec can be excluded,
 ;; and this code will not trigger; any? will come out of clojure.core as normal.
@@ -73,14 +74,28 @@
   The keyword should identify a specific concrete object
   (not an interface or union) in the relevent schema.
 
-  Returns a new wrapper instance that combines the value and the type name."
+  In most cases, this is accomplished by modifying the value's metadata.
+
+  For the more rare case, where a particular type is used rather than a Clojure
+  map, this function returns a new wrapper instance that combines the value and the type name."
   [x type-name]
-  ;; In some cases, the resolver for a field may tag a value even though it
-  ;; gets re-tagged automatically.
-  (if (is-tagged-value? x)
+  (cond
+    ;; IObj is the base interface for things that can vary their metadata:
+    (instance? IObj x)
+    (vary-meta x assoc ::type-name type-name)
+
+    ;; From here on is the edge case where a fixed type is used that doesn't
+    ;; support metadata.
+
+    ;; In some cases, the resolver for a field may tag a value even though it
+    ;; gets re-tagged automatically.
+
+    (is-tagged-value? x)
     (if (= type-name (extract-type-tag x))
       x
       (->TaggedValue (extract-value x) type-name))
+
+    :else
     (->TaggedValue x type-name)))
 
 (defn ^:no-doc type-map
@@ -247,10 +262,8 @@
 (s/def :type/fields (s/map-of keyword? :type/field))
 (s/def :type/implements (s/coll-of keyword?))
 (s/def :type/description string?)
-;; Given that objects merge in the field definitions from their containing interfaces,
-;; it is reasonable for ojects to only optionally define fields.
-(s/def :type/object (s/keys :opt-un [:type/fields
-                                     :type/implements
+(s/def :type/object (s/keys :req-un [:type/fields]
+                            :opt-un [:type/implements
                                      :type/description]))
 (s/def :type/interface (s/keys :opt-un [:type/description
                                         :type/fields]))
@@ -525,9 +538,17 @@
                                                                 :actual-type resolved-type
                                                                 :allowed-types member-types}))))))
         unwrap-tagged-type-wrapper (fn [resolved-value resolved-type next-selector callback]
-                                     (if (is-tagged-value? resolved-value)
+                                     (cond-let
+                                        (is-tagged-value? resolved-value)
                                        (next-selector (extract-value resolved-value)
                                                       (extract-type-tag resolved-value) callback)
+
+                                        :let [type-name (-> resolved-value meta ::type-name)]
+
+                                        (some? type-name)
+                                        (next-selector resolved-value type-name callback)
+
+                                        :else
                                        (next-selector resolved-value resolved-type callback)))
         apply-static-type-wrapper (when (#{:object :input-object} category)
                                     (fn [resolved-value resolved-type next-selector callback]
