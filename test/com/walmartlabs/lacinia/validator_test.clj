@@ -394,7 +394,8 @@
             :field-name :unknown-type
             :object-type :QueryRoot
             :schema-types {:object [:MutationRoot
-                                    :QueryRoot]
+                                    :QueryRoot
+                                    :SubscriptionRoot]
                            :scalar [:Boolean
                                     :Float
                                     :ID

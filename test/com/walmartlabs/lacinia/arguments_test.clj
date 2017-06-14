@@ -1,4 +1,4 @@
-(ns com.walmartlabs.lacinia.arguments-test
+ (ns com.walmartlabs.lacinia.arguments-test
   (:require
     [clojure.test :refer [deftest is]]
     [clojure.edn :as edn]
@@ -20,7 +20,8 @@
             :field-name :example
             :object-type :QueryRoot
             :schema-types {:object [:MutationRoot
-                                    :QueryRoot]
+                                    :QueryRoot
+                                    :SubscriptionRoot]
                            :scalar [:Boolean
                                     :Float
                                     :ID

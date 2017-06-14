@@ -17,6 +17,7 @@ operationDefinition
 operationType
     : 'query'
     | 'mutation'
+    | 'subscription'
     ;
 
 variableDefinitions

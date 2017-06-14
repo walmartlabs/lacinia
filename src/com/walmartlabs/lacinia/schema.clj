@@ -253,6 +253,10 @@
 
 ;; This can be expanded at some point
 (s/def :type/type some?)
+(s/def :type/arg (s/keys :req-un [:type/type]
+                         :opt-un [:type/description]))
+(s/def :type/args (s/map-of keyword? :type/arg))
+;; TODO: No longer accurate, :resolve must always be a function is present.
 (s/def :type/resolve (s/or :type/resolve-keyword keyword?
                            :type/resolve-callback fn?))
 (s/def :type/field (s/keys :opt-un [:type/description
@@ -289,13 +293,34 @@
 (s/def :type/enums (s/map-of keyword? :type/enum))
 (s/def :type/unions (s/map-of keyword? :type/union))
 
+;; Function of no arguments, return value ignored:
+(s/def :type/stream-cleanup fn?)
+
+;; Passed a resolved value, or passed nil (to shut down the subscription).
+(s/def :type/event-callback (s/fspec :args any?))
+
+(s/def :type/stream (s/fspec :args (s/cat :context :type/context
+                                          :args :type/arguments
+                                          :event :type/event-callback)
+                             :ret :type/stream-cleanup))
+
+(s/def :type/subscription (s/keys :opt-un [:type/description
+                                           :type/args]
+                                  :req-un [:type/type
+                                           :type/resolve
+                                           :type/stream]))
+
+(s/def :type/subscriptions (s/map-of keyword? :type/subscription))
+
 (s/def ::schema-object
   (s/keys :opt-un [:type/scalars
                    :type/interfaces
                    :type/objects
                    :type/input-objects
                    :type/enums
-                   :type/unions]))
+                   :type/unions
+                   ;; TODO: :type/queries and :type/mutations
+                   :type/subscriptions]))
 
 (s/def :graphql/type-decl
   (s/or :base-type (fn [x] (or (keyword? x) (symbol? x)))
@@ -902,7 +927,10 @@
                                  :description "Root of all queries."}
          constants/mutation-root {:category :object
                                   :type-name constants/mutation-root
-                                   :description "Root of all mutations."}}
+                                   :description "Root of all mutations."}
+         constants/subscription-root {:category :object
+                                      :type-name constants/subscription-root
+                                      :description "Root of all subscriptions."}}
         (xfer-types merged-scalars :scalar)
         (xfer-types (:enums schema) :enum)
         (xfer-types (:unions schema) :union)
@@ -911,6 +939,9 @@
         (xfer-types (:input-objects schema) :input-object)
         (assoc-in [constants/query-root :fields] (:queries schema))
         (assoc-in [constants/mutation-root :fields] (:mutations schema))
+        (assoc-in [constants/subscription-root :fields] (:subscriptions schema))
+        ;; queries, mutations, and subscriptions are fields on special objects; a lot of
+        ;; compilation occurs here along with ordinary objects.
         (as-> s
               (map-vals #(compile-type % s) s))
         (prepare-and-validate-interfaces)

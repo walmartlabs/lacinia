@@ -413,15 +413,19 @@
   This should generally not be invoked by user code; see [[execute-parsed-query]]."
   [context]
   (let [parsed-query (get context constants/parsed-query-key)
-        {:keys [selections mutation?]} parsed-query
+        {:keys [selections operation-type]} parsed-query
         enabled-selections (remove :disabled? selections)
         errors (atom [])
         timings (when (:com.walmartlabs.lacinia/enable-timing? context)
                   (atom {}))
+        ;; Outside of subscriptions, the ::resolved-value is nil.
+        ;; For subscriptions, the :resolved-value will be set to a non-nil value before
+        ;; executing the query.
         execution-context (map->ExecutionContext {:context context
                                                   :errors errors
-                                                  :timings timings})
-        operation-result (if mutation?
+                                                  :timings timings
+                                                  :resolved-value (::resolved-value context)})
+        operation-result (if (= :mutation operation-type)
                            (execute-nested-selections-sync execution-context enabled-selections)
                            (execute-nested-selections execution-context enabled-selections))
         response-result (resolve/resolve-promise)]

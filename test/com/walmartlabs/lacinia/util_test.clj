@@ -4,13 +4,14 @@
             [com.walmartlabs.lacinia.util :as util]))
 
 (deftest attach-resolvers
-  (let [schema {:person
-                ^:object
-                {:id {:type 'Int}
-                 :name {:type 'String
-                        :resolve :person-name}
-                 :total-credit {:type 'Int
-                                :resolve [:cents :totalCredit]}}
+  (let [schema {:objects
+                {:person
+                 {:fields
+                  {:id {:type 'Int}
+                   :name {:type 'String
+                          :resolve :person-name}
+                   :total-credit {:type 'Int
+                                  :resolve [:cents :totalCredit]}}}}
                 :queries
                 {:q1 {:type 'String
                       :resolve :q1}}}
@@ -20,13 +21,14 @@
         resolvers {:person-name str
                    :q1 identity
                    :cents (fn [name] name)}
-        resolved-schema {:person
-                         ^:object
-                         {:id {:type 'Int}
-                          :name {:type 'String
-                                 :resolve str}
-                          :total-credit {:type 'Int
-                                         :resolve :totalCredit}}
+        resolved-schema {:objects
+                         {:person
+                          {:fields
+                           {:id {:type 'Int}
+                            :name {:type 'String
+                                   :resolve str}
+                            :total-credit {:type 'Int
+                                           :resolve :totalCredit}}}}
                          :queries
                          {:q1 {:type 'String
                                :resolve identity}}}]
