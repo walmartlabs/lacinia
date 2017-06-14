@@ -293,15 +293,23 @@
 (s/def :type/enums (s/map-of keyword? :type/enum))
 (s/def :type/unions (s/map-of keyword? :type/union))
 
+(s/def :type/context (s/nilable map?))
+
+;; These are the argument values passed to a resolver or streamer;
+;; as opposed to :type/args which are argument definitions.
+(s/def :type/arguments (s/nilable (s/map-of keyword? any?)))
+
 ;; Function of no arguments, return value ignored:
-(s/def :type/stream-cleanup fn?)
+(s/def :type/stream-cleanup (s/fspec :args empty?))
 
 ;; Passed a resolved value, or passed nil (to shut down the subscription).
-(s/def :type/event-callback (s/fspec :args any?))
+;; This should be fn?, but that causes problems when spec attempts to create
+;; generators.
+(s/def :type/event-handler any?)
 
 (s/def :type/stream (s/fspec :args (s/cat :context :type/context
                                           :args :type/arguments
-                                          :event :type/event-callback)
+                                          :event-handler :type/event-handler)
                              :ret :type/stream-cleanup))
 
 (s/def :type/subscription (s/keys :opt-un [:type/description

@@ -7,7 +7,8 @@
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :as resolve
      :refer [resolve-as]]
-    [com.walmartlabs.lacinia.constants :as constants])
+    [com.walmartlabs.lacinia.constants :as constants]
+    [clojure.spec.alpha :as s])
   (:import (clojure.lang PersistentQueue)))
 
 (defn ^:private ex-info-map
@@ -418,10 +419,12 @@
         errors (atom [])
         timings (when (:com.walmartlabs.lacinia/enable-timing? context)
                   (atom {}))
+        context' (assoc context constants/schema-key
+                        (get parsed-query constants/schema-key))
         ;; Outside of subscriptions, the ::resolved-value is nil.
         ;; For subscriptions, the :resolved-value will be set to a non-nil value before
         ;; executing the query.
-        execution-context (map->ExecutionContext {:context context
+        execution-context (map->ExecutionContext {:context context'
                                                   :errors errors
                                                   :timings timings
                                                   :resolved-value (::resolved-value context)})
@@ -437,6 +440,20 @@
                                                  timings (assoc-in [:extensions :timing] @timings)
                                                  (seq @errors) (assoc :errors (distinct @errors)))))))
     response-result))
+
+(defn invoke-streamer
+  "Given a parsed and prepared query (inside the context, as with [[execute-query]],
+  this will locate the streamer for a subscription
+  and invoke it, passing it the context, the subscription arguments, and the event handler."
+  {:added "0.18.0"}
+  [context event-handler]
+  (let [parsed-query (get context constants/parsed-query-key)
+        {:keys [selections operation-type]} parsed-query
+        selection (do
+                    (assert (= :subscription operation-type))
+                    (first selections))
+        streamer (get-in selection [:field-definition :stream])]
+    (streamer context (:arguments selection) event-handler)))
 
 (defn ^:private node-selections
   [parsed-query node]

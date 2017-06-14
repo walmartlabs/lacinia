@@ -47,7 +47,7 @@
 (defn instrument-schema-namespace
   []
   (-> (stest/enumerate-namespace 'com.walmartlabs.lacinia.schema)
-      stest/instrument
+        stest/instrument
       stest/check))
 
 (defn simplify
