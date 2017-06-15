@@ -28,6 +28,8 @@ Lacinia features:
 
 - Full support for GraphQL types, interfaces, unions, enums, input objects, and custom scalars.
 
+- Full support for GraphQL subscriptions.
+
 - Full support of inline and named query fragments.
 
 - Full support for GraphQL Schema Introspection.
@@ -208,6 +210,9 @@ fields in the response:
 ```clojure
 {:data {:hero {:movies [:NEWHOPE :EMPIRE :JEDI]}}}
 ```
+
+This is just an overview, far more detail is available
+in [the manual](http://lacinia.readthedocs.io/en/latest/).
 
 ## Status
 

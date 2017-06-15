@@ -21,12 +21,16 @@ specific to that field.
 
 The rules of field resolvers:
 
-A query or mutation will resolve to a map of keys and values (or
-resolve to a sequence of maps).
-The fields requested in the client's query will be used to resolve nested values.
+- A operation will resolve to a map of keys and values (or resolve to a sequence of maps).
+  The fields requested in the client's query will be used to resolve nested selections.
 
-Each field is passed its containing field's resolved value.
-It then returns a resolved value, which itself may be passed to its sub-fields.
+- Each field is passed its containing field's resolved value.
+  It then returns a resolved value, which itself may be passed to its sub-fields.
+
+.. tip::
+
+   It is possible to :doc:`preview nested selections <selections>` in a field resolver, which can enable
+   some important optimizations.
 
 Meanwhile, the selected data from the resolved value is added to the response.
 
@@ -82,6 +86,12 @@ For example, you might have an ``:lineItem`` query of type ``:LineItem``, and Li
 A query ``{lineItem(id:"12345") { product }}}`` is not valid: it is not possible to return a Product directly,
 you **must** select fields within Product:  ``{lineItem(id:"12345") { product { name upc price }}}```.
 
+.. tip::
+
+   Generally, we expect the individual values to be Clojure maps (or records).
+   Lacinia supports :doc:`other types <type-tags>`, though that creates a bit of a burden
+   on the developer to provide the necessary resolvers.
+
 Resolving Collections
 ---------------------
 
@@ -100,18 +110,7 @@ is provided automatically; this default resolver simply expects the resolved val
 containing a key that exactly matches the field name.
 
 It is even possible to customize this default field resolver, as an option passed to
-`com.walmartlabs.lacina.schema/compile`.
- 
-Nested Fields
--------------
-
-Typically, a query will select fields from the operation, and then select fields within those fields.
-In each case, the container's resolved value is passed to the nested field so that it can provide the
-nested resolved value.
-This continues as deeply as the query specifies.
-
-It is possible to :doc:`preview nested selections <selections>` in a field resolver, which can enable
-some important optimizations.
+``com.walmartlabs.lacina.schema/compile``.
 
 .. [#root-value] Or, in practice, a sequence of maps.
    In theory, an operation type could be a scalar, but use cases for this are rare.

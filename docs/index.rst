@@ -41,6 +41,7 @@ responding with JSON, it is also exceptionally useful for allowing backend syste
    unions
    queries
    mutations
+   subscriptions/index
    directives
    resolve/index
    input-objects

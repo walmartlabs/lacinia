@@ -4,6 +4,8 @@
 (as it did in 0.16.0), resorting to a wrapper type only when
 the value is a Java object that doesn't support metadata.
 
+Lacinia now includes support for GraphQL subscriptions.
+
 ## 0.17.0 -- 22 May 2017
 
 Lacinia now better implements the specification, in terms of parsing
