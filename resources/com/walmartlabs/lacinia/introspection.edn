@@ -4,6 +4,7 @@
    {:types {:type (non-null (list :__Type))}
     :queryType {:type (non-null :__Type)}
     :mutationType {:type :__Type}
+    :subscriptionType {:type :__Type}
     :directives {:type (non-null (list :__Directive))}}}
 
   :__Type

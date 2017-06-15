@@ -75,6 +75,8 @@
                          (update :fields #(remove-keys is-internal-type-name? %)))
         mutations-root (get schema constants/mutation-root)
         omit-mutations (-> mutations-root :fields empty?)
+        subs-root (get schema constants/subscription-root)
+        omit-subs (-> subs-root :fields empty?)
         type-names' (if omit-mutations
                       (-> type-names set (disj constants/mutation-root))
                       type-names)]
@@ -85,7 +87,10 @@
              :queryType (schema-type schema queries-root)}
 
       (not omit-mutations)
-      (assoc :mutationType (schema-type schema mutations-root)))))
+      (assoc :mutationType (schema-type schema mutations-root))
+
+      (not omit-subs)
+      (assoc :subscriptionType (schema-type schema subs-root)))))
 
 
 (defn ^:private resolve-root-type
