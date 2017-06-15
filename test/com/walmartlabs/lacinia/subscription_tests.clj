@@ -47,10 +47,6 @@
   (-> (io/resource "subscriptions-schema.edn")
       slurp
       edn/read-string
-      (util/attach-resolvers {:resolve-logs (fn [_ args log-event]
-                                              (when *verbose*
-                                                (prn :log-event-render args log-event))
-                                              log-event)})
       (util/attach-streamers {:stream-logs stream-logs})
       schema/compile))
 

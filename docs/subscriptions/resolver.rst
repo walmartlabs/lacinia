@@ -7,10 +7,6 @@ for a subscription always starts with a specific value, provided by the streamer
 Because of this, the resolver is optional: if not provided, a default resolver is used, one that simply returns
 the streamer value (the value provided to the event handler).
 
-.. warning::
-
-   This is not yet implemented.  Currently the ``:resolve`` key must be specified.
-
 However, it still makes sense to implement a resolver in some cases.
 
 Both the resolver and the streamer receive the same map of arguments: it is reasonble that some

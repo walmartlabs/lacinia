@@ -17,7 +17,8 @@
              combine-results cond-let
              ->TaggedValue is-tagged-value? extract-value extract-type-tag]]
     [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolve-as]]
-    [clojure.string :as str])
+    [clojure.string :as str]
+    [com.walmartlabs.lacinia.resolve :as resolve])
   (:import
     (com.walmartlabs.lacinia.resolve ResolverResultImpl)
     (clojure.lang IMeta IObj)))
@@ -313,9 +314,9 @@
                              :ret :type/stream-cleanup))
 
 (s/def :type/subscription (s/keys :opt-un [:type/description
+                                           :type/resolve
                                            :type/args]
                                   :req-un [:type/type
-                                           :type/resolve
                                            :type/stream]))
 
 (s/def :type/subscriptions (s/map-of keyword? :type/subscription))
@@ -924,12 +925,23 @@
   (map-types schema category
              #(prepare-and-validate-object schema % options)))
 
+(def ^:private default-subscription-resolver
+
+  ^resolve/ResolverResult
+  (fn [_ _ value]
+    (resolve/resolve-as value)))
+
 (defn ^:private construct-compiled-schema
   [schema options]
   ;; Note: using merge, not two calls to xfer-types, since want to allow
   ;; for overrides of the built-in scalars without a name conflict exception.
   (let [merged-scalars (merge default-scalar-transformers
-                              (:scalars schema))]
+                              (:scalars schema))
+        defaulted-subscriptions (->> schema
+                                     :subscriptions
+                                     (map-vals #(if-not (:resolve %)
+                                                  (assoc % :resolve default-subscription-resolver)
+                                                  %)))]
     (-> {constants/query-root {:category :object
                                :type-name constants/query-root
                                  :description "Root of all queries."}
@@ -947,7 +959,7 @@
         (xfer-types (:input-objects schema) :input-object)
         (assoc-in [constants/query-root :fields] (:queries schema))
         (assoc-in [constants/mutation-root :fields] (:mutations schema))
-        (assoc-in [constants/subscription-root :fields] (:subscriptions schema))
+        (assoc-in [constants/subscription-root :fields] defaulted-subscriptions)
         ;; queries, mutations, and subscriptions are fields on special objects; a lot of
         ;; compilation occurs here along with ordinary objects.
         (as-> s

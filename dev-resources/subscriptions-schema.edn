@@ -8,5 +8,4 @@
  {:logs
   {:type :LogEvent
    :args {:severity {:type String}}
-   :resolve :resolve-logs
    :stream :stream-logs}}}
