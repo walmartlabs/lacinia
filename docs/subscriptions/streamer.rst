@@ -41,7 +41,7 @@ that can be used with ``on-publish`` and ``stop-log-subscription``.
 A real implementation might use Clojure core.async, subscribe to a JMS queue, or an almost
 unbounded number of other options.
 
-Regardless, the streamer provides the stream of source values, but making successive calls to
+Regardless, the streamer provides the stream of source values, by making successive calls to
 the provided source stream callback function, and it provides a way to cleanup the subscription, by
 returning a cleanup function.
 

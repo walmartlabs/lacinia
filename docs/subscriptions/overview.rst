@@ -16,7 +16,7 @@ the :doc:`web tier <lacinia-pedestal>`.
   construct to feed values to the source stream.
 
 - Whenever the source stream callback is passed a value,
-  Lacinia will execute the the subscription as a query, which will generate a
+  Lacinia will execute the subscription as a query, which will generate a
   new response (with the standard ``:data`` and/or ``:errors`` keys).
 
 - The response will be converted as necessary and streamed to the client, forming

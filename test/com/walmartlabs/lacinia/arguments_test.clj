@@ -1,4 +1,4 @@
- (ns com.walmartlabs.lacinia.arguments-test
+(ns com.walmartlabs.lacinia.arguments-test
   (:require
     [clojure.test :refer [deftest is]]
     [clojure.edn :as edn]

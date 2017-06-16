@@ -7,8 +7,7 @@
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :as resolve
      :refer [resolve-as]]
-    [com.walmartlabs.lacinia.constants :as constants]
-    [clojure.spec.alpha :as s])
+    [com.walmartlabs.lacinia.constants :as constants])
   (:import (clojure.lang PersistentQueue)))
 
 (defn ^:private ex-info-map
