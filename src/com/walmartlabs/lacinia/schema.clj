@@ -306,11 +306,11 @@
 ;; Passed a resolved value, or passed nil (to shut down the subscription).
 ;; This should be fn?, but that causes problems when spec attempts to create
 ;; generators.
-(s/def :type/event-handler any?)
+(s/def :type/source-stream any?)
 
 (s/def :type/stream (s/fspec :args (s/cat :context :type/context
                                           :args :type/arguments
-                                          :event-handler :type/event-handler)
+                                          :source-stream :type/source-stream)
                              :ret :type/stream-cleanup))
 
 (s/def :type/subscription (s/keys :opt-un [:type/description

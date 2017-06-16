@@ -442,18 +442,18 @@
     response-result))
 
 (defn invoke-streamer
-  "Given a parsed and prepared query (inside the context, as with [[execute-query]],
+  "Given a parsed and prepared query (inside the context, as with [[execute-query]]),
   this will locate the streamer for a subscription
-  and invoke it, passing it the context, the subscription arguments, and the event handler."
+  and invoke it, passing it the context, the subscription arguments, and the source stream."
   {:added "0.18.0"}
-  [context event-handler]
+  [context source-stream]
   (let [parsed-query (get context constants/parsed-query-key)
         {:keys [selections operation-type]} parsed-query
         selection (do
                     (assert (= :subscription operation-type))
                     (first selections))
         streamer (get-in selection [:field-definition :stream])]
-    (streamer context (:arguments selection) event-handler)))
+    (streamer context (:arguments selection) source-stream)))
 
 (defn ^:private node-selections
   [parsed-query node]

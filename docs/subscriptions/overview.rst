@@ -1,30 +1,30 @@
 Overview
 ========
 
-The specification discusses a "source stream" and a "response stream".
-In practice, this is provided as a set of functional callbacks:
+The specification discusses a `source stream` and a `response stream`.
 
-- Lacinia invokes a streamer function to identify the source stream.
-  The streamer must set up the source stream, and return immediately.
+Lacinia implements the source stream as a callback function.
+The response stream is largely the responsibility of
+the :doc:`web tier <lacinia-pedestal>`.
 
-- The streamer is provided with an event handler callback function; as new values are available
-  from the source stream, they are passed to the event handler.
+- Lacinia invokes a streamer function once, to initialize the subscription stream.
+
+- The streamer is provided with a source stream callback function; as new values are available
+  they are passed to this callback.
+
   Typically, the streamer will create a thread, core.async process, or other long-lived
-  entity to feed values to the event handler.
+  construct to feed values to the source stream.
 
-- When the event handler is passed a value,
-  Lacinia will execute the render part of the subscription, which will generate a
-  new response (with the standard ``:data`` and/or ``:errors`` keys) for each event.
+- Whenever the source stream callback is passed a value,
+  Lacinia will execute the the subscription as a query, which will generate a
+  new response (with the standard ``:data`` and/or ``:errors`` keys).
 
 - The response will be converted as necessary and streamed to the client, forming
   the response stream.
 
-- The streamer must return a function that will be invoked to cleanup the source stream.
+- The streamer must return a function that will be invoked to perform cleanup.
+  This cleanup function typically stops whatever process was started earlier.
 
 Subscriptions are operations, like queries or mutations.
 They are defined using the top-level ``:subscriptions`` key in the schema.
 
-.. warning::
-
-   Naming of things is always hard, and not currently happy with these names, especially
-   `event handler`.

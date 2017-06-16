@@ -18,19 +18,19 @@
 ;; There's not a whole lot we can do here, as most of the support has to come from the web tier code, e.g.,
 ;; pedestal-lacinia.
 (def ^:private *latest-log-event (atom nil))
-(def ^:private *latest-render (atom nil))
+(def ^:private *latest-response (atom nil))
 
 (def ^:private ^:dynamic *verbose* false)
 
 (defn ^:private log-event [event]
   (reset! *latest-log-event event))
 
-(defn ^:private latest-render
+(defn ^:private latest-response
   []
-  (simplify @*latest-render))
+  (simplify @*latest-response))
 
 (defn ^:private stream-logs
-  [context args event-handler]
+  [context args source-stream]
   (let [{:keys [severity]} args
         watch-key (gensym)]
     (add-watch *latest-log-event watch-key
@@ -40,7 +40,7 @@
                  (when (or (nil? log-event)
                            (nil? severity)
                            (= severity (:severity log-event)))
-                   (event-handler log-event))))
+                   (source-stream log-event))))
     #(remove-watch *latest-log-event watch-key)))
 
 
@@ -57,44 +57,44 @@
                            (parser/prepare-with-query-variables vars))
         *cleanup-callback (promise)
         context {constants/parsed-query-key prepared-query}
-        event-handler (fn [value]
+        source-stream (fn [value]
                         (if (some? value)
                           (resolve/on-deliver!
                             (executor/execute-query (assoc context
                                                            ::executor/resolved-value value))
                             (fn [result _]
-                              (reset! *latest-render result)))
+                              (reset! *latest-response result)))
                           (do
                             (@*cleanup-callback)
-                            (reset! *latest-render nil))))]
-    (deliver *cleanup-callback (executor/invoke-streamer context event-handler))))
+                            (reset! *latest-response nil))))]
+    (deliver *cleanup-callback (executor/invoke-streamer context source-stream))))
 
 (deftest basic-subscription
 
   (execute "subscription { logs {  message }}" nil)
 
-  (is (nil? (latest-render)))
+  (is (nil? (latest-response)))
 
   (log-event {:message "first"})
 
   (is (= {:data {:logs {:message "first"}}}
-         (latest-render)))
+         (latest-response)))
 
   (log-event {:message "second"})
 
   (is (= {:data {:logs {:message "second"}}}
-         (latest-render)))
+         (latest-response)))
 
 
   (log-event nil)
 
-  (is (nil? (latest-render)))
+  (is (nil? (latest-response)))
 
   ;; Further "events" do nothing.
 
   (log-event {:message "ignored"})
 
-  (is (nil? (latest-render))))
+  (is (nil? (latest-response))))
 
 (deftest ensure-variables-and-arguments-are-resolved
   (execute "
@@ -107,23 +107,23 @@ subscription ($severity : String) {
 
   (log-event {:severity "normal" :message "first"})
 
-  (is (nil? (latest-render)))
+  (is (nil? (latest-response)))
 
   (log-event {:severity "critical" :message "second"})
 
   (is (= {:data {:logs {:message "second"
                         :severity "critical"}}}
-         (latest-render)))
+         (latest-response)))
 
   (log-event {:severity "normal" :message "third"})
 
   (is (= {:data {:logs {:message "second"
                         :severity "critical"}}}
-         (latest-render)))
+         (latest-response)))
 
   (log-event nil)
 
-  (is (nil? (latest-render))))
+  (is (nil? (latest-response))))
 
 (deftest one-subscription-per-request
   (when-let [e (is (thrown? Exception (parser/parse-query compiled-schema "

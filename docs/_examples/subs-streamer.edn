@@ -1,9 +1,9 @@
 (defn log-message-streamer
-  [context args event-handler]
+  [context args source-stream]
   ;; Create an object for the subscription.
   (let [subscription (create-log-subscription)]
     (on-publish subscription
       (fn [log-event]
-        (event-handler (:payload log-event))))
+        (-> log-event :payload source-stream)))
     ;; Return a function to cleanup the subscription
     #(stop-log-subscription subscription)))
