@@ -83,8 +83,8 @@ from the resolved value.
 
 For example, you might have an ``:lineItem`` query of type ``:LineItem``, and LineItem might include a field,
 ``:product`` of type ``:Product``.
-A query ``{lineItem(id:"12345") { product }}}`` is not valid: it is not possible to return a Product directly,
-you **must** select fields within Product:  ``{lineItem(id:"12345") { product { name upc price }}}```.
+A query ``{lineItem(id:"12345") { product }}`` is not valid: it is not possible to return a Product directly,
+you **must** select fields within Product:  ``{lineItem(id:"12345") { product { name upc price }}}``.
 
 .. tip::
 
