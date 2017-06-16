@@ -77,9 +77,9 @@
         omit-mutations (-> mutations-root :fields empty?)
         subs-root (get schema constants/subscription-root)
         omit-subs (-> subs-root :fields empty?)
-        type-names' (if omit-mutations
-                      (-> type-names set (disj constants/mutation-root))
-                      type-names)]
+        type-names' (cond-> (set type-names)
+                      omit-mutations (disj constants/mutation-root)
+                      omit-subs (disj constants/subscription-root))]
     (cond-> {:directives []                                 ; TODO!
              :types (->> type-names'
                          sort
