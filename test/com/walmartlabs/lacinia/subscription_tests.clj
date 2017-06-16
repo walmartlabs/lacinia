@@ -97,13 +97,7 @@
   (is (nil? (latest-response))))
 
 (deftest ensure-variables-and-arguments-are-resolved
-  (execute "
-subscription ($severity : String) {
-
-  logs (severity: $severity) {
-     severity message
-  }
-}" {:severity "critical"})
+  (execute "subscription ($severity : String) { logs (severity: $severity) { severity message }}" {:severity "critical"})
 
   (log-event {:severity "normal" :message "first"})
 
@@ -126,11 +120,8 @@ subscription ($severity : String) {
   (is (nil? (latest-response))))
 
 (deftest one-subscription-per-request
-  (when-let [e (is (thrown? Exception (parser/parse-query compiled-schema "
-subscription {
-  sev: logs { severity }
-  msg: logs { message }
-}")))]
+  (when-let [e (is (thrown? Exception (parser/parse-query compiled-schema
+                                                          "subscription { sev: logs { severity } msg: logs { message }}")))]
     (is (= "Subscriptions only allow exactly one selection for the operation." (.getMessage e)))))
 
 
@@ -142,17 +133,4 @@ subscription {
                                :type {:name "String"}}]
                        :name "logs"
                        :type {:name "LogEvent"}}]}}}}
-         (test-utils/execute compiled-schema "
-{ __schema {
-    subscriptionType {
-      fields {
-        name
-        type { name }
-        args {
-          name
-          type { name }
-       }
-      }
-    }
-  }
-}"))))
+         (test-utils/execute compiled-schema "{ __schema { subscriptionType { fields { name type { name } args { name type { name }}}}}}"))))
