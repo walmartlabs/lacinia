@@ -9,7 +9,8 @@
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.resolve :as resolve]
     [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.test-utils :refer [simplify instrument-schema-namespace]])
+    [com.walmartlabs.test-utils :as test-utils
+     :refer [simplify instrument-schema-namespace]])
   (:import (clojure.lang ExceptionInfo)))
 
 (instrument-schema-namespace)
@@ -133,3 +134,25 @@ subscription {
     (is (= "Subscriptions only allow exactly one selection for the operation." (.getMessage e)))))
 
 
+(deftest introspection
+  (is (= {:data
+          {:__schema
+           {:subscriptionType
+            {:fields [{:args [{:name "severity"
+                               :type {:name "String"}}]
+                       :name "logs"
+                       :type {:name "LogEvent"}}]}}}}
+         (test-utils/execute compiled-schema "
+{ __schema {
+    subscriptionType {
+      fields {
+        name
+        type { name }
+        args {
+          name
+          type { name }
+       }
+      }
+    }
+  }
+}"))))
