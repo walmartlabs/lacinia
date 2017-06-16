@@ -39,6 +39,14 @@
           :character/name]                                  ; enemies
          (root-selections "{ human { name friends { name appears_in } enemies { name }}}"))))
 
+(deftest introspection-cases
+  (is (= []
+         (root-selections "{ hero { __typename }}")))
+  (is (= [:character/name]
+         (root-selections "{ hero { name __typename }}")))
+  (is (= {:character/name nil}
+         (tree "{ hero { name __typename }}"))))
+
 (deftest mutations
   (is (= [:human/name :human/homePlanet]
          (root-selections "mutation { changeHeroHomePlanet (id: \"123\",

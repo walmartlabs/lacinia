@@ -488,12 +488,14 @@
             (case (:selection-type selection)
 
               :field
-              (assoc m (to-field-name selection)
-                     (let [arguments (:arguments selection)
-                           nested-map (build-selections-map parsed-query (:selections selection))]
-                       (cond-> nil
-                         (not (empty? arguments)) (assoc :args arguments)
-                         (not (empty? nested-map)) (assoc :selections nested-map))))
+              (if-some [field-name (to-field-name selection)]
+                (assoc m field-name
+                       (let [arguments (:arguments selection)
+                             nested-map (build-selections-map parsed-query (:selections selection))]
+                         (cond-> nil
+                           (not (empty? arguments)) (assoc :args arguments)
+                           (not (empty? nested-map)) (assoc :selections nested-map))))
+                m)
 
               :inline-fragment
               (merge m (build-selections-map parsed-query (:selections selection)))
