@@ -97,7 +97,8 @@
   (is (nil? (latest-response))))
 
 (deftest ensure-variables-and-arguments-are-resolved
-  (execute "subscription ($severity : String) { logs (severity: $severity) { severity message }}" {:severity "critical"})
+  (execute "subscription ($severity : String) { logs (severity: $severity) { severity message }}"
+           {:severity "critical"})
 
   (log-event {:severity "normal" :message "first"})
 
@@ -122,15 +123,25 @@
 (deftest one-subscription-per-request
   (when-let [e (is (thrown? Exception (parser/parse-query compiled-schema
                                                           "subscription { sev: logs { severity } msg: logs { message }}")))]
-    (is (= "Subscriptions only allow exactly one selection for the operation." (.getMessage e)))))
+    (is (= "Subscriptions only allow exactly one selection for the operation."
+           (.getMessage e)))))
 
 
 (deftest introspection
   (is (= {:data
           {:__schema
            {:subscriptionType
-            {:fields [{:args [{:name "severity"
+            {:description "Root of all subscriptions."
+             :fields [{:args [{:name "severity"
                                :type {:name "String"}}]
                        :name "logs"
-                       :type {:name "LogEvent"}}]}}}}
-         (test-utils/execute compiled-schema "{ __schema { subscriptionType { fields { name type { name } args { name type { name }}}}}}"))))
+                       :type {:name "LogEvent"}}]}
+            :types [{:name "Boolean"}
+                    {:name "Float"}
+                    {:name "ID"}
+                    {:name "Int"}
+                    {:name "LogEvent"}
+                    {:name "QueryRoot"}
+                    {:name "String"}
+                    {:name "SubscriptionRoot"}]}}}
+         (test-utils/execute compiled-schema "{ __schema { types { name } subscriptionType { description fields { name type { name } args { name type { name }}}}}}"))))

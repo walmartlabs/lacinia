@@ -333,7 +333,7 @@
                                       {:name "MutationRoot"}
                                       {:name "QueryRoot"}
                                       {:name "String"}
-                                      {:name "SubscriptionRoot"}
+                                      ; SubscriptionRoot not present, because there are no defined subscriptions
                                       {:name "character"}
                                       {:name "droid"}
                                       {:name "echoArgs"}
@@ -381,9 +381,6 @@
                                       {:description nil
                                        :kind :SCALAR
                                        :name "String"}
-                                      {:description "Root of all subscriptions."
-                                       :kind :OBJECT
-                                       :name "SubscriptionRoot"}
                                       {:description nil
                                        :kind :INTERFACE
                                        :name "character"}
@@ -701,14 +698,6 @@
                      :interfaces []
                      :kind :SCALAR
                      :name "String"
-                     :possibleTypes []}
-                    {:description "Root of all subscriptions."
-                     :enumValues []
-                     :fields []
-                     :inputFields []
-                     :interfaces []
-                     :kind :OBJECT
-                     :name "SubscriptionRoot"
                      :possibleTypes []}
                     {:description nil
                      :enumValues []
