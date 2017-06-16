@@ -467,10 +467,11 @@
 
 (defn ^:private to-field-name
   [node]
-  (let [field-def (:field-definition node)]
-    (keyword
-      (-> field-def :type-name name)
-      (-> field-def :field-name name))))
+  (let [{:keys [type-name field-name]} (:field-definition node)]
+    ;; This guards against introspection fields in queries like __typeName,
+    ;; which don't currently have a type or field
+    (when (and type-name field-name)
+      (keyword (name type-name) (name field-name)))))
 
 (defn selections-seq
   "A width-first traversal of selections tree, returning a lazy sequence
@@ -485,19 +486,14 @@
                  (let [node (peek queue)]
                    (cons node
                          (step (into (pop queue)
-                                     (node-selections parsed-query node)))))))
-        to-field-name (fn [node]
-                        (let [field-def (:field-definition node)]
-                          (keyword
-                            (-> field-def :type-name name)
-                            (-> field-def :field-name name))))]
+                                     (node-selections parsed-query node)))))))]
     (->> (conj PersistentQueue/EMPTY selection)
          step
          ;; remove the first node (the selection); just interested
          ;; in what's beneath the selection
          next
          (filter #(= :field (:selection-type %)))
-         (map to-field-name))))
+         (keep to-field-name))))
 
 (defn selects-field?
   "Invoked by a field resolver to determine if a particular field is selected anywhere within the selection
@@ -513,12 +509,14 @@
             (case (:selection-type selection)
 
               :field
-              (assoc m (to-field-name selection)
-                     (let [arguments (:arguments selection)
-                           nested-map (build-selections-map parsed-query (:selections selection))]
-                       (cond-> nil
-                         (not (empty? arguments)) (assoc :args arguments)
-                         (not (empty? nested-map)) (assoc :selections nested-map))))
+              (if-some [field-name (to-field-name selection)]
+                (assoc m field-name
+                       (let [arguments (:arguments selection)
+                             nested-map (build-selections-map parsed-query (:selections selection))]
+                         (cond-> nil
+                           (not (empty? arguments)) (assoc :args arguments)
+                           (not (empty? nested-map)) (assoc :selections nested-map))))
+                m)
 
               :inline-fragment
               (merge m (build-selections-map parsed-query (:selections selection)))
