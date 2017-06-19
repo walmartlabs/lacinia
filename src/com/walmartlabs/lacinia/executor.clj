@@ -444,7 +444,7 @@
   "Given a parsed and prepared query (inside the context, as with [[execute-query]]),
   this will locate the streamer for a subscription
   and invoke it, passing it the context, the subscription arguments, and the source stream."
-  {:added "0.18.0"}
+  {:added "0.19.0"}
   [context source-stream]
   (let [parsed-query (get context constants/parsed-query-key)
         {:keys [selections operation-type]} parsed-query

@@ -9,7 +9,7 @@
   "Object in the compiled schema that contains, as fields, all mutations."
   :MutationRoot)
 
-(def ^{:added "0.18.0"} subscription-root
+(def ^{:added "0.19.0"} subscription-root
   "Object in the compiled schema that contains, as fields, all subscriptions."
   :SubscriptionRoot)
 

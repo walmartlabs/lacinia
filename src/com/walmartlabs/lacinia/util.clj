@@ -62,7 +62,7 @@
 
   Replaces the :stream key inside subscription operations using the same logic as
   [[attach-resolvers]]."
-  {:added "0.18.0"}
+  {:added "0.19.0"}
   [schema streamer-map]
   (update schema :subscriptions #(attach-callbacks % streamer-map :stream "Streamer")))
 
