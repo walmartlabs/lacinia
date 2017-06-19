@@ -1,8 +1,17 @@
-## 0.18.0 -- UNRELEASED
+## 0.18.0 -- 19 June 2017
 
 `com.walmartlabs.lacinia.schema/tag-with-type` now uses metadata in the majority of cases
 (as it did in 0.16.0), resorting to a wrapper type only when
 the value is a Java object that doesn't support metadata.
+
+Queries with repeated identical fields (same alias and arguments) will now be merged together
+along with their subselections.
+
+Fixed Selections API functions throwing a NullPointerException on Introspective meta fields.
+
+Upgraded to `future-spec` alpha17.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/5?closed=1)
 
 ## 0.17.0 -- 22 May 2017
 
