@@ -27,6 +27,5 @@ In some cases, a field resolver may need to perform additional queries against a
     resolve-as
     async
     selections
-    decorator
     timing
     examples
