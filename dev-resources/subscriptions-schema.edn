@@ -1,0 +1,11 @@
+{:objects
+ {:LogEvent
+  {:fields
+   {:severity {:type String}
+    :message {:type String}}}}
+
+ :subscriptions
+ {:logs
+  {:type :LogEvent
+   :args {:severity {:type String}}
+   :stream :stream-logs}}}

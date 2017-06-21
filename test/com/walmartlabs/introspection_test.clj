@@ -333,6 +333,7 @@
                                       {:name "MutationRoot"}
                                       {:name "QueryRoot"}
                                       {:name "String"}
+                                      ; SubscriptionRoot not present, because there are no defined subscriptions
                                       {:name "character"}
                                       {:name "droid"}
                                       {:name "echoArgs"}

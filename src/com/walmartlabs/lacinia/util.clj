@@ -2,37 +2,69 @@
   "Useful utility functions."
   (:require
     clojure.walk
-    [com.walmartlabs.lacinia.internal-utils :refer [to-message map-vals]]))
+    [com.walmartlabs.lacinia.internal-utils
+     :refer [to-message map-vals cond-let update?]]
+    [clojure.string :as str]))
+
+(defn ^:private attach-callbacks
+  [field-container callbacks-map callback-kw error-name]
+  (map-vals (fn [field]
+              (cond-let
+                :let [reference (get field callback-kw)]
+
+                (nil? reference)
+                field
+
+                :let [factory? (not (keyword? reference))
+                      callback-source (get callbacks-map
+                                           (if factory?
+                                             (first reference)
+                                             reference))]
+
+                (nil? callback-source)
+                (let [kw-name (name callback-kw)]
+                  (throw (ex-info (format "%s specified in schema not provided."
+                                          error-name)
+                                  {:reference reference
+                                   :callbacks (keys callbacks-map)})))
+                factory?
+                (assoc field callback-kw (apply callback-source (rest reference)))
+
+                :else
+                (assoc field callback-kw callback-source)))
+            field-container))
 
 (defn attach-resolvers
   "Given a GraphQL schema and a map of keywords to resolver fns, replace
-  each placeholder keyword in the schema with the actual resolver fn."
+  each placeholder keyword in the schema with the actual resolver fn.
+
+  resolver-m is a map from keyword to resolver function or resolver factory.
+
+  When the value in the :resolve key is a keyword, it is simply replaced
+  with the corresponding resolver function from resolver-m.
+
+  Alternately, the :resolve value may be a seq, indicating a resolver factory.
+
+  The first value in the seq is used to select the resolver factory function, which applied
+  with the remaining values in the seq."
   [schema resolver-m]
-  (clojure.walk/postwalk
-   (fn [node]
-     (if (and (sequential? node) (= :resolve (first node)))
-       (let [resolver-k (second node)
-             resolver (if (keyword? resolver-k)
-                        (get resolver-m resolver-k)
-                        (get resolver-m (first resolver-k)))]
-         (cond
-           (nil? resolver)
-           (throw (ex-info "Resolver specified in schema not provided."
-                           {:requested-resolver resolver-k
-                            :provided-resolvers (keys resolver-m)}))
+  (let [f (fn [field-container]
+            (attach-callbacks field-container resolver-m :resolve "Resolver"))
+        f-object #(update % :fields f)]
+    (-> schema
+        (update? :objects #(map-vals f-object %))
+        (update? :queries f)
+        (update? :mutations f)
+        (update? :subscriptions f))))
 
-           (keyword? resolver-k)
-           [:resolve resolver]
+(defn attach-streamers
+  "Attaches stream handler functions to subscriptions.
 
-           :else
-           ;; If resolver-k is not a keyword, it must be a sequence,
-           ;; in which first element is a key that points to a resolver
-           ;; factory in resolver-m and subsequent elements are arguments
-           ;; for the given factory.
-           [:resolve (apply resolver (rest resolver-k))]))
-       node))
-   schema))
-
+  Replaces the :stream key inside subscription operations using the same logic as
+  [[attach-resolvers]]."
+  {:added "0.19.0"}
+  [schema streamer-map]
+  (update schema :subscriptions #(attach-callbacks % streamer-map :stream "Streamer")))
 
 (defn attach-scalar-transformers
   "Given a GraphQL schema, attaches functions in the transform-m map to the schema.

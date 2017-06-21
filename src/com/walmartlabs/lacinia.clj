@@ -38,9 +38,7 @@
     (resolve/resolve-as {:errors validation-errors})
 
     :else
-    (executor/execute-query (assoc context
-                                   constants/schema-key schema
-                                   constants/parsed-query-key prepared))))
+    (executor/execute-query (assoc context constants/parsed-query-key prepared))))
 
 (defn execute-parsed-query
   "Prepares a query, by applying query variables to it, resulting in a prepared

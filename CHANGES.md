@@ -1,5 +1,7 @@
 ## 0.19.0 -- UNRELEASED
 
+Lacinia now includes support for GraphQL subscriptions.
+
 ## 0.18.0 -- 19 June 2017
 
 `com.walmartlabs.lacinia.schema/tag-with-type` now uses metadata in the majority of cases

@@ -1124,6 +1124,11 @@
                (rest var-definitions)))))
 
 
+(def ^:private operation-type->root
+  {:query constants/query-root
+   :mutation constants/mutation-root
+   :subscription constants/subscription-root})
+
 (defn ^:private xform-query
   "Given an output tree of sexps from clj-antlr, traverses and reforms into a
   form expected by the executor."
@@ -1134,20 +1139,14 @@
         operation
         (select-operation operationDefinition operation-name)
 
-        op-type (find-element operation :operationType)
+        operation-type (let [op-element (find-element operation :operationType)]
+                         (or (and op-element
+                                  (-> op-element second second keyword))
+                             :query))
 
-        ;; Can only be a mutation if the leading keyword is provided as is "mutation".
-        mutation? (and op-type
-                       (-> op-type
-                           second
-                           second
-                           (= "mutation")))
-
-        root-key (if mutation?
-                   constants/mutation-root
-                   constants/query-root)
-
-        root (get schema root-key)
+        root (->> operation-type
+                  operation-type->root
+                  (get schema))
 
         variable-definitions (extract-variable-definitions schema operation)
 
@@ -1161,14 +1160,20 @@
         ;; different variables). A solution might be to collect up the fragments that
         ;; are referenced inside the operation, validate those, discard the rest.
         schema' (assoc schema ::variables variable-definitions)
-        ]
-    ;; Build the result describing the fragments and selections (or the selected operation).
-    ;; Explicitly defeat some lazy evaluation, to ensure that validation exceptions are thrown
-    ;; from within this function call.
+
+        ;; Explicitly defeat some lazy evaluation, to ensure that validation exceptions are thrown
+        ;; from within this function call.
+        selections (coalesce-selections (mapv #(selection schema' % root []) (rest selections)))]
+
+    (when (and (= :subscription operation-type)
+               (not= 1 (count selections)))
+      (throw (IllegalStateException. "Subscriptions only allow exactly one selection for the operation.")))
+
+
+    ;; Build the result describing the fragments and selections (for the selected operation).
     {:fragments (normalize-fragment-definitions schema' nil fragmentDefinition)
-     :selections (coalesce-selections (mapv #(selection schema' % root [])
-                                            (rest selections)))
-     :mutation? mutation?
+     :selections selections
+     :operation-type operation-type
      constants/schema-key schema}))
 
 (defn ^:private parse-failures
@@ -1216,16 +1221,14 @@
   "Given a previously parsed query, this returns a map of two keys:
 
   :type
-  : The type of request: currently, either :query or :mutation, but
-    other values (such as :subscription) could concievably be added
-    in the future.
+  : The type of request, one of: :query, :mutation, or :subscription.
 
   :operations
-  : The names of the top-level operations, as set of keywords."
+  : The names of the top-level operations, as a set of keywords."
   {:added "0.17.0"}
   [parsed-query]
-  (let [{:keys [mutation? selections]} parsed-query]
-    {:type (if mutation? :mutation :query)
+  (let [{:keys [operation-type selections]} parsed-query]
+    {:type operation-type
      :operations (->> selections
                       (map (comp :field-name :field-definition))
                       set)}))

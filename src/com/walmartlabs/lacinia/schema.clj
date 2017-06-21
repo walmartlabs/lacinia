@@ -17,7 +17,8 @@
              combine-results cond-let
              ->TaggedValue is-tagged-value? extract-value extract-type-tag]]
     [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolve-as]]
-    [clojure.string :as str])
+    [clojure.string :as str]
+    [com.walmartlabs.lacinia.resolve :as resolve])
   (:import
     (com.walmartlabs.lacinia.resolve ResolverResultImpl)
     (clojure.lang IMeta IObj)))
@@ -253,6 +254,10 @@
 
 ;; This can be expanded at some point
 (s/def :type/type some?)
+(s/def :type/arg (s/keys :req-un [:type/type]
+                         :opt-un [:type/description]))
+(s/def :type/args (s/map-of keyword? :type/arg))
+;; TODO: No longer accurate, :resolve must always be a function is present.
 (s/def :type/resolve (s/or :type/resolve-keyword keyword?
                            :type/resolve-callback fn?))
 (s/def :type/field (s/keys :opt-un [:type/description
@@ -289,13 +294,42 @@
 (s/def :type/enums (s/map-of keyword? :type/enum))
 (s/def :type/unions (s/map-of keyword? :type/union))
 
+(s/def :type/context (s/nilable map?))
+
+;; These are the argument values passed to a resolver or streamer;
+;; as opposed to :type/args which are argument definitions.
+(s/def :type/arguments (s/nilable (s/map-of keyword? any?)))
+
+;; Function of no arguments, return value ignored:
+(s/def :type/stream-cleanup (s/fspec :args empty?))
+
+;; Passed a resolved value, or passed nil (to shut down the subscription).
+;; This should be fn?, but that causes problems when spec attempts to create
+;; generators.
+(s/def :type/source-stream any?)
+
+(s/def :type/stream (s/fspec :args (s/cat :context :type/context
+                                          :args :type/arguments
+                                          :source-stream :type/source-stream)
+                             :ret :type/stream-cleanup))
+
+(s/def :type/subscription (s/keys :opt-un [:type/description
+                                           :type/resolve
+                                           :type/args]
+                                  :req-un [:type/type
+                                           :type/stream]))
+
+(s/def :type/subscriptions (s/map-of keyword? :type/subscription))
+
 (s/def ::schema-object
   (s/keys :opt-un [:type/scalars
                    :type/interfaces
                    :type/objects
                    :type/input-objects
                    :type/enums
-                   :type/unions]))
+                   :type/unions
+                   ;; TODO: :type/queries and :type/mutations
+                   :type/subscriptions]))
 
 (s/def :graphql/type-decl
   (s/or :base-type (fn [x] (or (keyword? x) (symbol? x)))
@@ -891,18 +925,32 @@
   (map-types schema category
              #(prepare-and-validate-object schema % options)))
 
+(def ^:private default-subscription-resolver
+
+  ^resolve/ResolverResult
+  (fn [_ _ value]
+    (resolve/resolve-as value)))
+
 (defn ^:private construct-compiled-schema
   [schema options]
   ;; Note: using merge, not two calls to xfer-types, since want to allow
   ;; for overrides of the built-in scalars without a name conflict exception.
   (let [merged-scalars (merge default-scalar-transformers
-                              (:scalars schema))]
+                              (:scalars schema))
+        defaulted-subscriptions (->> schema
+                                     :subscriptions
+                                     (map-vals #(if-not (:resolve %)
+                                                  (assoc % :resolve default-subscription-resolver)
+                                                  %)))]
     (-> {constants/query-root {:category :object
                                :type-name constants/query-root
                                  :description "Root of all queries."}
          constants/mutation-root {:category :object
                                   :type-name constants/mutation-root
-                                   :description "Root of all mutations."}}
+                                   :description "Root of all mutations."}
+         constants/subscription-root {:category :object
+                                      :type-name constants/subscription-root
+                                      :description "Root of all subscriptions."}}
         (xfer-types merged-scalars :scalar)
         (xfer-types (:enums schema) :enum)
         (xfer-types (:unions schema) :union)
@@ -911,6 +959,9 @@
         (xfer-types (:input-objects schema) :input-object)
         (assoc-in [constants/query-root :fields] (:queries schema))
         (assoc-in [constants/mutation-root :fields] (:mutations schema))
+        (assoc-in [constants/subscription-root :fields] defaulted-subscriptions)
+        ;; queries, mutations, and subscriptions are fields on special objects; a lot of
+        ;; compilation occurs here along with ordinary objects.
         (as-> s
               (map-vals #(compile-type % s) s))
         (prepare-and-validate-interfaces)

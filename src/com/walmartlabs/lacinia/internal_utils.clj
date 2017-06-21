@@ -38,6 +38,7 @@
   (when m
     (-> (reduce-kv (fn [m k v]
                      (assoc! m k (f v)))
+
                    (-> m empty transient)
                    m)
         persistent!
