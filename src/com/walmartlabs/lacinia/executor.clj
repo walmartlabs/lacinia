@@ -2,7 +2,7 @@
   "Mechanisms for executing parsed queries against compiled schemas."
   (:require
     [com.walmartlabs.lacinia.internal-utils
-     :refer [cond-let to-message map-vals remove-vals q combine-results]]
+     :refer [cond-let map-vals remove-vals q combine-results]]
     [flatland.ordered.map :refer [ordered-map]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :as resolve
@@ -114,12 +114,7 @@
         start-ms (when (and (some? timings)
                             (not (-> field-resolver meta ::schema/default-resolver?)))
                    (System/currentTimeMillis))
-        resolver-result (try
-                          (field-resolver resolve-context arguments container-value)
-                          (catch Throwable t
-                            (resolve/resolve-as nil
-                                                (assoc (ex-data t)
-                                                       :message (to-message t)))))
+        resolver-result (field-resolver resolve-context arguments container-value)
         final-result (resolve/resolve-promise)]
     (resolve/on-deliver! resolver-result
                          (fn [resolved-value resolve-errors]
@@ -128,7 +123,7 @@
                                    elapsed-ms (- finish-ms start-ms)
                                    timing {:start start-ms
                                            :finish finish-ms
-                                           ;; This is just a convienience:
+                                           ;; This is just a convenience:
                                            :elapsed elapsed-ms}]
                                ;; The extra key is to handle a case where we time, say, [:hero] and [:hero :friends]
                                ;; That will leave :friends as one child of :hero, and :execution/timings as another.

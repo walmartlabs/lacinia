@@ -9,6 +9,7 @@
   (:refer-clojure :exclude [compile])
   (:require
     [clojure.spec.alpha :as s]
+    [clojure.spec.gen.alpha :as gen]
     [com.walmartlabs.lacinia.introspection :as introspection]
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.internal-utils
@@ -18,15 +19,16 @@
              ->TaggedValue is-tagged-value? extract-value extract-type-tag]]
     [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolve-as]]
     [clojure.string :as str]
-    [com.walmartlabs.lacinia.resolve :as resolve])
+    [com.walmartlabs.lacinia.resolve :as resolve]
+    [com.walmartlabs.lacinia.util :as util])
   (:import
     (com.walmartlabs.lacinia.resolve ResolverResultImpl)
-    (clojure.lang IMeta IObj)))
+    (clojure.lang IObj)))
 
 ;; When using Clojure 1.9 alpha, the dependency on clojure-future-spec can be excluded,
 ;; and this code will not trigger; any? will come out of clojure.core as normal.
 (when (-> *clojure-version* :minor (< 9))
-  (require '[clojure.future :refer [any?]]))
+  (require '[clojure.future :refer [any? qualified-keyword?]]))
 
 ;;-------------------------------------------------------------------------------
 ;; ## Helpers
@@ -660,20 +662,25 @@
   "Prepares a field for execution. Provides a default resolver, and wraps it to
   ensure it returns a ResolverResult.
   Adds a :selector function."
-  [schema options containing-type field]
-  (let [provided-resolver (:resolve field)
-        {:keys [default-field-resolver decorator]} options
-        field-name (:field-name field)
-        type-name (:type-name containing-type)
+  [schema options type-def field-def]
+  (let [provided-resolver (:resolve field-def)
+        {:keys [default-field-resolver exception-converter decorator]} options
+        {:keys [qualified-field-name field-name]} field-def
+        type-name (:type-name type-def)
         base-resolver (if provided-resolver
                         (decorator type-name field-name provided-resolver)
                         (default-field-resolver field-name))
-        selector (assemble-selector schema containing-type field (:type field))
-        wrapped-resolver (cond-> (wrap-resolver-to-ensure-resolver-result base-resolver)
-                           (nil? provided-resolver) (vary-meta assoc ::default-resolver? true))]
-    (assoc field
+        selector (assemble-selector schema type-def field-def (:type field-def))
+        wrapped-resolver (wrap-resolver-to-ensure-resolver-result base-resolver)
+        final-resolver (cond-> (fn [context arguments value]
+                                 (try
+                                   (wrapped-resolver context arguments value)
+                                   (catch Throwable t
+                                     (resolve-as nil (exception-converter qualified-field-name arguments t)))))
+                         (nil? provided-resolver) (vary-meta assoc ::default-resolver? true))]
+    (assoc field-def
            :type-name type-name
-           :resolve wrapped-resolver
+           :resolve final-resolver
            :selector selector)))
 
 ;;-------------------------------------------------------------------------------
@@ -984,7 +991,26 @@
   (s/fspec :args (s/cat :object-name keyword? :field-name keyword? :resolver ::resolver)
            :ret ::resolver))
 
+(s/def ::message string?)
+
+(s/def ::error-map
+  (s/keys :req-un [::message]))
+
+(s/def ::errors
+  (s/or :single ::error-map
+        :many (s/coll-of ::error-map)))
+
+(s/def ::exception-converter
+  (s/fspec :args (s/cat :qualified-field-name qualified-keyword?
+                        :arguments :type/arguments
+                        :exception (s/with-gen
+                                     #(instance? Throwable %)
+                                     #(gen/fmap (fn [s] (RuntimeException. (str "Generated exception: " s)))
+                                                (gen/string-alphanumeric))))
+           :ret ::errors))
+
 (s/def ::compile-options (s/keys :opt-un [::default-field-resolver
+                                          ::exception-converter
                                           ::decorator]))
 
 
@@ -1013,8 +1039,15 @@
   [object-name field-name f]
   f)
 
+(defn default-exception-converter
+  "Converts the exception to an error map via [[as-error-map]]."
+  {:added "0.19.0"}
+  [_ _ exception]
+  (util/as-error-map exception))
+
 (def ^:private default-compile-opts
   {:default-field-resolver default-field-resolver
+   :exception-converter default-exception-converter
    :decorator pass-thru-decorator})
 
 (defn compile
@@ -1026,6 +1059,19 @@
 
   : A function that accepts a field name (as a keyword) and converts it into the
     default field resolver; this defaults to [[default-field-resolver]].
+
+  :exception-converter
+
+  : A function use to convert otherwise uncaught exceptions thrown inside
+    field resolver functions.  The function is passed the qualified
+    field name (e.g., :User/name, or :QueryRoot/users), the arguments passed to the field resolver
+    function, and the exception thrown by the field resolver function.
+
+    The result should be an error map, or a seq of error maps.
+
+    The default implementation is a wrapper around [[as-error-map]].
+
+    An override can be useful to, for example, log exceptions as they occur.
 
   :decorator
 

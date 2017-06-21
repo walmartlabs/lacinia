@@ -1,7 +1,6 @@
 (ns com.walmartlabs.lacinia.custom-scalars-test
   (:require [clojure.spec.alpha :as s]
             [clojure.test :refer [deftest is testing]]
-            [com.walmartlabs.lacinia :as lacinia]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.test-schema :refer [test-schema]]
             [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace execute]]
@@ -11,7 +10,7 @@
   (:import (java.text SimpleDateFormat)
            (java.util Date)
            (org.joda.time DateTime DateTimeConstants)
-           (org.joda.time.format DateTimeFormatter DateTimeFormat)))
+           (org.joda.time.format DateTimeFormat)))
 
 (instrument-schema-namespace)
 

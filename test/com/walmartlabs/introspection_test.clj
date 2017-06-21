@@ -53,9 +53,6 @@
                                      {:name "enemies"
                                       :type {:kind :LIST
                                              :name nil}}
-                                     {:name "error_field"
-                                      :type {:kind :SCALAR
-                                             :name "String"}}
                                      {:name "family"
                                       :type {:kind :NON_NULL
                                              :name nil}}
@@ -72,9 +69,6 @@
                                       :type {:kind :SCALAR
                                              :name "String"}}
                                      {:name "id"
-                                      :type {:kind :SCALAR
-                                             :name "String"}}
-                                     {:name "multiple_errors_field"
                                       :type {:kind :SCALAR
                                              :name "String"}}
                                      {:name "name"
@@ -1149,14 +1143,6 @@
                                :deprecationReason nil
                                :description nil
                                :isDeprecated false
-                               :name "error_field"
-                               :type {:kind :SCALAR
-                                      :name "String"
-                                      :ofType nil}}
-                              {:args []
-                               :deprecationReason nil
-                               :description nil
-                               :isDeprecated false
                                :name "family"
                                :type {:kind :NON_NULL
                                       :name nil
@@ -1213,14 +1199,6 @@
                                :deprecationReason nil
                                :description nil
                                :isDeprecated false
-                               :name "multiple_errors_field"
-                               :type {:kind :SCALAR
-                                      :name "String"
-                                      :ofType nil}}
-                              {:args []
-                               :deprecationReason nil
-                               :description nil
-                               :isDeprecated false
                                :name "name"
                                :type {:kind :SCALAR
                                       :name "String"
@@ -1260,11 +1238,11 @@
                                                     :name "Int"
                                                     :ofType nil}}}
                                    {:defaultValue nil
-                                    :description  nil
-                                    :name         "name"
-                                    :type         {:kind   :SCALAR
-                                                   :name   "String"
-                                                   :ofType nil}}]
+                                    :description nil
+                                    :name "name"
+                                    :type {:kind :SCALAR
+                                           :name "String"
+                                           :ofType nil}}]
                      :interfaces []
                      :kind :INPUT_OBJECT
                      :name "nestedInputObject"

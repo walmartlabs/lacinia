@@ -2,6 +2,10 @@
 
 Lacinia now includes support for GraphQL subscriptions.
 
+A new option to `com.walmartlabs.lacinia.schema/compile` provides a hook
+to convert from exceptions thrown inside field resolver methods to the
+error map that will be exposed in the `:error` key of the result map.
+
 ## 0.18.0 -- 19 June 2017
 
 `com.walmartlabs.lacinia.schema/tag-with-type` now uses metadata in the majority of cases
