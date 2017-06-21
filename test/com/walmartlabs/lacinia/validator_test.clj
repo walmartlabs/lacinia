@@ -353,6 +353,7 @@
         data (ex-data e)]
     (is (= "Field `unknown-type' in type `QueryRoot' references unknown type `not-defined'." (.getMessage e)))
     (is (= {:field {:args nil
+                    :qualified-field-name :QueryRoot/unknown-type
                     :field-name :unknown-type
                     :type {:kind :root
                            :type :not-defined}}

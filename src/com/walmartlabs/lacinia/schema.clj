@@ -480,10 +480,12 @@
 
 (defn ^:private compile-field
   "Rewrites the type of the field, and the type of any arguments."
-  [field-name field-def]
+  [type-def field-name field-def]
   (-> field-def
       rewrite-type
-      (assoc :field-name field-name)
+      (assoc :field-name field-name
+             :qualified-field-name (keyword (-> type-def :type-name name)
+                                            (name field-name)))
       (update :args #(map-kvs (fn [arg-name arg-def]
                                 [arg-name (compile-arg arg-name arg-def)])
                               %))))
@@ -707,10 +709,10 @@
        (filter #(= category (:category %)))))
 
 (defn ^:private compile-fields
-  [type]
-  (update type :fields #(map-kvs (fn [field-name field]
-                                   [field-name (compile-field field-name field)])
-                                 %)))
+  [type-def]
+  (update type-def :fields #(map-kvs (fn [field-name field-def]
+                                       [field-name (compile-field type-def field-name field-def)])
+                                     %)))
 
 (defmulti ^:private compile-type
   "Performs general compilation and validation of a type from the compiled schema.

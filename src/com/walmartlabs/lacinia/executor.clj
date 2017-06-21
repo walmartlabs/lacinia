@@ -465,12 +465,10 @@
       (get-in parsed-query [:fragments fragment-name :selections]))))
 
 (defn ^:private to-field-name
+  "Identifies the qualified field name for a selection node.  May return nil
+  for meta-fields such as __typename."
   [node]
-  (let [{:keys [type-name field-name]} (:field-definition node)]
-    ;; This guards against introspection fields in queries like __typeName,
-    ;; which don't currently have a type or field
-    (when (and type-name field-name)
-      (keyword (name type-name) (name field-name)))))
+  (-> node :field-definition :qualified-field-name))
 
 (defn selections-seq
   "A width-first traversal of selections tree, returning a lazy sequence
