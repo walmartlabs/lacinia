@@ -2,6 +2,10 @@
 
 Lacinia now includes support for GraphQL subscriptions.
 
+The :decorator option to `com.walmartlabs.lacinia.schema/compile` has been
+removed. This is a feature, added in 0.17.0, that can be better implemented
+in application code.
+
 ## 0.18.0 -- 19 June 2017
 
 `com.walmartlabs.lacinia.schema/tag-with-type` now uses metadata in the majority of cases
@@ -13,7 +17,7 @@ along with their subselections.
 
 Fixed Selections API functions throwing a NullPointerException on Introspective meta fields.
 
-Upgraded to `future-spec` alpha17.
+Upgraded to `clojure-future-spec` 1.9.0-alpha17.
 
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/5?closed=1)
 
