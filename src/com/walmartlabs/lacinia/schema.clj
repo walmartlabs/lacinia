@@ -9,7 +9,6 @@
   (:refer-clojure :exclude [compile])
   (:require
     [clojure.spec.alpha :as s]
-    [clojure.spec.gen.alpha :as gen]
     [com.walmartlabs.lacinia.introspection :as introspection]
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.internal-utils
@@ -991,23 +990,9 @@
   (s/fspec :args (s/cat :object-name keyword? :field-name keyword? :resolver ::resolver)
            :ret ::resolver))
 
-(s/def ::message string?)
-
-(s/def ::error-map
-  (s/keys :req-un [::message]))
-
-(s/def ::errors
-  (s/or :single ::error-map
-        :many (s/coll-of ::error-map)))
-
-(s/def ::exception-converter
-  (s/fspec :args (s/cat :qualified-field-name qualified-keyword?
-                        :arguments :type/arguments
-                        :exception (s/with-gen
-                                     #(instance? Throwable %)
-                                     #(gen/fmap (fn [s] (RuntimeException. (str "Generated exception: " s)))
-                                                (gen/string-alphanumeric))))
-           :ret ::errors))
+;; This may expand in the future, but specifying this kind of callback in clojure.spec
+;; right now is challenging.
+(s/def ::exception-converter fn?)
 
 (s/def ::compile-options (s/keys :opt-un [::default-field-resolver
                                           ::exception-converter
