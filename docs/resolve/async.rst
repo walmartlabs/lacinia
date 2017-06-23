@@ -69,8 +69,8 @@ and deliver nil and an error message when a timeout occurs.
 Exceptions
 ----------
 
-Lacinia will catch exceptions thrown by a field resolver function, but can't do anything
-about exceptions thrown inside some other thread.
+Uncaught exceptions in an asynchonous resolver are especially problematic, as it means that
+ResolverResultPromises are never delivered.
 
 In the example above, any thrown exception is converted to an
 :doc:`error map <resolve-as>`.

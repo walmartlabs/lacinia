@@ -3,16 +3,16 @@
   (:require
     [clojure.test :refer [deftest is]]
     [com.walmartlabs.lacinia.resolve :refer [resolve-as]]
-    [com.walmartlabs.test-utils :refer [execute]
-     :as utils]
-    [com.walmartlabs.lacinia.util :as util]))
+    [com.walmartlabs.test-utils :refer [execute] :as utils])
+  (:import (clojure.lang ExceptionInfo)))
+
+(def ^:private failure-exception (ex-info "Fail!" {:reason :testing}))
 
 (def ^:private resolver-map
   {:single-error (fn [_ _ _]
                    (resolve-as nil {:message "Exception in error_field resolver."}))
    :exception (fn [_ _ _]
-                (throw (ex-info "Fail!"
-                                {:reason :testing})))
+                (throw failure-exception))
    :multiple-errors (fn [_ _ _]
                       (resolve-as "Value"
                                   [{:message "1" :other-key 100}
@@ -25,20 +25,12 @@
   (utils/compile-schema "field-resolver-errors.edn"
                         resolver-map))
 
+;; This now bubbles up and out with no special handling or reporting.
 (deftest exception-inside-resolver
-  (is (= {:data {:root {:exception nil}}
-          :errors [{:locations [{:column 7
-                                 :line 1}]
-                    ;; Notice that the argument values are quoted
-                    ;; to ensure that they can be reported back via
-                    ;; JSON.
-                    :arguments {:range "5"}
-                    :message "Fail!"
-                    :query-path [:root
-                                 :exception]
-                    :reason :testing}]}
-         (execute default-schema
-                  "{ root { exception (range: 5) }}"))))
+  (when-let [e (is (thrown? ExceptionInfo
+                            (execute default-schema
+                                     "{ root { exception (range: 5) }}")))]
+    (is (identical? failure-exception e))))
 
 (deftest field-with-single-error
   (is (= {:data {:root {:error_field nil}}
@@ -75,24 +67,3 @@
          (->> (execute default-schema "{ root { multiple_errors_field }}")
               :errors
               (sort-by :message)))))
-
-(deftest exception-converter
-  (let [converter (fn [qname fargs exception]
-                    (util/as-error-map exception
-                                       {::qname qname
-                                        ::fargs fargs}))
-        schema (utils/compile-schema "field-resolver-errors.edn"
-                                     resolver-map
-                                     {:exception-converter converter})]
-    (is (= {:data {:root {:exception nil}}
-            :errors [{:arguments {:range "20"}
-                      ;; Note: the actual map of argument values
-                      ::fargs {:range 20}
-                      ::qname :MyObject/exception
-                      :locations [{:column 7
-                                   :line 1}]
-                      :message "Fail!"
-                      :query-path [:root
-                                   :exception]
-                      :reason :testing}]}
-           (execute schema "{ root { exception (range: 20) }}")))))

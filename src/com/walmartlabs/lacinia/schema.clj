@@ -663,23 +663,18 @@
   Adds a :selector function."
   [schema options type-def field-def]
   (let [provided-resolver (:resolve field-def)
-        {:keys [default-field-resolver exception-converter]} options
-        {:keys [qualified-field-name field-name]} field-def
+        {:keys [default-field-resolver]} options
+        {:keys [field-name]} field-def
         type-name (:type-name type-def)
         base-resolver (if provided-resolver
                         provided-resolver
                         (default-field-resolver field-name))
         selector (assemble-selector schema type-def field-def (:type field-def))
-        wrapped-resolver (wrap-resolver-to-ensure-resolver-result base-resolver)
-        final-resolver (cond-> (fn [context arguments value]
-                                 (try
-                                   (wrapped-resolver context arguments value)
-                                   (catch Throwable t
-                                     (resolve-as nil (exception-converter qualified-field-name arguments t)))))
-                         (nil? provided-resolver) (vary-meta assoc ::default-resolver? true))]
+        wrapped-resolver (cond-> (wrap-resolver-to-ensure-resolver-result base-resolver)
+                           (nil? provided-resolver) (vary-meta assoc ::default-resolver? true))]
     (assoc field-def
            :type-name type-name
-           :resolve final-resolver
+           :resolve wrapped-resolver
            :selector selector)))
 
 ;;-------------------------------------------------------------------------------
@@ -986,13 +981,7 @@
   (s/fspec :args (s/cat :field keyword?)
            :ret ::resolver))
 
-
-;; This may expand in the future, but specifying this kind of callback in clojure.spec
-;; right now is challenging.
-(s/def ::exception-converter fn?)
-
-(s/def ::compile-options (s/keys :opt-un [::default-field-resolver
-                                          ::exception-converter]))
+(s/def ::compile-options (s/keys :opt-un [::default-field-resolver]))
 
 
 (defn default-field-resolver
@@ -1014,15 +1003,8 @@
       keyword
       default-field-resolver))
 
-(defn default-exception-converter
-  "Converts the exception to an error map via [[as-error-map]]."
-  {:added "0.19.0"}
-  [_ _ exception]
-  (util/as-error-map exception))
-
 (def ^:private default-compile-opts
-  {:default-field-resolver default-field-resolver
-   :exception-converter default-exception-converter})
+  {:default-field-resolver default-field-resolver})
 
 (defn compile
   "Compiles a schema, verifies its correctness, and inlines all types.
@@ -1033,19 +1015,6 @@
 
   : A function that accepts a field name (as a keyword) and converts it into the
     default field resolver; this defaults to [[default-field-resolver]].
-
-  :exception-converter
-
-  : A callback function used to convert otherwise uncaught exceptions thrown inside
-    field resolver functions.  The function is passed the qualified
-    field name (e.g., :User/name, or :QueryRoot/users), the arguments passed to the field resolver
-    function, and the exception thrown by the field resolver function.
-
-    The result should be an error map, or a seq of error maps.
-
-    The default implementation is a wrapper around [[as-error-map]].
-
-    An override can be useful to, for example, log exceptions as they occur.
 
   Produces a form ready to be used in executing a query."
   ([schema]
