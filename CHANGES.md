@@ -6,6 +6,10 @@ A new option to `com.walmartlabs.lacinia.schema/compile` provides a hook
 to convert from exceptions thrown inside field resolver methods to the
 error map that will be exposed in the `:error` key of the result map.
 
+The :decorator option to `com.walmartlabs.lacinia.schema/compile` has been
+removed. This is a feature, added in 0.17.0, that can be better implemented
+in application code.
+
 ## 0.18.0 -- 19 June 2017
 
 `com.walmartlabs.lacinia.schema/tag-with-type` now uses metadata in the majority of cases
@@ -17,7 +21,7 @@ along with their subselections.
 
 Fixed Selections API functions throwing a NullPointerException on Introspective meta fields.
 
-Upgraded to `future-spec` alpha17.
+Upgraded to `clojure-future-spec` 1.9.0-alpha17.
 
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/5?closed=1)
 

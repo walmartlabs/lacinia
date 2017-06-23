@@ -663,11 +663,11 @@
   Adds a :selector function."
   [schema options type-def field-def]
   (let [provided-resolver (:resolve field-def)
-        {:keys [default-field-resolver exception-converter decorator]} options
+        {:keys [default-field-resolver exception-converter]} options
         {:keys [qualified-field-name field-name]} field-def
         type-name (:type-name type-def)
         base-resolver (if provided-resolver
-                        (decorator type-name field-name provided-resolver)
+                        provided-resolver
                         (default-field-resolver field-name))
         selector (assemble-selector schema type-def field-def (:type field-def))
         wrapped-resolver (wrap-resolver-to-ensure-resolver-result base-resolver)
@@ -986,17 +986,13 @@
   (s/fspec :args (s/cat :field keyword?)
            :ret ::resolver))
 
-(s/def ::decorator
-  (s/fspec :args (s/cat :object-name keyword? :field-name keyword? :resolver ::resolver)
-           :ret ::resolver))
 
 ;; This may expand in the future, but specifying this kind of callback in clojure.spec
 ;; right now is challenging.
 (s/def ::exception-converter fn?)
 
 (s/def ::compile-options (s/keys :opt-un [::default-field-resolver
-                                          ::exception-converter
-                                          ::decorator]))
+                                          ::exception-converter]))
 
 
 (defn default-field-resolver
@@ -1032,8 +1028,7 @@
 
 (def ^:private default-compile-opts
   {:default-field-resolver default-field-resolver
-   :exception-converter default-exception-converter
-   :decorator pass-thru-decorator})
+   :exception-converter default-exception-converter})
 
 (defn compile
   "Compiles a schema, verifies its correctness, and inlines all types.
@@ -1057,11 +1052,6 @@
     The default implementation is a wrapper around [[as-error-map]].
 
     An override can be useful to, for example, log exceptions as they occur.
-
-  :decorator
-
-  : A function that accepts a object name, field name, and field resolver function and
-    returns a new field resolver function (of the same one).
 
   Produces a form ready to be used in executing a query."
   ([schema]
