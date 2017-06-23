@@ -1014,12 +1014,6 @@
       keyword
       default-field-resolver))
 
-(defn pass-thru-decorator
-  "The default decorator for field resolvers, which returns the resolver unchanged."
-  {:added "0.17.0"}
-  [object-name field-name f]
-  f)
-
 (defn default-exception-converter
   "Converts the exception to an error map via [[as-error-map]]."
   {:added "0.19.0"}
