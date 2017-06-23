@@ -1036,7 +1036,7 @@
 
   :exception-converter
 
-  : A function use to convert otherwise uncaught exceptions thrown inside
+  : A callback function used to convert otherwise uncaught exceptions thrown inside
     field resolver functions.  The function is passed the qualified
     field name (e.g., :User/name, or :QueryRoot/users), the arguments passed to the field resolver
     function, and the exception thrown by the field resolver function.
