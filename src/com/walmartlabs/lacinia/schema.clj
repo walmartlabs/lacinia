@@ -660,11 +660,11 @@
   Adds a :selector function."
   [schema options containing-type field]
   (let [provided-resolver (:resolve field)
-        {:keys [default-field-resolver decorator]} options
+        {:keys [default-field-resolver]} options
         field-name (:field-name field)
         type-name (:type-name containing-type)
         base-resolver (if provided-resolver
-                        (decorator type-name field-name provided-resolver)
+                        provided-resolver
                         (default-field-resolver field-name))
         selector (assemble-selector schema containing-type field (:type field))
         wrapped-resolver (cond-> (wrap-resolver-to-ensure-resolver-result base-resolver)
@@ -978,12 +978,7 @@
   (s/fspec :args (s/cat :field keyword?)
            :ret ::resolver))
 
-(s/def ::decorator
-  (s/fspec :args (s/cat :object-name keyword? :field-name keyword? :resolver ::resolver)
-           :ret ::resolver))
-
-(s/def ::compile-options (s/keys :opt-un [::default-field-resolver
-                                          ::decorator]))
+(s/def ::compile-options (s/keys :opt-un [::default-field-resolver]))
 
 
 (defn default-field-resolver
@@ -1005,15 +1000,8 @@
       keyword
       default-field-resolver))
 
-(defn pass-thru-decorator
-  "The default decorator for field resolvers, which returns the resolver unchanged."
-  {:added "0.17.0"}
-  [object-name field-name f]
-  f)
-
 (def ^:private default-compile-opts
-  {:default-field-resolver default-field-resolver
-   :decorator pass-thru-decorator})
+  {:default-field-resolver default-field-resolver})
 
 (defn compile
   "Compiles a schema, verifies its correctness, and inlines all types.
@@ -1024,11 +1012,6 @@
 
   : A function that accepts a field name (as a keyword) and converts it into the
     default field resolver; this defaults to [[default-field-resolver]].
-
-  :decorator
-
-  : A function that accepts a object name, field name, and field resolver function and
-    returns a new field resolver function (of the same one).
 
   Produces a form ready to be used in executing a query."
   ([schema]
