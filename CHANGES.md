@@ -2,9 +2,9 @@
 
 Lacinia now includes support for GraphQL subscriptions.
 
-A new option to `com.walmartlabs.lacinia.schema/compile` provides a hook
-to convert from exceptions thrown inside field resolver methods to the
-error map that will be exposed in the `:error` key of the result map.
+A new option to `com.walmartlabs.lacinia.schema/compile` provides a callback
+to convert exceptions thrown inside field resolver functions into an
+error map that will be exposed in the `:errors` key of the result map.
 
 The :decorator option to `com.walmartlabs.lacinia.schema/compile` has been
 removed. This is a feature, added in 0.17.0, that can be better implemented
