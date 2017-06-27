@@ -1,0 +1,20 @@
+{:objects
+ {:MyObject
+  {:fields
+   {:error_field
+    {:type String
+     :resolve :single-error}
+
+    :exception
+    {:type String
+     :args
+     {:range {:type Int}}
+     :resolve :exception}
+
+    :multiple_errors_field
+    {:type String
+     :resolve :multiple-errors}}}}
+
+ :queries
+ {:root {:type :MyObject
+         :resolve :resolve-root}}}

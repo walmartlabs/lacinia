@@ -18,15 +18,16 @@
              ->TaggedValue is-tagged-value? extract-value extract-type-tag]]
     [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolve-as]]
     [clojure.string :as str]
-    [com.walmartlabs.lacinia.resolve :as resolve])
+    [com.walmartlabs.lacinia.resolve :as resolve]
+    [com.walmartlabs.lacinia.util :as util])
   (:import
     (com.walmartlabs.lacinia.resolve ResolverResultImpl)
-    (clojure.lang IMeta IObj)))
+    (clojure.lang IObj)))
 
 ;; When using Clojure 1.9 alpha, the dependency on clojure-future-spec can be excluded,
 ;; and this code will not trigger; any? will come out of clojure.core as normal.
 (when (-> *clojure-version* :minor (< 9))
-  (require '[clojure.future :refer [any?]]))
+  (require '[clojure.future :refer [any? qualified-keyword?]]))
 
 ;;-------------------------------------------------------------------------------
 ;; ## Helpers
@@ -480,10 +481,12 @@
 
 (defn ^:private compile-field
   "Rewrites the type of the field, and the type of any arguments."
-  [field-name field-def]
+  [type-def field-name field-def]
   (-> field-def
       rewrite-type
-      (assoc :field-name field-name)
+      (assoc :field-name field-name
+             :qualified-field-name (keyword (-> type-def :type-name name)
+                                            (name field-name)))
       (update :args #(map-kvs (fn [arg-name arg-def]
                                 [arg-name (compile-arg arg-name arg-def)])
                               %))))
@@ -658,18 +661,18 @@
   "Prepares a field for execution. Provides a default resolver, and wraps it to
   ensure it returns a ResolverResult.
   Adds a :selector function."
-  [schema options containing-type field]
-  (let [provided-resolver (:resolve field)
+  [schema options type-def field-def]
+  (let [provided-resolver (:resolve field-def)
         {:keys [default-field-resolver]} options
-        field-name (:field-name field)
-        type-name (:type-name containing-type)
+        {:keys [field-name]} field-def
+        type-name (:type-name type-def)
         base-resolver (if provided-resolver
                         provided-resolver
                         (default-field-resolver field-name))
-        selector (assemble-selector schema containing-type field (:type field))
+        selector (assemble-selector schema type-def field-def (:type field-def))
         wrapped-resolver (cond-> (wrap-resolver-to-ensure-resolver-result base-resolver)
                            (nil? provided-resolver) (vary-meta assoc ::default-resolver? true))]
-    (assoc field
+    (assoc field-def
            :type-name type-name
            :resolve wrapped-resolver
            :selector selector)))
@@ -707,10 +710,10 @@
        (filter #(= category (:category %)))))
 
 (defn ^:private compile-fields
-  [type]
-  (update type :fields #(map-kvs (fn [field-name field]
-                                   [field-name (compile-field field-name field)])
-                                 %)))
+  [type-def]
+  (update type-def :fields #(map-kvs (fn [field-name field-def]
+                                       [field-name (compile-field type-def field-name field-def)])
+                                     %)))
 
 (defmulti ^:private compile-type
   "Performs general compilation and validation of a type from the compiled schema.

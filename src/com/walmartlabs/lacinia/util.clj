@@ -85,8 +85,14 @@
 
 (defn as-error-map
   "Converts an exception into an error map, including a :message key, plus
-  any additional keys and values via `ex-data`."
+  any additional keys and values via `ex-data`.
+
+  In the second arity, a further map of values to be merged into the error
+  map can be provided."
   {:added "0.16.0"}
-  [^Throwable t]
-  (merge {:message (to-message t)}
-         (ex-data t)))
+  ([^Throwable t]
+   (as-error-map t nil))
+  ([^Throwable t more-data]
+   (merge {:message (to-message t)}
+          (ex-data t)
+          more-data)))

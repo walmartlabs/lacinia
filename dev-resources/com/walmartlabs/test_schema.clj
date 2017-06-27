@@ -268,18 +268,7 @@
                            :resolve (fn [ctx args v]
                                       nil)}
               :primary_function {:type '(list String)}
-              :homePlanet {:type 'String}
-              :error_field {:type 'String
-                            :resolve (fn [ctx args v]
-                                       (resolve-as nil
-                                                   {:message "Exception in error_field resolver."}))}
-              :multiple_errors_field {:type 'String
-                                      :resolve (fn [ctx args v]
-                                                 (resolve-as "Value"
-                                                             [{:message "1" :other-key 100}
-                                                              {:message "2"}
-                                                              {:message "3"}
-                                                              {:message "4"}]))}}}}
+              :homePlanet {:type 'String}}}}
 
    :mutations
    {:changeHeroName {:type :character

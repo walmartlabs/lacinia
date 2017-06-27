@@ -2,6 +2,8 @@
 
 Lacinia now includes support for GraphQL subscriptions.
 
+Lacinia no longer catches and reports exceptions inside field resolvers.
+
 The :decorator option to `com.walmartlabs.lacinia.schema/compile` has been
 removed. This is a feature, added in 0.17.0, that can be better implemented
 in application code.
