@@ -24,7 +24,7 @@
 
 (def compiled-schema (star-wars-schema))
 
-;; A schema to measure the peformance of errors
+;; A schema to measure the performance of errors
 (def planets-schema
   (let [planet-data [{:name "Mercury"}
                      {:name "Venus"}
@@ -217,7 +217,7 @@
 
 (defmacro ^:private benchmark [expr]
   `(-> ~expr
-       (c/benchmark nil)
+       (c/quick-benchmark nil)
        c/with-progress-reporting
        :mean
        first
