@@ -508,13 +508,6 @@
           raw-value
           (resolve-as raw-value))))))
 
-(defn ^:private compose-selectors
-  [next-selector selector-wrapper]
-  (if (some? selector-wrapper)
-    (fn invoke-wrapper [resolved-value resolved-type callback]
-      (selector-wrapper resolved-value resolved-type next-selector callback))
-    next-selector))
-
 (defn ^:no-doc floor-selector
   [resolved-value resolved-type callback]
   (callback resolved-value resolved-type))
@@ -539,10 +532,11 @@
                              :schema-types (type-map schema)})))
         category (:category field-type)
 
-        ;; Build up layers of checks and other logic.
-        coercion-wrapper (when (= :scalar category)
+        ;; Build up layers of checks and other logic and a series of chained selector functions.
+
+        coercion (if (= :scalar category)
                            (let [serializer (:serialize field-type)]
-                             (fn [resolved-value resolved-type next-selector callback]
+                             (fn [resolved-value resolved-type callback]
                                (let
                                  [serialized (s/conform serializer resolved-value)]
                                  (cond
@@ -556,15 +550,16 @@
                                    (callback nil nil serialized)
 
                                    :else
-                                   (next-selector serialized resolved-type callback))))))
+                                   (floor-selector serialized resolved-type callback)))))
+                           floor-selector)
 
-        allowed-types-wrapper (when (#{:interface :union} category)
+        allowed-types (if (#{:interface :union} category)
                                 (let [member-types (:members field-type)]
-                                  (fn [resolved-value resolved-type next-selector callback]
+                                  (fn [resolved-value resolved-type callback]
                                     (cond
 
                                       (contains? member-types resolved-type)
-                                      (next-selector resolved-value resolved-type callback)
+                                      (coercion resolved-value resolved-type callback)
 
                                       (nil? resolved-type)
                                       (callback nil nil (error "Field resolver returned an instance not tagged with a schema type."))
@@ -573,34 +568,33 @@
                                       (callback nil nil (error "Value returned from resolver has incorrect type for field."
                                                                {:field-type field-type-name
                                                                 :actual-type resolved-type
-                                                                :allowed-types member-types}))))))
-        unwrap-tagged-type-wrapper (fn [resolved-value resolved-type next-selector callback]
+                                                                :allowed-types member-types})))))
+                                coercion)
+
+        unwrap-tagged-type (fn [resolved-value resolved-type callback]
                                      (cond-let
-                                        (is-tagged-value? resolved-value)
-                                       (next-selector (extract-value resolved-value)
+                                       (is-tagged-value? resolved-value)
+                                       (allowed-types (extract-value resolved-value)
                                                       (extract-type-tag resolved-value) callback)
 
-                                        :let [type-name (-> resolved-value meta ::type-name)]
+                                       :let [type-name (-> resolved-value meta ::type-name)]
 
-                                        (some? type-name)
-                                        (next-selector resolved-value type-name callback)
+                                       (some? type-name)
+                                       (allowed-types resolved-value type-name callback)
 
-                                        :else
-                                       (next-selector resolved-value resolved-type callback)))
-        apply-static-type-wrapper (when (#{:object :input-object} category)
-                                    (fn [resolved-value resolved-type next-selector callback]
-                                      ;; TODO: Maybe a check that if the resolved value is tagged, that the tag matches
-                                      ;; the expected tag?
-                                      (next-selector resolved-value field-type-name callback)))
-        single-result-wrapper (fn [resolved-value resolved-type next-selector callback]
-                                (if (sequential-or-set? resolved-value)
-                                  (callback nil nil (error "Field resolver returned a collection of values, expected only a single value."))
-                                  (next-selector resolved-value resolved-type callback)))]
-    (reduce compose-selectors floor-selector [coercion-wrapper
-                                              allowed-types-wrapper
-                                              unwrap-tagged-type-wrapper
-                                              apply-static-type-wrapper
-                                              single-result-wrapper])))
+                                       :else
+                                       (allowed-types resolved-value resolved-type callback)))
+
+        apply-static-type (if (#{:object :input-object} category)
+                            (fn [resolved-value _ callback]
+                              ;; TODO: Maybe a check that if the resolved value is tagged, that the tag matches the expected tag?
+                              (unwrap-tagged-type resolved-value field-type-name callback))
+                            unwrap-tagged-type)]
+
+    (fn [resolved-value resolved-type callback]
+      (if (sequential-or-set? resolved-value)
+        (callback nil nil (error "Field resolver returned a collection of values, expected only a single value."))
+        (apply-static-type resolved-value resolved-type callback)))))
 
 (defn ^:private assemble-selector
   "Assembles a selector function for a field.
