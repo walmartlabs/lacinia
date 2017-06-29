@@ -233,8 +233,7 @@
 
 (defn ^:private maybe-apply-fragment
   [execution-context fragment-selection concrete-types]
-  (let [{:keys [resolved-value]} execution-context
-        actual-type (:resolved-type execution-context)]
+  (let [actual-type (:resolved-type execution-context)]
     (when (contains? concrete-types actual-type)
       (resolve-and-select execution-context fragment-selection))))
 
@@ -320,12 +319,15 @@
   (let
     [is-fragment? (-> selection :selection-type (not= :field))
      sub-selections (:selections selection)
-     selected-value-builder
-     ;; This function takes the resolved value (or, a value from the list,
-     ;; for a list field) and builds out the sub-structure for it, a recursive
-     ;; process at the heart of GraphQL.
-     ;; It returns the selected value, ready to be attached to the result tree.
-     (fn [resolved-value resolved-type]
+     ;; The callback is a wrapper around the builder, that handles the optional
+     ;; errors.
+     selector-callback
+     (fn selector-callback [{:keys [error resolved-value resolved-type]}]
+       (when error
+         (swap! (:errors execution-context)
+                into
+                (enhance-errors selection (if (map? error) [error] error))))
+
        (cond
 
          (= ::schema/empty-list resolved-value)
@@ -341,21 +343,6 @@
 
          :else
          (resolve/resolve-as resolved-value)))
-
-     ;; The callback is a wrapper around the builder, that handles the optional
-     ;; errors.
-     selector-callback
-     (fn
-       ([resolved-value resolved-type]
-        (selected-value-builder resolved-value resolved-type))
-       ([resolved-value resolved-type errors]
-        (let [errors' (if (map? errors)
-                        [errors]
-                        errors)]
-          (swap! (:errors execution-context)
-                 into
-                 (enhance-errors selection errors')))
-        (selected-value-builder resolved-value resolved-type)))
      ;; In a concrete type, we know the selector from the field definition
      ;; (a field definition on a concrete object type).  Otherwise, we need
      ;; to use the type of the parent node's resolved value, just
@@ -379,9 +366,10 @@
     ;; For fragments, we start with a single value and it passes right through to
     ;; sub-selections, without changing value or type.
     (if is-fragment?
-      (selector (:resolved-value execution-context)
-                resolved-type
-                selector-callback)
+      (selector {:resolved-value (:resolved-value execution-context)
+                 :resolved-type resolved-type
+                 :callback selector-callback
+                 :execution-context execution-context})
 
       ;; Here's where it comes together.  The field's selector
       ;; does the validations, and for list types, does the mapping.
@@ -392,7 +380,10 @@
       (let [final-result (resolve/resolve-promise)]
         (resolve/on-deliver! (invoke-resolver-for-field execution-context selection)
                              (fn [resolved-value _]
-                               (let [selector-result (selector resolved-value nil selector-callback)]
+                               (let [selector-context {:resolved-value resolved-value
+                                                       :callback selector-callback
+                                                       :execution-context execution-context}
+                                     selector-result (selector selector-context)]
                                  (resolve/on-deliver! selector-result
                                                       (fn [resolved-value _]
                                                         (resolve/deliver! final-result resolved-value))))))
