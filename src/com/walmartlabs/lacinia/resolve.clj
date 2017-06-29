@@ -3,7 +3,7 @@
   (:require
     [com.walmartlabs.lacinia.internal-utils :refer [remove-vals]]))
 
-(defn ex-info-map
+(defn ^:private ex-info-map
   ([field-selection]
    (ex-info-map field-selection {}))
   ([field-selection m]
@@ -47,13 +47,17 @@
           #(merge % enhanced-data)
           errors-seq)))))
 
-(defprotocol ResolveCommand
-  (apply-command [this field-selection execution-context]
+(defprotocol ^:no-doc ResolveCommand
+  "Used to define special wrappers around resolved values, such as [[with-error]].
+
+  This is not intended for use by applications, as the structure of the field-selection and execution-context
+  is not part of Lacinia's public API."
+  (^:no-doc apply-command [this field-selection execution-context]
     "Applies changes to the execution context, which is returned.")
-  (nested-value [this]
+  (^:no-doc nested-value [this]
     "Returns the value wrapped by this command, which may be another command or a final result."))
 
-(defn ^:nodoc add-error
+(defn ^:no-doc add-error
   [field-selection execution-context error]
   (let [errors (enhance-errors field-selection error)]
     (when errors
