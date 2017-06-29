@@ -8,7 +8,9 @@
     [com.walmartlabs.lacinia.resolve :as resolve
      :refer [resolve-as add-error combine-results]]
     [com.walmartlabs.lacinia.constants :as constants])
-  (:import (clojure.lang PersistentQueue)))
+  (:import
+    (clojure.lang PersistentQueue)
+    (com.walmartlabs.lacinia.resolve ResolveCommand)))
 
 (defn ^:private field-selection-resolver
   "Returns the field resolver for the provided field selection.
@@ -327,7 +329,10 @@
                              (fn [resolved-value]
                                (loop [resolved-value resolved-value
                                       execution-context execution-context]
-                                 (if (satisfies? resolve/ResolveCommand resolved-value)
+                                 ;; Using satisfies? is a huge performance hit. ResolveCommand is not
+                                 ;; intended as a general extension point, so we don't need to worry about
+                                 ;; it being extended to existing types.
+                                 (if (instance? ResolveCommand resolved-value)
                                    (recur (resolve/nested-value resolved-value)
                                           (resolve/apply-command resolved-value selection execution-context))
                                    (let [selector-context {:resolved-value resolved-value
