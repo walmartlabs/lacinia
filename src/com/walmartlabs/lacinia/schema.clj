@@ -14,11 +14,9 @@
     [com.walmartlabs.lacinia.internal-utils
      :refer [map-vals map-kvs filter-vals deep-merge q
              is-internal-type-name? sequential-or-set? as-keyword
-             combine-results cond-let
-             ->TaggedValue is-tagged-value? extract-value extract-type-tag]]
-    [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolve-as]]
-    [clojure.string :as str]
-    [com.walmartlabs.lacinia.resolve :as resolve])
+             cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag]]
+    [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolve-as combine-results]]
+    [clojure.string :as str])
   (:import
     (com.walmartlabs.lacinia.resolve ResolverResultImpl)
     (clojure.lang IObj)))
@@ -943,9 +941,9 @@
 
 (def ^:private default-subscription-resolver
 
-  ^resolve/ResolverResult
+  ^ResolverResult
   (fn [_ _ value]
-    (resolve/resolve-as value)))
+    (resolve-as value)))
 
 (defn ^:private construct-compiled-schema
   [schema options]

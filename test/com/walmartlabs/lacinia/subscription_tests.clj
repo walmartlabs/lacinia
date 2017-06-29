@@ -10,8 +10,7 @@
     [com.walmartlabs.lacinia.resolve :as resolve]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.test-utils :as test-utils
-     :refer [simplify instrument-schema-namespace]])
-  (:import (clojure.lang ExceptionInfo)))
+     :refer [simplify instrument-schema-namespace]]))
 
 (instrument-schema-namespace)
 
@@ -62,7 +61,7 @@
                           (resolve/on-deliver!
                             (executor/execute-query (assoc context
                                                            ::executor/resolved-value value))
-                            (fn [result _]
+                            (fn [result]
                               (reset! *latest-response result)))
                           (do
                             (@*cleanup-callback)

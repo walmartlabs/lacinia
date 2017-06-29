@@ -2,56 +2,13 @@
   "Mechanisms for executing parsed queries against compiled schemas."
   (:require
     [com.walmartlabs.lacinia.internal-utils
-     :refer [cond-let map-vals remove-vals q combine-results]]
+     :refer [cond-let map-vals remove-vals q]]
     [flatland.ordered.map :refer [ordered-map]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :as resolve
-     :refer [resolve-as]]
+     :refer [resolve-as add-error combine-results]]
     [com.walmartlabs.lacinia.constants :as constants])
   (:import (clojure.lang PersistentQueue)))
-
-(defn ^:private ex-info-map
-  ([field-selection]
-   (ex-info-map field-selection {}))
-  ([field-selection m]
-   (merge m
-          (remove-vals nil? {:locations [(:location field-selection)]
-                             :query-path (:query-path field-selection)
-                             :arguments (:reportable-arguments field-selection)}))))
-
-(defn ^:private assert-and-wrap-error
-  "An error returned by a resolver should be nil, a map, or a collection
-  of maps. These maps should contain a :message key, but may contain others.
-  Wrap them in a vector if necessary.
-
-  Returns nil, or a collection of one or more valid error maps."
-  [error-map-or-maps]
-  (cond
-    (nil? error-map-or-maps)
-    nil
-
-    (and (sequential? error-map-or-maps)
-         (every? (comp string? :message)
-                 error-map-or-maps))
-    error-map-or-maps
-
-    (string? (:message error-map-or-maps))
-    [error-map-or-maps]
-
-    :else
-    (throw (ex-info (str "Errors must be nil, a map, or a sequence of maps "
-                         "each containing, at minimum, a :message key.")
-                    {:error error-map-or-maps}))))
-
-(defn ^:private enhance-errors
-  "Using a (resolved) collection of (wrapped) error maps, add additional data to
-  each error, including location and arguments."
-  [field-selection error-maps]
-  (when (seq error-maps)
-    (let [enhanced-data (ex-info-map field-selection nil)]
-      (map
-        #(merge % enhanced-data)
-        error-maps))))
 
 (defn ^:private field-selection-resolver
   "Returns the field resolver for the provided field selection.
@@ -117,7 +74,7 @@
         resolver-result (field-resolver resolve-context arguments container-value)
         final-result (resolve/resolve-promise)]
     (resolve/on-deliver! resolver-result
-                         (fn [resolved-value resolve-errors]
+                         (fn [resolved-value]
                            (when start-ms
                              (let [finish-ms (System/currentTimeMillis)
                                    elapsed-ms (- finish-ms start-ms)
@@ -133,14 +90,6 @@
                                (swap! timings
                                       update-in (conj (:query-path field-selection) :execution/timings)
                                       (fnil conj []) timing)))
-
-                           (when-let [errors (-> resolve-errors
-                                                 assert-and-wrap-error
-                                                 seq)]
-                             (swap! (:errors execution-context) into
-                                    (enhance-errors field-selection errors)))
-                           ;; That's it for handling errors, so just resolve the value and
-                           ;; not the errors.
                            (resolve/deliver! final-result resolved-value)))
     final-result))
 
@@ -207,7 +156,7 @@
         resolver-result (resolve-and-select execution-context field-selection)
         final-result (resolve/resolve-promise)]
     (resolve/on-deliver! resolver-result
-                         (fn [resolved-field-value _]
+                         (fn [resolved-field-value]
                            (let [sub-selection (cond
                                                  (and non-nullable-field?
                                                       (nil? resolved-field-value))
@@ -284,12 +233,12 @@
   ;; However, sometimes a selection is disabled and returns nil instead of a ResolverResult.
   (let [next-result (resolve/resolve-promise)]
     (resolve/on-deliver! previous-resolved-result
-                         (fn [left-map _]
+                         (fn [left-map]
                            ;; This is what makes it sync: we don't kick off the evaluation of the selection
                            ;; until the previous selection, left, has completed.
                            (let [sub-resolved-result (apply-selection execution-context sub-selection)]
                              (resolve/on-deliver! sub-resolved-result
-                                                  (fn [right-map _]
+                                                  (fn [right-map]
                                                     (resolve/deliver! next-result
                                                                       (merge left-map right-map)))))))
     ;; This will deliver after the sub-selection delivers, which is only after the previous resolved result
@@ -322,12 +271,8 @@
      ;; The callback is a wrapper around the builder, that handles the optional
      ;; errors.
      selector-callback
-     (fn selector-callback [{:keys [error resolved-value resolved-type]}]
-       (when error
-         (swap! (:errors execution-context)
-                into
-                (enhance-errors selection (if (map? error) [error] error))))
-
+     (fn selector-callback [{:keys [error resolved-value resolved-type execution-context]}]
+       (add-error selection execution-context error)
        (cond
 
          (= ::schema/empty-list resolved-value)
@@ -379,14 +324,19 @@
 
       (let [final-result (resolve/resolve-promise)]
         (resolve/on-deliver! (invoke-resolver-for-field execution-context selection)
-                             (fn [resolved-value _]
-                               (let [selector-context {:resolved-value resolved-value
-                                                       :callback selector-callback
-                                                       :execution-context execution-context}
-                                     selector-result (selector selector-context)]
-                                 (resolve/on-deliver! selector-result
-                                                      (fn [resolved-value _]
-                                                        (resolve/deliver! final-result resolved-value))))))
+                             (fn [resolved-value]
+                               (loop [resolved-value resolved-value
+                                      execution-context execution-context]
+                                 (if (satisfies? resolve/ResolveCommand resolved-value)
+                                   (recur (resolve/nested-value resolved-value)
+                                          (resolve/apply-command resolved-value selection execution-context))
+                                   (let [selector-context {:resolved-value resolved-value
+                                                           :callback selector-callback
+                                                           :execution-context execution-context}
+                                         selector-result (selector selector-context)]
+                                     (resolve/on-deliver! selector-result
+                                                          (fn [resolved-value]
+                                                            (resolve/deliver! final-result resolved-value))))))))
         final-result))))
 
 (defn execute-query
@@ -418,7 +368,7 @@
                            (execute-nested-selections execution-context enabled-selections))
         response-result (resolve/resolve-promise)]
     (resolve/on-deliver! operation-result
-                         (fn [selected-data _]
+                         (fn [selected-data]
                            (let [data (propogate-nulls false selected-data)]
                              (resolve/deliver! response-result
                                                (cond-> {:data data}

@@ -2,8 +2,7 @@
   "Internal utilities used in the implementation, subject to change without notice."
   {:no-doc true}
   (:require
-    [clojure.string :as str]
-    [com.walmartlabs.lacinia.resolve :refer [resolve-promise deliver! on-deliver!]]))
+    [clojure.string :as str]))
 
 (defmacro cond-let
   "A version of `cond` that allows for `:let` terms. There is hope that someday, perhaps
@@ -151,18 +150,6 @@
 
     :else
     (throw (ex-info "Can't convert value to keyword." {:value v}))))
-
-(defn combine-results
-  "Given a left and a right ResolverResult, returns a new ResolverResult that combines
-  the realized values using the provided function."
-  [f left-result right-result]
-  (let [combined-result (resolve-promise)]
-    (on-deliver! left-result
-                 (fn [left-value _]
-                   (on-deliver! right-result
-                                (fn [right-value _]
-                                  (deliver! combined-result (f left-value right-value))))))
-    combined-result))
 
 ;; NOTE: Parked these things here since namespace reloading in Cursive
 ;; can get jammed on new class definitions, causing instance? to fail.

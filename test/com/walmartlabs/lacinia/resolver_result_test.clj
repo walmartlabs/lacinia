@@ -12,32 +12,29 @@
 
 (deftest callback-is-invoked-with-value-and-errors
   (let [capture (promise)
-        callback (fn [value errors]
+        callback (fn [value]
                    (deliver capture {:value value
-                                     :errors errors
                                      :thread-name (thread-name)}))
-        r (r/resolve-as :a-value :some-errors)]
+        r (r/resolve-as :a-value)]
     (is (identical? r
                     (r/on-deliver! r callback)))
     (is (= {:value :a-value
-            :errors :some-errors
             :thread-name (thread-name)}
            (deref capture 100 nil)))))
 
 (deftest promise-callback-is-invoked
   (let [p (r/resolve-promise)
         capture (atom nil)
-        callback (fn [value errors]
-                   (reset! capture {:value value :errors errors}))]
+        callback (fn [value]
+                   (reset! capture {:value value}))]
     (is (identical? p
                     (r/on-deliver! p callback)))
     (is (nil? @capture))
 
     (is (identical? p
-                    (r/deliver! p :async-value :async-errors)))
+                    (r/deliver! p :async-value)))
 
-    (is (= {:value :async-value
-            :errors :async-errors}
+    (is (= {:value :async-value}
            @capture))))
 
 (deftest may-only-deliver-once
@@ -48,8 +45,8 @@
 
 (deftest may-only-add-callback-once
   (let [p (r/resolve-promise)
-        callback1 (fn [_ _])
-        callback2 (fn [_ _])]
+        callback1 (fn [_])
+        callback2 (fn [_])]
     (r/on-deliver! p callback1)
     (is (thrown? IllegalStateException
                  (r/on-deliver! p callback2)))))
