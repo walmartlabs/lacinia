@@ -89,8 +89,8 @@
 
    A value must be resolved and ultimately provided via [[deliver!]]."
   []
-  (let [*result (atom ::unset)
-        *callback (atom nil)]
+  (let [*result (promise)
+        *callback (promise)]
     (reify
       ResolverResult
 
@@ -99,27 +99,27 @@
       (on-deliver! [this callback]
         (cond
           ;; If the value arrives before the callback, invoke the callback immediately.
-          (not= ::unset @*result)
+          (realized? *result)
           (callback @*result)
 
-          (some? @*callback)
+          (realized? *callback)
           (throw (IllegalStateException. "ResolverResultPromise callback may only be set once."))
 
           :else
-          (reset! *callback callback))
+          (deliver *callback callback))
 
         this)
 
       ResolverResultPromise
 
       (deliver! [this resolved-value]
-        (when (not= ::unset @*result)
+        (when (realized? *result)
           (throw (IllegalStateException. "May only realize a ResolverResultPromise once.")))
 
-        (reset! *result resolved-value)
+        (deliver *result resolved-value)
 
-        (when-let [callback @*callback]
-          (callback resolved-value))
+        (when (realized? *callback)
+          (@*callback resolved-value))
 
         this)
 
