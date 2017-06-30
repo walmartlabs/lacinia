@@ -77,6 +77,20 @@
 
     (nested-value [_] value)))
 
+(defn with-context
+  "Wraps a value so that when nested fields (at any depth) are executed, the provided values will be in the context.
+
+   The provided context-map is merged onto the application context."
+  {:added "0.19.0"}
+  [value context-map]
+  (reify
+    ResolveCommand
+
+    (apply-command [_ _ execution-context]
+      (update execution-context :context merge context-map))
+
+    (nested-value [_] value)))
+
 (defprotocol ResolverResult
   "A special type returned from a field resolver that can contain a resolved value
   and/or errors."
@@ -101,6 +115,8 @@
     [this value errors]
     "Invoked to realize the ResolverResult, triggering the callback to receive the value and errors.
 
+    The two arguments version is simply a convienience around [[with-error]].
+
     Returns `this`."))
 
 (defrecord ^:private ResolverResultImpl [resolved-value]
@@ -113,6 +129,8 @@
 
 (defn resolve-as
   "Invoked by field resolvers to wrap a simple return value as a ResolverResult.
+
+  The two-arguments version is a convienience around using [[with-error]].
 
   This is an immediately realized ResolverResult."
   ([resolved-value]
