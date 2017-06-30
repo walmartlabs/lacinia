@@ -309,8 +309,9 @@
   (let
     [is-fragment? (-> selection :selection-type (not= :field))
      sub-selections (:selections selection)
-     ;; The callback is a wrapper around the builder, that handles the optional
-     ;; errors.
+     ;; The selector pipeline validates the resolved value and handles things like iterating over
+     ;; seqs before (repeatedly) invoking the callback, at which point, it is possible to
+     ;; perform a recursive selection on the nested fields of the origin field.
      selector-callback
      (fn selector-callback [{:keys [errors resolved-value resolved-type execution-context]}]
        ;; Any errors from the resolver (via with-errors) or anywhere along the
