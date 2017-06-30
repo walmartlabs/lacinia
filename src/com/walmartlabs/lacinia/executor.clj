@@ -371,7 +371,7 @@
 
       (let [final-result (resolve/resolve-promise)]
         (resolve/on-deliver! (invoke-resolver-for-field execution-context selection)
-                             (fn recieve-resolved-value-from-field [resolved-value]
+                             (fn receive-resolved-value-from-field [resolved-value]
                                (loop [resolved-value resolved-value
                                       selector-context {:execution-context execution-context}]
                                  ;; Using satisfies? is a huge performance hit. ResolveCommand is not
