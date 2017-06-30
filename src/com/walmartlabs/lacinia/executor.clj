@@ -6,11 +6,50 @@
     [flatland.ordered.map :refer [ordered-map]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :as resolve
-     :refer [resolve-as add-error combine-results]]
+     :refer [resolve-as combine-results]]
     [com.walmartlabs.lacinia.constants :as constants])
   (:import
     (clojure.lang PersistentQueue)
     (com.walmartlabs.lacinia.resolve ResolveCommand)))
+
+(defn ^:private ex-info-map
+  [field-selection]
+  (remove-vals nil? {:locations [(:location field-selection)]
+                     :query-path (:query-path field-selection)
+                     :arguments (:reportable-arguments field-selection)}))
+
+(defn ^:private assert-and-wrap-error
+  "An error returned by a resolver should be nil, a map, or a collection
+  of maps. These maps should contain a :message key, but may contain others.
+  Wrap them in a vector if necessary.
+
+  Returns nil, or a collection of one or more valid error maps."
+  [error-map-or-maps]
+  (cond
+    (nil? error-map-or-maps)
+    nil
+
+    (and (sequential? error-map-or-maps)
+         (every? (comp string? :message)
+                 error-map-or-maps))
+    error-map-or-maps
+
+    (string? (:message error-map-or-maps))
+    [error-map-or-maps]
+
+    :else
+    (throw (ex-info (str "Errors must be nil, a map, or a sequence of maps "
+                         "each containing, at minimum, a :message key.")
+                    {:error error-map-or-maps}))))
+
+(defn ^:private enhance-errors
+  "From an error map, or a collection of error maps, add additional data to
+  each error, including location and arguments.  Returns a seq of error maps."
+  [field-selection error]
+  (let [errors-seq (assert-and-wrap-error error)]
+    (when errors-seq
+      (let [enhanced-data (ex-info-map field-selection)]
+        (map #(merge % enhanced-data) errors-seq)))))
 
 (defn ^:private field-selection-resolver
   "Returns the field resolver for the provided field selection.
@@ -273,8 +312,14 @@
      ;; The callback is a wrapper around the builder, that handles the optional
      ;; errors.
      selector-callback
-     (fn selector-callback [{:keys [error resolved-value resolved-type execution-context]}]
-       (add-error selection execution-context error)
+     (fn selector-callback [{:keys [errors resolved-value resolved-type execution-context]}]
+       ;; Any errors from the resolver (via with-errors) or anywhere along the
+       ;; selection pipeline are enhanced and added to the execution context.
+       (when errors
+         (->> errors
+              (mapcat #(enhance-errors selection %))
+              (swap! (:errors execution-context) into)))
+
        (cond
 
          (= ::schema/empty-list resolved-value)
@@ -326,22 +371,25 @@
 
       (let [final-result (resolve/resolve-promise)]
         (resolve/on-deliver! (invoke-resolver-for-field execution-context selection)
-                             (fn [resolved-value]
+                             (fn recieve-resolved-value-from-field [resolved-value]
                                (loop [resolved-value resolved-value
-                                      execution-context execution-context]
+                                      selector-context {:execution-context execution-context}]
                                  ;; Using satisfies? is a huge performance hit. ResolveCommand is not
                                  ;; intended as a general extension point, so we don't need to worry about
                                  ;; it being extended to existing types.
                                  (if (instance? ResolveCommand resolved-value)
                                    (recur (resolve/nested-value resolved-value)
-                                          (resolve/apply-command resolved-value selection execution-context))
-                                   (let [selector-context {:resolved-value resolved-value
-                                                           :callback selector-callback
-                                                           :execution-context execution-context}
-                                         selector-result (selector selector-context)]
-                                     (resolve/on-deliver! selector-result
-                                                          (fn [resolved-value]
-                                                            (resolve/deliver! final-result resolved-value))))))))
+                                          (resolve/apply-command resolved-value selector-context))
+                                   ;; Finally to a real value, not a wrapper.  The commands may have
+                                   ;; modified the :errors or :execution-context keys, and the pipeline
+                                   ;; will do the rest. Errors will be dealt with in the callback.
+                                   (-> selector-context
+                                       (assoc :callback selector-callback
+                                              :resolved-value resolved-value)
+                                       selector
+                                       (resolve/on-deliver!
+                                         (fn deliver-selection-for-field [resolved-value]
+                                           (resolve/deliver! final-result resolved-value))))))))
         final-result))))
 
 (defn execute-query

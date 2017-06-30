@@ -513,10 +513,12 @@
 (defn ^:private selector-error
   [selector-context error]
   (let [callback (:callback selector-context)]
-    (callback (assoc selector-context
-                     :resolved-value nil
-                     :resolved-type nil
-                     :error error))))
+    (-> selector-context
+        (assoc
+          :resolved-value nil
+          :resolved-type nil)
+        (update :errors conj error)
+        callback)))
 
 (defn ^:private create-root-selector
   "Creates a selector function for the :root kind, which is the point at which

@@ -1,68 +1,15 @@
 (ns com.walmartlabs.lacinia.resolve
-  "Complex results for field resolver functions."
-  (:require
-    [com.walmartlabs.lacinia.internal-utils :refer [remove-vals]]))
-
-(defn ^:private ex-info-map
-  ([field-selection]
-   (ex-info-map field-selection {}))
-  ([field-selection m]
-   (merge m
-          (remove-vals nil? {:locations [(:location field-selection)]
-                             :query-path (:query-path field-selection)
-                             :arguments (:reportable-arguments field-selection)}))))
-
-(defn ^:private assert-and-wrap-error
-  "An error returned by a resolver should be nil, a map, or a collection
-  of maps. These maps should contain a :message key, but may contain others.
-  Wrap them in a vector if necessary.
-
-  Returns nil, or a collection of one or more valid error maps."
-  [error-map-or-maps]
-  (cond
-    (nil? error-map-or-maps)
-    nil
-
-    (and (sequential? error-map-or-maps)
-         (every? (comp string? :message)
-                 error-map-or-maps))
-    error-map-or-maps
-
-    (string? (:message error-map-or-maps))
-    [error-map-or-maps]
-
-    :else
-    (throw (ex-info (str "Errors must be nil, a map, or a sequence of maps "
-                         "each containing, at minimum, a :message key.")
-                    {:error error-map-or-maps}))))
-
-(defn ^:private enhance-errors
-  "From collection of (wrapped) error maps, add additional data to
-  each error, including location and arguments."
-  [field-selection error]
-  (let [errors-seq (assert-and-wrap-error error)]
-    (when errors-seq
-      (let [enhanced-data (ex-info-map field-selection nil)]
-        (map
-          #(merge % enhanced-data)
-          errors-seq)))))
+  "Complex results for field resolver functions.")
 
 (defprotocol ^:no-doc ResolveCommand
   "Used to define special wrappers around resolved values, such as [[with-error]].
 
-  This is not intended for use by applications, as the structure of the field-selection and execution-context
+  This is not intended for use by applications, as the structure of the selection-context
   is not part of Lacinia's public API."
-  (^:no-doc apply-command [this field-selection execution-context]
-    "Applies changes to the execution context, which is returned.")
+  (^:no-doc apply-command [this selection-context]
+    "Applies changes to the selection context, which is returned.")
   (^:no-doc nested-value [this]
     "Returns the value wrapped by this command, which may be another command or a final result."))
-
-(defn ^:no-doc add-error
-  [field-selection execution-context error]
-  (let [errors (enhance-errors field-selection error)]
-    (when errors
-      (swap! (:errors execution-context)
-             into errors))))
 
 (defn with-error
   "Wraps a value with an error map (or seq of error maps)."
@@ -71,9 +18,8 @@
   (reify
     ResolveCommand
 
-    (apply-command [_ field-selection execution-context]
-      (add-error field-selection execution-context error)
-      execution-context)
+    (apply-command [_ selection-context]
+      (update selection-context :errors conj error))
 
     (nested-value [_] value)))
 
@@ -86,8 +32,8 @@
   (reify
     ResolveCommand
 
-    (apply-command [_ _ execution-context]
-      (update execution-context :context merge context-map))
+    (apply-command [_ selection-contexct]
+      (update-in selection-contexct [:execution-context :context] merge context-map))
 
     (nested-value [_] value)))
 
@@ -186,8 +132,8 @@
   [f left-result right-result]
   (let [combined-result (resolve-promise)]
     (on-deliver! left-result
-                 (fn [left-value]
+                 (fn receive-left-value [left-value]
                    (on-deliver! right-result
-                                (fn [right-value]
+                                (fn receive-right-value [right-value]
                                   (deliver! combined-result (f left-value right-value))))))
     combined-result))
