@@ -45,8 +45,8 @@
 (defn ^:private enhance-errors
   "From an error map, or a collection of error maps, add additional data to
   each error, including location and arguments.  Returns a seq of error maps."
-  [field-selection error]
-  (let [errors-seq (assert-and-wrap-error error)]
+  [field-selection error-or-errors]
+  (let [errors-seq (assert-and-wrap-error error-or-errors)]
     (when errors-seq
       (let [enhanced-data (ex-info-map field-selection)]
         (map #(merge % enhanced-data) errors-seq)))))

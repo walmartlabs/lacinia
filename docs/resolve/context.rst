@@ -3,7 +3,7 @@ Application Context
 
 The application context passed to your field resolvers is normally set by the initial call to
 `com.walmartlabs.lacina/execute-query`.
-Lacinia uses the context for its own book-keeping (they keys it places into the map are namespaced to
+Lacinia uses the context for its own book-keeping (the keys it places into the map are namespaced to
 avoid collisions) but otherwise the same map is passed to all field resolvers.
 
 In specific cases, it is useful to allow a field resolver to modify the application context, with the change
@@ -31,4 +31,4 @@ The resolver for the ``product`` field can communicate this "down tree" to the r
 .. literalinclude:: /_examples/mutable-context.edn
    :language: clojure
 
-This new key, ``::search-term`` is only present in the context below ``products`` field.
+This new key, ``::search-term``, is only present in the context below ``products`` field.
