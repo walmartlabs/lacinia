@@ -10,7 +10,7 @@
   []
   (.getName (Thread/currentThread)))
 
-(deftest callback-is-invoked-with-value-and-errors
+(deftest callback-is-invoked
   (let [capture (promise)
         callback (fn [value]
                    (deliver capture {:value value
