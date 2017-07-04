@@ -187,7 +187,7 @@
               :integerArray {:type '(list Int)}
               :inputObject {:type :testInputObject}}}
 
-    :galaxy-date
+    :galaxy_date
     {:fields {:date {:type :Date}}}
 
     :droid
@@ -310,7 +310,7 @@
                       :inputObject {:type :testInputObject}}
                :resolve (fn [ctx args v]
                           args)}
-    :now {:type :galaxy-date
+    :now {:type :galaxy_date
           :resolve (fn [ctx args v]
                      {:date (java.util.Date.)})}
     :human {:type '(non-null :human)

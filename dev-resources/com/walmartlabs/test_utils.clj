@@ -7,8 +7,7 @@
     [clojure.edn :as edn]
     [com.walmartlabs.lacinia :as lacinia]
     [com.walmartlabs.lacinia.util :as util]
-    [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.test-schema :refer [test-schema]])
+    [com.walmartlabs.lacinia.schema :as schema])
   (:import
     (clojure.lang IPersistentMap)))
 
@@ -83,7 +82,3 @@
     (execute compiled-schema query nil nil))
   ([compiled-schema query vars context]
     (simplify (lacinia/execute compiled-schema query vars context))))
-
-
-(def default-schema
-  (schema/compile test-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))

@@ -3,9 +3,13 @@
             [clojure.data.json :as json]
             [com.walmartlabs.lacinia :as lacinia]
             [com.walmartlabs.lacinia.schema :as schema]
-            [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace simplify default-schema]]))
+            [com.walmartlabs.test-schema :refer [test-schema]]
+            [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace simplify]]))
 
 (instrument-schema-namespace)
+
+(def default-schema
+  (schema/compile test-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))
 
 (defn execute
   "Executes the query but reduces ordered maps to normal maps, which makes

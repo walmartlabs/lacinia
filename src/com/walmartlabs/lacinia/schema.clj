@@ -18,8 +18,7 @@
              ->TaggedValue is-tagged-value? extract-value extract-type-tag]]
     [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolve-as]]
     [clojure.string :as str]
-    [com.walmartlabs.lacinia.resolve :as resolve]
-    [com.walmartlabs.lacinia.util :as util])
+    [com.walmartlabs.lacinia.resolve :as resolve])
   (:import
     (com.walmartlabs.lacinia.resolve ResolverResultImpl)
     (clojure.lang IObj)))
@@ -33,6 +32,8 @@
 ;; ## Helpers
 
 (s/check-asserts true)
+
+(def ^:private graphql-identifier #"(?i)_*[a-z][a-zA-Z0-9_]*")
 
 (defrecord ^:private CoercionFailure
   [message])
@@ -687,10 +688,15 @@
   category)."
   [compiled-schema input-map category]
   (reduce-kv (fn [s k v]
+               (when-not (re-matches graphql-identifier (name k))
+                 (throw (ex-info (format "Name %s (in category %s) is not a valid GraphQL identifier."
+                                         (q k) (name category))
+                                 {:type-name k
+                                  :category category})))
                (when (contains? s k)
-                 (throw (ex-info (format "Name collision compiling schema. %s `%s' conflicts with existing %s."
+                 (throw (ex-info (format "Name collision compiling schema. %s %s conflicts with existing %s."
                                          category
-                                         (name k)
+                                         (q k)
                                          (name (get-in s [k :category])))
                                  {:type-name k
                                   :category category
@@ -755,14 +761,19 @@
     (assoc union :members members)))
 
 (defmethod compile-type :enum
-  [enum schema]
-  (let [values (->> enum :values (mapv as-keyword))
+  [enum-def schema]
+  (let [values (->> enum-def :values (mapv as-keyword))
         values-set (set values)]
+    (doseq [v values-set]
+      (when-not (re-matches graphql-identifier (name v))
+        (throw (IllegalArgumentException. (format "Value %s for enum %s is not a valid GraphQL identifier."
+                                                  (q v)
+                                                  (-> enum-def :type-name q))))))
     (when-not (= (count values) (count values-set))
       (throw (ex-info (format "Values defined for enum %s must be unique."
-                              (-> enum :type-name q))
-                      {:enum enum})))
-    (assoc enum
+                              (-> enum-def :type-name q))
+                      {:enum enum-def})))
+    (assoc enum-def
            :values values
            :values-set values-set)))
 
@@ -833,13 +844,18 @@
     (:type type-map)
     (recur (:type type-map))))
 
-;; TODO: I think these checks go into create-unit-selector
 (defn ^:private verify-fields-and-args
   "Verifies that the type of every field and every field argument is valid."
   [schema object-def]
   (let [object-type-name (:type-name object-def)]
     (doseq [[field-name field-def] (:fields object-def)
-            :let [field-type-name (extract-type-name (:type field-def))]]
+            :let [field-type-name (extract-type-name (:type field-def))
+                  qualified-name (keyword (name object-type-name)
+                                          (name field-name))]]
+      (when-not (re-matches graphql-identifier (name field-name))
+        (throw (ex-info (format "Field %s is not a valid GraphQL identifier."
+                                (q qualified-name))
+                        {:field-name qualified-name})))
       (when-not (get schema field-type-name)
         (throw (ex-info (format "Field %s in type %s references unknown type %s."
                                 (q field-name)
@@ -853,6 +869,12 @@
       (doseq [[arg-name arg-def] (:args field-def)
               :let [arg-type-name (extract-type-name (:type arg-def))
                     arg-type-def (get schema arg-type-name)]]
+        (when-not (re-matches graphql-identifier (name arg-name))
+          (throw (ex-info (format "Argument %s of %s is not a valid GraphQL identifier."
+                                  (q arg-name)
+                                  (q qualified-name))
+                          {:field-name qualified-name
+                           :arg-name arg-name})))
         (when-not arg-type-def
           (throw (ex-info (format "Argument %s of field %s in type %s references unknown type %s."
                                   (q arg-name)

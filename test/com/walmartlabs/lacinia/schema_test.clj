@@ -4,7 +4,8 @@
     [clojure.test :refer [deftest testing is are try-expr do-report]]
     [clojure.spec.alpha :as s]
     [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace]]))
+    [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace]])
+  (:import (clojure.lang ExceptionInfo)))
 
 (instrument-schema-namespace)
 
@@ -119,3 +120,33 @@
                                   :parse]}
                           (-> problems first (select-keys [:path :in])))
                        "should find problem in parse conformer"))))))
+
+(deftest types-must-be-valid-ids
+  (when-let [e (is (thrown? ExceptionInfo
+                            (schema/compile {:objects {:not-valid-id {:fields {:id {:type :String}}}}})))]
+    (is (= "Name `not-valid-id' (in category object) is not a valid GraphQL identifier."
+           (.getMessage e)))
+    (is (= {:category :object
+            :type-name :not-valid-id}
+           (ex-data e)))))
+
+(deftest field-names-must-be-valid-ids
+  (when-let [e (is (thrown? ExceptionInfo
+                            (schema/compile {:queries {:not-valid-id {:type :String}}})))]
+    (is (= "Field `QueryRoot/not-valid-id' is not a valid GraphQL identifier."
+           (.getMessage e)))
+    (is (= {:field-name :QueryRoot/not-valid-id}
+           (ex-data e)))))
+
+(deftest arg-names-must-be-valid-ids
+  (when-let [e (is (thrown? ExceptionInfo
+                            (schema/compile {:queries {:ok {:type :String
+                                                            :args {:no-way-jose {:type :String}}}}})))]
+    (is (= "Argument `no-way-jose' of `QueryRoot/ok' is not a valid GraphQL identifier."
+           (.getMessage e)))))
+
+(deftest enum-values-must-be-valid-ids
+  (when-let [e (is (thrown? IllegalArgumentException
+                            (schema/compile {:enums {:episode {:values [:new-hope :empire :return-of-jedi]}}})))]
+    (is (= "Value `new-hope' for enum `episode' is not a valid GraphQL identifier."
+           (.getMessage e)))))

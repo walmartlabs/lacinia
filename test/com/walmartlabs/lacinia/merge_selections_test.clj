@@ -4,7 +4,12 @@
   Earlier versions of Lacinia would tend to overwrite the earlier fields with the later ones."
   (:require
     [clojure.test :refer [deftest is]]
-    [com.walmartlabs.test-utils :refer [default-schema execute]]))
+    [com.walmartlabs.test-utils :refer [execute]]
+    [com.walmartlabs.test-schema :refer [test-schema]]
+    [com.walmartlabs.lacinia.schema :as schema]))
+
+(def default-schema
+  (schema/compile test-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))
 
 (defn ^:private q
   ([query-string]

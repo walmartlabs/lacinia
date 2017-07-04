@@ -15,7 +15,7 @@
 (defn ^:private resolve-fast
   [_ args _]
   {:simple (:value args)
-   ::slow {:simple (:nested-value args)}
+   ::slow {:simple (:nested_value args)}
    ::delay (:delay args)})
 
 (defn ^:private resolve-slow

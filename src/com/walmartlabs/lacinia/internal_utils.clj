@@ -3,7 +3,8 @@
   {:no-doc true}
   (:require
     [clojure.string :as str]
-    [com.walmartlabs.lacinia.resolve :refer [resolve-promise deliver! on-deliver!]]))
+    [com.walmartlabs.lacinia.resolve :refer [resolve-promise deliver! on-deliver!]])
+  (:import (clojure.lang Named)))
 
 (defmacro cond-let
   "A version of `cond` that allows for `:let` terms. There is hope that someday, perhaps
@@ -107,7 +108,12 @@
 (defn q
   "Quotes a keyword, string, or symbol inside back-tick and quote, for use in error messages."
   [v]
-  (str \` (name v) \'))
+  (let [n (when (instance? Named v)
+            (namespace v))]
+    (str \`
+         n
+         (when n "/")
+         (name v) \')))
 
 (defn sequential-or-set?
   "Returns true if x is a Sequential or Set"
