@@ -1,0 +1,29 @@
+version: 2
+
+jobs:
+  test:
+    docker:
+      - image: clojure:lein-2.7.1
+    working_directory: /root/lacinia
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - &cache_key v1-dependency-jars-{{ checksum "project.clj" }}
+            - v1-dependency-jars
+      - run:
+          command: lein deps
+      - save_cache:
+          key: *cache_key
+          paths:
+            - /root/.m2
+      - run:
+          command: lein test2junit
+      - store_test_results:
+          path: /root/lacinia/target/test2junit
+
+workflows:
+  version: 2
+  test:
+    jobs:
+      - test

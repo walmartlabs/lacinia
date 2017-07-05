@@ -2,22 +2,21 @@
   "Mechanisms for executing parsed queries against compiled schemas."
   (:require
     [com.walmartlabs.lacinia.internal-utils
-     :refer [cond-let map-vals remove-vals q combine-results]]
+     :refer [cond-let map-vals remove-vals q]]
     [flatland.ordered.map :refer [ordered-map]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :as resolve
-     :refer [resolve-as]]
+     :refer [resolve-as combine-results]]
     [com.walmartlabs.lacinia.constants :as constants])
-  (:import (clojure.lang PersistentQueue)))
+  (:import
+    (clojure.lang PersistentQueue)
+    (com.walmartlabs.lacinia.resolve ResolveCommand)))
 
 (defn ^:private ex-info-map
-  ([field-selection]
-   (ex-info-map field-selection {}))
-  ([field-selection m]
-   (merge m
-          (remove-vals nil? {:locations [(:location field-selection)]
-                             :query-path (:query-path field-selection)
-                             :arguments (:reportable-arguments field-selection)}))))
+  [field-selection]
+  (remove-vals nil? {:locations [(:location field-selection)]
+                     :query-path (:query-path field-selection)
+                     :arguments (:reportable-arguments field-selection)}))
 
 (defn ^:private assert-and-wrap-error
   "An error returned by a resolver should be nil, a map, or a collection
@@ -44,14 +43,13 @@
                     {:error error-map-or-maps}))))
 
 (defn ^:private enhance-errors
-  "Using a (resolved) collection of (wrapped) error maps, add additional data to
-  each error, including location and arguments."
-  [field-selection error-maps]
-  (when (seq error-maps)
-    (let [enhanced-data (ex-info-map field-selection nil)]
-      (map
-        #(merge % enhanced-data)
-        error-maps))))
+  "From an error map, or a collection of error maps, add additional data to
+  each error, including location and arguments.  Returns a seq of error maps."
+  [field-selection error-or-errors]
+  (let [errors-seq (assert-and-wrap-error error-or-errors)]
+    (when errors-seq
+      (let [enhanced-data (ex-info-map field-selection)]
+        (map #(merge % enhanced-data) errors-seq)))))
 
 (defn ^:private field-selection-resolver
   "Returns the field resolver for the provided field selection.
@@ -117,7 +115,7 @@
         resolver-result (field-resolver resolve-context arguments container-value)
         final-result (resolve/resolve-promise)]
     (resolve/on-deliver! resolver-result
-                         (fn [resolved-value resolve-errors]
+                         (fn [resolved-value]
                            (when start-ms
                              (let [finish-ms (System/currentTimeMillis)
                                    elapsed-ms (- finish-ms start-ms)
@@ -133,14 +131,6 @@
                                (swap! timings
                                       update-in (conj (:query-path field-selection) :execution/timings)
                                       (fnil conj []) timing)))
-
-                           (when-let [errors (-> resolve-errors
-                                                 assert-and-wrap-error
-                                                 seq)]
-                             (swap! (:errors execution-context) into
-                                    (enhance-errors field-selection errors)))
-                           ;; That's it for handling errors, so just resolve the value and
-                           ;; not the errors.
                            (resolve/deliver! final-result resolved-value)))
     final-result))
 
@@ -207,7 +197,7 @@
         resolver-result (resolve-and-select execution-context field-selection)
         final-result (resolve/resolve-promise)]
     (resolve/on-deliver! resolver-result
-                         (fn [resolved-field-value _]
+                         (fn [resolved-field-value]
                            (let [sub-selection (cond
                                                  (and non-nullable-field?
                                                       (nil? resolved-field-value))
@@ -233,8 +223,7 @@
 
 (defn ^:private maybe-apply-fragment
   [execution-context fragment-selection concrete-types]
-  (let [{:keys [resolved-value]} execution-context
-        actual-type (:resolved-type execution-context)]
+  (let [actual-type (:resolved-type execution-context)]
     (when (contains? concrete-types actual-type)
       (resolve-and-select execution-context fragment-selection))))
 
@@ -285,12 +274,12 @@
   ;; However, sometimes a selection is disabled and returns nil instead of a ResolverResult.
   (let [next-result (resolve/resolve-promise)]
     (resolve/on-deliver! previous-resolved-result
-                         (fn [left-map _]
+                         (fn [left-map]
                            ;; This is what makes it sync: we don't kick off the evaluation of the selection
                            ;; until the previous selection, left, has completed.
                            (let [sub-resolved-result (apply-selection execution-context sub-selection)]
                              (resolve/on-deliver! sub-resolved-result
-                                                  (fn [right-map _]
+                                                  (fn [right-map]
                                                     (resolve/deliver! next-result
                                                                       (merge left-map right-map)))))))
     ;; This will deliver after the sub-selection delivers, which is only after the previous resolved result
@@ -320,12 +309,18 @@
   (let
     [is-fragment? (-> selection :selection-type (not= :field))
      sub-selections (:selections selection)
-     selected-value-builder
-     ;; This function takes the resolved value (or, a value from the list,
-     ;; for a list field) and builds out the sub-structure for it, a recursive
-     ;; process at the heart of GraphQL.
-     ;; It returns the selected value, ready to be attached to the result tree.
-     (fn [resolved-value resolved-type]
+     ;; The selector pipeline validates the resolved value and handles things like iterating over
+     ;; seqs before (repeatedly) invoking the callback, at which point, it is possible to
+     ;; perform a recursive selection on the nested fields of the origin field.
+     selector-callback
+     (fn selector-callback [{:keys [errors resolved-value resolved-type execution-context]}]
+       ;; Any errors from the resolver (via with-errors) or anywhere along the
+       ;; selection pipeline are enhanced and added to the execution context.
+       (when errors
+         (->> errors
+              (mapcat #(enhance-errors selection %))
+              (swap! (:errors execution-context) into)))
+
        (cond
 
          (= ::schema/empty-list resolved-value)
@@ -341,21 +336,6 @@
 
          :else
          (resolve/resolve-as resolved-value)))
-
-     ;; The callback is a wrapper around the builder, that handles the optional
-     ;; errors.
-     selector-callback
-     (fn
-       ([resolved-value resolved-type]
-        (selected-value-builder resolved-value resolved-type))
-       ([resolved-value resolved-type errors]
-        (let [errors' (if (map? errors)
-                        [errors]
-                        errors)]
-          (swap! (:errors execution-context)
-                 into
-                 (enhance-errors selection errors')))
-        (selected-value-builder resolved-value resolved-type)))
      ;; In a concrete type, we know the selector from the field definition
      ;; (a field definition on a concrete object type).  Otherwise, we need
      ;; to use the type of the parent node's resolved value, just
@@ -379,9 +359,10 @@
     ;; For fragments, we start with a single value and it passes right through to
     ;; sub-selections, without changing value or type.
     (if is-fragment?
-      (selector (:resolved-value execution-context)
-                resolved-type
-                selector-callback)
+      (selector {:resolved-value (:resolved-value execution-context)
+                 :resolved-type resolved-type
+                 :callback selector-callback
+                 :execution-context execution-context})
 
       ;; Here's where it comes together.  The field's selector
       ;; does the validations, and for list types, does the mapping.
@@ -391,11 +372,25 @@
 
       (let [final-result (resolve/resolve-promise)]
         (resolve/on-deliver! (invoke-resolver-for-field execution-context selection)
-                             (fn [resolved-value _]
-                               (let [selector-result (selector resolved-value nil selector-callback)]
-                                 (resolve/on-deliver! selector-result
-                                                      (fn [resolved-value _]
-                                                        (resolve/deliver! final-result resolved-value))))))
+                             (fn receive-resolved-value-from-field [resolved-value]
+                               (loop [resolved-value resolved-value
+                                      selector-context {:execution-context execution-context}]
+                                 ;; Using satisfies? is a huge performance hit. ResolveCommand is not
+                                 ;; intended as a general extension point, so we don't need to worry about
+                                 ;; it being extended to existing types.
+                                 (if (instance? ResolveCommand resolved-value)
+                                   (recur (resolve/nested-value resolved-value)
+                                          (resolve/apply-command resolved-value selector-context))
+                                   ;; Finally to a real value, not a wrapper.  The commands may have
+                                   ;; modified the :errors or :execution-context keys, and the pipeline
+                                   ;; will do the rest. Errors will be dealt with in the callback.
+                                   (-> selector-context
+                                       (assoc :callback selector-callback
+                                              :resolved-value resolved-value)
+                                       selector
+                                       (resolve/on-deliver!
+                                         (fn deliver-selection-for-field [resolved-value]
+                                           (resolve/deliver! final-result resolved-value))))))))
         final-result))))
 
 (defn execute-query
@@ -427,7 +422,7 @@
                            (execute-nested-selections execution-context enabled-selections))
         response-result (resolve/resolve-promise)]
     (resolve/on-deliver! operation-result
-                         (fn [selected-data _]
+                         (fn [selected-data]
                            (let [data (propogate-nulls false selected-data)]
                              (resolve/deliver! response-result
                                                (cond-> {:data data}

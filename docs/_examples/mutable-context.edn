@@ -1,0 +1,12 @@
+(require '[com.walmartlabs.lacina.resolve :as resolve])
+
+(defn resolve-products
+  [_ args _]
+  (let [search-term (:search args)]
+    (-> (perform-product-search args)
+        (resolve/with-context {::search-term search-term}))))
+
+(defn resolve-highlighted-name
+  [context _ product]
+  (let [{:keys [::search-term]} context]
+    (-> product :name (add-highlight search-term))))
