@@ -3,8 +3,7 @@
   (:require
     clojure.walk
     [com.walmartlabs.lacinia.internal-utils
-     :refer [to-message map-vals cond-let update?]]
-    [clojure.string :as str]))
+     :refer [to-message map-vals cond-let update?]]))
 
 (defn ^:private attach-callbacks
   [field-container callbacks-map callback-kw error-name]

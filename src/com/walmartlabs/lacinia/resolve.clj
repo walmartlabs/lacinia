@@ -1,13 +1,49 @@
 (ns com.walmartlabs.lacinia.resolve
   "Complex results for field resolver functions.")
 
+(defprotocol ^:no-doc ResolveCommand
+  "Used to define special wrappers around resolved values, such as [[with-error]].
+
+  This is not intended for use by applications, as the structure of the selection-context
+  is not part of Lacinia's public API."
+  (^:no-doc apply-command [this selection-context]
+    "Applies changes to the selection context, which is returned.")
+  (^:no-doc nested-value [this]
+    "Returns the value wrapped by this command, which may be another command or a final result."))
+
+(defn with-error
+  "Wraps a value with an error map (or seq of error maps)."
+  {:added "0.19.0"}
+  [value error]
+  (reify
+    ResolveCommand
+
+    (apply-command [_ selection-context]
+      (update selection-context :errors conj error))
+
+    (nested-value [_] value)))
+
+(defn with-context
+  "Wraps a value so that when nested fields (at any depth) are executed, the provided values will be in the context.
+
+   The provided context-map is merged onto the application context."
+  {:added "0.19.0"}
+  [value context-map]
+  (reify
+    ResolveCommand
+
+    (apply-command [_ selection-contexct]
+      (update-in selection-contexct [:execution-context :context] merge context-map))
+
+    (nested-value [_] value)))
+
 (defprotocol ResolverResult
   "A special type returned from a field resolver that can contain a resolved value
   and/or errors."
 
     (on-deliver! [this callback]
     "Provides a callback that is invoked immediately after the ResolverResult is realized.
-    The callback is passed the ResolverResult's value and errors.
+    The callback is passed the ResolverResult's value.
 
     `on-deliver!` should only be invoked once.
     It returns `this`.
@@ -25,32 +61,36 @@
     [this value errors]
     "Invoked to realize the ResolverResult, triggering the callback to receive the value and errors.
 
+    The two arguments version is simply a convienience around [[with-error]].
+
     Returns `this`."))
 
-(defrecord ^:private ResolverResultImpl [resolved-value resolve-errors]
+(defrecord ^:private ResolverResultImpl [resolved-value]
 
   ResolverResult
 
   (on-deliver! [this callback]
-    (callback resolved-value resolve-errors)
+    (callback resolved-value)
     this))
 
 (defn resolve-as
   "Invoked by field resolvers to wrap a simple return value as a ResolverResult.
 
+  The two-arguments version is a convienience around using [[with-error]].
+
   This is an immediately realized ResolverResult."
   ([resolved-value]
-   (resolve-as resolved-value nil))
+   (->ResolverResultImpl resolved-value))
   ([resolved-value resolver-errors]
-   (->ResolverResultImpl resolved-value resolver-errors)))
+   (->ResolverResultImpl (with-error resolved-value resolver-errors))))
 
 (defn resolve-promise
   "Returns a ResolverResultPromise.
 
    A value must be resolved and ultimately provided via [[deliver!]]."
   []
-  (let [realized-result (promise)
-        callback-promise (promise)]
+  (let [*result (promise)
+        *callback (promise)]
     (reify
       ResolverResult
 
@@ -58,30 +98,42 @@
       ;; check bad application code that simply gets the contract wrong.
       (on-deliver! [this callback]
         (cond
-          (realized? realized-result)
-          (on-deliver! @realized-result callback)
+          ;; If the value arrives before the callback, invoke the callback immediately.
+          (realized? *result)
+          (callback @*result)
 
-          (realized? callback-promise)
+          (realized? *callback)
           (throw (IllegalStateException. "ResolverResultPromise callback may only be set once."))
 
           :else
-          (deliver callback-promise callback))
+          (deliver *callback callback))
 
         this)
 
       ResolverResultPromise
 
       (deliver! [this resolved-value]
-        (deliver! this resolved-value nil))
-
-      (deliver! [this resolved-value errors]
-        (when (realized? realized-result)
+        (when (realized? *result)
           (throw (IllegalStateException. "May only realize a ResolverResultPromise once.")))
 
-        ;; Need to capture the results if they arrive before the call to on-deliver!
-        (deliver realized-result (resolve-as resolved-value errors))
+        (deliver *result resolved-value)
 
-        (when (realized? callback-promise)
-          (@callback-promise resolved-value errors))
+        (when (realized? *callback)
+          (@*callback resolved-value))
 
-        this))))
+        this)
+
+      (deliver! [this resolved-value error]
+        (deliver! this (with-error resolved-value error))))))
+
+(defn ^:no-doc combine-results
+  "Given a left and a right ResolverResult, returns a new ResolverResult that combines
+  the realized values using the provided function."
+  [f left-result right-result]
+  (let [combined-result (resolve-promise)]
+    (on-deliver! left-result
+                 (fn receive-left-value [left-value]
+                   (on-deliver! right-result
+                                (fn receive-right-value [right-value]
+                                  (deliver! combined-result (f left-value right-value))))))
+    combined-result))

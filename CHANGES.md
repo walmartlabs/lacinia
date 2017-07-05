@@ -4,9 +4,18 @@ Lacinia now includes support for GraphQL subscriptions.
 
 Lacinia no longer catches and reports exceptions inside field resolvers.
 
+It is now possible for a field resolver to modify the application context
+passed to all nested field resolvers (at any depth).
+
 The :decorator option to `com.walmartlabs.lacinia.schema/compile` has been
 removed. This is a feature, added in 0.17.0, that can be better implemented
 in application code.
+
+The callback provided to the
+`com.walmartlabs.lacinia.resolve/on-deliver!` protocol method has
+changed to only accept a single value.
+Previously, the callback received a resolved value and an nilable error map.
+This method is not intended for use in application code.
 
 ## 0.18.0 -- 19 June 2017
 

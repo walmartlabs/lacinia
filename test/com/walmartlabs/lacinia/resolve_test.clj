@@ -5,8 +5,7 @@
     [com.walmartlabs.test-schema :refer [test-schema]]
     [com.walmartlabs.lacinia :as graphql :refer [execute]]
     [clojure.walk :refer [postwalk]]
-    [com.walmartlabs.lacinia.schema :as schema])
-  (:import (clojure.lang ExceptionInfo)))
+    [com.walmartlabs.lacinia.schema :as schema]))
 
 (def resolve-contexts (atom []))
 

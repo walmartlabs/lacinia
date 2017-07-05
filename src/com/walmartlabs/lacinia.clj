@@ -49,7 +49,7 @@
   (let [response-promise (promise)
         response-result (execute-parsed-query-async parsed-query variables context)]
     (resolve/on-deliver! response-result
-                         (fn [response _]
+                         (fn [response]
                            (deliver response-promise response)))
     ;; Block on that deliver, then return the final result.
     @response-promise))

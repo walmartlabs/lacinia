@@ -1,0 +1,14 @@
+{:objects
+ {:Root
+  {:fields
+   {:container {:type :Container}}}
+  :Container
+  {:fields
+   {:id {:type String}
+    :leaf {:type String
+           :resolve :leaf}}}}
+ :queries
+ {:root
+  {:type :Root
+   :args {:trigger {:type Boolean}}
+   :resolve :root}}}
