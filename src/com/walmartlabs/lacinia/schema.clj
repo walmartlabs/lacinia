@@ -871,13 +871,10 @@
                                 (q qualified-name))
                         {:field-name qualified-name})))
       (when-not (get schema field-type-name)
-        (throw (ex-info (format "Field %s in type %s references unknown type %s."
-                                (q field-name)
-                                (q object-type-name)
+        (throw (ex-info (format "Field %s references unknown type %s."
+                                (q qualified-name)
                                 (q field-type-name))
-                        {:field-name field-name
-                         :object-type object-type-name
-                         :field field-def
+                        {:field-name qualified-name
                          :schema-types (type-map schema)})))
 
       (doseq [[arg-name arg-def] (:args field-def)
@@ -890,24 +887,20 @@
                           {:field-name qualified-name
                            :arg-name arg-name})))
         (when-not arg-type-def
-          (throw (ex-info (format "Argument %s of field %s in type %s references unknown type %s."
+          (throw (ex-info (format "Argument %s of field %s references unknown type %s."
                                   (q arg-name)
-                                  (q field-name)
-                                  (q object-type-name)
+                                  (q qualified-name)
                                   (q arg-type-name))
-                          {:field-name field-name
-                           :object-type object-type-name
+                          {:field-name qualified-name
                            :arg-name arg-name
                            :schema-types (type-map schema)})))
 
         (when-not (#{:scalar :enum :input-object} (:category arg-type-def))
-          (throw (ex-info (format "Argument %s of field %s in type %s is not a valid argument type."
+          (throw (ex-info (format "Argument %s of field %s is not a valid argument type."
                                   (q arg-name)
-                                  (q field-name)
-                                  (q object-type-name))
-                          {:field-name field-name
-                           :arg-name arg-name
-                           :object-type object-type-name})))))))
+                                  (q qualified-name))
+                          {:field-name qualified-name
+                           :arg-name arg-name})))))))
 
 (defn ^:private prepare-and-validate-interfaces
   "Invoked after compilation to add a :members set identifying which concrete types implement
@@ -964,6 +957,21 @@
   (map-types schema category
              #(prepare-and-validate-object schema % options)))
 
+(defn ^:private verify-every-field-has-resolve-fn
+  [category fields]
+  (doseq [[field-name field-def] fields
+          :let [{:keys [resolve]} field-def]]
+    (when (nil? resolve)
+      (throw (IllegalArgumentException.
+               (format "No resolve function provided for %s %s."
+                       (name category)
+                       (q field-name)))))
+    (when-not (fn? resolve)
+      (throw (IllegalArgumentException.
+               (format "Resolve for %s %s is not a function."
+                       (name category)
+                       (q field-name)))))))
+
 (def ^:private default-subscription-resolver
 
   ^ResolverResult
@@ -974,6 +982,12 @@
   [schema options]
   ;; Note: using merge, not two calls to xfer-types, since want to allow
   ;; for overrides of the built-in scalars without a name conflict exception.
+
+  ;; Do these early because otherwise the compile step will provide a meaningless
+  ;; default resolver.
+  (verify-every-field-has-resolve-fn :query (:queries schema))
+  (verify-every-field-has-resolve-fn :mutation (:mutations schema))
+
   (let [merged-scalars (merge default-scalar-transformers
                               (:scalars schema))
         defaulted-subscriptions (->> schema

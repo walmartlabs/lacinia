@@ -1276,6 +1276,7 @@
 
 (deftest mixed-use-of-keywords
   (let [schema (schema/compile {:queries {:search {:type '(non-null :ID)
+                                                   :resolve identity
                                                    :args {:term {:type '(non-null String)}}}}})
         q "
         query { __schema { queryType {

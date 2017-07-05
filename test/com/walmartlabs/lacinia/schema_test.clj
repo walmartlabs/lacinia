@@ -74,7 +74,7 @@
                (is (= [:fred :barney :bam-bam :pebbles] (-> d :object :implements)))))
 
   (is-thrown [e (schema/compile schema-references-unknown-type)]
-    (is (= (.getMessage e) "Field `dinosaur' in type `dino' references unknown type `raptor'."))))
+    (is (= (.getMessage e) "Field `dino/dinosaur' references unknown type `raptor'."))))
 
 (deftest custom-scalars
   []
@@ -121,32 +121,55 @@
                           (-> problems first (select-keys [:path :in])))
                        "should find problem in parse conformer"))))))
 
+(defmacro is-compile-exception
+  [schema expected-message expected-data]
+  `(when-let [e# (is (~'thrown? Throwable (schema/compile ~schema)))]
+     (is (= ~expected-message (.getMessage e#)))
+     (is (= ~expected-data (ex-data e#)))))
+
 (deftest types-must-be-valid-ids
-  (when-let [e (is (thrown? ExceptionInfo
-                            (schema/compile {:objects {:not-valid-id {:fields {:id {:type :String}}}}})))]
-    (is (= "Name `not-valid-id' (in category object) is not a valid GraphQL identifier."
-           (.getMessage e)))
-    (is (= {:category :object
-            :type-name :not-valid-id}
-           (ex-data e)))))
+  (is-compile-exception
+    {:objects {:not-valid-id {:fields {:id {:type :String}}}}}
+    "Name `not-valid-id' (in category object) is not a valid GraphQL identifier."
+    {:category :object
+     :type-name :not-valid-id}))
 
 (deftest field-names-must-be-valid-ids
-  (when-let [e (is (thrown? ExceptionInfo
-                            (schema/compile {:queries {:not-valid-id {:type :String}}})))]
-    (is (= "Field `QueryRoot/not-valid-id' is not a valid GraphQL identifier."
-           (.getMessage e)))
-    (is (= {:field-name :QueryRoot/not-valid-id}
-           (ex-data e)))))
+  (is-compile-exception
+    {:queries {:not-valid-id {:type :String
+                              :resolve identity}}}
+    "Field `QueryRoot/not-valid-id' is not a valid GraphQL identifier."
+    {:field-name :QueryRoot/not-valid-id}))
 
 (deftest arg-names-must-be-valid-ids
-  (when-let [e (is (thrown? ExceptionInfo
-                            (schema/compile {:queries {:ok {:type :String
-                                                            :args {:no-way-jose {:type :String}}}}})))]
-    (is (= "Argument `no-way-jose' of `QueryRoot/ok' is not a valid GraphQL identifier."
-           (.getMessage e)))))
+  (is-compile-exception
+    {:queries {:ok {:type :String
+                    :args {:no-way-jose {:type :String}}
+                    :resolve identity}}}
+    "Argument `no-way-jose' of `QueryRoot/ok' is not a valid GraphQL identifier."
+    {:arg-name :no-way-jose
+     :field-name :QueryRoot/ok}))
 
 (deftest enum-values-must-be-valid-ids
-  (when-let [e (is (thrown? IllegalArgumentException
-                            (schema/compile {:enums {:episode {:values [:new-hope :empire :return-of-jedi]}}})))]
-    (is (= "Value `new-hope' for enum `episode' is not a valid GraphQL identifier."
-           (.getMessage e)))))
+  (is-compile-exception
+    {:enums {:episode {:values [:new-hope :empire :return-of-jedi]}}}
+    "Value `new-hope' for enum `episode' is not a valid GraphQL identifier."
+    nil))
+
+(deftest requires-resolve-on-each-query-or-mutation
+  (is-compile-exception
+    {:queries {:hopeless {:type :String}}}
+    "No resolve function provided for query `hopeless'."
+    nil)
+
+  (is-compile-exception
+    {:mutations {:hopeless {:type :String}}}
+    "No resolve function provided for mutation `hopeless'."
+    nil))
+
+(deftest resolve-must-be-a-function
+  (is-compile-exception
+    {:queries {:hopeless {:type :String
+                          :resolve :not-a-function}}}
+    "Resolve for query `hopeless' is not a function."
+    nil))
