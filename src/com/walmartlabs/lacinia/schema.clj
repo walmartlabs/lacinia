@@ -24,7 +24,7 @@
 ;; When using Clojure 1.9 alpha, the dependency on clojure-future-spec can be excluded,
 ;; and this code will not trigger; any? will come out of clojure.core as normal.
 (when (-> *clojure-version* :minor (< 9))
-  (require '[clojure.future :refer [any? qualified-keyword?]]))
+  (require '[clojure.future :refer [any? simple-keyword?]]))
 
 ;;-------------------------------------------------------------------------------
 ;; ## Helpers
@@ -252,18 +252,17 @@
 
 ;; This can be expanded at some point
 (s/def :type/type some?)
+
 (s/def :type/arg (s/keys :req-un [:type/type]
                          :opt-un [:type/description]))
-(s/def :type/args (s/map-of keyword? :type/arg))
-;; TODO: No longer accurate, :resolve must always be a function is present.
-(s/def :type/resolve (s/or :type/resolve-keyword keyword?
-                           :type/resolve-callback fn?))
+(s/def :type/args (s/map-of simple-keyword? :type/arg))
+(s/def :type/resolve fn?)
 (s/def :type/field (s/keys :opt-un [:type/description
                                     :type/resolve
                                     :type/args]
                            :req-un [:type/type]))
-(s/def :type/fields (s/map-of keyword? :type/field))
-(s/def :type/implements (s/coll-of keyword?))
+(s/def :type/fields (s/map-of simple-keyword? :type/field))
+(s/def :type/implements (s/coll-of simple-keyword?))
 (s/def :type/description string?)
 (s/def :type/object (s/keys :req-un [:type/fields]
                             :opt-un [:type/implements
@@ -271,7 +270,7 @@
 (s/def :type/interface (s/keys :opt-un [:type/description
                                         :type/fields]))
 ;; A list of keyword identifying objects that are part of a union.
-(s/def :type/members (s/and (s/coll-of keyword?)
+(s/def :type/members (s/and (s/coll-of simple-keyword?)
                             seq))
 (s/def :type/union (s/keys :opt-un [:type/description]
                            :req-un [:type/members]))
@@ -285,18 +284,18 @@
 (s/def :type/scalar (s/keys :opt-un [:type/description]
                             :req-un [:type/parse
                                      :type/serialize]))
-(s/def :type/scalars (s/map-of keyword? :type/scalar))
-(s/def :type/interfaces (s/map-of keyword? :type/interface))
-(s/def :type/objects (s/map-of keyword? :type/object))
-(s/def :type/input-objects (s/map-of keyword? :type/input-object))
-(s/def :type/enums (s/map-of keyword? :type/enum))
-(s/def :type/unions (s/map-of keyword? :type/union))
+(s/def :type/scalars (s/map-of simple-keyword? :type/scalar))
+(s/def :type/interfaces (s/map-of simple-keyword? :type/interface))
+(s/def :type/objects (s/map-of simple-keyword? :type/object))
+(s/def :type/input-objects (s/map-of simple-keyword? :type/input-object))
+(s/def :type/enums (s/map-of simple-keyword? :type/enum))
+(s/def :type/unions (s/map-of simple-keyword? :type/union))
 
 (s/def :type/context (s/nilable map?))
 
 ;; These are the argument values passed to a resolver or streamer;
 ;; as opposed to :type/args which are argument definitions.
-(s/def :type/arguments (s/nilable (s/map-of keyword? any?)))
+(s/def :type/arguments (s/nilable (s/map-of simple-keyword? any?)))
 
 ;; Function of no arguments, return value ignored:
 (s/def :type/stream-cleanup (s/fspec :args empty?))
@@ -310,6 +309,14 @@
                                           :args :type/arguments
                                           :source-stream :type/source-stream)
                              :ret :type/stream-cleanup))
+
+(s/def :type/query (s/keys :opt-un [:type/description
+                                    :type/args]
+                           :req-un [:type/type
+                                    :type/resolve]))
+
+(s/def :type/queries (s/map-of simple-keyword? :type/field))
+(s/def :type/mutations (s/map-of simple-keyword? :type/field))
 
 (s/def :type/subscription (s/keys :opt-un [:type/description
                                            :type/resolve
@@ -326,7 +333,8 @@
                    :type/input-objects
                    :type/enums
                    :type/unions
-                   ;; TODO: :type/queries and :type/mutations
+                   :type/queries
+                   :type/mutations
                    :type/subscriptions]))
 
 (s/def :graphql/type-decl
