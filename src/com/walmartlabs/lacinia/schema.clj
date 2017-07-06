@@ -258,8 +258,8 @@
 ;; ## Validations
 
 (s/def ::type (s/or :base-type schema-reference?
-                    :complex-type (s/cat :modifier #{'list 'non-null}
-                                         :type ::type)))
+                    :wrapping-type (s/cat :modifier #{'list 'non-null}
+                                          :type ::type)))
 (s/def ::arg (s/keys :req-un [::type]
                      :opt-un [::description]))
 (s/def ::args (s/map-of simple-keyword? ::arg))
