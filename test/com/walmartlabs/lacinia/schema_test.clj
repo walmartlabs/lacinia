@@ -4,9 +4,8 @@
     [clojure.test :refer [deftest testing is are try-expr do-report]]
     [clojure.spec.alpha :as s]
     [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace]]))
-
-(instrument-schema-namespace)
+    [com.walmartlabs.test-utils :refer [is-thrown]]
+    [clojure.string :as str]))
 
 (defmacro is-error?
   [form]
@@ -122,7 +121,7 @@
 
 (defmacro is-compile-exception
   [schema expected-message expected-data]
-  `(when-let [e# (is (~'thrown? Throwable (schema/compile ~schema)))]
+  `(is-thrown [e# (schema/compile ~schema)]
      (is (= ~expected-message (.getMessage e#)))
      (is (= ~expected-data (ex-data e#)))))
 
@@ -155,13 +154,7 @@
     "Value `new-hope' for enum `episode' is not a valid GraphQL identifier."
     nil))
 
-(deftest requires-resolve-on-each-query-or-mutation
-  (is-compile-exception
-    {:queries {:hopeless {:type :String}}}
-    "No resolve function provided for query `hopeless'."
-    nil)
-
-  (is-compile-exception
-    {:mutations {:hopeless {:type :String}}}
-    "No resolve function provided for mutation `hopeless'."
-    nil))
+(deftest requires-resolve-on-operation
+  (is-thrown [e (schema/compile {:queries {:hopeless {:type :String}}} nil)]
+    (is (str/includes? (.getMessage e)
+                       "predicate: (contains? % :resolve)"))))

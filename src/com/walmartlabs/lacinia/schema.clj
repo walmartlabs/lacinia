@@ -16,7 +16,8 @@
              is-internal-type-name? sequential-or-set? as-keyword
              cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag]]
     [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolve-as combine-results]]
-    [clojure.string :as str])
+    [clojure.string :as str]
+    [clojure.spec.test.alpha :as stest])
   (:import
     (com.walmartlabs.lacinia.resolve ResolverResultImpl)
     (clojure.lang IObj)))
@@ -270,12 +271,17 @@
                                 ::resolve
                                 ::args]
                        :req-un [::type]))
+(s/def ::operation (s/keys :opt-un [::description
+                                    ::args]
+                           :req-un [::type
+                                    ::resolve]))
 (s/def ::fields (s/map-of simple-keyword? ::field))
 (s/def ::implements (s/coll-of simple-keyword?))
 (s/def ::description string?)
 (s/def ::object (s/keys :req-un [::fields]
                         :opt-un [::implements
                                  ::description]))
+;; Here we'd prefer a version of ::fields where :resolve was not defined.
 (s/def ::interface (s/keys :opt-un [::description
                                     ::fields]))
 ;; A list of keyword identifying objects that are part of a union.
@@ -324,13 +330,8 @@
                                       :source-stream ::source-stream)
                          :ret ::stream-cleanup))
 
-(s/def ::query (s/keys :opt-un [::description
-                                ::args]
-                       :req-un [::type
-                                ::resolve]))
-
-(s/def ::queries (s/map-of simple-keyword? ::field))
-(s/def ::mutations (s/map-of simple-keyword? ::field))
+(s/def ::queries (s/map-of simple-keyword? ::operation))
+(s/def ::mutations (s/map-of simple-keyword? ::operation))
 
 (s/def ::subscription (s/keys :opt-un [::description
                                        ::resolve
@@ -972,15 +973,6 @@
   (map-types schema category
              #(prepare-and-validate-object schema % options)))
 
-(defn ^:private verify-every-field-has-resolve-fn
-  [category fields]
-  (doseq [[field-name field-def] fields]
-    (when (-> field-def :resolve nil?)
-      (throw (IllegalArgumentException.
-               (format "No resolve function provided for %s %s."
-                       (name category)
-                       (q field-name)))))))
-
 (def ^:private default-subscription-resolver
 
   ^ResolverResult
@@ -991,12 +983,6 @@
   [schema options]
   ;; Note: using merge, not two calls to xfer-types, since want to allow
   ;; for overrides of the built-in scalars without a name conflict exception.
-
-  ;; Do these early because otherwise the compile step will provide a meaningless
-  ;; default resolver.
-  (verify-every-field-has-resolve-fn :query (:queries schema))
-  (verify-every-field-has-resolve-fn :mutation (:mutations schema))
-
   (let [merged-scalars (merge default-scalar-transformers
                               (:scalars schema))
         defaulted-subscriptions (->> schema
@@ -1066,7 +1052,13 @@
   {:default-field-resolver default-field-resolver})
 
 (defn compile
-  "Compiles a schema, verifies its correctness, and inlines all types.
+  "Compiles an schema, verifies its correctness, and prepares it for query execution.
+  The compiled schema is in an entirely different format than the input schema.
+
+  The format of the compiled schema is subject to change without notice.
+
+  This function is always instrumented with Clojure spec: non-conforming
+  input schemas will cause a spec validation exception to be thrown.
 
   Compile options:
 
@@ -1088,3 +1080,5 @@
 (s/fdef compile
         :args (s/cat :schema ::schema-object
                      :options (s/? (s/nilable ::compile-options))))
+
+(stest/instrument `compile)

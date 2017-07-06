@@ -3,7 +3,7 @@
             [clojure.test :refer [deftest is testing]]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.test-schema :refer [test-schema]]
-            [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace execute]]
+            [com.walmartlabs.test-utils :refer [is-thrown execute]]
             [clojure.java.io :as io]
             [clojure.edn :as edn]
             [com.walmartlabs.lacinia.util :as util])
@@ -11,8 +11,6 @@
            (java.util Date)
            (org.joda.time DateTime DateTimeConstants)
            (org.joda.time.format DateTimeFormat)))
-
-(instrument-schema-namespace)
 
 (def default-schema (schema/compile test-schema))
 

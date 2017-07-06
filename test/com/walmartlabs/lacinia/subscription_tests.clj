@@ -9,10 +9,7 @@
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.resolve :as resolve]
     [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.test-utils :as test-utils
-     :refer [simplify instrument-schema-namespace]]))
-
-(instrument-schema-namespace)
+    [com.walmartlabs.test-utils :as test-utils :refer [simplify]]))
 
 ;; There's not a whole lot we can do here, as most of the support has to come from the web tier code, e.g.,
 ;; pedestal-lacinia.
