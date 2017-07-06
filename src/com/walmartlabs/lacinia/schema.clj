@@ -974,16 +974,10 @@
 
 (defn ^:private verify-every-field-has-resolve-fn
   [category fields]
-  (doseq [[field-name field-def] fields
-          :let [{:keys [resolve]} field-def]]
-    (when (nil? resolve)
+  (doseq [[field-name field-def] fields]
+    (when (-> field-def :resolve nil?)
       (throw (IllegalArgumentException.
                (format "No resolve function provided for %s %s."
-                       (name category)
-                       (q field-name)))))
-    (when-not (fn? resolve)
-      (throw (IllegalArgumentException.
-               (format "Resolve for %s %s is not a function."
                        (name category)
                        (q field-name)))))))
 

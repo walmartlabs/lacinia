@@ -4,8 +4,7 @@
     [clojure.test :refer [deftest testing is are try-expr do-report]]
     [clojure.spec.alpha :as s]
     [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace]])
-  (:import (clojure.lang ExceptionInfo)))
+    [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace]]))
 
 (instrument-schema-namespace)
 
@@ -165,11 +164,4 @@
   (is-compile-exception
     {:mutations {:hopeless {:type :String}}}
     "No resolve function provided for mutation `hopeless'."
-    nil))
-
-(deftest resolve-must-be-a-function
-  (is-compile-exception
-    {:queries {:hopeless {:type :String
-                          :resolve :not-a-function}}}
-    "Resolve for query `hopeless' is not a function."
     nil))
