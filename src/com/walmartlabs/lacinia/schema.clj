@@ -24,7 +24,7 @@
 ;; When using Clojure 1.9 alpha, the dependency on clojure-future-spec can be excluded,
 ;; and this code will not trigger; any? will come out of clojure.core as normal.
 (when (-> *clojure-version* :minor (< 9))
-  (require '[clojure.future :refer [any? qualified-keyword?]]))
+  (require '[clojure.future :refer [any? simple-keyword?]]))
 
 ;;-------------------------------------------------------------------------------
 ;; ## Helpers
@@ -242,6 +242,13 @@
   ([message data]
    (merge {:message message} data)))
 
+(defn ^:private schema-reference?
+  "A reference to another type in the schema. These can always be either
+  a keyword or a symbol."
+  [v]
+  (or (keyword? v)
+      (symbol? v)))
+
 (defn ^:private named?
   "True if a string, symbol or keyword."
   [v]
@@ -252,89 +259,97 @@
 ;;-------------------------------------------------------------------------------
 ;; ## Validations
 
-;; This can be expanded at some point
-(s/def :type/type some?)
-(s/def :type/arg (s/keys :req-un [:type/type]
-                         :opt-un [:type/description]))
-(s/def :type/args (s/map-of keyword? :type/arg))
-;; TODO: No longer accurate, :resolve must always be a function is present.
-(s/def :type/resolve (s/or :type/resolve-keyword keyword?
-                           :type/resolve-callback fn?))
-(s/def :type/field (s/keys :opt-un [:type/description
-                                    :type/resolve
-                                    :type/args]
-                           :req-un [:type/type]))
-(s/def :type/fields (s/map-of keyword? :type/field))
-(s/def :type/implements (s/coll-of keyword?))
-(s/def :type/description string?)
-(s/def :type/object (s/keys :req-un [:type/fields]
-                            :opt-un [:type/implements
-                                     :type/description]))
-(s/def :type/interface (s/keys :opt-un [:type/description
-                                        :type/fields]))
+(s/def ::type (s/or :base-type schema-reference?
+                    :wrapping-type (s/cat :modifier #{'list 'non-null}
+                                          :type ::type)))
+(s/def ::arg (s/keys :req-un [::type]
+                     :opt-un [::description]))
+(s/def ::args (s/map-of simple-keyword? ::arg))
+(s/def ::resolve fn?)
+(s/def ::field (s/keys :opt-un [::description
+                                ::resolve
+                                ::args]
+                       :req-un [::type]))
+(s/def ::fields (s/map-of simple-keyword? ::field))
+(s/def ::implements (s/coll-of simple-keyword?))
+(s/def ::description string?)
+(s/def ::object (s/keys :req-un [::fields]
+                        :opt-un [::implements
+                                 ::description]))
+(s/def ::interface (s/keys :opt-un [::description
+                                    ::fields]))
 ;; A list of keyword identifying objects that are part of a union.
-(s/def :type/members (s/and (s/coll-of keyword?)
-                            seq))
-(s/def :type/union (s/keys :opt-un [:type/description]
-                           :req-un [:type/members]))
-(s/def :type/values (s/and (s/coll-of named?)
-                           seq))
-(s/def :type/enum (s/keys :opt-un [:type/description]
-                          :req-un [:type/values]))
-(s/def :type/input-object (s/keys :opt-un [:type/description]))
-(s/def :type/parse s/spec?)
-(s/def :type/serialize s/spec?)
-(s/def :type/scalar (s/keys :opt-un [:type/description]
-                            :req-un [:type/parse
-                                     :type/serialize]))
-(s/def :type/scalars (s/map-of keyword? :type/scalar))
-(s/def :type/interfaces (s/map-of keyword? :type/interface))
-(s/def :type/objects (s/map-of keyword? :type/object))
-(s/def :type/input-objects (s/map-of keyword? :type/input-object))
-(s/def :type/enums (s/map-of keyword? :type/enum))
-(s/def :type/unions (s/map-of keyword? :type/union))
+(s/def ::members (s/and (s/coll-of simple-keyword?)
+                        seq))
+(s/def ::union (s/keys :opt-un [::description]
+                       :req-un [::members]))
+(s/def ::values (s/and (s/coll-of named?)
+                       seq))
+(s/def ::enum (s/keys :opt-un [::description]
+                      :req-un [::values]))
+;; The type of an input object field is more constrained than an ordinary field, but that is
+;; handled with compile-time checks.  Input objects should not have a :resolve or :args as well.
+;; Defining an input-object in terms of :properties (with a corresponding ::properties and ::property spec)
+;; may be more correct, but it's a big change.
+(s/def ::input-object (s/keys :opt-un [::description]
+                              :req-un [::fields]))
+(s/def ::parse s/spec?)
+(s/def ::serialize s/spec?)
+(s/def ::scalar (s/keys :opt-un [::description]
+                        :req-un [::parse
+                                 ::serialize]))
+(s/def ::scalars (s/map-of simple-keyword? ::scalar))
+(s/def ::interfaces (s/map-of simple-keyword? ::interface))
+(s/def ::objects (s/map-of simple-keyword? ::object))
+(s/def ::input-objects (s/map-of simple-keyword? ::input-object))
+(s/def ::enums (s/map-of simple-keyword? ::enum))
+(s/def ::unions (s/map-of simple-keyword? ::union))
 
-(s/def :type/context (s/nilable map?))
+(s/def ::context (s/nilable map?))
 
 ;; These are the argument values passed to a resolver or streamer;
-;; as opposed to :type/args which are argument definitions.
-(s/def :type/arguments (s/nilable (s/map-of keyword? any?)))
+;; as opposed to ::args which are argument definitions.
+(s/def ::arguments (s/nilable (s/map-of simple-keyword? any?)))
 
 ;; Function of no arguments, return value ignored:
-(s/def :type/stream-cleanup (s/fspec :args empty?))
+(s/def ::stream-cleanup (s/fspec :args empty?))
 
 ;; Passed a resolved value, or passed nil (to shut down the subscription).
 ;; This should be fn?, but that causes problems when spec attempts to create
 ;; generators.
-(s/def :type/source-stream any?)
+(s/def ::source-stream any?)
 
-(s/def :type/stream (s/fspec :args (s/cat :context :type/context
-                                          :args :type/arguments
-                                          :source-stream :type/source-stream)
-                             :ret :type/stream-cleanup))
+(s/def ::stream (s/fspec :args (s/cat :context ::context
+                                      :args ::arguments
+                                      :source-stream ::source-stream)
+                         :ret ::stream-cleanup))
 
-(s/def :type/subscription (s/keys :opt-un [:type/description
-                                           :type/resolve
-                                           :type/args]
-                                  :req-un [:type/type
-                                           :type/stream]))
+(s/def ::query (s/keys :opt-un [::description
+                                ::args]
+                       :req-un [::type
+                                ::resolve]))
 
-(s/def :type/subscriptions (s/map-of keyword? :type/subscription))
+(s/def ::queries (s/map-of simple-keyword? ::field))
+(s/def ::mutations (s/map-of simple-keyword? ::field))
+
+(s/def ::subscription (s/keys :opt-un [::description
+                                       ::resolve
+                                       ::args]
+                              :req-un [::type
+                                       ::stream]))
+
+(s/def ::subscriptions (s/map-of keyword? ::subscription))
 
 (s/def ::schema-object
-  (s/keys :opt-un [:type/scalars
-                   :type/interfaces
-                   :type/objects
-                   :type/input-objects
-                   :type/enums
-                   :type/unions
-                   ;; TODO: :type/queries and :type/mutations
-                   :type/subscriptions]))
-
-(s/def :graphql/type-decl
-  (s/or :base-type (fn [x] (or (keyword? x) (symbol? x)))
-        :complex-type (s/cat :wrapping-type #{'list 'non-null}
-                             :type :graphql/type-decl)))
+  (s/keys :opt-un [::scalars
+                   ::interfaces
+                   ::objects
+                   ::input-objects
+                   ::enums
+                   ::unions
+                   ::queries
+                   ::mutations
+                   ::subscriptions]))
 
 (defmulti ^:private check-compatible
   "Given two type definitions, dispatches on a vector of the category of the two types.
