@@ -11,6 +11,6 @@
          :args {:delay {:type Int}
                 :value {:type String
                         :default-value "fast!"}
-                :nested-value {:type String
+                :nested_value {:type String
                                :default-value "slow!!"}}
          :resolve :resolve-fast}}}

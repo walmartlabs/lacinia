@@ -333,7 +333,7 @@
                                       {:name "echoArgs"}
                                       {:name "episode"}
                                       {:name "force"}
-                                      {:name "galaxy-date"}
+                                      {:name "galaxy_date"}
                                       {:name "human"}
                                       {:name "nestedInputObject"}
                                       {:name "testInputObject"}]}}}
@@ -392,7 +392,7 @@
                                        :name "force"}
                                       {:description nil
                                        :kind :OBJECT
-                                       :name "galaxy-date"}
+                                       :name "galaxy_date"}
                                       {:description nil
                                        :kind :OBJECT
                                        :name "human"}
@@ -678,7 +678,7 @@
                                :isDeprecated false
                                :name "now"
                                :type {:kind :OBJECT
-                                      :name "galaxy-date"
+                                      :name "galaxy_date"
                                       :ofType nil}}]
                      :inputFields []
                      :interfaces []
@@ -1074,7 +1074,7 @@
                      :inputFields []
                      :interfaces []
                      :kind :OBJECT
-                     :name "galaxy-date"
+                     :name "galaxy_date"
                      :possibleTypes []}
                     {:description nil
                      :enumValues []

@@ -3,9 +3,15 @@
     [clojure.test :refer [deftest is]]
     [com.walmartlabs.lacinia.parser :as parser]
     [com.walmartlabs.lacinia.executor :as executor]
-    [com.walmartlabs.test-utils :refer [default-schema compile-schema execute]]
+    [com.walmartlabs.test-utils :refer [compile-schema execute]]
     [com.walmartlabs.lacinia.constants :as constants]
-    [clojure.edn :as edn]))
+    [clojure.edn :as edn]
+    [com.walmartlabs.test-schema :refer [test-schema]]
+    [com.walmartlabs.lacinia.schema :as schema]))
+
+
+(def default-schema
+  (schema/compile test-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))
 
 (defn ^:private app-context
   [query]

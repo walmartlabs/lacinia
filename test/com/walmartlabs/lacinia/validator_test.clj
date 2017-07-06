@@ -349,15 +349,15 @@
 
 (deftest invalid-type-for-query
   (let [e (is (thrown? Throwable
-                       (schema/compile {:queries {:unknown-type {:type :not-defined}}})))
+                       (schema/compile {:queries {:unknown_type {:type :not_defined}}})))
         data (ex-data e)]
-    (is (= "Field `unknown-type' in type `QueryRoot' references unknown type `not-defined'." (.getMessage e)))
+    (is (= "Field `unknown_type' in type `QueryRoot' references unknown type `not_defined'." (.getMessage e)))
     (is (= {:field {:args nil
-                    :qualified-field-name :QueryRoot/unknown-type
-                    :field-name :unknown-type
+                    :qualified-field-name :QueryRoot/unknown_type
+                    :field-name :unknown_type
                     :type {:kind :root
-                           :type :not-defined}}
-            :field-name :unknown-type
+                           :type :not_defined}}
+            :field-name :unknown_type
             :object-type :QueryRoot
             :schema-types {:object [:MutationRoot
                                     :QueryRoot

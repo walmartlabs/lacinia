@@ -45,11 +45,11 @@
                                                :serialize serialize-conformer}}
 
                                       :objects
-                                      {:galaxy-event
+                                      {:galaxy_event
                                        {:fields {:lookup {:type :Event}}}}
 
                                       :queries
-                                      {:events {:type :galaxy-event
+                                      {:events {:type :galaxy_event
                                                 :resolve (fn [ctx args v]
                                                            {:lookup "200"})}}})
               q "{ events { lookup }}"]
@@ -63,14 +63,14 @@
                                                  :serialize (s/conformer str)}}
 
                                       :objects
-                                      {:galaxy-event
+                                      {:galaxy_event
                                        {:fields {:lookup {:type :Event}}}
                                        :human
                                        {:fields {:id {:type :EventId}
                                                  :name {:type 'String}}}}
 
                                       :queries
-                                      {:events {:type :galaxy-event
+                                      {:events {:type :galaxy_event
                                                 :resolve (fn [ctx args v]
                                                            ;; type of :lookup is :Event
                                                            ;; that is a custom scalar with
