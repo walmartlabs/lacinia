@@ -279,7 +279,7 @@
 (s/def ::arg (s/keys :req-un [::type]
                      :opt-un [::description]))
 (s/def ::args (s/map-of ::schema-key ::arg))
-;; Defining these callback in spec has been a challenge. At some point,
+;; Defining these callbacks in spec has been a challenge. At some point,
 ;; we can expand this to capture a bit more about what a field resolver
 ;; is passed and should return.
 (s/def ::resolve fn?)
