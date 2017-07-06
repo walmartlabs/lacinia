@@ -25,7 +25,7 @@
 ;; When using Clojure 1.9 alpha, the dependency on clojure-future-spec can be excluded,
 ;; and this code will not trigger; any? will come out of clojure.core as normal.
 (when (-> *clojure-version* :minor (< 9))
-  (require '[clojure.future :refer [any? simple-keyword?]]))
+  (require '[clojure.future :refer [any? simple-keyword? simple-symbol?]]))
 
 ;;-------------------------------------------------------------------------------
 ;; ## Helpers
@@ -257,15 +257,31 @@
       (symbol? v)
       (keyword? v)))
 
+(defn ^:private graphql-identifier?
+  "Expects a conformed value (turns out to be a Map$Entry such as `[:keyword :foo]`)
+  and validates that the value is a valid GraphQL identifier."
+  [[_ v]]
+  (boolean
+    (re-matches graphql-identifier (name v))))
+
 ;;-------------------------------------------------------------------------------
 ;; ## Validations
 
-(s/def ::type (s/or :base-type schema-reference?
+(s/def ::schema-key (s/and simple-keyword?
+                           ::graphql-identifier))
+(s/def ::graphql-identifier #(re-matches graphql-identifier (name %)))
+(s/def ::identifier (s/and (s/or :keyword simple-keyword?
+                                 :symbol simple-symbol?)
+                           graphql-identifier?))
+(s/def ::type (s/or :base-type ::identifier
                     :wrapping-type (s/cat :modifier #{'list 'non-null}
                                           :type ::type)))
 (s/def ::arg (s/keys :req-un [::type]
                      :opt-un [::description]))
-(s/def ::args (s/map-of simple-keyword? ::arg))
+(s/def ::args (s/map-of ::schema-key ::arg))
+;; Defining these callback in spec has been a challenge. At some point,
+;; we can expand this to capture a bit more about what a field resolver
+;; is passed and should return.
 (s/def ::resolve fn?)
 (s/def ::field (s/keys :opt-un [::description
                                 ::resolve
@@ -275,8 +291,8 @@
                                     ::args]
                            :req-un [::type
                                     ::resolve]))
-(s/def ::fields (s/map-of simple-keyword? ::field))
-(s/def ::implements (s/coll-of simple-keyword?))
+(s/def ::fields (s/map-of ::schema-key ::field))
+(s/def ::implements (s/coll-of ::identifier))
 (s/def ::description string?)
 (s/def ::object (s/keys :req-un [::fields]
                         :opt-un [::implements
@@ -285,11 +301,15 @@
 (s/def ::interface (s/keys :opt-un [::description
                                     ::fields]))
 ;; A list of keyword identifying objects that are part of a union.
-(s/def ::members (s/and (s/coll-of simple-keyword?)
+(s/def ::members (s/and (s/coll-of ::identifier)
                         seq))
 (s/def ::union (s/keys :opt-un [::description]
                        :req-un [::members]))
-(s/def ::values (s/and (s/coll-of named?)
+(s/def ::enum-value (s/and (s/or :string string?
+                                 :keyword simple-keyword?
+                                 :symbol simple-symbol?)
+                           graphql-identifier?))
+(s/def ::values (s/and (s/coll-of ::enum-value)
                        seq))
 (s/def ::enum (s/keys :opt-un [::description]
                       :req-un [::values]))
@@ -304,34 +324,24 @@
 (s/def ::scalar (s/keys :opt-un [::description]
                         :req-un [::parse
                                  ::serialize]))
-(s/def ::scalars (s/map-of simple-keyword? ::scalar))
-(s/def ::interfaces (s/map-of simple-keyword? ::interface))
-(s/def ::objects (s/map-of simple-keyword? ::object))
-(s/def ::input-objects (s/map-of simple-keyword? ::input-object))
-(s/def ::enums (s/map-of simple-keyword? ::enum))
-(s/def ::unions (s/map-of simple-keyword? ::union))
+(s/def ::scalars (s/map-of ::schema-key ::scalar))
+(s/def ::interfaces (s/map-of ::schema-key ::interface))
+(s/def ::objects (s/map-of ::schema-key ::object))
+(s/def ::input-objects (s/map-of ::schema-key ::input-object))
+(s/def ::enums (s/map-of ::schema-key ::enum))
+(s/def ::unions (s/map-of ::schema-key ::union))
 
 (s/def ::context (s/nilable map?))
 
 ;; These are the argument values passed to a resolver or streamer;
 ;; as opposed to ::args which are argument definitions.
-(s/def ::arguments (s/nilable (s/map-of simple-keyword? any?)))
+(s/def ::arguments (s/nilable (s/map-of ::schema-key any?)))
 
-;; Function of no arguments, return value ignored:
-(s/def ::stream-cleanup (s/fspec :args empty?))
+;; Same issue as with ::resolve.
+(s/def ::stream fn?)
 
-;; Passed a resolved value, or passed nil (to shut down the subscription).
-;; This should be fn?, but that causes problems when spec attempts to create
-;; generators.
-(s/def ::source-stream any?)
-
-(s/def ::stream (s/fspec :args (s/cat :context ::context
-                                      :args ::arguments
-                                      :source-stream ::source-stream)
-                         :ret ::stream-cleanup))
-
-(s/def ::queries (s/map-of simple-keyword? ::operation))
-(s/def ::mutations (s/map-of simple-keyword? ::operation))
+(s/def ::queries (s/map-of ::schema-key ::operation))
+(s/def ::mutations (s/map-of ::schema-key ::operation))
 
 (s/def ::subscription (s/keys :opt-un [::description
                                        ::resolve
@@ -339,7 +349,7 @@
                               :req-un [::type
                                        ::stream]))
 
-(s/def ::subscriptions (s/map-of keyword? ::subscription))
+(s/def ::subscriptions (s/map-of ::schema-key ::subscription))
 
 (s/def ::schema-object
   (s/keys :opt-un [::scalars
@@ -351,6 +361,18 @@
                    ::queries
                    ::mutations
                    ::subscriptions]))
+
+(s/def ::resolver
+  (s/fspec :args (s/cat ::context (s/keys)
+                        ::arguments (s/map-of keyword? any?)
+                        ::value any?)
+           :ret any?))
+
+(s/def ::default-field-resolver
+  (s/fspec :args (s/cat :field keyword?)
+           :ret ::resolver))
+
+(s/def ::compile-options (s/keys :opt-un [::default-field-resolver]))
 
 (defmulti ^:private check-compatible
   "Given two type definitions, dispatches on a vector of the category of the two types.
@@ -718,11 +740,6 @@
   category)."
   [compiled-schema input-map category]
   (reduce-kv (fn [s k v]
-               (when-not (re-matches graphql-identifier (name k))
-                 (throw (ex-info (format "Name %s (in category %s) is not a valid GraphQL identifier."
-                                         (q k) (name category))
-                                 {:type-name k
-                                  :category category})))
                (when (contains? s k)
                  (throw (ex-info (format "Name collision compiling schema. %s %s conflicts with existing %s."
                                          category
@@ -794,11 +811,6 @@
   [enum-def schema]
   (let [values (->> enum-def :values (mapv as-keyword))
         values-set (set values)]
-    (doseq [v values-set]
-      (when-not (re-matches graphql-identifier (name v))
-        (throw (IllegalArgumentException. (format "Value %s for enum %s is not a valid GraphQL identifier."
-                                                  (q v)
-                                                  (-> enum-def :type-name q))))))
     (when-not (= (count values) (count values-set))
       (throw (ex-info (format "Values defined for enum %s must be unique."
                               (-> enum-def :type-name q))
@@ -882,10 +894,6 @@
             :let [field-type-name (extract-type-name (:type field-def))
                   qualified-name (keyword (name object-type-name)
                                           (name field-name))]]
-      (when-not (re-matches graphql-identifier (name field-name))
-        (throw (ex-info (format "Field %s is not a valid GraphQL identifier."
-                                (q qualified-name))
-                        {:field-name qualified-name})))
       (when-not (get schema field-type-name)
         (throw (ex-info (format "Field %s references unknown type %s."
                                 (q qualified-name)
@@ -896,12 +904,6 @@
       (doseq [[arg-name arg-def] (:args field-def)
               :let [arg-type-name (extract-type-name (:type arg-def))
                     arg-type-def (get schema arg-type-name)]]
-        (when-not (re-matches graphql-identifier (name arg-name))
-          (throw (ex-info (format "Argument %s of %s is not a valid GraphQL identifier."
-                                  (q arg-name)
-                                  (q qualified-name))
-                          {:field-name qualified-name
-                           :arg-name arg-name})))
         (when-not arg-type-def
           (throw (ex-info (format "Argument %s of field %s references unknown type %s."
                                   (q arg-name)
@@ -1016,19 +1018,6 @@
         (prepare-and-validate-objects :object options)
         (prepare-and-validate-objects :input-object options))))
 
-(s/def ::resolver
-  (s/fspec :args (s/cat ::context (s/keys)
-                        ::arguments (s/map-of keyword? any?)
-                        ::value any?)
-           :ret any?))
-
-(s/def ::default-field-resolver
-  (s/fspec :args (s/cat :field keyword?)
-           :ret ::resolver))
-
-(s/def ::compile-options (s/keys :opt-un [::default-field-resolver]))
-
-
 (defn default-field-resolver
   "The default for the :default-field-resolver option, this uses the field name as the key into
   the resolved value."
@@ -1080,5 +1069,10 @@
 (s/fdef compile
         :args (s/cat :schema ::schema-object
                      :options (s/? (s/nilable ::compile-options))))
+
+;; Instrumenting compile ensures that a number of important checks occur.
+;; It makes things slower, but that cost is endured once for a production app.
+;; When doing REPL development, it is valuable to have the checks at compile, vs.
+;; difficult to trace exceptions at runtime.
 
 (stest/instrument `compile)

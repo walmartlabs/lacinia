@@ -45,7 +45,7 @@
 
    :objects
    {:dino
-    {:implements [:fred :barney :bam-bam :pebbles]
+    {:implements [:fred :barney :bam_bam :pebbles]
      :fields {}}}})
 
 (def schema-references-unknown-type
@@ -67,9 +67,9 @@
              (let [d (ex-data e)]
                ;; I like to check individual properties one at a time
                ;; since the resulting failure is easier to understand.
-               (is (= (.getMessage e) "Object `dino' extends interface `bam-bam', which does not exist."))
+               (is (= (.getMessage e) "Object `dino' extends interface `pebbles', which does not exist."))
                (is (= :dino (-> d :object :type-name)))
-               (is (= [:fred :barney :bam-bam :pebbles] (-> d :object :implements)))))
+               (is (= [:fred :barney :bam_bam :pebbles] (-> d :object :implements)))))
 
   (is-thrown [e (schema/compile schema-references-unknown-type)]
     (is (= (.getMessage e) "Field `dino/dinosaur' references unknown type `raptor'."))))
@@ -120,41 +120,28 @@
                        "should find problem in parse conformer"))))))
 
 (defmacro is-compile-exception
-  [schema expected-message expected-data]
+  [schema expected-message]
   `(is-thrown [e# (schema/compile ~schema)]
-     (is (= ~expected-message (.getMessage e#)))
-     (is (= ~expected-data (ex-data e#)))))
+     (is (str/includes? (.getMessage e#)
+                        ~expected-message))))
 
 (deftest types-must-be-valid-ids
   (is-compile-exception
     {:objects {:not-valid-id {:fields {:id {:type :String}}}}}
-    "Name `not-valid-id' (in category object) is not a valid GraphQL identifier."
-    {:category :object
-     :type-name :not-valid-id}))
+    ":not-valid-id fails spec: :com.walmartlabs.lacinia.schema/graphql-identifier"))
 
 (deftest field-names-must-be-valid-ids
   (is-compile-exception
-    {:queries {:not-valid-id {:type :String
+    {:queries {:invalid-field-name {:type :String
                               :resolve identity}}}
-    "Field `QueryRoot/not-valid-id' is not a valid GraphQL identifier."
-    {:field-name :QueryRoot/not-valid-id}))
+    ":invalid-field-name fails spec: :com.walmartlabs.lacinia.schema/graphql-identifier"))
 
-(deftest arg-names-must-be-valid-ids
-  (is-compile-exception
-    {:queries {:ok {:type :String
-                    :args {:no-way-jose {:type :String}}
-                    :resolve identity}}}
-    "Argument `no-way-jose' of `QueryRoot/ok' is not a valid GraphQL identifier."
-    {:arg-name :no-way-jose
-     :field-name :QueryRoot/ok}))
-
-(deftest enum-values-must-be-valid-ids
+(deftest enum-values-must-be-valid-idfs
   (is-compile-exception
     {:enums {:episode {:values [:new-hope :empire :return-of-jedi]}}}
-    "Value `new-hope' for enum `episode' is not a valid GraphQL identifier."
-    nil))
+    "[:keyword :new-hope] fails spec: :com.walmartlabs.lacinia.schema/enum-value at: [:args :schema :enums 1 :values] predicate: graphql-identifier?"))
 
-(deftest requires-resolve-on-operation
-  (is-thrown [e (schema/compile {:queries {:hopeless {:type :String}}} nil)]
-    (is (str/includes? (.getMessage e)
-                       "predicate: (contains? % :resolve)"))))
+(deftest requires-resolve-on-operationfv
+  (is-compile-exception
+    {:queries {:hopeless {:type :String}}}
+    "predicate: (contains? % :resolve)"))
