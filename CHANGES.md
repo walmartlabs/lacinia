@@ -17,9 +17,8 @@ changed to only accept a single value.
 Previously, the callback received a resolved value and an nilable error map.
 This method is not intended for use in application code.
 
-The `com.walmartlabs.lacinia.schema/compile` function is now *always* instrumented
-and check enabled. This means that non-conforming schemas will fail with
-a spec verification exception.
+The `com.walmartlabs.lacinia.schema/compile` function is now *always* instrumented.
+This means that non-conforming schemas will fail with a spec verification exception.
 
 ## 0.18.0 -- 19 June 2017
 
