@@ -1,4 +1,4 @@
-## 0.19.0 -- UNRELEASED
+## 0.19.0 -- 11 Jul 2017
 
 Lacinia now includes support for GraphQL subscriptions.
 
@@ -19,6 +19,8 @@ This method is not intended for use in application code.
 
 The `com.walmartlabs.lacinia.schema/compile` function is now *always* instrumented.
 This means that non-conforming schemas will fail with a spec verification exception.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/issues?q=is%3Aclosed+milestone%3A0.19.0)
 
 ## 0.18.0 -- 19 June 2017
 
