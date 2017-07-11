@@ -4,9 +4,7 @@
             [com.walmartlabs.lacinia :as lacinia]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.test-schema :refer [test-schema]]
-            [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace simplify]]))
-
-(instrument-schema-namespace)
+            [com.walmartlabs.test-utils :refer [is-thrown simplify]]))
 
 (def default-schema
   (schema/compile test-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))

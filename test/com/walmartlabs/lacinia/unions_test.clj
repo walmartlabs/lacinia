@@ -5,22 +5,29 @@
     [com.walmartlabs.lacinia.schema :refer [compile tag-with-type]]
     [com.walmartlabs.lacinia :as ql]
     [com.walmartlabs.test-utils :refer [is-thrown]]
-    [com.walmartlabs.test-reporting :refer [report]]
-    [clojure.string :as str]))
+    [com.walmartlabs.test-reporting :refer [report]]))
 
 (def base-schema
-  '{:objects {
-              :business {:fields {:id {:type ID}
-                                  :name {:type String}}}
-              :employee {:fields {:id {:type ID}
-                                  :employer {:type :business}
-                                  :given_name {:type String}
-                                  :family_name {:type String}}}}
-    :unions {
-             :searchable {:members [:business :employee]}}
-    :queries {
-              :businesses {:type (list :business)}
-              :search {:type (list :searchable)}}})
+  {:objects
+   {:business
+    {:fields
+     {:id {:type :ID}
+      :name {:type :String}}}
+    :employee
+    {:fields {:id {:type :ID}
+              :employer {:type :business}
+              :given_name {:type :String}
+              :family_name {:type :String}}}}
+   :unions
+   {:searchable
+    {:members [:business :employee]}}
+   :queries
+   {:businesses
+    {:type '(list :business)
+     :resolve identity}
+    :search
+    {:type '(list :searchable)
+     :resolve identity}}})
 
 (def example-business {:id "1000"
                        :name "General Products"})

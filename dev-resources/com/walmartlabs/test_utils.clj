@@ -1,7 +1,6 @@
 (ns com.walmartlabs.test-utils
   (:require
     [clojure.test :refer [is]]
-    [clojure.spec.test.alpha :as stest]
     [clojure.walk :as walk]
     [clojure.java.io :as io]
     [clojure.edn :as edn]
@@ -42,12 +41,6 @@
   `(let [~sym (is (~'thrown? Throwable ~exp))]
      (when (instance? Throwable ~sym)
        ~@body)))
-
-(defn instrument-schema-namespace
-  []
-  (-> (stest/enumerate-namespace 'com.walmartlabs.lacinia.schema)
-      stest/instrument
-      stest/check))
 
 (defn simplify
   "Converts all ordered maps nested within the map into standard hash maps, and

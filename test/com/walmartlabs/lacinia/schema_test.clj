@@ -4,10 +4,8 @@
     [clojure.test :refer [deftest testing is are try-expr do-report]]
     [clojure.spec.alpha :as s]
     [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.test-utils :refer [is-thrown instrument-schema-namespace]])
-  (:import (clojure.lang ExceptionInfo)))
-
-(instrument-schema-namespace)
+    [com.walmartlabs.test-utils :refer [is-thrown]]
+    [clojure.string :as str]))
 
 (defmacro is-error?
   [form]
@@ -47,7 +45,7 @@
 
    :objects
    {:dino
-    {:implements [:fred :barney :bam-bam :pebbles]
+    {:implements [:fred :barney :bam_bam :pebbles]
      :fields {}}}})
 
 (def schema-references-unknown-type
@@ -69,12 +67,12 @@
              (let [d (ex-data e)]
                ;; I like to check individual properties one at a time
                ;; since the resulting failure is easier to understand.
-               (is (= (.getMessage e) "Object `dino' extends interface `bam-bam', which does not exist."))
+               (is (= (.getMessage e) "Object `dino' extends interface `pebbles', which does not exist."))
                (is (= :dino (-> d :object :type-name)))
-               (is (= [:fred :barney :bam-bam :pebbles] (-> d :object :implements)))))
+               (is (= [:fred :barney :bam_bam :pebbles] (-> d :object :implements)))))
 
   (is-thrown [e (schema/compile schema-references-unknown-type)]
-    (is (= (.getMessage e) "Field `dinosaur' in type `dino' references unknown type `raptor'."))))
+    (is (= (.getMessage e) "Field `dino/dinosaur' references unknown type `raptor'."))))
 
 (deftest custom-scalars
   []
@@ -121,32 +119,29 @@
                           (-> problems first (select-keys [:path :in])))
                        "should find problem in parse conformer"))))))
 
+(defmacro is-compile-exception
+  [schema expected-message]
+  `(is-thrown [e# (schema/compile ~schema)]
+     (is (str/includes? (.getMessage e#)
+                        ~expected-message))))
+
 (deftest types-must-be-valid-ids
-  (when-let [e (is (thrown? ExceptionInfo
-                            (schema/compile {:objects {:not-valid-id {:fields {:id {:type :String}}}}})))]
-    (is (= "Name `not-valid-id' (in category object) is not a valid GraphQL identifier."
-           (.getMessage e)))
-    (is (= {:category :object
-            :type-name :not-valid-id}
-           (ex-data e)))))
+  (is-compile-exception
+    {:objects {:not-valid-id {:fields {:id {:type :String}}}}}
+    ":not-valid-id fails spec: :com.walmartlabs.lacinia.schema/graphql-identifier"))
 
 (deftest field-names-must-be-valid-ids
-  (when-let [e (is (thrown? ExceptionInfo
-                            (schema/compile {:queries {:not-valid-id {:type :String}}})))]
-    (is (= "Field `QueryRoot/not-valid-id' is not a valid GraphQL identifier."
-           (.getMessage e)))
-    (is (= {:field-name :QueryRoot/not-valid-id}
-           (ex-data e)))))
+  (is-compile-exception
+    {:queries {:invalid-field-name {:type :String
+                              :resolve identity}}}
+    ":invalid-field-name fails spec: :com.walmartlabs.lacinia.schema/graphql-identifier"))
 
-(deftest arg-names-must-be-valid-ids
-  (when-let [e (is (thrown? ExceptionInfo
-                            (schema/compile {:queries {:ok {:type :String
-                                                            :args {:no-way-jose {:type :String}}}}})))]
-    (is (= "Argument `no-way-jose' of `QueryRoot/ok' is not a valid GraphQL identifier."
-           (.getMessage e)))))
+(deftest enum-values-must-be-valid-idfs
+  (is-compile-exception
+    {:enums {:episode {:values [:new-hope :empire :return-of-jedi]}}}
+    "[:keyword :new-hope] fails spec: :com.walmartlabs.lacinia.schema/enum-value at: [:args :schema :enums 1 :values] predicate: graphql-identifier?"))
 
-(deftest enum-values-must-be-valid-ids
-  (when-let [e (is (thrown? IllegalArgumentException
-                            (schema/compile {:enums {:episode {:values [:new-hope :empire :return-of-jedi]}}})))]
-    (is (= "Value `new-hope' for enum `episode' is not a valid GraphQL identifier."
-           (.getMessage e)))))
+(deftest requires-resolve-on-operationfv
+  (is-compile-exception
+    {:queries {:hopeless {:type :String}}}
+    "predicate: (contains? % :resolve)"))
