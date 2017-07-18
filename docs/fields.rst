@@ -8,7 +8,7 @@ Queries and mutations are a special kind of field.
 
 **Fields are functions**. Or, more specifically, fields are a kind of operation
 that begins with some data, adds in other details (such as field arguments provided
-in the query), and produces new data that can be incorporated into a response.
+in the query), and produces new data that can be incorporated into the overall result.
 
 Field Definition
 ----------------
@@ -68,7 +68,7 @@ The ``:resolve`` key identifies the field resolver function, used to provide the
 
 This data, the *resolved value*, is never directly returned to the client; this is because
 in GraphQL, the client query identifies which fields from the resolved value are selected
-(and often, renamed) to form the response value.
+(and often, renamed) to form the result value.
 
 ``:resolve`` is optional; when not provided it is assumed that the containing field's
 resolved value is a map containing a key exactly matching the field's name.
@@ -90,7 +90,7 @@ The return value may be a scalar type, or a structured type, as defined by the
 field's ``:type``.
 
 For composite (non-scalar) types, the client query **must** include a nested set of fields
-to be returned in the response.
+to be returned in the result map.
 The query is a tree, and the leaves of that tree will always be simple scalar values.
 
 Arguments

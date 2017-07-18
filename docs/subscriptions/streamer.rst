@@ -56,8 +56,8 @@ Timing
 The source stream callback will return immediately.
 It must return nil.
 
-The provided value will be used to generate a GraphQL response, which will be streamed to the client.
-Typically, the response will be generated asynchronously, on another thread.
+The provided value will be used to generate a GraphQL result map, which will be streamed to the client.
+Typically, the result map will be generated asynchronously, on another thread.
 
 Implementations of the source stream callback may set different guarantees on when or if values in the source stream
 are converted to responses in the response stream.

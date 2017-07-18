@@ -17,11 +17,11 @@ Timing collection is enabled using the key, ``:com.walmartlabs.lacinia/enable-ti
 
 .. sidebar:: Extensions key?
 
-   GraphQL supports a third response key, ``extensions``, as
+   GraphQL supports a third result key, ``extensions``, as
    described in `the spec <https://facebook.github.io/graphql/#sec-Response-Format>`_.
    It exists just for this kind of extra information in the response.
 
-Timings are returned in a tree structure below the ``:extensions`` key of the response.
+Timings are returned in a tree structure below the ``:extensions`` key of the result.
 The tree structure reflects the structure of the *query* (not the schema).
 
 We can see here that the ``human`` query operation's resolver was invoked twice, and the ``friends`` field's

@@ -6,7 +6,7 @@ Queries
    Read about `operations <https://facebook.github.io/graphql/#sec-Executing-Operations>`_.
 
 Queries are responsible for generating the initial resolved values that will be
-picked apart to form the response.
+picked apart to form the result map.
 
 Other than that, queries are just the same as any other field.
 Queries have a type, and accept arguments.

@@ -16,7 +16,7 @@
   "Prepares a query, by applying query variables to it, resulting in a prepared
   query which is then executed.
 
-  Returns a [[ResolverResult]] around the response value (with :data and/or :errors keys)."
+  Returns a [[ResolverResult]] that will deliver the result map.."
   {:added "0.16.0"}
   [parsed-query variables context]
   {:pre [(map? parsed-query)
@@ -44,20 +44,20 @@
   "Prepares a query, by applying query variables to it, resulting in a prepared
   query which is then executed.
 
-  Returns a response value with :data and/or :errors keys."
+  Returns a result map (with :data and/or :errors keys)."
   [parsed-query variables context]
-  (let [response-promise (promise)
-        response-result (execute-parsed-query-async parsed-query variables context)]
-    (resolve/on-deliver! response-result
-                         (fn [response]
-                           (deliver response-promise response)))
+  (let [result-promise (promise)
+        execution-result (execute-parsed-query-async parsed-query variables context)]
+    (resolve/on-deliver! execution-result
+                         (fn [result]
+                           (deliver result-promise result)))
     ;; Block on that deliver, then return the final result.
-    @response-promise))
+    @result-promise))
 
 (defn execute
   "Given a compiled schema and a query string, attempts to execute it.
 
-  Returns a map with up-to two keys:  :data is the main result of the
+  Returns a result map with up-to two keys:  :data is the main result of the
   execution, and :errors are any errors generated during execution.
 
   In the case where there's a parse or validation problem for the query,
@@ -71,7 +71,7 @@
 
   variables
   : compile-time variables that can be referenced inside the query using the
-    `$variable-name` production.
+    `$variable-name` production. A map of keyword keys and values.
 
   context (optional)
   : Additional data that will ultimately be passed to resolver functions.

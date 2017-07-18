@@ -44,7 +44,7 @@ On normal queries, Lacinia will execute as much as it can in parallel.
 This is controlled by how many of your field resolvers return a promise rather than
 a direct result.
 
-Despite the order of execution, Lacinia ensures that the order of keys in the response
+Despite the order of execution, Lacinia ensures that the order of keys in the result map
 matches the order in the query.
 
 .. sidebar:: GraphQL Spec

@@ -398,7 +398,7 @@
 
   Expects the context to contain the schema and parsed query.
 
-  Returns a ResolverResult whose value is the query result, with :data and/or :errors keys.
+  Returns a ResolverResult that will deliver the result map.
 
   This should generally not be invoked by user code; see [[execute-parsed-query]]."
   [context]
@@ -420,15 +420,15 @@
         operation-result (if (= :mutation operation-type)
                            (execute-nested-selections-sync execution-context enabled-selections)
                            (execute-nested-selections execution-context enabled-selections))
-        response-result (resolve/resolve-promise)]
+        result-promise (resolve/resolve-promise)]
     (resolve/on-deliver! operation-result
                          (fn [selected-data]
                            (let [data (propogate-nulls false selected-data)]
-                             (resolve/deliver! response-result
+                             (resolve/deliver! result-promise
                                                (cond-> {:data data}
                                                  timings (assoc-in [:extensions :timing] @timings)
                                                  (seq @errors) (assoc :errors (distinct @errors)))))))
-    response-result))
+    result-promise))
 
 (defn invoke-streamer
   "Given a parsed and prepared query (inside the context, as with [[execute-query]]),
