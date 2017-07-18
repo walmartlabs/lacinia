@@ -1,6 +1,8 @@
 (ns com.walmartlabs.lacinia.validation.no-unused-fragments
+  {:no-doc true}
   (:require
-    [clojure.set :as set]))
+    [clojure.set :as set]
+    [com.walmartlabs.lacinia.internal-utils :refer [q]]))
 
 (defn ^:private fragment-names-used
   "Returns a sequence of all fragment names
@@ -28,14 +30,14 @@
   "Validates if all fragment definitions are spread
   within operations, or spread within other fragments
   spread within operations."
-  [compiled-schema query-map]
-  (let [{:keys [fragments selections]} query-map
+  [prepared-query]
+  (let [{:keys [fragments selections]} prepared-query
         f-locations (into {} (map (fn [[f-name {location :location}]]
                                     {f-name location})
                                   fragments))
         f-definitions (set (keys fragments))
         f-names-used (all-fragments-used fragments selections)]
     (for [unused-f-definition (set/difference f-definitions f-names-used)]
-      {:message (format "Fragment \"%s\" is never used."
-                        (name unused-f-definition))
+      {:message (format "Fragment %s is never used."
+                        (q unused-f-definition))
        :locations [(unused-f-definition f-locations)]})))

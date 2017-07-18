@@ -1,4 +1,7 @@
-(ns com.walmartlabs.lacinia.validation.fragment-names)
+(ns com.walmartlabs.lacinia.validation.fragment-names
+  {:no-doc true}
+  (:require
+    [com.walmartlabs.lacinia.internal-utils :refer [q]]))
 
 (defn ^:private fragment-defined?
   "Returns empty sequence if a fragment spread is defined
@@ -8,8 +11,8 @@
   (if (contains? fragment-defs
                  (:fragment-name fragment-spread))
     []
-    [{:message (format "Unknown fragment \"%s\". Fragment definition is missing."
-                       (name (:fragment-name fragment-spread)))
+    [{:message (format "Unknown fragment %s. Fragment definition is missing."
+                       (-> fragment-spread :fragment-name q))
       :locations [(:location fragment-spread)]}]))
 
 (defn ^:private validate-fragments
@@ -39,9 +42,9 @@
   ```
 
   and all fragments listed in selections."
-  [_ query-map]
-  (let [fragments (:fragments query-map)
-        selections (:selections query-map)]
+  [prepared-query]
+  (let [fragments (:fragments prepared-query)
+        selections (:selections prepared-query)]
     (concat
      ;; Validate nested fragments
      (mapcat (fn [[_ f-definition]]
