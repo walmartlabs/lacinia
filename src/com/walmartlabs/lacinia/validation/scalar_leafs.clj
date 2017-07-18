@@ -11,28 +11,26 @@
   Fragments are not validated again, only their presence is checked.
   Returns empty sequence if all fields are valid, otherwise returns
   a sequence of error maps, e.g.
-  `[{:message \"Field \"friends\" of type \"character\" must have a sub selection.\"
+  `[{:message \"Field `friends' (of type `character')must have at least one selection.\"
      :locations [{:line 1 :column 7}]}]`"
   [selection]
-  (let [subselections (seq (:selections selection))]
-    (cond
+  (cond
+    ;; Fragment spreads do not ever have sub-selections, and are validated
+    ;; elsewhere.
+    (= :fragment-spread (:selection-type selection))
+    []
 
-      ;; Fragment spreads do not ever have sub-selections, and are validated
-      ;; elsewhere.
-      (= :fragment-spread (:selection-type selection))
-      []
+    (:leaf? selection)
+    []
 
-      (:leaf? selection)
-      []
+    (seq (:selections selection))
+    (mapcat validate-selection (:selections selection))
 
-      subselections
-      (mapcat validate-selection subselections)
-
-      :else
-      [{:message (format "Field %s (of type %s) must have at least one selection."
-                         (-> selection :field (q))
-                         (-> selection :field-definition schema/root-type-name q))
-        :locations [(:location selection)]}])))
+    :else
+    [{:message (format "Field %s (of type %s) must have at least one selection."
+                       (-> selection :field (q))
+                       (-> selection :field-definition schema/root-type-name q))
+      :locations [(:location selection)]}]))
 
 (defn ^:private validate-fragment
   "Validates fragment once to avoid validating it separately for

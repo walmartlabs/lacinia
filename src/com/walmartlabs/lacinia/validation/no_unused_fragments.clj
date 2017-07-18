@@ -19,12 +19,9 @@
   throughout the entire query: selections and
   nested fragments."
   [fragments selections]
-  (set (apply concat
-              ;; fragment names in selections
-              (mapcat fragment-names-used selections)
-              ;; fragment names in fragments
-              ;; (nested fragments)
-              (map fragment-names-used (vals fragments)))))
+  (-> #{}
+      (into (mapcat fragment-names-used selections))
+      (into (mapcat fragment-names-used (vals fragments)))))
 
 (defn no-unused-fragments
   "Validates if all fragment definitions are spread
