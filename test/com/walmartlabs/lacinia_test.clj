@@ -635,7 +635,7 @@
 
   (testing "field argument of list type is a single integer"
     (let [q "{ echoArgs (integerArray: 1) {
-                 integerArray
+                  integerArray
                }
              }"]
       (is (= {:data {:echoArgs {:integerArray [1]}}}
@@ -652,19 +652,29 @@
 
   (testing "field argument of a list type of an input object is a single integer"
     (let [q "{ echoArgs (inputObject: { nestedInputObject: { integerArray: 6 }}) {
-                 inputObject {
-                   nestedInputObject {
-                     integerArray
-                   }
-                 }
-               }
+                  inputObject {
+                    nestedInputObject {
+                      integerArray
+                    }
+                  }
+                }
              }"]
       (is (= {:data {:echoArgs {:inputObject {:nestedInputObject {:integerArray [6]}}}}}
              (execute default-schema q {} nil)))))
 
+  (testing ""
+    (let [q "query QueryWithVariable($intArray: [Int]) {
+                echoArgs(integerArray: $intArray) {
+                   integerArray
+                }
+             }"
+          intArray 2]
+      (is (= {:data {:echoArgs {:integerArray [2]}}}
+             (execute default-schema q {:intArray intArray} nil)))))
+
   (testing "field argument of a list type is null"
     (let [q "{ echoArgs (integerArray: null) {
-                 integerArray
+                  integerArray
                }
              }"]
       (is (= {:data {:echoArgs {:integerArray []}}}

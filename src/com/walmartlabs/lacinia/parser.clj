@@ -517,10 +517,17 @@
                      {:variable-name arg-value})
 
     (= :list kind)
-    (if (not (sequential? result))
+    (cond
+      ;; variables of a list type allow for a single value input
+      (and (some? result)
+           (not (sequential? result)))
+      [:array (mapv #(construct-literal-argument schema % nested-type arg-value) [result])]
+
+      (not (sequential? result))
       (throw-exception (format "Variable %s doesn't contain the correct number of (nested) lists."
                                (q arg-value))
                        {:variable-name arg-value})
+      :else
       [:array (mapv #(construct-literal-argument schema % nested-type arg-value) result)])
 
     (nil? result)
