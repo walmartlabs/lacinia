@@ -509,7 +509,6 @@
     :let [nested-type (:type argument-type)
           kind (:kind argument-type)]
 
-
     ;; we can only hit this if we iterate over list members
     (and (nil? result) (= :non-null kind))
     (throw-exception (format "Variable %s contains null members but supplies the value for a list that can't have any null members."
@@ -518,15 +517,17 @@
 
     (= :list kind)
     (cond
+      (and (= :list (:kind nested-type))
+           (not (sequential? (first result))))
+      (throw-exception (format "Variable %s doesn't contain the correct number of (nested) lists."
+                               (q arg-value))
+                       {:variable-name arg-value})
+
       ;; variables of a list type allow for a single value input
       (and (some? result)
            (not (sequential? result)))
       [:array (mapv #(construct-literal-argument schema % nested-type arg-value) [result])]
 
-      (not (sequential? result))
-      (throw-exception (format "Variable %s doesn't contain the correct number of (nested) lists."
-                               (q arg-value))
-                       {:variable-name arg-value})
       :else
       [:array (mapv #(construct-literal-argument schema % nested-type arg-value) result)])
 
