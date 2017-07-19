@@ -6,7 +6,7 @@ Every field inside the query, mutation, or other object will have
 a field resolver: if an explicit one is not provided, Lacinia creates
 a default one.
 
-As you might guess, the processing of queries into responses is quite recursive.
+As you might guess, the processing of queries into result map data is quite recursive.
 The initial query (or mutation) will invoke a top-level field resolver.
 Here, the resolved value passed to the root field resolver will be nil.
 
@@ -32,7 +32,7 @@ The rules of field resolvers:
    It is possible to :doc:`preview nested selections <selections>` in a field resolver, which can enable
    some important optimizations.
 
-Meanwhile, the selected data from the resolved value is added to the response.
+Meanwhile, the selected data from the resolved value is added to the result map.
 
 If the value is a scalar type, it is added as-is.
 

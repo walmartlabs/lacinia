@@ -37,7 +37,7 @@
            (execute default-schema q {} nil)))
     (is (= (json/write-str (lacinia/execute default-schema q {} nil))
            "{\"data\":{\"hero\":{\"id\":\"2001\",\"name\":\"R2-D2\",\"appears_in\":[\"NEWHOPE\",\"EMPIRE\",\"JEDI\"]}}}")))
-  ;; Reordering fields should change response ordering
+  ;; Reordering fields should change ordering in the :data map
   (let [q "{ hero { name appears_in id }}"]
     (is (= (json/write-str (lacinia/execute default-schema q {} nil))
            "{\"data\":{\"hero\":{\"name\":\"R2-D2\",\"appears_in\":[\"NEWHOPE\",\"EMPIRE\",\"JEDI\"],\"id\":\"2001\"}}}")))

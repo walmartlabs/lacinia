@@ -30,8 +30,8 @@ is to be returned based on the runtime type of object:
      ... on photo { imageURL title }
    }}
 
-This breaks down what will be returned in the response data based on the type of the value produced
-by the ``:search`` query.  Sometimes there will be a ``:name`` key in the response, and other times
+This breaks down what will be returned in the result map based on the type of the value produced
+by the ``:search`` query.  Sometimes there will be a ``:name`` key in the result, and other times
 an ``:image-url`` and ``:title`` key.
 This may vary result by result even within a single request:
 

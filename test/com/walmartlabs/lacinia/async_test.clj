@@ -79,7 +79,7 @@
                    :n5 {:name "n5"}}}
            (simplify result)))
     ;; Even though we have proof that the field resolvers ran in a different order,
-    ;; this shows that the results from each FR was added to the response map in
+    ;; this shows that the results from each FR was added to the result map in
     ;; the user-requested order.
     (is (= [:n1 :n2 :n3 :n4 :n5]
            (-> result :data keys)))

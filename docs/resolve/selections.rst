@@ -87,7 +87,7 @@ In execution order, resolution occurs top to bottom, so the ``hero`` selection o
 first, then (potentially :doc:`in parallel <async>`) ``friends``, ``home_planet``, and (hero) ``name``.
 These last two are leaf nodes, because they are scalar values.
 The list of ``characters`` (from the ``friends`` field) then has its ``name`` field selected.
-The response then constructs up bottom to top.
+The result map then constructs from bottom to top.
 
 Previewing Selections
 ---------------------

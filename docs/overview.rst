@@ -75,7 +75,7 @@ With that in place, we can now execute queries.
 
 .. sidebar:: Ordered Map?
 
-   The `#ordered/map` indicates that the fields in the response are returned in the
+   The ``#ordered/map`` indicates that the fields in the result map are returned in the
    `same order` [#order]_ as they are specified in the query document.
 
    In most examples, for conciseness, a standard (unordered) map is shown.
@@ -89,7 +89,7 @@ exactly which fields
 of the matching objects are to be returned.
 This query can be stated as `just provide the name of the human with id '1001'`.
 
-This is a successful query, it returns a map with a ``:data`` key.
+This is a successful query, it returns a result map [#result]_ with a ``:data`` key.
 A failed query would return a map with an ``:errors`` key.
 A query can even be partially successful, returning as much data as it can, but also errors.
 
@@ -101,4 +101,8 @@ Since we requested just a slice of a full human object, just the human's name, t
 .. [#order] This shouldn't be strictly necessary (JSON and EDN don't normally care about key order, and
    keys can appear in arbitrary order),
    but having consistent ordering makes writing tests involving GraphQL queries easier: you can
-   typically check the textual, not parsed, version of the response directly against an expected string value.
+   typically check the textual, not parsed, version of the result map directly against an expected string value.
+
+.. [#result] In GraphQL's specification, this is referred to as the "response"; in practice,
+   this result data forms the body of a response map (when using Ring or Pedestal). Lacinia
+   uses the terms `result map` or `result data` to keep these ideas distinct.

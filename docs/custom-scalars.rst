@@ -44,7 +44,7 @@ Handling Invalid Values
 Especially when parsing an input string into a value, there can be problems, including invalid user input.
 
 When using ``as-conformer``, any exception thrown by the function will be consumed and converted into ``:clojure.spec/invalid-value``.
-Lacinia will generate a default error message, and an error map will be added to the ``:errors`` response key.
+Lacinia will generate a default error message, and an error map will be added to the ``:errors`` key of the result.
 
 If you want more control, you can use the function ``com.walmartlabs.lacinia.schema/coercion-failure``, which allows you
 to provide a customized message and even additional data for the error map.

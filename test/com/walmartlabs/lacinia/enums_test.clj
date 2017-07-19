@@ -27,9 +27,9 @@
          (q "{ hero { name appears_in }}"))))
 
 (deftest can-provide-enum-as-bare-name
-  (let [response (q "{ hero(episode: NEWHOPE) { name }}")
-        hero-name (-> response :data :hero :name)]
-    (report response
+  (let [result (q "{ hero(episode: NEWHOPE) { name }}")
+        hero-name (-> result :data :hero :name)]
+    (report result
       (is (= "Luke Skywalker" hero-name)))))
 
 (deftest handling-of-invalid-enum-value

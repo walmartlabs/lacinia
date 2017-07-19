@@ -84,7 +84,7 @@ These are attached to the schema after it is read from an EDN file, using
 the placeholder keywords in the schema, such as ``:resolve :droid``.
 
 The client uses the GraphQL query language to specify exactly what data
-should be returned in the response::
+should be returned in the result map::
 
 
    {

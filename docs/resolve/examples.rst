@@ -5,7 +5,7 @@ Formatting a Date
 -----------------
 
 This is a common scenario: you have a Date or Timestamp value and it needs to be
-in a specific format in the response.
+in a specific format in the result map.
 
 In this example, the field resolver will extract the key from the
 container's resolved value, and format it:
