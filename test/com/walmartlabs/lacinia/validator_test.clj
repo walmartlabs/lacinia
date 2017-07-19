@@ -274,12 +274,37 @@
                                       string: \"five\",
                                       nestedInputObject: {integerArray: \"hello world\",
                                                           date: \"1983-08-13\"}}) { integer }}"]
-      (is (= {:errors [{:argument :inputObject
-                        :field :echoArgs
-                        :locations [{:column 0
-                                     :line 1}]
-                        :message "Exception applying arguments to field `echoArgs': For argument `inputObject', a single argument value was provided for a list argument."
-                        :query-path []}]}
+      (is (= {:errors
+              [{:message
+                "Exception applying arguments to field `echoArgs': For argument `inputObject', scalar value is not parsable as type `Int'.",
+                :query-path [],
+                :locations [{:line 1, :column 0}],
+                :field :echoArgs,
+                :argument :inputObject,
+                :value "hello world",
+                :type-name :Int}]}
+
+             (execute compiled-schema q {} nil)))))
+
+  (testing "valid deeply nested input-object property of type list but of single value"
+    (let [q "{ echoArgs(integer: 1,
+                        integerArray: [2, 3],
+                        inputObject: {integer: 4,
+                                      string: \"five\",
+                                      nestedInputObject: {integerArray: 6,
+                                                          date: \"1983-08-13\"}}) {
+                integer,
+                inputObject {
+                   integer
+                   nestedInputObject {
+                      integerArray
+                   }
+                }
+              }
+            }"]
+      (is (= {:data {:echoArgs {:integer 1,
+                                :inputObject {:integer 4,
+                                              :nestedInputObject {:integerArray [6]}}}}}
              (execute compiled-schema q {} nil)))))
 
   (testing "invalid array element"
