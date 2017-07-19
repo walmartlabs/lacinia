@@ -252,11 +252,6 @@
                (next args)))
       [(:literal state) (:dynamic state)])))
 
-(defn ^:private assert-not-multiple
-  [argument-definition]
-  (when (contains-modifier? :list argument-definition)
-    (throw-exception "A single argument value was provided for a list argument.")))
-
 (defn ^:private collect-default-values
   [field-map]                                               ; also works with arguments
   (->> field-map
@@ -269,6 +264,16 @@
   [any-def]
   (update any-def :type :type))
 
+(defn ^:private coerce-to-multiple-if-list-type
+  "Coerces single value to a list of size one if the value is not null
+  and type is a list. Otherwise returns unmodified argument tuple."
+  [argument-definition [arg-type arg-value :as arg-tuple]]
+  (if (and (contains-modifier? :list argument-definition)
+           (not (nil? arg-value))
+           (not (sequential? arg-value)))
+    [:array [[arg-type arg-value]]]
+    arg-tuple))
+
 (defmulti ^:private process-literal-argument
   "Validates a literal argument value to ensure it is compatible
   with the declared type of the field argument. Returns the underlying
@@ -278,11 +283,13 @@
   the parsed value."
 
   (fn [schema argument-definition [arg-type _]]
-    arg-type))
+    (if (contains-modifier? :list argument-definition)
+      ;; list types allow a single value on input
+      :array
+      arg-type)))
 
 (defmethod process-literal-argument :scalar
   [schema argument-definition [_ arg-value]]
-  (assert-not-multiple argument-definition)
   (let [type-name (schema/root-type-name argument-definition)
         scalar-type (get schema type-name)]
     (with-exception-context {:value arg-value
@@ -316,7 +323,6 @@
 
 (defmethod process-literal-argument :enum
   [schema argument-definition [_ arg-value]]
-  (assert-not-multiple argument-definition)
   ;; First, make sure the category is an enum
   (let [enum-type-name (schema/root-type-name argument-definition)
         type-def (get schema enum-type-name)]
@@ -333,7 +339,6 @@
 
 (defmethod process-literal-argument :object
   [schema argument-definition [_ arg-value]]
-  (assert-not-multiple argument-definition)
   (let [type-name (schema/root-type-name argument-definition)
         schema-type (get schema type-name)]
     (when-not (= :input-object (:category schema-type))
@@ -368,11 +373,12 @@
       with-defaults)))
 
 (defmethod process-literal-argument :array
-  [schema argument-definition [_ arg-value :as arg-tuple]]
-  (let [kind (-> argument-definition :type :kind)]
+  [schema argument-definition arg-tuple]
+  (let [kind (-> argument-definition :type :kind)
+       [_ arg-value :as arg-tuple*] (coerce-to-multiple-if-list-type argument-definition arg-tuple)]
     (case kind
       :non-null
-      (recur schema (use-nested-type argument-definition) arg-tuple)
+      (recur schema (use-nested-type argument-definition) arg-tuple*)
 
       :root
       (throw-exception "Provided argument value is an array, but the argument is not a list.")
@@ -502,6 +508,7 @@
   (cond-let
     :let [nested-type (:type argument-type)
           kind (:kind argument-type)]
+
 
     ;; we can only hit this if we iterate over list members
     (and (nil? result) (= :non-null kind))
