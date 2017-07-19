@@ -660,9 +660,10 @@
                 }
              }"]
       (is (= {:data {:echoArgs {:inputObject {:nestedInputObject {:integerArray [6]}}}}}
-             (execute default-schema q {} nil)))))
+             (execute default-schema q {} nil))
+          "should accept single value and coerce it to a list of size one")))
 
-  (testing ""
+  (testing "variable of a list type is a single integer"
     (let [q "query QueryWithVariable($intArray: [Int]) {
                 echoArgs(integerArray: $intArray) {
                    integerArray
@@ -670,7 +671,8 @@
              }"
           intArray 2]
       (is (= {:data {:echoArgs {:integerArray [2]}}}
-             (execute default-schema q {:intArray intArray} nil)))))
+             (execute default-schema q {:intArray intArray} nil))
+          "should accept single value and coerce it to a list of size one")))
 
   (testing "field argument of a list type is null"
     (let [q "{ echoArgs (integerArray: null) {
