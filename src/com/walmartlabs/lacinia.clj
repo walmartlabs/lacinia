@@ -23,8 +23,7 @@
          (or (nil? context)
              (map? context))]}
   (cond-let
-    :let [schema (get parsed-query constants/schema-key)
-          [prepared error-result] (try
+    :let [[prepared error-result] (try
                                     [(parser/prepare-with-query-variables parsed-query variables)]
                                     (catch Exception e
                                       [nil (as-errors e)]))]
@@ -32,7 +31,7 @@
     (some? error-result)
     (resolve/resolve-as error-result)
 
-    :let [validation-errors (validator/validate schema prepared {})]
+    :let [validation-errors (validator/validate prepared)]
 
     (seq validation-errors)
     (resolve/resolve-as {:errors validation-errors})

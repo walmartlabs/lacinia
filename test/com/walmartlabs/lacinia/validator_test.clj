@@ -13,11 +13,11 @@
 (deftest scalar-leafs-validations
   (testing "All leafs are scalar types or enums"
     (let [q "{ hero }"]
-      (is (= {:errors [{:message "Field \"hero\" of type \"character\" must have a sub selection.",
+      (is (= {:errors [{:message "Field `hero' (of type `character') must have at least one selection.",
                         :locations [{:line 1, :column 0}]}]}
              (execute compiled-schema q {} nil))))
     (let [q "{ hero { name friends } }"]
-      (is (= {:errors [{:message "Field \"friends\" of type \"character\" must have a sub selection.",
+      (is (= {:errors [{:message "Field `friends' (of type `character') must have at least one selection.",
                         :locations [{:line 1, :column 7}]}]}
              (execute compiled-schema q {} nil))))
     (let [q "query NestedQuery {
@@ -30,7 +30,7 @@
                }
              }
             }"]
-      (is (= {:errors [{:message "Field \"friends\" of type \"character\" must have a sub selection.",
+      (is (= {:errors [{:message "Field `friends' (of type `character') must have at least one selection.",
                         :locations [{:line 4, :column 23}]}]}
              (execute compiled-schema q {} nil))))
     (let [q "query NestedQuery {
@@ -45,8 +45,9 @@
                }
              }
             }"]
-      (is (= {:errors [{:message "Field \"friends\" of type \"character\" must have a sub selection.",
-                        :locations [{:line 7, :column 25}]}]}
+      (is (= {:errors [{:message "Field `friends' (of type `character') must have at least one selection."
+                        :locations [{:line 7
+                                     :column 25}]}]}
              (execute compiled-schema q {} nil))))
     (let [q "query NestedQuery {
              hero {
@@ -60,11 +61,11 @@
                }
              }
             }"]
-      (is (= {:errors [{:message "Field \"forceSide\" of type \"force\" must have a sub selection.",
+      (is (= {:errors [{:message "Field `forceSide' (of type `force') must have at least one selection.",
                         :locations [{:line 2, :column 18}]}
-                       {:message "Field \"friends\" of type \"character\" must have a sub selection.",
+                       {:message "Field `friends' (of type `character') must have at least one selection.",
                         :locations [{:line 5, :column 23}]}
-                       {:message "Field \"forceSide\" of type \"force\" must have a sub selection.",
+                       {:message "Field `forceSide' (of type `force') must have at least one selection.",
                         :locations [{:line 5, :column 23}]}]}
              (execute compiled-schema q {} nil))))
     (let [q "query NestedQuery {
@@ -81,11 +82,11 @@
                }
              }
             }"]
-      (is (= {:errors [{:message "Field \"forceSide\" of type \"force\" must have a sub selection.",
+      (is (= {:errors [{:message "Field `forceSide' (of type `force') must have at least one selection.",
                         :locations [{:line 2, :column 18}]}
-                       {:message "Field \"friends\" of type \"character\" must have a sub selection.",
+                       {:message "Field `friends' (of type `character') must have at least one selection.",
                         :locations [{:line 5, :column 23}]}
-                       {:message "Field \"members\" of type \"character\" must have a sub selection.",
+                       {:message "Field `members' (of type `character') must have at least one selection.",
                         :locations [{:line 9, :column 27}]}]}
              (execute compiled-schema q {} nil))))
     (let [q "query NestedQuery {
@@ -102,9 +103,9 @@
                }
              }
             }"]
-      (is (= {:errors [{:message "Field \"forceSide\" of type \"force\" must have a sub selection."
+      (is (= {:errors [{:message "Field `forceSide' (of type `force') must have at least one selection."
                         :locations [{:line 2, :column 18}]}
-                       {:message "Field \"friends\" of type \"character\" must have a sub selection.",
+                       {:message "Field `friends' (of type `character') must have at least one selection.",
                         :locations [{:line 5, :column 23}]}]}
              (execute compiled-schema q {} nil))))
     (let [q "{ hero { name { id } } }"]
@@ -141,7 +142,7 @@
              name
              homePlanet
            }"]
-    (is (= {:errors [{:message "Unknown fragment \"FooFragment\". Fragment definition is missing."
+    (is (= {:errors [{:message "Unknown fragment `FooFragment'. Fragment definition is missing."
                       :locations [{:line 2 :column 37}]}]}
            (execute compiled-schema q {} nil))))
   (let [q "query UseFragment {
@@ -156,11 +157,11 @@
              name
              homePlanet
            }"]
-    (is (= {:errors [{:message "Unknown fragment \"FooFragment\". Fragment definition is missing."
+    (is (= {:errors [{:message "Unknown fragment `FooFragment'. Fragment definition is missing."
                       :locations [{:line 2 :column 37}]}
-                     {:message "Unknown fragment \"BarFragment\". Fragment definition is missing."
+                     {:message "Unknown fragment `BarFragment'. Fragment definition is missing."
                       :locations [{:line 5 :column 37}]}
-                     {:message "Fragment \"HumanFragment\" is never used.",
+                     {:message "Fragment `HumanFragment' is never used.",
                       :locations [{:line 9, :column 11}]}]}
            (execute compiled-schema q {} nil))))
   (let [q "query withNestedFragments {
@@ -191,7 +192,7 @@
              name
              ...appearsInFragment
            }"]
-    (is (= {:errors [{:message "Unknown fragment \"appearsInFragment\". Fragment definition is missing."
+    (is (= {:errors [{:message "Unknown fragment `appearsInFragment'. Fragment definition is missing."
                       :locations [{:line 8 :column 50}]}]}
            (execute compiled-schema q {} nil)))))
 
@@ -238,7 +239,7 @@
            fragment appearsInFragment on human {
              appears_in
            }"]
-    (is (= {:errors [{:message "Fragment \"appearsInFragment\" is never used.",
+    (is (= {:errors [{:message "Fragment `appearsInFragment' is never used.",
                       :locations [{:line 12, :column 11}]}]}
            (execute compiled-schema q {} nil)))))
 
