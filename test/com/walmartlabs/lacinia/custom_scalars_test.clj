@@ -183,7 +183,7 @@
                               sundays(between: $between)
                             }"
                     {:between ["2017-03-06" "2017-03-07"]}
-                   nil))
+                    nil))
         "should return empty list")
     (is (= {:data {:sundays []}}
            (execute schema "query ($between: [Date!]!) {
