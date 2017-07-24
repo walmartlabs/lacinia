@@ -360,14 +360,13 @@
                       {:words [[["foo"]]]}
                       nil))
           "should return data")
-      (is (= {:errors [{:message "Variable `words' doesn't contain the correct number of (nested) lists.",
-                        :variable-name :words}]}
+      (is (= {:data {:shout [[[] ["FOO"]]]}}
              (execute schema "query ($words: [[[CustomType]!]!]!) {
                               shout(words: $words)
                             }"
-                      {:words [[[] "foo"]]}
+                      {:words [[[] ["foo"]]]}
                       nil))
-          "should return an error"))))
+          "should coerece single value to a list of size one"))))
 
 (deftest use-of-coercion-error
   (let [schema (-> "custom-scalar-serialize-schema.edn"

@@ -630,3 +630,55 @@
                  :default-value "0001"}}}}}]
     (is-thrown [e (schema/compile schema-non-nullable-with-defaults)]
       (is (= (.getMessage e) "Field `id' of type `person' is both non-nullable and has a default value.")))))
+
+(deftest allow-single-value-on-list-type-input
+
+  (testing "field argument of list type is a single integer"
+    (let [q "{ echoArgs (integerArray: 1) {
+                  integerArray
+               }
+             }"]
+      (is (= {:data {:echoArgs {:integerArray [1]}}}
+             (execute default-schema q nil nil))
+          "should accept single value and coerce it to a list of size one")))
+
+  (testing "field argument of a list type is a single enum"
+    (let [q "mutation { addHeroEpisodes(id: \"1004\", episodes: JEDI) { name appears_in } }"]
+      (is (= {:data {:addHeroEpisodes {:appears_in [:NEWHOPE
+                                                    :JEDI]
+                                       :name "Wilhuff Tarkin"}}}
+             (execute default-schema q nil nil))
+          "should accept single value and coerce it to a list of size one")))
+
+  (testing "field argument of a list type of an input object is a single integer"
+    (let [q "{ echoArgs (inputObject: { nestedInputObject: { integerArray: 6 }}) {
+                  inputObject {
+                    nestedInputObject {
+                      integerArray
+                    }
+                  }
+                }
+             }"]
+      (is (= {:data {:echoArgs {:inputObject {:nestedInputObject {:integerArray [6]}}}}}
+             (execute default-schema q {} nil))
+          "should accept single value and coerce it to a list of size one")))
+
+  (testing "variable of a list type is a single integer"
+    (let [q "query QueryWithVariable($intArray: [Int]) {
+                echoArgs(integerArray: $intArray) {
+                   integerArray
+                }
+             }"
+          intArray 2]
+      (is (= {:data {:echoArgs {:integerArray [2]}}}
+             (execute default-schema q {:intArray intArray} nil))
+          "should accept single value and coerce it to a list of size one")))
+
+  (testing "field argument of a list type is null"
+    (let [q "{ echoArgs (integerArray: null) {
+                  integerArray
+               }
+             }"]
+      (is (= {:data {:echoArgs {:integerArray []}}}
+             (execute default-schema q nil nil))
+          "should coerce null to an empty array"))))
