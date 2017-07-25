@@ -1,5 +1,12 @@
 (ns com.walmartlabs.lacinia.resolve
-  "Complex results for field resolver functions.")
+  "Complex results for field resolver functions."
+  (:import (java.util.concurrent Executor)))
+
+(def ^{:dynamic true
+       :added "0.20.0"} *callback-executor*
+  "If non-nil, then specifies a java.util.concurrent.Executor (typically, a thread pool of some form) used to invoke callbacks
+  when ResolveResultPromises are delivered."
+  nil)
 
 (defprotocol ^:no-doc ResolveCommand
   "Used to define special wrappers around resolved values, such as [[with-error]].
@@ -46,6 +53,7 @@
     The callback is passed the ResolverResult's value.
 
     `on-deliver!` should only be invoked once.
+    It invokes the callback in the current thread.
     It returns `this`.
 
     On a simple ResolverResult (not a ResolverResultPromise), the callback is invoked
@@ -60,6 +68,9 @@
     [this value]
     [this value errors]
     "Invoked to realize the ResolverResult, triggering the callback to receive the value and errors.
+
+    The callback is invoked in the current thread, unless [[*thread-pool*]] is non-nil, in which case
+    the callback is invoked in a pooled thread.
 
     The two arguments version is simply a convienience around [[with-error]].
 
@@ -119,7 +130,10 @@
         (deliver *result resolved-value)
 
         (when (realized? *callback)
-          (@*callback resolved-value))
+          (let [callback @*callback]
+            (if-some [^Executor executor *callback-executor*]
+              (.execute executor (bound-fn [] (callback resolved-value)))
+              (callback resolved-value))))
 
         this)
 

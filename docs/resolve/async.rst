@@ -79,3 +79,20 @@ In the example above, any thrown exception is converted to an
 
    Not catching exceptions will lead to promises that are never delivered and that
    will cause Lacinia to block indefinitely.
+
+Thread Pools
+------------
+
+By default, calls to ``deliver!`` invoke the callback (provided to ``on-deliver!``) in
+the same thread.
+This is not always desirable; for example, when using Clojure core.async, this can result
+in considerable processing occuring within a thread from the dispatch thread pool
+(the one used for ``go`` blocks).
+There are typically only eight threads in that pool, so a callback that does a lot of
+processing (or blocks due to I/O operations) can result in a damaging impact on overall server throughput.
+
+To address this, an optional executor can be provided, via the dynamic
+``com.walmartlabs.lacinia.resolve/*callback-executor*`` var.
+When a ResolverResultPromise is delivered, the executor (if non-nil) will be used
+to execute the callback; Java thread pools implement this interface.
+

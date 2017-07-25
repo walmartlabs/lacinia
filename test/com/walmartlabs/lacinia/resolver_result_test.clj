@@ -1,7 +1,8 @@
 (ns com.walmartlabs.lacinia.resolver-result-test
   (:require
     [clojure.test :refer [deftest is]]
-    [com.walmartlabs.lacinia.resolve :as r]))
+    [com.walmartlabs.lacinia.resolve :as r])
+  (:import (java.util.concurrent Executor)))
 
 (deftest resolve-as-returns-resolver-result
   (is (satisfies? r/ResolverResult (r/resolve-as nil))))
@@ -51,4 +52,21 @@
     (is (thrown? IllegalStateException
                  (r/on-deliver! p callback2)))))
 
+(deftest will-invoke-callback-using-provided-executor
+  (let [*callback-values (atom [])
+        *execute-count (atom 0)
+        resolved-value (gensym)
+        callback (fn [value]
+                   (swap! *callback-values conj value))
+        executor (reify Executor
+                   (execute [_ runnable]
+                     (swap! *execute-count inc)
+                     (.run runnable)))
+        resolve-result (r/resolve-promise)]
+    (r/on-deliver! resolve-result callback)
 
+    (binding [r/*callback-executor* executor]
+      (r/deliver! resolve-result resolved-value))
+
+    (is (= 1 @*execute-count))
+    (is (= [resolved-value] @*callback-values))))
