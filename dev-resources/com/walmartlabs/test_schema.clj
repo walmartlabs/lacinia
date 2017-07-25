@@ -128,6 +128,15 @@
                    "2001"                                   ; r2d2
                    )))
 
+(defn get-villain
+  "Retrieves the biggest villain of the episode."
+  [episode]
+  (get-character (condp = episode
+                   :NEWHOPE "1004" ;; Tarkin
+                   :EMPIRE "1001" ;; Vader
+                   :JEDI "1001"
+                   nil)))
+
 ;; —————————————————————————————————————————————————————————————————————————————
 ;; ## Schema
 
@@ -233,6 +242,43 @@
                             :resolve (fn [_ _ _]
                                        "<Single Value>")}}}
 
+    :villain
+    {:implements [:character]
+     :fields {:id {:type 'String}
+              :name {:type 'String}
+              :appears_in {:type '(list :episode)}
+              :friends {:type '(list :character)
+                        :resolve (fn [ctx args v]
+                                   (let [{:keys [friends]} v]
+                                     (get-friends friends)))}
+              :enemies {:type '(list (non-null :character))
+                        :resolve (fn [ctx args v]
+                                   (let [{:keys [enemies]} v]
+                                     (get-enemies enemies)))}
+              :family {:type '(non-null (list :character))
+                       :resolve (fn [ctx args v]
+                                  (let [{:keys [friends]} v]
+                                    (get-friends friends)))}
+              :droids {:type '(non-null (list (non-null :character)))
+                       :resolve (fn [ctx args v]
+                                  [])}
+              :forceSide {:type :force
+                          :resolve (fn [ctx args v]
+                                     (let [{:keys [force-side]} v]
+                                       (get-force-data force-side)))}
+              :foo {:type '(non-null String)}
+              :bar {:type :character}
+              :best_friend {:type :character
+                            :resolve (fn [ctx args v]
+                                       (let [{:keys [friends]} v]
+                                         (first (get-friends friends))))}
+
+              :arch_enemy {:type '(non-null :character)
+                           :resolve (fn [ctx args v]
+                                      nil)}
+              :primary_function {:type '(list String)}
+              :homePlanet {:type 'String}}}
+
     :human
     {:implements [:character]
      :fields {:id {:type 'String}
@@ -302,8 +348,8 @@
    {:hero {:type '(non-null :character)
            :args {:episode {:type :episode}}
            :resolve (fn [ctx args v]
-                      (let [{:keys [episode]} args]
-                        (get-hero episode)))}
+                      (when (contains? args :episode)
+                        (get-hero (:episode args))))}
     :echoArgs {:type :echoArgs
                :args {:integer {:type 'Int}
                       :integerArray {:type '(list Int)}
@@ -323,4 +369,8 @@
             :args {:id {:type 'String
                         :default-value "2001"}}
             :resolve (fn [ctx args v]
-                       (get droids-data (:id args)))}}})
+                       (get droids-data (:id args)))}
+    :villain {:type :villain
+              :args {:episode {:type :episode}}
+              :resolve (fn [ctx args v]
+                         (get-villain (:episode args)))}}})
