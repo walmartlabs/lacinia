@@ -629,7 +629,13 @@
         ;; This is kind of a juxt buried in a map. Each value is a function that accepts
         ;; the variables and returns the actual value to use.
         (fn [variables]
-          (map-vals #(% variables) dynamic-args))))))
+          (->> (map-vals #(% variables) dynamic-args)
+               (filter (fn [[variable value]]
+                         (let [[_ user-defined-var-name] (get arguments variable)]
+                           ;; keep arguments that have a matching variable provided
+                           (or (contains? variables user-defined-var-name)
+                               ;; or have a default-value specified
+                               (some? value)))))))))))
 
 (defn ^:private disj*
   [set ks]
