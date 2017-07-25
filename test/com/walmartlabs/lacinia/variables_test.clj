@@ -1,6 +1,6 @@
 (ns com.walmartlabs.lacinia.variables-test
   (:require
-    [clojure.test :refer [deftest is are]]
+    [clojure.test :refer [deftest is are testing]]
     [com.walmartlabs.test-schema :refer [test-schema]]
     [com.walmartlabs.test-utils :refer [compile-schema execute]]
     [com.walmartlabs.lacinia :refer [execute-parsed-query]]
@@ -37,11 +37,16 @@
      }
    }")]
     (is (= {:data {:droid {:name "R2-D2"}}}
-           (execute-parsed-query q nil nil)))
+           (execute-parsed-query q nil nil))
+        "should skip best_friend when variable defaults to true")
     (is (= {:data {:droid {:name "C-3PO"
                            :best_friend {:name "Luke Skywalker"}}}}
            (execute-parsed-query q {:terse false
-                                             :id "2000"} nil)))))
+                                    :id "2000"} nil))
+        "should not skip best_friend when variable is set to false")
+    (is (= {:data {:droid {:name "R2-D2"}}}
+           (execute-parsed-query q {:terse true} nil))
+        "should skip best_friend when variable is set to true")))
 
 (def ^:private vars-schema
   (compile-schema "variables-schema.edn"
@@ -118,3 +123,41 @@
     0 false
     1 true
     -1 true))
+
+(deftest variables-with-missing-value
+  (testing "query with non-nullable root"
+    (let [q (parser/parse-query compiled-schema
+                                "query ($episode : episode) {
+                                    hero (episode : $episode) {
+                                       name
+                                    }
+                               }")]
+      (is (= {:data nil
+              :errors '({:message "Non-nullable field was null.",
+                         :locations [{:line 1, :column 27}],
+                         :query-path [:hero],
+                         :arguments {:episode $episode}})}
+             (execute-parsed-query q nil nil))
+          "argument :episode shouldn't be present in the arguments causing resolver to return null")
+      (is (= {:data {:hero {:name "R2-D2"}}}
+             (execute-parsed-query q {:episode nil} nil))
+          "argument :episode should be present in the arguments")
+      (is (= {:data {:hero {:name "Luke Skywalker"}}}
+             (execute-parsed-query q {:episode "NEWHOPE"} nil)))))
+
+  (testing "query with nullable root"
+    (let [q (parser/parse-query compiled-schema
+                                "query ($episode : episode) {
+                                    villain (episode : $episode) {
+                                       name
+                                    }
+                               }")]
+      (is (= {:data {:villain nil}}
+             (execute-parsed-query q nil nil))
+          "should return no data when variable is missing")
+      (is (= {:data {:villain nil}}
+             (execute-parsed-query q {:episode nil} nil))
+          "should return no data when variable is null")
+      (is (= {:data {:villain {:name "Wilhuff Tarkin"}}}
+             (execute-parsed-query q {:episode "NEWHOPE"} nil))
+          "should return a villain"))))

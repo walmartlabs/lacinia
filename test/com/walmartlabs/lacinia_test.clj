@@ -23,14 +23,14 @@
 
 (deftest simple-query
   ;; Standard query with explicit `query'
-  (let [q "query heroNameQuery { hero { id name } }"]
+  (let [q "query heroNameQuery { hero(episode: JEDI) { id name } }"]
     (is (= {:data {:hero {:id "2001" :name "R2-D2"}}}
            (execute default-schema q {} nil))))
-  (let [q "query { hero { id name } }"]
+  (let [q "query { hero(episode: JEDI) { id name } }"]
     (is (= {:data {:hero {:id "2001" :name "R2-D2"}}}
            (execute default-schema q {} nil))))
   ;; We can omit the `query' piece if it's the only selection
-  (let [q "{ hero { id name appears_in } }"]
+  (let [q "{ hero(episode: JEDI) { id name appears_in } }"]
     (is (= {:data {:hero {:id "2001"
                           :name "R2-D2"
                           :appears_in [:NEWHOPE :EMPIRE :JEDI]}}}
@@ -38,10 +38,10 @@
     (is (= (json/write-str (lacinia/execute default-schema q {} nil))
            "{\"data\":{\"hero\":{\"id\":\"2001\",\"name\":\"R2-D2\",\"appears_in\":[\"NEWHOPE\",\"EMPIRE\",\"JEDI\"]}}}")))
   ;; Reordering fields should change ordering in the :data map
-  (let [q "{ hero { name appears_in id }}"]
+  (let [q "{ hero(episode: JEDI) { name appears_in id }}"]
     (is (= (json/write-str (lacinia/execute default-schema q {} nil))
            "{\"data\":{\"hero\":{\"name\":\"R2-D2\",\"appears_in\":[\"NEWHOPE\",\"EMPIRE\",\"JEDI\"],\"id\":\"2001\"}}}")))
-  (let [q "{ hero { appears_in name id }}"]
+  (let [q "{ hero(episode: JEDI) { appears_in name id }}"]
     (is (= (json/write-str (lacinia/execute default-schema q {} nil))
            "{\"data\":{\"hero\":{\"appears_in\":[\"NEWHOPE\",\"EMPIRE\",\"JEDI\"],\"name\":\"R2-D2\",\"id\":\"2001\"}}}"))))
 
@@ -56,11 +56,11 @@
 
 (deftest operation-name
   ;; Standard query with operation name
-  (let [q "query heroNameQuery { hero { id name } } query dummyQuery { hero { id } }"]
+  (let [q "query heroNameQuery { hero(episode: JEDI) { id name } } query dummyQuery { hero { id } }"]
     (is (= {:data {:hero {:id "2001" :name "R2-D2"}}}
            (execute default-schema q {} nil {:operation-name "heroNameQuery"}))))
 
-  (let [q "query heroNameQuery { hero { id name } } query dummyQuery { hero { id } }"]
+  (let [q "query heroNameQuery { hero(episode: JEDI) { id name } } query dummyQuery { hero { id } }"]
     (is (= {:errors [{:message "Multiple operations requested but operation-name not found.",
                       :op-count 2,
                       :operation-name "notAQuery"}]}
@@ -82,12 +82,20 @@
     (testing "null literal"
       (let [q "mutation { changeHeroHomePlanet (id: \"1003\", newHomePlanet: null) { name homePlanet } }"]
         (is (= {:data {:changeHeroHomePlanet {:name "Leia Organa" :homePlanet nil}}}
-               (execute default-schema q {} nil)))))
+               (execute default-schema q {} nil))
+            "should delete value of homePlanet")))
     (reset-value)
     (testing "null variable"
       (let [q "mutation ($id : String!, $newHomePlanet : String) { changeHeroHomePlanet (id: $id, newHomePlanet: $newHomePlanet) { name homePlanet } }"]
         (is (= {:data {:changeHeroHomePlanet {:name "Leia Organa" :homePlanet nil}}}
-               (execute default-schema q {:id "1003" :newHomePlanet nil} nil)))))
+               (execute default-schema q {:id "1003" :newHomePlanet nil} nil))
+            "should delete value of homePlanet")))
+    (reset-value)
+    (testing "missing variable"
+      (let [q "mutation ($id : String!, $newHomePlanet : String) { changeHeroHomePlanet (id: $id, newHomePlanet: $newHomePlanet) { name homePlanet } }"]
+        (is (= {:data {:changeHeroHomePlanet {:name "Leia Organa" :homePlanet "Alderaan"}}}
+               (execute default-schema q {:id "1003"} nil))
+            "shouldn't delete value of homePlanet")))
     (reset-value)
     (testing "missing argument (as opposed to null argument value)"
       (let [q "mutation ($id: String!) { changeHeroHomePlanet (id: $id) { name homePlanet } }"]
@@ -109,7 +117,7 @@
 
 (deftest nested-query
   (let [q "query HeroNameAndFriendsQuery {
-               hero {
+               hero(episode: JEDI) {
                  id
                  name
                  friends {
@@ -124,7 +132,7 @@
                                     {:name "Leia Organa"}]}}}
            (execute default-schema q {} nil))))
   (let [q "query HeroNameAndFriendsQuery {
-               hero {
+               hero(episode: JEDI) {
                  id
                  name
                  friends {
@@ -142,7 +150,7 @@
 
 (deftest recursive-query
   (let [q "query NestedQuery {
-             hero {
+             hero (episode: JEDI){
                name
                friends {
                  name
@@ -171,7 +179,7 @@
                                                {:name "Han Solo"}
                                                {:name "C-3PO"}
                                                {:name "R2-D2"}]}]}}}
-           (execute default-schema q {} nil)))))
+           (execute default-schema q nil nil)))))
 
 (deftest arguments-query
   (let [q "query FetchLukeQuery {
@@ -476,52 +484,52 @@
                                    :column 20}]}]}
            executed)))
   (testing "field declared as non-nullable resolved to null"
-    (let [q "{ hero { foo }}"
+    (let [q "{ hero(episode: JEDI) { foo }}"
           executed (execute default-schema q nil nil)]
       (is (= {:data nil
               :errors [{:message "Non-nullable field was null."
                         :query-path [:hero :foo]
                         :locations [{:line 1
-                                     :column 7}]}]}
+                                     :column 22}]}]}
              executed)
           "should null the top level when non-nullable field returns null")))
   (testing "field declared as non-nullable resolved to null"
-    (let [q "{ hero { arch_enemy { foo } }}"
+    (let [q "{ hero(episode: JEDI) { arch_enemy { foo } }}"
           executed (execute default-schema q nil nil)]
       (is (= {:data nil
               :errors [{:message "Non-nullable field was null."
                         :query-path [:hero :arch_enemy]
                         :locations [{:line 1
-                                     :column 7}]}]}
+                                     :column 22}]}]}
              executed)
           "nulls the first nullable object after a field returns null in a chain of fields that are non-null")))
   (testing "nullable list of nullable objects (friends) with non-nullable selections"
-    (let [q "{ hero { friends { arch_enemy { foo } } }}"
+    (let [q "{ hero(episode: JEDI) { friends { arch_enemy { foo } } }}"
           executed (execute default-schema q nil nil)]
       (is (= {:data {:hero {:friends [nil nil nil]}}
               :errors [{:message "Non-nullable field was null."
                         :locations [{:line 1
-                                     :column 17}]
+                                     :column 32}]
                         :query-path [:hero :friends :arch_enemy]}]}
              executed)
           "nulls the first nullable object after a non-nullable field returns null")))
   (testing "nullable list of nullable objects (friends) with nullable selections containing non-nullable field"
-    (let [q "{ hero { friends { best_friend { foo } } }}"
+    (let [q "{ hero(episode: JEDI) { friends { best_friend { foo } } }}"
           executed (execute default-schema q nil nil)]
       (is (= {:data {:hero {:friends [{:best_friend nil} {:best_friend nil} {:best_friend nil}]}}
               :errors [{:message "Non-nullable field was null."
                         :locations [{:line 1
-                                     :column 31}]
+                                     :column 46}]
                         :query-path [:hero :friends :best_friend :foo]}]}
              executed)
           "nulls the first nullable object after a non-nullable field returns null")))
   (testing "non-nullable list of nullable objects (family) with non-nullable selections"
-    (let [q "{ hero { family { arch_enemy { foo } } } }"
+    (let [q "{ hero(episode: JEDI) { family { arch_enemy { foo } } } }"
           executed (execute default-schema q nil nil)]
       (is (= {:data {:hero {:family [nil nil nil]}}
               :errors [{:message "Non-nullable field was null."
                         :locations [{:line 1
-                                     :column 16}],
+                                     :column 31}],
                         :query-path [:hero :family :arch_enemy]}]}
              executed)
           "nulls the first nullable object after a non-nullable field returns null")))
