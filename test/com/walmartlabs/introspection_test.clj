@@ -336,8 +336,7 @@
                                       {:name "galaxy_date"}
                                       {:name "human"}
                                       {:name "nestedInputObject"}
-                                      {:name "testInputObject"}
-                                      {:name "villain"}]}}}
+                                      {:name "testInputObject"}]}}}
            (execute q))))
   (let [q "{ __schema
              { types { name kind description }
@@ -349,8 +348,7 @@
                                                    {:name "echoArgs"}
                                                    {:name "hero"}
                                                    {:name "human"}
-                                                   {:name "now"}
-                                                   {:name "villain"}]
+                                                   {:name "now"}]
                                           :kind :OBJECT
                                           :name "QueryRoot"}
                               :types [{:description nil
@@ -403,10 +401,7 @@
                                        :name "nestedInputObject"}
                                       {:description nil
                                        :kind :INPUT_OBJECT
-                                       :name "testInputObject"}
-                                      {:name "villain"
-                                       :kind :OBJECT
-                                       :description nil}]}}}
+                                       :name "testInputObject"}]}}}
            (execute q)))))
 
 (deftest graphiql-introspection-query
@@ -684,20 +679,7 @@
                                :name "now"
                                :type {:kind :OBJECT
                                       :name "galaxy_date"
-                                      :ofType nil}}
-                              {:name "villain"
-                               :description nil
-                               :args [{:name "episode"
-                                       :description nil
-                                       :type {:kind :ENUM
-                                              :name "episode"
-                                              :ofType nil}
-                                       :defaultValue nil}]
-                               :type {:kind :OBJECT
-                                      :name "villain"
-                                      :ofType nil}
-                               :isDeprecated false
-                               :deprecationReason nil}]
+                                      :ofType nil}}]
                      :inputFields []
                      :interfaces []
                      :kind :OBJECT
@@ -839,9 +821,6 @@
                                       :ofType nil}
                                      {:kind :OBJECT
                                       :name "human"
-                                      :ofType nil}
-                                     {:kind :OBJECT
-                                      :name "villain"
                                       :ofType nil}]}
                     {:description nil
                      :enumValues []
@@ -1292,150 +1271,6 @@
                      :interfaces []
                      :kind :INPUT_OBJECT
                      :name "testInputObject"
-                     :possibleTypes []}
-                    {:kind :OBJECT
-                     :name "villain"
-                     :description nil
-                     :fields [{:name "appears_in"
-                               :description nil
-                               :args []
-                               :type {:kind :LIST
-                                      :name nil
-                                      :ofType {:kind :ENUM
-                                               :name "episode"
-                                               :ofType nil}}
-                               :isDeprecated false
-                               :deprecationReason nil}
-                              {:name "arch_enemy"
-                               :description nil
-                               :args []
-                               :type {:kind :NON_NULL
-                                      :name nil,
-                                      :ofType {:kind :INTERFACE
-                                               :name "character"
-                                               :ofType nil}}
-                               :isDeprecated false
-                               :deprecationReason nil}
-                              {:name "bar"
-                               :description nil
-                               :args []
-                               :type {:kind :INTERFACE
-                                      :name "character"
-                                      :ofType nil}
-                               :isDeprecated false
-                               :deprecationReason nil}
-                              {:name "best_friend"
-                               :description nil
-                               :args []
-                               :type {:kind :INTERFACE
-                                      :name "character"
-                                      :ofType nil}
-                               :isDeprecated false
-                               :deprecationReason nil}
-                              {:name "droids"
-                               :description nil
-                               :args []
-                               :type {:kind :NON_NULL
-                                      :name nil
-                                      :ofType {:kind :LIST
-                                               :name nil
-                                               :ofType {:kind :NON_NULL
-                                                        :name nil
-                                                        :ofType {:kind :INTERFACE
-                                                                 :name "character"}}}}
-                               :isDeprecated false
-                               :deprecationReason nil}
-                              {:name "enemies"
-                               :description nil
-                               :args []
-                               :type {:kind :LIST
-                                      :name nil
-                                      :ofType {:kind :NON_NULL
-                                               :name nil
-                                               :ofType {:kind :INTERFACE
-                                                        :name "character"
-                                                        :ofType nil}}}
-                               :isDeprecated false,
-                               :deprecationReason nil}
-                              {:name "family"
-                               :description nil
-                               :args []
-                               :type {:kind :NON_NULL
-                                      :name nil
-                                      :ofType {:kind :LIST
-                                               :name nil
-                                               :ofType {:kind :INTERFACE
-                                                        :name "character"
-                                                        :ofType nil}}}
-                               :isDeprecated false
-                               :deprecationReason nil}
-                              {:name "foo"
-                               :description nil
-                               :args []
-                               :type {:kind :NON_NULL
-                                      :name nil
-                                      :ofType {:kind :SCALAR
-                                               :name "String"
-                                               :ofType nil}}
-                               :isDeprecated false
-                               :deprecationReason nil}
-                              {:name "forceSide"
-                               :description nil
-                               :args [],
-                               :type {:kind :OBJECT
-                                      :name "force"
-                                      :ofType nil}
-                               :isDeprecated false
-                               :deprecationReason nil}
-                              {:name "friends"
-                               :description nil
-                               :args []
-                               :type {:kind :LIST
-                                      :name nil
-                                      :ofType {:kind :INTERFACE
-                                               :name "character"
-                                               :ofType nil}}
-                               :isDeprecated false
-                               :deprecationReason nil}
-                              {:name "homePlanet"
-                               :description nil
-                               :args []
-                               :type {:kind :SCALAR
-                                      :name "String"
-                                      :ofType nil}
-                               :isDeprecated false
-                               :deprecationReason nil}
-                              {:name "id"
-                               :description nil
-                               :args []
-                               :type {:kind :SCALAR
-                                      :name "String"
-                                      :ofType nil}
-                               :isDeprecated false
-                               :deprecationReason nil}
-                              {:name "name"
-                               :description nil
-                               :args []
-                               :type {:kind :SCALAR
-                                      :name "String"
-                                      :ofType nil}
-                               :isDeprecated false
-                               :deprecationReason nil}
-                              {:name "primary_function"
-                               :description nil
-                               :args []
-                               :type {:kind :LIST
-                                      :name nil
-                                      :ofType {:kind :SCALAR
-                                               :name "String"
-                                               :ofType nil}}
-                               :isDeprecated false
-                               :deprecationReason nil}]
-                     :inputFields []
-                     :interfaces [{:kind :INTERFACE
-                                   :name "character"
-                                   :ofType nil}]
-                     :enumValues []
                      :possibleTypes []}]}
            (-> (execute q) :data :__schema)))))
 
