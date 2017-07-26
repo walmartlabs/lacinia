@@ -171,7 +171,7 @@
                                                {:name "Han Solo"}
                                                {:name "C-3PO"}
                                                {:name "R2-D2"}]}]}}}
-           (execute default-schema q nil nil)))))
+           (execute default-schema q {} nil)))))
 
 (deftest arguments-query
   (let [q "query FetchLukeQuery {
