@@ -302,8 +302,8 @@
    {:hero {:type '(non-null :character)
            :args {:episode {:type :episode}}
            :resolve (fn [ctx args v]
-                      (when (contains? args :episode)
-                        (get-hero (:episode args))))}
+                      (let [{:keys [episode]} args]
+                        (get-hero episode)))}
     :echoArgs {:type :echoArgs
                :args {:integer {:type 'Int}
                       :integerArray {:type '(list Int)}

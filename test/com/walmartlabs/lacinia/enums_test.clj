@@ -24,7 +24,7 @@
                                      :EMPIRE
                                      :JEDI]
                         :name "R2-D2"}}}
-         (q "{ hero(episode: JEDI) { name appears_in }}"))))
+         (q "{ hero { name appears_in }}"))))
 
 (deftest can-provide-enum-as-bare-name
   (let [result (q "{ hero(episode: NEWHOPE) { name }}")
