@@ -146,7 +146,26 @@
              (execute-parsed-query q {:episode "NEWHOPE"} nil)))))
 
   (testing "query with nullable root"
-    (let [q (parser/parse-query compiled-schema
+    (let [get-villain (fn [episode]
+                        (com.walmartlabs.test-schema/get-character
+                         (condp = episode
+                           :NEWHOPE "1004" ;; Tarkin
+                           :EMPIRE "1001" ;; Vader
+                           :JEDI "1001"
+                           nil)))
+          schema {:enums {:episode {:description "The episodes of the original Star Wars trilogy."
+                                    :values [:NEWHOPE :EMPIRE :JEDI]}}
+                  :interfaces {:character {:fields {:id {:type 'String}
+                                                    :name {:type 'String}}}}
+                  :objects {:villain {:implements [:character]
+                                      :fields {:id {:type 'String}
+                                               :name {:type 'String}}}}
+                  :queries {:villain {:type :villain
+                                      :args {:episode {:type :episode}}
+                                      :resolve (fn [ctx args v]
+                                                 (get-villain (:episode args)))}}}
+          compiled-schema (schema/compile schema)
+          q (parser/parse-query compiled-schema
                                 "query ($episode : episode) {
                                     villain (episode : $episode) {
                                        name
