@@ -82,20 +82,12 @@
     (testing "null literal"
       (let [q "mutation { changeHeroHomePlanet (id: \"1003\", newHomePlanet: null) { name homePlanet } }"]
         (is (= {:data {:changeHeroHomePlanet {:name "Leia Organa" :homePlanet nil}}}
-               (execute default-schema q {} nil))
-            "should delete value of homePlanet")))
+               (execute default-schema q {} nil)))))
     (reset-value)
     (testing "null variable"
       (let [q "mutation ($id : String!, $newHomePlanet : String) { changeHeroHomePlanet (id: $id, newHomePlanet: $newHomePlanet) { name homePlanet } }"]
         (is (= {:data {:changeHeroHomePlanet {:name "Leia Organa" :homePlanet nil}}}
-               (execute default-schema q {:id "1003" :newHomePlanet nil} nil))
-            "should delete value of homePlanet")))
-    (reset-value)
-    (testing "missing variable"
-      (let [q "mutation ($id : String!, $newHomePlanet : String) { changeHeroHomePlanet (id: $id, newHomePlanet: $newHomePlanet) { name homePlanet } }"]
-        (is (= {:data {:changeHeroHomePlanet {:name "Leia Organa" :homePlanet "Alderaan"}}}
-               (execute default-schema q {:id "1003"} nil))
-            "shouldn't delete value of homePlanet")))
+               (execute default-schema q {:id "1003" :newHomePlanet nil} nil)))))
     (reset-value)
     (testing "missing argument (as opposed to null argument value)"
       (let [q "mutation ($id: String!) { changeHeroHomePlanet (id: $id) { name homePlanet } }"]
