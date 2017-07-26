@@ -124,59 +124,109 @@
     1 true
     -1 true))
 
-(deftest variables-with-missing-value
-  (testing "query with non-nullable root"
-    (let [q (parser/parse-query compiled-schema
-                                "query ($episode : episode) {
-                                    hero (episode : $episode) {
-                                       name
-                                    }
-                               }")]
-      (is (= {:data nil
-              :errors '({:message "Non-nullable field was null.",
-                         :locations [{:line 1, :column 27}],
-                         :query-path [:hero],
-                         :arguments {:episode $episode}})}
-             (execute-parsed-query q nil nil))
-          "argument :episode shouldn't be present in the arguments causing resolver to return null")
-      (is (= {:data {:hero {:name "R2-D2"}}}
-             (execute-parsed-query q {:episode nil} nil))
-          "argument :episode should be present in the arguments")
-      (is (= {:data {:hero {:name "Luke Skywalker"}}}
-             (execute-parsed-query q {:episode "NEWHOPE"} nil)))))
+(defn with-tag
+  [v]
+  (if-let [type (::type v)]
+    (schema/tag-with-type v type)
+    v))
 
-  (testing "query with nullable root"
-    (let [get-villain (fn [episode]
-                        (com.walmartlabs.test-schema/get-character
-                         (condp = episode
-                           :NEWHOPE "1004" ;; Tarkin
-                           :EMPIRE "1001" ;; Vader
-                           :JEDI "1001"
-                           nil)))
-          schema {:enums {:episode {:description "The episodes of the original Star Wars trilogy."
-                                    :values [:NEWHOPE :EMPIRE :JEDI]}}
-                  :interfaces {:character {:fields {:id {:type 'String}
-                                                    :name {:type 'String}}}}
-                  :objects {:villain {:implements [:character]
-                                      :fields {:id {:type 'String}
-                                               :name {:type 'String}}}}
-                  :queries {:villain {:type :villain
-                                      :args {:episode {:type :episode}}
-                                      :resolve (fn [ctx args v]
-                                                 (get-villain (:episode args)))}}}
-          compiled-schema (schema/compile schema)
-          q (parser/parse-query compiled-schema
-                                "query ($episode : episode) {
-                                    villain (episode : $episode) {
-                                       name
-                                    }
-                               }")]
-      (is (= {:data {:villain nil}}
-             (execute-parsed-query q nil nil))
-          "should return no data when variable is missing")
-      (is (= {:data {:villain nil}}
-             (execute-parsed-query q {:episode nil} nil))
-          "should return no data when variable is null")
-      (is (= {:data {:villain {:name "Wilhuff Tarkin"}}}
-             (execute-parsed-query q {:episode "NEWHOPE"} nil))
-          "should return a villain"))))
+(deftest variables-with-missing-value
+  (let [villains {"01" {:name "Wilhuff Tarkin" ::type :villain}
+                  "02" {:name "Darth Vader" ::type :villain}}
+        get-villain (fn [episode]
+                      (let [id (condp = episode
+                                 "NEW HOPE" "01"
+                                 "EMPIRE" "02"
+                                 "JEDI" "02"
+                                 nil)]
+                        (get villains id)))
+        schema {:interfaces {:character {:fields {:id {:type 'String}
+                                                  :name {:type 'String}}}}
+                :objects {:villain {:implements [:character]
+                                    :fields {:id {:type 'String}
+                                             :name {:type 'String}}}}
+                :mutations {:changeName {:type :character
+                                         :args {:id {:type 'String}
+                                                :new_name {:type 'String}}
+                                         :resolve (fn [ctx args v]
+                                                    (let [{:keys [id new_name]} args]
+                                                      (prn "args: " args)
+                                                      (let [new-name (if (contains? args :new_name)
+                                                                       new_name
+                                                                       "Darth Bane")]
+                                                        (-> (get villains id)
+                                                            (assoc :name new-name)
+                                                            (with-tag)))))}}
+                :queries {:villain {:type :villain
+                                    :args {:episode {:type 'String}}
+                                    :resolve (fn [ctx args v]
+                                               (prn "args: " args)
+                                               (get-villain (:episode args)))}}}
+        compiled-schema (schema/compile schema)]
+
+    (testing "query with a variable without default-value"
+      (let [q (parser/parse-query compiled-schema
+                                  "query ($episode : String) {
+                                      villain (episode : $episode) {
+                                         name
+                                      }
+                                  }")]
+        (is (= {:data {:villain nil}}
+               (execute-parsed-query q nil nil))
+            "should return no data when variable is missing")
+        (is (= {:data {:villain nil}}
+               (execute-parsed-query q {:episode nil} nil))
+            "should return no data when variable is null")
+        (is (= {:data {:villain {:name "Wilhuff Tarkin"}}}
+               (execute-parsed-query q {:episode "NEW HOPE"} nil))
+            "should return a villain")))
+
+    (testing "query with a variable with a default value"
+      (let [q (parser/parse-query compiled-schema
+                                  "query ($episode : String = \"EMPIRE\") {
+                                      villain (episode : $episode) {
+                                         name
+                                      }
+                                  }")]
+        (is (= {:data {:villain {:name "Darth Vader"}}}
+               (execute-parsed-query q nil nil))
+            "should return default value when variable is not provided")
+        (is (= {:data {:villain {:name "Darth Vader"}}}
+               (execute-parsed-query q {:episode nil} nil))
+            "should return default value when variable is null")
+        (is (= {:data {:villain {:name "Wilhuff Tarkin"}}}
+               (execute-parsed-query q {:episode "NEW HOPE"} nil))
+            "should return a villain")))
+
+    (testing "mutation with a variable without a default value"
+      (let [q (parser/parse-query compiled-schema
+                                  "mutation ($id : String!, $name : String) {
+                                     changeName(id: $id, new_name: $name) {
+                                        name
+                                     }
+                                   }")]
+        #_ (is (= {:data {:changeName {:name "Rey"}}}
+                  (execute-parsed-query q {:id "01" :name "Rey"} nil)))
+        #_(is (= {:data {:changeName {:name nil}}}
+                 (execute-parsed-query q {:id "02" :name nil} nil))
+              "should change name to null")
+        (is (= {:data {:changeName {:name "Darth Bane"}}}
+               (execute-parsed-query q {:id "01"} nil))
+            "should return Darth Bane when new_name is not present in arguments")))
+
+    (testing "mutation with a variable with a NULL default value"
+      (let [q (parser/parse-query compiled-schema
+                                  "mutation ($id : String!, $name : String = null) {
+                                     changeName(id: $id, new_name: $name) {
+                                        name
+                                     }
+                                   }")]
+        (is (= {:data {:changeName {:name "Rey"}}}
+               (execute-parsed-query q {:id "01" :name "Rey"} nil)))
+        (is (= {:data {:changeName {:name nil}}}
+               (execute-parsed-query q {:id "02" :name nil} nil))
+            "should change name to null when variable is null")
+        ;; TODO default-value that is NULL should not cause this argument to be removed
+        #_ (is (= {:data {:changeName {:name nil}}}
+                  (execute-parsed-query q {:id "01"} nil))
+               "should use default-value that is null")))))
