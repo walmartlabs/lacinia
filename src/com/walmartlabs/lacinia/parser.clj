@@ -6,8 +6,8 @@
             [clj-antlr.common :as antlr.common]
             [clojure.string :as str]
             [com.walmartlabs.lacinia.internal-utils
-             :refer [cond-let update? q map-vals filter-vals filter-kvs
-                     map-kvs with-exception-context throw-exception to-message
+             :refer [cond-let update? q map-vals filter-vals
+                     with-exception-context throw-exception to-message
                      keepv as-keyword]]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.lacinia.constants :as constants]

@@ -57,19 +57,6 @@
         persistent!
         (with-meta (meta m)))))
 
-(defn filter-kvs
-  "Builds a new map passing each key and value to predicate."
-  [pred m]
-  (when m
-    (-> (reduce-kv (fn [m k v]
-                     (if (pred k v)
-                       (assoc! m k v)
-                       m))
-                   (-> m empty transient)
-                   m)
-        persistent!
-        (with-meta (meta m)))))
-
 (defn filter-vals
   [pred m]
   (when m
