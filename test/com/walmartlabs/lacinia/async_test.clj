@@ -16,8 +16,15 @@
         body (fn []
                (when (and wait-for
                           (not= wait-for :any))
-                 (while (-> @execution-order set (contains? wait-for) not)
-                   (Thread/sleep 20)))
+                 (loop [attempt 0]
+                   (when (> attempt 150)
+                     (throw (IllegalStateException.
+                              (format "Delayed result failed to see expected execution after ~ 3 seconds. Waiting for %s, saw %s."
+                                      (pr-str wait-for)
+                                      (pr-str @execution-order)))))
+                   (when-not (-> @execution-order set (contains? wait-for))
+                     (Thread/sleep 20)
+                     (recur (inc attempt)))))
                (swap! execution-order conj (keyword exec-name))
                (resolve/deliver! result value))]
     (doto
