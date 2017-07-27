@@ -150,7 +150,6 @@
                                                 :new_name {:type 'String}}
                                          :resolve (fn [ctx args v]
                                                     (let [{:keys [id new_name]} args]
-                                                      (prn "args: " args)
                                                       (let [new-name (if (contains? args :new_name)
                                                                        new_name
                                                                        "Darth Bane")]
@@ -160,7 +159,6 @@
                 :queries {:villain {:type :villain
                                     :args {:episode {:type 'String}}
                                     :resolve (fn [ctx args v]
-                                               (prn "args: " args)
                                                (get-villain (:episode args)))}}}
         compiled-schema (schema/compile schema)]
 
@@ -205,11 +203,11 @@
                                         name
                                      }
                                    }")]
-        #_ (is (= {:data {:changeName {:name "Rey"}}}
-                  (execute-parsed-query q {:id "01" :name "Rey"} nil)))
-        #_(is (= {:data {:changeName {:name nil}}}
-                 (execute-parsed-query q {:id "02" :name nil} nil))
-              "should change name to null")
+        (is (= {:data {:changeName {:name "Rey"}}}
+               (execute-parsed-query q {:id "01" :name "Rey"} nil)))
+        (is (= {:data {:changeName {:name nil}}}
+               (execute-parsed-query q {:id "02" :name nil} nil))
+            "should change name to null")
         (is (= {:data {:changeName {:name "Darth Bane"}}}
                (execute-parsed-query q {:id "01"} nil))
             "should return Darth Bane when new_name is not present in arguments")))
@@ -226,7 +224,6 @@
         (is (= {:data {:changeName {:name nil}}}
                (execute-parsed-query q {:id "02" :name nil} nil))
             "should change name to null when variable is null")
-        ;; TODO default-value that is NULL should not cause this argument to be removed
-        #_ (is (= {:data {:changeName {:name nil}}}
-                  (execute-parsed-query q {:id "01"} nil))
-               "should use default-value that is null")))))
+        (is (= {:data {:changeName {:name nil}}}
+               (execute-parsed-query q {:id "01"} nil))
+            "should use default-value that is null (as opposed to returning Darth Bane)")))))

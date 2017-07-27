@@ -6,8 +6,8 @@
             [clj-antlr.common :as antlr.common]
             [clojure.string :as str]
             [com.walmartlabs.lacinia.internal-utils
-             :refer [cond-let update? q map-vals filter-vals
-                     with-exception-context throw-exception to-message
+             :refer [cond-let update? q map-vals filter-vals filter-kvs
+                     map-kvs with-exception-context throw-exception to-message
                      keepv as-keyword]]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.lacinia.constants :as constants]
@@ -555,7 +555,6 @@
   [schema argument-definition [_ arg-value]]
   ;; ::variables is stashed into schema by xform-query
   (let [variable-def (get-in schema [::variables arg-value])]
-
     (when (nil? variable-def)
       (throw-exception (format "Argument references undeclared variable %s."
                                (q arg-value))
@@ -567,10 +566,9 @@
                        {:argument-type (summarize-type argument-definition)
                         :variable-type (summarize-type variable-def)}))
 
-    (let [{:keys [default-value]} argument-definition
-          non-nullable? (non-null-kind? argument-definition)
-          var-non-nullable? (non-null-kind? variable-def)
-          var-default-value (:default-value variable-def)]
+    (let [non-nullable? (non-null-kind? argument-definition)
+          var-non-nullable? (non-null-kind? variable-def)]
+
       (fn [variables]
         (cond-let
           :let [result (get variables arg-value)]
@@ -581,7 +579,7 @@
           ;; to a keyword.
 
           (some? result)
-          (substitute-variable schema result (:type argument-definition) arg-value)
+          {:value (substitute-variable schema result (:type argument-definition) arg-value)}
 
           ;; TODO: This is only triggered if a variable is referenced, omitting a non-nillable
           ;; variable should be an error, regardless.
@@ -590,11 +588,17 @@
                                    (q arg-value))
                            {:variable-name arg-value})
 
-          (some? var-default-value)
-          var-default-value
+          ;; variable has a default value that could be NULL
+          (contains? variable-def :default-value)
+          {:value (:default-value variable-def)}
 
-          (some? default-value)
-          default-value
+          ;; argument has a default value that could be NULL
+          (contains? argument-definition :default-value)
+          {:value (:default-value argument-definition)}
+
+          ;; variable value is set to NULL
+          (contains? variables arg-value)
+          {:value result}
 
           non-nullable?
           (throw-exception (format "Variable %s is null, but supplies the value for a non-nullable argument."
@@ -630,12 +634,11 @@
         ;; the variables and returns the actual value to use.
         (fn [variables]
           (->> (map-vals #(% variables) dynamic-args)
-               (filter (fn [[variable value]]
-                         (let [[_ user-defined-var-name] (get arguments variable)]
-                           ;; keep arguments that have a matching variable provided
-                           (or (contains? variables user-defined-var-name)
-                               ;; or have a default-value specified
-                               (some? value)))))))))))
+               ;; keep arguments that have a matching variable provided.
+               ;; :value in value-map might be NULL but it's still a
+               ;; provided value (e.g. may be used to indicate deletion)
+               (filter-kvs (fn [variable value-map] (some? value-map)))
+               (map-vals (fn [v] (:value v)))))))))
 
 (defn ^:private disj*
   [set ks]
