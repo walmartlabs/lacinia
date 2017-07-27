@@ -637,8 +637,8 @@
                ;; keep arguments that have a matching variable provided.
                ;; :value in value-map might be NULL but it's still a
                ;; provided value (e.g. may be used to indicate deletion)
-               (filter-kvs (fn [variable value-map] (some? value-map)))
-               (map-vals (fn [v] (:value v)))))))))
+               (filter-vals #(some? %))
+               (map-vals :value)))))))
 
 (defn ^:private disj*
   [set ks]
