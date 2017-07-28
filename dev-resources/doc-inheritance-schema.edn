@@ -1,0 +1,45 @@
+{:interfaces
+ {:sierra
+  {:fields
+   {:alpha {:type String}
+    :bravo {:type String
+            :description "sierra/bravo"}}}
+  :tango
+  {:description "tango interface"
+   :fields
+   {:charlie
+    {:type String
+     :description "tango/charlie"
+     :args
+     {:delta
+      {:type String
+       :description "tango/charlie/delta"}
+      :echo
+      {:type String
+       :description "tango/charlie/echo"}}}}}}
+
+ :objects
+ {:ex1
+  {:implements [:sierra]
+   :fields
+   {:alpha {:type String
+            :description "ex1/alpha"}
+    :bravo {:type String}}}
+  :ex2
+  {:implements [:sierra]
+   :fields
+   {:alpha {:type String
+            :description "ex2/alpha"}
+    :bravo {:type String
+            :description "ex2/bravo"}}}
+  :ex3
+  {:implements [:tango]
+   :fields
+   {:charlie
+    {:type String
+     :args
+     {:delta
+      {:type String
+       :description "ex3/delta"}
+      :echo
+      {:type String}}}}}}}

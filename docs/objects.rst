@@ -61,5 +61,7 @@ Object Description
 
 An object definition may include a ``:description`` key; the value is a string exposed through :doc:`introspection`.
 
+When an object implement an interface, it may omit the ``:description`` of inherited fields, and on
+arguments of inherited fields to inherit the description from the interface.
 
 .. [#emptyschema] A schema that fails to define either queries or mutations is useful only as an example.

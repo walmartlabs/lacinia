@@ -710,14 +710,39 @@
     :root                                                   ;;
     (create-root-selector schema object-type field (:type type))))
 
+(defn ^:private default-field-description
+  [schema type-def field-name]
+  (->> type-def
+       :implements
+       (map schema)
+       (keep #(get-in % [:fields field-name :description]))
+       first))
+
+(defn ^:private provide-default-arg-descriptions
+  [field-def schema type-def]
+  (let [interface-defs (->> type-def :implements (map schema))
+        {:keys [field-name]} field-def
+        reducer (fn [m arg-name arg-def]
+                  (assoc m arg-name
+                         (if (:description arg-def)
+                           arg-def
+                           (assoc arg-def :description
+                                  (->> interface-defs
+                                       (keep #(get-in % [:fields field-name :args arg-name :description]))
+                                       first)))))]
+    (update field-def :args #(reduce-kv reducer {} %))))
+
 (defn ^:private prepare-field
   "Prepares a field for execution. Provides a default resolver, and wraps it to
   ensure it returns a ResolverResult.
+
+  Inherits :documentation from matching inteface field as necessary.
+
   Adds a :selector function."
   [schema options type-def field-def]
   (let [provided-resolver (:resolve field-def)
         {:keys [default-field-resolver]} options
-        {:keys [field-name]} field-def
+        {:keys [field-name description]} field-def
         type-name (:type-name type-def)
         base-resolver (if provided-resolver
                         provided-resolver
@@ -725,10 +750,13 @@
         selector (assemble-selector schema type-def field-def (:type field-def))
         wrapped-resolver (cond-> (wrap-resolver-to-ensure-resolver-result base-resolver)
                            (nil? provided-resolver) (vary-meta assoc ::default-resolver? true))]
-    (assoc field-def
-           :type-name type-name
-           :resolve wrapped-resolver
-           :selector selector)))
+    (-> field-def
+        (assoc :type-name type-name
+               :description (or description
+                                (default-field-description schema type-def field-name))
+               :resolve wrapped-resolver
+               :selector selector)
+        (provide-default-arg-descriptions schema type-def))))
 
 ;;-------------------------------------------------------------------------------
 ;; ## Compile schema
@@ -829,7 +857,7 @@
 
 (defmethod compile-type :object
   [object schema]
-  (let [implements (-> object :implements set)]
+  (let [implements (->> object :implements (map as-keyword) set)]
     (doseq [interface implements
             :let [type (get schema interface)]]
       (when-not type
