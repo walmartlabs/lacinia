@@ -570,7 +570,6 @@
   [schema argument-definition [_ arg-value]]
   ;; ::variables is stashed into schema by xform-query
   (let [variable-def (get-in schema [::variables arg-value])]
-
     (when (nil? variable-def)
       (throw-exception (format "Argument references undeclared variable %s."
                                (q arg-value))
@@ -582,10 +581,9 @@
                        {:argument-type (summarize-type argument-definition)
                         :variable-type (summarize-type variable-def)}))
 
-    (let [{:keys [default-value]} argument-definition
-          non-nullable? (non-null-kind? argument-definition)
-          var-non-nullable? (non-null-kind? variable-def)
-          var-default-value (:default-value variable-def)]
+    (let [non-nullable? (non-null-kind? argument-definition)
+          var-non-nullable? (non-null-kind? variable-def)]
+
       (fn [variables]
         (cond-let
           :let [result (get variables arg-value)]
@@ -596,7 +594,7 @@
           ;; to a keyword.
 
           (some? result)
-          (substitute-variable schema result (:type argument-definition) arg-value)
+          {:value (substitute-variable schema result (:type argument-definition) arg-value)}
 
           ;; TODO: This is only triggered if a variable is referenced, omitting a non-nillable
           ;; variable should be an error, regardless.
@@ -605,11 +603,17 @@
                                    (q arg-value))
                            {:variable-name arg-value})
 
-          (some? var-default-value)
-          var-default-value
+          ;; variable has a default value that could be NULL
+          (contains? variable-def :default-value)
+          {:value (:default-value variable-def)}
 
-          (some? default-value)
-          default-value
+          ;; argument has a default value that could be NULL
+          (contains? argument-definition :default-value)
+          {:value (:default-value argument-definition)}
+
+          ;; variable value is set to NULL
+          (contains? variables arg-value)
+          {:value result}
 
           non-nullable?
           (throw-exception (format "Variable %s is null, but supplies the value for a non-nullable argument."
@@ -644,7 +648,12 @@
         ;; This is kind of a juxt buried in a map. Each value is a function that accepts
         ;; the variables and returns the actual value to use.
         (fn [variables]
-          (map-vals #(% variables) dynamic-args))))))
+          (->> (map-vals #(% variables) dynamic-args)
+               ;; keep arguments that have a matching variable provided.
+               ;; :value in value-map might be NULL but it's still a
+               ;; provided value (e.g. may be used to indicate deletion)
+               (filter-vals some?)
+               (map-vals :value)))))))
 
 (defn ^:private disj*
   [set ks]
