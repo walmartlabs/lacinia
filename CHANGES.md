@@ -1,4 +1,12 @@
-## 0.20.0 -- UNRELEASED
+## 0.20.0 -- 1 Aug 2017
+
+Object fields and field arguments may now inherit their description from corresponding
+fields and field arguments of an implemented interface.
+
+There is now a mechanism to allow a ResolverResult callback to be invoked
+in a application-provided executor or thread pool.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/7?closed=1)
 
 ## 0.19.0 -- 11 Jul 2017
 
