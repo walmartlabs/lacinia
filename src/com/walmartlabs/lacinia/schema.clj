@@ -1015,7 +1015,7 @@
       (doseq [additional-arg-name additional-args
               :let [arg-kind (get-in object-field-args [additional-arg-name :type :kind])]]
         (when (= arg-kind :non-null)
-          (throw (ex-info "Additional arguments on an object field cannot be required."
+          (throw (ex-info "Additional arguments on an object field that are not defined in extended interface cannot be required."
                           {:object type-name
                            :interface-name interface-name
                            :field-name field-name
