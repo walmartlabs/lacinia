@@ -17,6 +17,7 @@
              cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag]]
     [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolve-as combine-results]]
     [clojure.string :as str]
+    [clojure.set :refer [difference]]
     [clojure.spec.test.alpha :as stest])
   (:import
     (com.walmartlabs.lacinia.resolve ResolverResultImpl)
@@ -1007,7 +1008,18 @@
                           {:object type-name
                            :interface-name interface-name
                            :field-name field-name
-                           :argument-name arg-name}))))))
+                           :argument-name arg-name})))))
+
+    (when-let [additional-args (seq (difference (into #{} (keys object-field-args))
+                                                (into #{} (keys interface-field-args))))]
+      (doseq [additional-arg-name additional-args
+              :let [arg-kind (get-in object-field-args [additional-arg-name :type :kind])]]
+        (when (= arg-kind :non-null)
+          (throw (ex-info "Additional arguments on an object field cannot be required."
+                          {:object type-name
+                           :interface-name interface-name
+                           :field-name field-name
+                           :argument-name additional-arg-name}))))))
 
   (update object :fields #(reduce-kv (fn [m field-name field]
                                        (assoc m field-name

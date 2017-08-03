@@ -149,9 +149,16 @@
       (is-thrown [e (schema/compile invalid-schema {:default-field-resolver schema/hyphenating-default-field-resolver})]
                  (is (= (.getMessage e) "Object field's argument is not compatible with extended interface's argument type.")))))
 
-  (testing "object includes additional field arguments that are not defined in the interface field"
+  (testing "object includes additional (optional) field arguments that are not defined in the interface field"
     (let [schema (-> test-schema
                      (update-in [:objects :starship :fields :length :args]
                                 #(assoc % :precision {:type 'Int})))]
       (is (map? (schema/compile schema {:default-field-resolver schema/hyphenating-default-field-resolver}))
-          "should compile schema without any errors"))))
+          "should compile schema without any errors")))
+
+  (testing "object includes additional (required) field argument that is not defined in the interface field"
+    (let [schema (-> test-schema
+                     (update-in [:objects :starship :fields :length :args]
+                                #(assoc % :precision {:type '(non-null Int)})))]
+      (is-thrown [e (schema/compile schema {:default-field-resolver schema/hyphenating-default-field-resolver})]
+                 (is (= (.getMessage e) "Additional arguments on an object field cannot be required."))))))
