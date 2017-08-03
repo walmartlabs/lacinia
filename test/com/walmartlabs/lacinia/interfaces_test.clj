@@ -161,4 +161,4 @@
                      (update-in [:objects :starship :fields :length :args]
                                 #(assoc % :precision {:type '(non-null Int)})))]
       (is-thrown [e (schema/compile schema {:default-field-resolver schema/hyphenating-default-field-resolver})]
-                 (is (= (.getMessage e) "Additional arguments on an object field cannot be required."))))))
+                 (is (= (.getMessage e) "Additional arguments on an object field that are not defined in extended interface cannot be required."))))))
