@@ -40,5 +40,7 @@
   (bench-query)
   ;; 61.779221 ms -- start
   ;; 59.036665 ms -- use hash-map instead of ordered-map
+  ;; 66.580824 ms -- optimize (?!) combine-results (take 1)
+  ;; 65.814538 ms -- optimize (?!) combine-results (take 2)
   )
 
