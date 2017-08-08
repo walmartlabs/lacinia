@@ -42,5 +42,7 @@
   ;; 59.036665 ms -- use hash-map instead of ordered-map
   ;; 66.580824 ms -- optimize (?!) combine-results (take 1)
   ;; 65.814538 ms -- optimize (?!) combine-results (take 2)
+  ;; 67.019828 ms -- restart (should match start, but eh, quick-bench)
+  ;; 63.949198 ms -- optimize selector (removing some check steps)
   )
 
