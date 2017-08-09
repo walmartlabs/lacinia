@@ -26,23 +26,31 @@
   []
   (c/quick-bench (mapv #(select-keys % [:name :age :id]) large-list)))
 
-(defn bench-query
+(defn bench-exec
   []
   (let [q "{ list { name age id }}"
         parsed (parser/parse-query schema q)]
     (c/quick-bench
       (lacinia/execute-parsed-query parsed nil nil))))
 
+(defn bench-parse-and-execute
+  []
+  (c/quick-bench
+    (lacinia/execute schema "{ list { name age id }}" nil nil)))
+
 (comment
   (bench-mapv)
   ;;  2.308310 ms
 
-  (bench-query)
-  ;; 61.779221 ms -- start
+  (bench-exec)
+  ;; 61.779221 ms -- base line
   ;; 59.036665 ms -- use hash-map instead of ordered-map
   ;; 66.580824 ms -- optimize (?!) combine-results (take 1)
   ;; 65.814538 ms -- optimize (?!) combine-results (take 2)
-  ;; 67.019828 ms -- restart (should match start, but eh, quick-bench)
+  ;; 67.019828 ms -- new base line (should match first base line, but eh, quick-bench)
   ;; 63.949198 ms -- optimize selector (removing some check steps)
+
+  (bench-parse-and-execute)
+  ;; 67.814614 ms -- base line
   )
 
