@@ -58,6 +58,7 @@
   ;; 55.431582 ms -- optimize for single key/value pair (normal case outside of fragments)
   ;; -- switch to bench --
   ;; 58.143757 ms
+  ;; 56.056103 ms -- use defrecord SelectionContext
 
   (bench-parse-and-execute)
   ;; 67.814614 ms -- base line

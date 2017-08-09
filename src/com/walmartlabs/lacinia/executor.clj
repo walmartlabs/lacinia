@@ -315,6 +315,8 @@
           (resolve-as (ordered-map))
           sub-selections))
 
+(defrecord ^:private SelectorContext [execution-context callback resolved-value resolved-type])
+
 (defn ^:private resolve-and-select
   "Recursive resolution of a field within a containing field's resolved value.
 
@@ -375,10 +377,10 @@
     ;; For fragments, we start with a single value and it passes right through to
     ;; sub-selections, without changing value or type.
     (if is-fragment?
-      (selector {:resolved-value (:resolved-value execution-context)
-                 :resolved-type resolved-type
-                 :callback selector-callback
-                 :execution-context execution-context})
+      (selector (->SelectorContext execution-context
+                                   selector-callback
+                                   (:resolved-value execution-context)
+                                   resolved-type))
 
       ;; Here's where it comes together.  The field's selector
       ;; does the validations, and for list types, does the mapping.
@@ -390,7 +392,10 @@
         (resolve/on-deliver! (invoke-resolver-for-field execution-context selection)
                              (fn receive-resolved-value-from-field [resolved-value]
                                (loop [resolved-value resolved-value
-                                      selector-context {:execution-context execution-context}]
+                                      selector-context (->SelectorContext execution-context
+                                                                          selector-callback
+                                                                          nil
+                                                                          nil)]
                                  ;; Using satisfies? is a huge performance hit. ResolveCommand is not
                                  ;; intended as a general extension point, so we don't need to worry about
                                  ;; it being extended to existing types.
