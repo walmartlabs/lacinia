@@ -339,20 +339,14 @@
               (mapcat #(enhance-errors selection %))
               (swap! (:errors execution-context) into)))
 
-       (cond
-
-         (= ::schema/empty-list resolved-value)
-         (resolve-as [])
-
-         (and (some? resolved-value)
-              (seq sub-selections))
+       (if (and (some? resolved-value)
+                resolved-type
+                (seq sub-selections))
          (execute-nested-selections
            (assoc execution-context
                   :resolved-value resolved-value
                   :resolved-type resolved-type)
            sub-selections)
-
-         :else
          (resolve/resolve-as resolved-value)))
      ;; In a concrete type, we know the selector from the field definition
      ;; (a field definition on a concrete object type).  Otherwise, we need

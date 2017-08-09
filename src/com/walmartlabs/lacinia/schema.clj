@@ -675,7 +675,7 @@
         (cond
           (nil? resolved-value)
           (callback (assoc selector-context
-                           :resolved-value ::empty-list
+                           :resolved-value []
                            :resolved-type nil))
 
           (not (sequential-or-set? resolved-value))
