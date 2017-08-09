@@ -112,27 +112,32 @@
         start-ms (when (and (some? timings)
                             (not (-> field-resolver meta ::schema/default-resolver?)))
                    (System/currentTimeMillis))
-        resolver-result (field-resolver resolve-context arguments container-value)
-        final-result (resolve/resolve-promise)]
-    (resolve/on-deliver! resolver-result
-                         (fn [resolved-value]
-                           (when start-ms
-                             (let [finish-ms (System/currentTimeMillis)
-                                   elapsed-ms (- finish-ms start-ms)
-                                   timing {:start start-ms
-                                           :finish finish-ms
-                                           ;; This is just a convenience:
-                                           :elapsed elapsed-ms}]
-                               ;; The extra key is to handle a case where we time, say, [:hero] and [:hero :friends]
-                               ;; That will leave :friends as one child of :hero, and :execution/timings as another.
-                               ;; The timings are always a list; we don't know if the field is resolved once,
-                               ;; resolved multiple times because it is inside a nested value, or resolved multiple
-                               ;; times because of multiple top-level operations.
-                               (swap! timings
-                                      update-in (conj (:query-path field-selection) :execution/timings)
-                                      (fnil conj []) timing)))
-                           (resolve/deliver! final-result resolved-value)))
-    final-result))
+        resolver-result (field-resolver resolve-context arguments container-value)]
+    ;; If not collecting timing results, then the resolver-result is all we need.
+    ;; Otherwise, we need to create an extra promise so that we can observe the
+    ;; delivery of the value to update our timing information. The downside is
+    ;; that collecting timing information affects timing.
+    (if-not start-ms
+      resolver-result
+      (let [final-result (resolve/resolve-promise)]
+        (resolve/on-deliver! resolver-result
+                             (fn [resolved-value]
+                               (let [finish-ms (System/currentTimeMillis)
+                                     elapsed-ms (- finish-ms start-ms)
+                                     timing {:start start-ms
+                                             :finish finish-ms
+                                             ;; This is just a convenience:
+                                             :elapsed elapsed-ms}]
+                                 ;; The extra key is to handle a case where we time, say, [:hero] and [:hero :friends]
+                                 ;; That will leave :friends as one child of :hero, and :execution/timings as another.
+                                 ;; The timings are always a list; we don't know if the field is resolved once,
+                                 ;; resolved multiple times because it is inside a nested value, or resolved multiple
+                                 ;; times because of multiple top-level operations.
+                                 (swap! timings
+                                        update-in (conj (:query-path field-selection) :execution/timings)
+                                        (fnil conj []) timing))
+                               (resolve/deliver! final-result resolved-value)))
+        final-result))))
 
 (declare ^:private resolve-and-select)
 

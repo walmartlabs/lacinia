@@ -49,6 +49,7 @@
   ;; 65.814538 ms -- optimize (?!) combine-results (take 2)
   ;; 67.019828 ms -- new base line (should match first base line, but eh, quick-bench)
   ;; 63.949198 ms -- optimize selector (removing some check steps)
+  ;; 66.481703 ms -- remove executing timing penalty when not timing execution
 
   (bench-parse-and-execute)
   ;; 67.814614 ms -- base line
