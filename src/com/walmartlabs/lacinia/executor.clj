@@ -195,6 +195,8 @@
   (fn [execution-context selection]
     (:selection-type selection)))
 
+(defrecord ^:private ResultTuple [alias value])
+
 (defmethod apply-selection :field
   [execution-context field-selection]
   (let [{:keys [alias]} field-selection
@@ -223,7 +225,7 @@
 
                                                  :else
                                                  resolved-field-value)]
-                             (resolve/deliver! final-result (hash-map alias sub-selection)))))
+                             (resolve/deliver! final-result (->ResultTuple alias sub-selection)))))
     final-result))
 
 (defn ^:private maybe-apply-fragment
@@ -255,10 +257,19 @@
   (when-not (:disabled? selection)
     (apply-selection execution-context selection)))
 
-(defn ^:private combine-map-results
+
+(defn ^:private merge-selected-values
+  "Merges the left and right values, with a special case for when the right value
+  is an ResultTuple."
+  [left-value right-value]
+  (if (instance? ResultTuple right-value)
+    (assoc left-value (:alias right-value) (:value right-value))
+    (merge left-value right-value)))
+
+(defn ^:private combine-selection-results
   "Left associative resolution of results, combined using merge."
   [left-result right-result]
-  (combine-results merge left-result right-result))
+  (combine-results merge-selected-values left-result right-result))
 
 (defn ^:private execute-nested-selections
   "Executes nested sub-selections once a value is resolved.
@@ -269,7 +280,7 @@
   ;; Then a cascade of intermediate results that combine the individual results
   ;; in the correct order.
   (let [selection-results (keep #(maybe-apply-selection execution-context %) sub-selections)]
-    (reduce combine-map-results
+    (reduce combine-selection-results
             (resolve-as (ordered-map))
             selection-results)))
 
@@ -279,14 +290,14 @@
   ;; However, sometimes a selection is disabled and returns nil instead of a ResolverResult.
   (let [next-result (resolve/resolve-promise)]
     (resolve/on-deliver! previous-resolved-result
-                         (fn [left-map]
+                         (fn [left-value]
                            ;; This is what makes it sync: we don't kick off the evaluation of the selection
                            ;; until the previous selection, left, has completed.
                            (let [sub-resolved-result (apply-selection execution-context sub-selection)]
                              (resolve/on-deliver! sub-resolved-result
-                                                  (fn [right-map]
+                                                  (fn [right-value]
                                                     (resolve/deliver! next-result
-                                                                      (merge left-map right-map)))))))
+                                                                      (merge-selected-values left-value right-value)))))))
     ;; This will deliver after the sub-selection delivers, which is only after the previous resolved result
     ;; delivers.
     next-result))
