@@ -24,23 +24,28 @@
 
 (defn bench-mapv
   []
-  (c/quick-bench (mapv #(select-keys % [:name :age :id]) large-list)))
+  (binding [c/*report-progress* true]
+    (c/bench (mapv #(select-keys % [:name :age :id]) large-list))))
 
 (defn bench-exec
   []
-  (let [q "{ list { name age id }}"
-        parsed (parser/parse-query schema q)]
-    (c/quick-bench
-      (lacinia/execute-parsed-query parsed nil nil))))
+  (binding [c/*report-progress* true]
+    (let [q "{ list { name age id }}"
+          parsed (parser/parse-query schema q)]
+      (c/bench
+        (lacinia/execute-parsed-query parsed nil nil)))))
 
 (defn bench-parse-and-execute
   []
-  (c/quick-bench
-    (lacinia/execute schema "{ list { name age id }}" nil nil)))
+  (binding [c/*report-progress* true]
+    (c/bench
+      (lacinia/execute schema "{ list { name age id }}" nil nil))))
 
 (comment
   (bench-mapv)
   ;;  2.308310 ms
+  ;; -- switch to bench --
+  ;; 2.290889 ms
 
   (bench-exec)
   ;; 61.779221 ms -- base line
@@ -51,8 +56,11 @@
   ;; 63.949198 ms -- optimize selector (removing some check steps)
   ;; 66.481703 ms -- remove executing timing penalty when not timing execution
   ;; 55.431582 ms -- optimize for single key/value pair (normal case outside of fragments)
+  ;; -- switch to bench --
+  ;; 58.143757 ms
 
   (bench-parse-and-execute)
   ;; 67.814614 ms -- base line
+  ;; -- switch to bench --
   )
 
