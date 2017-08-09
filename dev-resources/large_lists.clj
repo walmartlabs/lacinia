@@ -45,7 +45,7 @@
   (bench-mapv)
   ;;  2.308310 ms
   ;; -- switch to bench --
-  ;; 2.290889 ms
+  ;;  2.290889 ms
 
   (bench-exec)
   ;; 61.779221 ms -- base line

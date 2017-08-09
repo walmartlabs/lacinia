@@ -1,3 +1,8 @@
+## 0.21.0 -- UNRELEASED
+
+A number of small optimizations to shave a few milliseconds off very large
+lists.
+
 ## 0.20.0 -- 1 Aug 2017
 
 Object fields and field arguments may now inherit their description from corresponding
