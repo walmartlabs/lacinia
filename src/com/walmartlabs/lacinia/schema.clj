@@ -17,6 +17,7 @@
              cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag]]
     [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolve-as combine-results]]
     [clojure.string :as str]
+    [clojure.set :refer [difference]]
     [clojure.spec.test.alpha :as stest])
   (:import
     (com.walmartlabs.lacinia.resolve ResolverResultImpl)
@@ -971,24 +972,54 @@
   [schema object options]
   (verify-fields-and-args schema object)
   (doseq [interface-name (:implements object)
-          :let [interface (get schema interface-name)]
+          :let [interface (get schema interface-name)
+                type-name (:type-name object)]
           [field-name interface-field] (:fields interface)
-          :let [object-field (get-in object [:fields field-name])]]
-
-    ;; TODO: I believe we are missing a check that arguments on the field are
-    ;; compatible with arguments on the interface field.
+          :let [object-field (get-in object [:fields field-name])
+                interface-field-args (:args interface-field)
+                object-field-args (:args object-field)]]
 
     (when-not object-field
       (throw (ex-info "Missing interface field in object definition."
-                      {:object (:type-name object)
+                      {:object type-name
                        :field-name field-name
                        :interface-name interface-name})))
 
     (when-not (is-assignable? schema interface-field object-field)
       (throw (ex-info "Object field is not compatible with extended interface type."
-                      {:object (:type-name object)
+                      {:object type-name
                        :interface-name interface-name
-                       :field-name field-name}))))
+                       :field-name field-name})))
+
+    (when interface-field-args
+      (doseq [interface-field-arg interface-field-args
+              :let [[arg-name interface-arg-def] interface-field-arg
+                    object-field-arg-def (get object-field-args arg-name)]]
+
+        (when-not object-field-arg-def
+          (throw (ex-info "Missing interface field argument in object definition."
+                          {:object type-name
+                           :field-name field-name
+                           :interface-name interface-name
+                           :argument-name arg-name})))
+
+        (when-not (is-assignable? schema interface-arg-def object-field-arg-def)
+          (throw (ex-info "Object field's argument is not compatible with extended interface's argument type."
+                          {:object type-name
+                           :interface-name interface-name
+                           :field-name field-name
+                           :argument-name arg-name})))))
+
+    (when-let [additional-args (seq (difference (into #{} (keys object-field-args))
+                                                (into #{} (keys interface-field-args))))]
+      (doseq [additional-arg-name additional-args
+              :let [arg-kind (get-in object-field-args [additional-arg-name :type :kind])]]
+        (when (= arg-kind :non-null)
+          (throw (ex-info "Additional arguments on an object field that are not defined in extended interface cannot be required."
+                          {:object type-name
+                           :interface-name interface-name
+                           :field-name field-name
+                           :argument-name additional-arg-name}))))))
 
   (update object :fields #(reduce-kv (fn [m field-name field]
                                        (assoc m field-name
