@@ -400,10 +400,9 @@
                                    (:resolved-value execution-context)
                                    resolved-type))
 
-      ;; Optimization: for simple fields that are scalar types there may be direct function.
+      ;; Optimization: for simple fields there may be direct function.
       ;; This is a function that synchronously provides the value from the container resolved value.
-      ;; This is almost always a default function. Since it is a scalar or enum type, there won't
-      ;; be any async work, so it's safe to just get the value and pass it though eventually to
+      ;; This is almost always a default resolver.  The extracted value is passed though to
       ;; the selector, which returns a ResolverResult. Thus we've peeled back at least one layer
       ;; of ResolveResultPromise.
       direct-fn
