@@ -366,15 +366,51 @@
                           :selector
                           (or (throw (ex-info "Sanity check: no selector."
                                               {:type-name resolved-type
-                                               :selection selection})))))))]
+                                               :selection selection})))))))
+
+     process-resolved-value (fn [resolved-value]
+                              (loop [resolved-value resolved-value
+                                     selector-context (->SelectorContext execution-context
+                                                                         selector-callback
+                                                                         nil
+                                                                         nil)]
+                                ;; Using satisfies? is a huge performance hit. ResolveCommand is not
+                                ;; intended as a general extension point, so we don't need to worry about
+                                ;; it being extended to existing types.
+                                (if (instance? ResolveCommand resolved-value)
+                                  (recur (resolve/nested-value resolved-value)
+                                         (resolve/apply-command resolved-value selector-context))
+                                  ;; Finally to a real value, not a wrapper.  The commands may have
+                                  ;; modified the :errors or :execution-context keys, and the pipeline
+                                  ;; will do the rest. Errors will be dealt with in the callback.
+                                  (-> selector-context
+                                      (assoc :callback selector-callback
+                                             :resolved-value resolved-value)
+                                      selector))))
+
+     direct-fn (-> selection :field-definition :direct-fn)]
 
     ;; For fragments, we start with a single value and it passes right through to
     ;; sub-selections, without changing value or type.
-    (if is-fragment?
+    (cond
+
+      is-fragment?
       (selector (->SelectorContext execution-context
                                    selector-callback
                                    (:resolved-value execution-context)
                                    resolved-type))
+
+      ;; Optimization: for simple fields that are scalar types there may be direct function.
+      ;; This is a function that synchronously provides the value from the container resolved value.
+      ;; This is almost always a default function. Since it is a scalar or enum type, there won't
+      ;; be any async work, so it's safe to just get the value and pass it though eventually to
+      ;; the selector, which returns a ResolverResult. Thus we've peeled back at least one layer
+      ;; of ResolveResultPromise.
+      direct-fn
+      (-> execution-context
+          :resolved-value
+          direct-fn
+          process-resolved-value)
 
       ;; Here's where it comes together.  The field's selector
       ;; does the validations, and for list types, does the mapping.
@@ -382,30 +418,13 @@
       ;; Eventually, individual values will be passed to the callback, which can then turn around
       ;; and recurse down a level.  The result is a map or a list of maps.
 
+      :else
       (let [final-result (resolve/resolve-promise)]
         (resolve/on-deliver! (invoke-resolver-for-field execution-context selection)
                              (fn receive-resolved-value-from-field [resolved-value]
-                               (loop [resolved-value resolved-value
-                                      selector-context (->SelectorContext execution-context
-                                                                          selector-callback
-                                                                          nil
-                                                                          nil)]
-                                 ;; Using satisfies? is a huge performance hit. ResolveCommand is not
-                                 ;; intended as a general extension point, so we don't need to worry about
-                                 ;; it being extended to existing types.
-                                 (if (instance? ResolveCommand resolved-value)
-                                   (recur (resolve/nested-value resolved-value)
-                                          (resolve/apply-command resolved-value selector-context))
-                                   ;; Finally to a real value, not a wrapper.  The commands may have
-                                   ;; modified the :errors or :execution-context keys, and the pipeline
-                                   ;; will do the rest. Errors will be dealt with in the callback.
-                                   (-> selector-context
-                                       (assoc :callback selector-callback
-                                              :resolved-value resolved-value)
-                                       selector
-                                       (resolve/on-deliver!
-                                         (fn deliver-selection-for-field [resolved-value]
-                                           (resolve/deliver! final-result resolved-value))))))))
+                               (resolve/on-deliver! (process-resolved-value resolved-value)
+                                                    (fn deliver-selection-for-field [resolved-value]
+                                                      (resolve/deliver! final-result resolved-value)))))
         final-result))))
 
 (defn execute-query

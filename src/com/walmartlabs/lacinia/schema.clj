@@ -749,13 +749,15 @@
                         (default-field-resolver field-name))
         selector (assemble-selector schema type-def field-def (:type field-def))
         wrapped-resolver (cond-> (wrap-resolver-to-ensure-resolver-result base-resolver)
-                           (nil? provided-resolver) (vary-meta assoc ::default-resolver? true))]
+                           (nil? provided-resolver) (vary-meta assoc ::default-resolver? true))
+        direct-fn (-> wrapped-resolver meta ::direct-fn)]
     (-> field-def
         (assoc :type-name type-name
                :description (or description
                                 (default-field-description schema type-def field-name))
                :resolve wrapped-resolver
-               :selector selector)
+               :selector selector
+               :direct-fn direct-fn)
         (provide-default-arg-descriptions schema type-def))))
 
 ;;-------------------------------------------------------------------------------
@@ -1050,8 +1052,9 @@
   "The default for the :default-field-resolver option, this uses the field name as the key into
   the resolved value."
   [field-name]
-  ^ResolverResultImpl
-  (fn [_ _ v]
+  ^{:tag ResolverResult
+    ::direct-fn field-name}
+  (fn default-resolver [_ _ v]
     (resolve-as (get v field-name))))
 
 (defn hyphenating-default-field-resolver

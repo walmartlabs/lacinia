@@ -61,6 +61,8 @@
   ;; 56.056103 ms -- use defrecord SelectionContext
   ;; 56.646881 ms -- less use of promises in ResolverResultPromise
   ;; 51.936539 ms -- tiny optimization on empty lists
+  ;; 44.024393 ms -- leaf optimization (just enums / scalars)
+
 
   (bench-parse-and-execute)
   ;; 67.814614 ms -- base line
