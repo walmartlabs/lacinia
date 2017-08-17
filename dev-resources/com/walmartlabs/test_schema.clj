@@ -1,6 +1,5 @@
 (ns com.walmartlabs.test-schema
   (:require [com.walmartlabs.lacinia.schema :as schema ]
-            [com.walmartlabs.lacinia.resolve :refer [resolve-as]]
             [com.walmartlabs.lacinia.internal-utils :refer [ map-vals]]
             [clojure.spec.alpha :as s]))
 
