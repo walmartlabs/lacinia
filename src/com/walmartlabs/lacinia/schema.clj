@@ -244,20 +244,6 @@
   ([message data]
    (merge {:message message} data)))
 
-(defn ^:private schema-reference?
-  "A reference to another type in the schema. These can always be either
-  a keyword or a symbol."
-  [v]
-  (or (keyword? v)
-      (symbol? v)))
-
-(defn ^:private named?
-  "True if a string, symbol or keyword."
-  [v]
-  (or (string? v)
-      (symbol? v)
-      (keyword? v)))
-
 (defn ^:private graphql-identifier?
   "Expects a conformed value (turns out to be a Map$Entry such as `[:keyword :foo]`)
   and validates that the value is a valid GraphQL identifier."
