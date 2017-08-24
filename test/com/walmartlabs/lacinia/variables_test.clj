@@ -130,6 +130,19 @@
     (schema/tag-with-type v type)
     v))
 
+(deftest variables-with-escape-sequences
+  (let [value (atom nil)
+        schema (schema/compile
+                {:objects {:value {:fields {:value {:type 'String}}}}
+                 :mutations {:change {:type :value
+                                      :args {:newValue {:type 'String}}
+                                      :resolve (fn [ctx args v]
+                                                 (reset! value (:newValue args))
+                                                 {:value @value})}}})
+        q (parser/parse-query schema "mutation ($ValueArg: String) { change(newValue: $ValueArg) { value }}")]
+    (is (= (execute-parsed-query q {:ValueArg "\\\"\\u2B50\\\""} nil)
+           {:data {:change {:value "\"⭐\""}}}))))
+
 (deftest variables-with-missing-value
   (let [villains {"01" {:name "Wilhuff Tarkin" ::type :villain}
                   "02" {:name "Darth Vader" ::type :villain}}
