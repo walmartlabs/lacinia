@@ -1,4 +1,4 @@
-[] (ns com.walmartlabs.lacinia.parser
+(ns com.walmartlabs.lacinia.parser
   "Parsing of client querys using the ANTLR grammar."
   (:require [clj-antlr.core :as antlr.core]
             [clj-antlr.proto :as antlr.proto]
