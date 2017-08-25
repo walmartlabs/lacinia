@@ -1,0 +1,14 @@
+{
+  type Query {
+    lookup(id: String) : [String]
+  }
+
+  type Mutation {
+    add(id: String, value: String) : Boolean
+  }
+
+  schema {
+    query: Query
+    mutation: Mutation
+  }
+}
