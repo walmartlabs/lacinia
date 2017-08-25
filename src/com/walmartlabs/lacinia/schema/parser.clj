@@ -1,14 +1,20 @@
-(ns com.walmartlabs.lacinia.parser
-  (:require [clj-antlr.proto :as antlr.proto]
+(ns com.walmartlabs.lacinia.schema.parser
+  (:require [clj-antlr.core :as antlr.core]
+            [clj-antlr.proto :as antlr.proto]
             [clojure.java.io :as io]
             [clj-antlr.common :as antlr.common]
             [clojure.string :as str]
             [com.walmartlabs.lacinia.internal-utils
-             :refer [keepv]])
+             :refer [cond-let update? q map-vals filter-vals
+                     with-exception-context throw-exception to-message
+                     keepv as-keyword]])
   (:import (org.antlr.v4.runtime.tree ParseTree TerminalNode)
            (org.antlr.v4.runtime Parser ParserRuleContext Token)
            (clj_antlr ParseError)
            (clojure.lang ExceptionInfo)))
+
+(def ^:private grammar
+  (antlr.core/parser (slurp (io/resource "com/walmartlabs/lacinia/schema.g4"))))
 
 (def ^:private ignored-terminals
   "Textual fragments which are to be immediately discarded as they have no
@@ -59,17 +65,7 @@
         (list (keyword (str/lower-case token-name*))
               (.getText t))))))
 
-(defn antlr-parse
-  [grammar schema-string]
+(defn ^:private antlr-parse
+  [schema-string]
   (let [{:keys [tree parser]} (antlr.proto/parse grammar nil schema-string)]
     (traverse tree parser)))
-
-(defn parse-failures
-  [^ParseError e]
-  (let [errors (deref e)]
-    (map (fn [{:keys [line column message]}]
-           {:location {:line line
-                       :column column}
-            :parse-error message})
-         errors)))
-

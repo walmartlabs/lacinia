@@ -8,6 +8,7 @@
                      with-exception-context throw-exception to-message
                      keepv as-keyword]]
             [com.walmartlabs.lacinia.parser :refer [antlr-parse parse-failures]]
+            [com.walmartlabs.lacinia.parser.util :refer [stringvalue->String]]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.lacinia.constants :as constants]
             [clojure.spec.alpha :as s]
@@ -77,9 +78,7 @@
     (case type
       ;; Because of how parsing works, the string literal includes the enclosing
       ;; quotes.
-      :stringvalue [:scalar (subs first-value
-                                  1
-                                  (dec (.length ^String first-value)))]
+      :stringvalue [:scalar (stringvalue->String first-value)]
       ;; For these other types, the value is still in string format, and will be
       ;; conformed a bit later.
       :intvalue [:scalar first-value]

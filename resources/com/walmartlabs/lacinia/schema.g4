@@ -50,7 +50,7 @@ unionTypes
   ;
 
 enumDef
-  : 'enum' typeName '{' scalarName '}'
+  : 'enum' typeName '{' scalarName+ '}'
   ;
 
 scalarName

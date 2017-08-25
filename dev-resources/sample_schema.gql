@@ -1,14 +1,50 @@
 {
+
+  enum POSSIBLE {
+    YES
+    NO
+  }
+
+  enum FLAVORS {
+    CHOCOLATE
+    VANILLA
+    STRAWBERRY
+    CARROT
+  }
+
+  scalar Date
+
+  interface Human {
+    name: String
+    birthDate: Date
+  }
+
+  type CharacterOutput implements Human {
+    preferredIceCreamFlavors: [FLAVORS]
+  }
+
+  input Character {
+    name: String
+    preferredIceCreamFlavors: [FLAVORS]
+    birthDate: Date
+  }
+
   type Query {
-    lookup(id: String) : [String]
+    lookup(possible: POSSIBLE = YES) : [String]
+  }
+
+  type Query2 {
+    find_by_name(name: String) : Character
   }
 
   type Mutation {
-    add(id: String, value: String) : Boolean
+    add(id: String, value: Character = {name: "Unspecified", preferredIceCreamFlavors: [CARROT]}, possible: POSSIBLE) : Boolean
   }
 
+  union Queries = Query | Query2
+
   schema {
-    query: Query
+    query: Queries
     mutation: Mutation
   }
 }

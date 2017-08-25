@@ -1,15 +1,15 @@
 (ns com.walmartlabs.lacinia.subscription-tests
   (:require
-    [clojure.test :refer [deftest is]]
-    [clojure.java.io :as io]
-    [clojure.edn :as edn]
-    [com.walmartlabs.lacinia.util :as util]
-    [com.walmartlabs.lacinia.parser :as parser]
-    [com.walmartlabs.lacinia.executor :as executor]
-    [com.walmartlabs.lacinia.constants :as constants]
-    [com.walmartlabs.lacinia.resolve :as resolve]
-    [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.test-utils :as test-utils :refer [simplify]]))
+   [clojure.test :refer [deftest is]]
+   [clojure.java.io :as io]
+   [clojure.edn :as edn]
+   [com.walmartlabs.lacinia.util :as util]
+   [com.walmartlabs.lacinia.parser.query :as parser]
+   [com.walmartlabs.lacinia.executor :as executor]
+   [com.walmartlabs.lacinia.constants :as constants]
+   [com.walmartlabs.lacinia.resolve :as resolve]
+   [com.walmartlabs.lacinia.schema :as schema]
+   [com.walmartlabs.test-utils :as test-utils :refer [simplify]]))
 
 ;; There's not a whole lot we can do here, as most of the support has to come from the web tier code, e.g.,
 ;; pedestal-lacinia.
