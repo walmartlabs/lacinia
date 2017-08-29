@@ -108,6 +108,31 @@
 
 (declare ^:private xform-argument-map)
 
+(defn ^:private unescape-ascii
+  [^String escaped-sequence]
+  (case escaped-sequence
+    "b" "\b"
+    "f" "\f"
+    "n" "\n"
+    "r" "\r"
+    "t" "\t"
+    escaped-sequence))
+
+(defn ^:private unescape-unicode
+  [^String hex-digits]
+  (-> hex-digits
+      (Integer/parseInt 16)
+      (Character/toChars)
+      (String.)))
+
+(defn ^:private xform-argument-string
+  [^String v]
+  (-> v
+      ;; Because of how parsing works, the string literal includes the enclosing quotes
+      (subs 1 (dec (.length v)))
+      (str/replace #"\\([\\\"\/bfnrt])" #(unescape-ascii (second %)))
+      (str/replace #"\\u([A-Fa-f0-9]{4})" #(unescape-unicode (second %)))))
+
 (defn ^:private xform-argument-value
   "Returns a tuple of type and string value.  True scalar values will be passed,
   as strings, to the scalar's :parse function to convert to the appropriate type
@@ -130,11 +155,7 @@
   [argument-value]
   (let [[type first-value & _] argument-value]
     (case type
-      ;; Because of how parsing works, the string literal includes the enclosing
-      ;; quotes.
-      :stringvalue [:scalar (subs first-value
-                                  1
-                                  (dec (.length ^String first-value)))]
+      :stringvalue [:scalar (xform-argument-string first-value)]
       ;; For these other types, the value is still in string format, and will be
       ;; conformed a bit later.
       :intvalue [:scalar first-value]

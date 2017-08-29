@@ -224,33 +224,10 @@
     :else
     (throw (invalid-scalar :Boolean v))))
 
-(defn ^:private unescape-ascii
-  [^String escaped-sequence]
-  (case escaped-sequence
-    "b" "\b"
-    "f" "\f"
-    "n" "\n"
-    "r" "\r"
-    "t" "\t"
-    escaped-sequence))
-
-(defn ^:private unescape-unicode
-  [^String hex-digits]
-  (-> hex-digits
-      (Integer/parseInt 16)
-      (Character/toChars)
-      (String.)))
-
-(defn ^:private unescape-string
-  [^String v]
-  (-> v
-      (str/replace #"\\([\\\"\/bfnrt])" #(unescape-ascii (second %)))
-      (str/replace #"\\u([A-Fa-f0-9]{4})" #(unescape-unicode (second %)))))
-
 (def default-scalar-transformers
   (let [str-conformer (as-conformer str)
         float-conformer (as-conformer coerce-to-float)]
-    {:String {:parse (as-conformer unescape-string)
+    {:String {:parse str-conformer
               :serialize str-conformer}
      :Float {:parse float-conformer
              :serialize float-conformer}
