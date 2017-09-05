@@ -13,25 +13,34 @@
   (antlr.core/parser (slurp (io/resource "com/walmartlabs/lacinia/schema.g4"))))
 
 (defn ^:private select
-  [[p & rst] trees]
-  (cond->> (seq (mapcat
-                 (fn [tree]
-                   (map rest
-                        (filter (cond
-                                  (keyword? p) #(= (first %) p)
-                                  (set? p) #(p (first %))
-                                  (fn? p) p)
-                                tree)))
-                 trees))
-    (seq rst) (recur rst)))
+  "Selects nodes from the ANTLR parse tree given a path, which is a
+  vector of alternatively node keyword labels, sets of node keyword
+  labels or predicate functions that accept a node as a
+  parameter. Always accepts and returns a sequence of nodes."
+  [path nodes]
+  (let [[p & rst] path]
+    (cond->> (seq (mapcat
+                   (fn [node]
+                     (map rest
+                          (filter (cond
+                                    (keyword? p) #(= (first %) p)
+                                    (set? p) #(p (first %))
+                                    (fn? p) p)
+                                  node)))
+                   nodes))
+      (seq rst) (recur rst))))
 
 (defn ^:private select-map
-  [f path tree]
-  (map (comp f vector) (select path tree)))
+  "Maps over selected nodes, providing a sequence of nodes as a
+  shortcut to facilitate using selectors within f."
+  [f path nodes]
+  (map (comp f vector) (select path nodes)))
 
 (defn ^:private select1
-  [path antlr-tree]
-  (ffirst (select path antlr-tree)))
+  "Selects a terminal scalar value. Should only be used when path
+  resolves to a single scalar."
+  [path nodes]
+  (ffirst (select path nodes)))
 
 (defn ^:private xform-type-name
   [typename]
