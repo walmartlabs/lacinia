@@ -2,9 +2,16 @@
   (:require [com.walmartlabs.lacinia.internal-utils :refer [deep-merge]]
             [com.walmartlabs.lacinia.parser :refer [antlr-parse parse-failures]]
             [clojure.java.io :as io]
+            [clojure.spec.alpha :as s]
+            [clojure.spec.test.alpha :as stest]
             [clj-antlr.core :as antlr.core])
   (:import (clj_antlr ParseError)
            (clojure.lang ExceptionInfo)))
+
+;; When using Clojure 1.9 alpha, the dependency on clojure-future-spec can be excluded,
+;; and this code will not trigger
+(when (-> *clojure-version* :minor (< 9))
+  (require '[clojure.future :refer [simple-keyword?]]))
 
 (def ^:private grammar
   (antlr.core/parser (slurp (io/resource "com/walmartlabs/lacinia/schema.g4"))))
@@ -205,3 +212,22 @@
                 resolvers
                 scalars
                 documentation))
+
+(s/def ::field-resolver (s/map-of simple-keyword? fn?))
+(s/def ::resolver-map (s/map-of simple-keyword? ::field-resolver))
+(s/def ::parse fn?)
+(s/def ::serialize fn?)
+(s/def ::scalar-def (s/keys :req-un [::parse ::serialize]))
+(s/def ::scalar-map (s/map-of simple-keyword? ::scalar-def))
+(s/def ::description string?)
+(s/def ::fields (s/map-of simple-keyword? ::description))
+(s/def ::documentation-def (s/keys :opt-un [::description ::fields]))
+(s/def ::documentation-map (s/map-of simple-keyword? ::documentation-def))
+
+(s/fdef parse-schema
+        :args (s/cat :schema-string string?
+                     :resolvers ::resolver-map
+                     :scalars ::scalar-map
+                     :documentation ::documentation-map))
+
+(stest/instrument `parse-schema)
