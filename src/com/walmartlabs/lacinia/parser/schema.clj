@@ -141,13 +141,13 @@
 
 (defn ^:private attach-resolvers
   [schema resolvers]
-  (reduce (fn [schema' type]
-            (reduce (fn [schema'' field]
-                      (assoc-in schema'' [:objects type :fields field :resolver] (get-in resolvers [type field])))
-                    schema'
-                    (keys type)))
-          schema
-          (keys resolvers)))
+  (reduce-kv (fn [schema' type fields]
+               (reduce-kv (fn [schema'' field resolver]
+                            (assoc-in schema'' [:objects type :fields field :resolver] resolver))
+                          schema'
+                          fields))
+             schema
+             resolvers))
 
 (defn ^:private attach-scalars
   [schema scalars]
@@ -155,9 +155,20 @@
   ;; to fallback to any sort of unexpected default behavior.
   (assoc schema :scalars scalars))
 
+(defn ^:private attach-documentation
+  [schema documentation]
+  (reduce-kv (fn [schema' type {:keys [fields description]}]
+               (-> (reduce-kv (fn [schema'' field field-descr]
+                                (assoc-in schema'' [:objects type :fields field :description] field-descr))
+                              schema'
+                              fields)
+                   (assoc-in [:objects type :description] description)))
+             schema
+             documentation))
+
 (defn ^:private xform-schema
   "Given an ANTLR parse tree, returns a Lacinia schema."
-  [antlr-tree resolvers scalars]
+  [antlr-tree resolvers scalars documentation]
   (let [root (select [:graphqlSchema] [[antlr-tree]])]
     (-> {:objects (apply merge (select-map xform-type [#{:inputTypeDef :typeDef}] root))
          :enums (apply merge (select-map xform-enum [:enumDef] root))
@@ -166,15 +177,25 @@
          :interfaces (apply merge (select-map xform-type [:interfaceDef] root))}
         (attach-resolvers resolvers)
         (attach-scalars scalars)
+        (attach-documentation documentation)
         (attach-operations root))))
 
 (defn parse-schema
   "Given a GraphQL schema string, parses it and returns a Lacinia EDN
   schema. Defers validation of the schema to the downstream schema
   validator.
-  resolvers is expected to be a map of {type-name-keyword {field-name-keyword resolver-fn}}.
-  scalars is expected to be a map of {scalar-name-keyword {:parse parse-fn :serialize serialize-fn}}"
-  [schema-string resolvers scalars]
+
+  `resolvers` is expected to be a map of:
+  {type-name-k {field-name-keyword resolver-fn}}
+
+  `scalars` is expected to be a map of:
+  {scalar-name-k {:parse parse-fn
+                  :serialize serialize-fn}}
+
+  `documentation` is expected to be a map of:
+  {type-name-k {:description doc-str
+                :fields {field-name-k doc-str}}}"
+  [schema-string resolvers scalars documentation]
   (xform-schema (try
                   (antlr-parse grammar schema-string)
                   (catch ParseError e
@@ -182,4 +203,5 @@
                       (throw (ex-info "Failed to parse GraphQL schema."
                                       {:errors failures})))))
                 resolvers
-                scalars))
+                scalars
+                documentation))
