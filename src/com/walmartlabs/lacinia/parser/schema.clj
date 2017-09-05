@@ -119,16 +119,15 @@
 (defn ^:private xform-operation
   [schema operation]
   (let [operation-type (keyword (select1 [:typeName :name] operation))]
-    (with-meta (or (:fields (get-in schema [:objects operation-type]))
-                   ;; Since Lacinia schemas do not support specifying a
-                   ;; union type as an operation directly but the
-                   ;; GraphQL schema language does, then we need to
-                   ;; resolve the union here.
-                   (some->> (get-in schema [:unions operation-type :members])
-                            (map #(get-in schema [:objects % :fields]))
-                            (apply merge))
-                   (throw (ex-info "Operation type not found" {:operation operation-type})))
-      {:type operation-type})))
+    (or (:fields (get-in schema [:objects operation-type]))
+        ;; Since Lacinia schemas do not support specifying a
+        ;; union type as an operation directly but the
+        ;; GraphQL schema language does, then we need to
+        ;; resolve the union here.
+        (some->> (get-in schema [:unions operation-type :members])
+                 (map #(get-in schema [:objects % :fields]))
+                 (apply merge))
+        (throw (ex-info "Operation type not found" {:operation operation-type})))))
 
 (defn ^:private xform-scalar
   [scalar]
