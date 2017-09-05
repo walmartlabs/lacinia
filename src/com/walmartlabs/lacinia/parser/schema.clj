@@ -177,11 +177,15 @@
 (defn ^:private attach-documentation
   [schema documentation]
   (reduce-kv (fn [schema' type {:keys [fields description]}]
-               (cond-> (reduce-kv (fn [schema'' field field-descr]
-                                    (assoc-in schema'' [:objects type :fields field :description] field-descr))
-                                  schema'
-                                  fields)
-                 description (assoc-in [:objects type :description] description)))
+               (let [obj-k (cond
+                             (get-in schema' [:objects type]) :objects
+                             (get-in schema' [:input-objects type]) :input-objects
+                             :else (throw (ex-info "Error attaching documentation: type not found" {:type type})))]
+                 (cond-> (reduce-kv (fn [schema'' field field-descr]
+                                      (assoc-in schema'' [obj-k type :fields field :description] field-descr))
+                                    schema'
+                                    fields)
+                   description (assoc-in [obj-k type :description] description))))
              schema
              documentation))
 
@@ -189,7 +193,8 @@
   "Given an ANTLR parse tree, returns a Lacinia schema."
   [antlr-tree resolvers scalars documentation]
   (let [root (select [:graphqlSchema] [[antlr-tree]])]
-    (-> {:objects (apply merge (select-map xform-type [#{:inputTypeDef :typeDef}] root))
+    (-> {:objects (apply merge (select-map xform-type [:typeDef] root))
+         :input-objects (apply merge (select-map xform-type [:inputTypeDef] root))
          :enums (apply merge (select-map xform-enum [:enumDef] root))
          :scalars (apply merge (select-map xform-scalar [:scalarDef] root))
          :unions (apply merge (select-map xform-union [:unionDef] root))
