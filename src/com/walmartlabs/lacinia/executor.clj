@@ -112,27 +112,32 @@
         start-ms (when (and (some? timings)
                             (not (-> field-resolver meta ::schema/default-resolver?)))
                    (System/currentTimeMillis))
-        resolver-result (field-resolver resolve-context arguments container-value)
-        final-result (resolve/resolve-promise)]
-    (resolve/on-deliver! resolver-result
-                         (fn [resolved-value]
-                           (when start-ms
-                             (let [finish-ms (System/currentTimeMillis)
-                                   elapsed-ms (- finish-ms start-ms)
-                                   timing {:start start-ms
-                                           :finish finish-ms
-                                           ;; This is just a convenience:
-                                           :elapsed elapsed-ms}]
-                               ;; The extra key is to handle a case where we time, say, [:hero] and [:hero :friends]
-                               ;; That will leave :friends as one child of :hero, and :execution/timings as another.
-                               ;; The timings are always a list; we don't know if the field is resolved once,
-                               ;; resolved multiple times because it is inside a nested value, or resolved multiple
-                               ;; times because of multiple top-level operations.
-                               (swap! timings
-                                      update-in (conj (:query-path field-selection) :execution/timings)
-                                      (fnil conj []) timing)))
-                           (resolve/deliver! final-result resolved-value)))
-    final-result))
+        resolver-result (field-resolver resolve-context arguments container-value)]
+    ;; If not collecting timing results, then the resolver-result is all we need.
+    ;; Otherwise, we need to create an extra promise so that we can observe the
+    ;; delivery of the value to update our timing information. The downside is
+    ;; that collecting timing information affects timing.
+    (if-not start-ms
+      resolver-result
+      (let [final-result (resolve/resolve-promise)]
+        (resolve/on-deliver! resolver-result
+                             (fn [resolved-value]
+                               (let [finish-ms (System/currentTimeMillis)
+                                     elapsed-ms (- finish-ms start-ms)
+                                     timing {:start start-ms
+                                             :finish finish-ms
+                                             ;; This is just a convenience:
+                                             :elapsed elapsed-ms}]
+                                 ;; The extra key is to handle a case where we time, say, [:hero] and [:hero :friends]
+                                 ;; That will leave :friends as one child of :hero, and :execution/timings as another.
+                                 ;; The timings are always a list; we don't know if the field is resolved once,
+                                 ;; resolved multiple times because it is inside a nested value, or resolved multiple
+                                 ;; times because of multiple top-level operations.
+                                 (swap! timings
+                                        update-in (conj (:query-path field-selection) :execution/timings)
+                                        (fnil conj []) timing))
+                               (resolve/deliver! final-result resolved-value)))
+        final-result))))
 
 (declare ^:private resolve-and-select)
 
@@ -190,6 +195,8 @@
   (fn [execution-context selection]
     (:selection-type selection)))
 
+(defrecord ^:private ResultTuple [alias value])
+
 (defmethod apply-selection :field
   [execution-context field-selection]
   (let [{:keys [alias]} field-selection
@@ -218,7 +225,7 @@
 
                                                  :else
                                                  resolved-field-value)]
-                             (resolve/deliver! final-result (hash-map alias sub-selection)))))
+                             (resolve/deliver! final-result (->ResultTuple alias sub-selection)))))
     final-result))
 
 (defn ^:private maybe-apply-fragment
@@ -250,10 +257,19 @@
   (when-not (:disabled? selection)
     (apply-selection execution-context selection)))
 
-(defn ^:private combine-map-results
+
+(defn ^:private merge-selected-values
+  "Merges the left and right values, with a special case for when the right value
+  is an ResultTuple."
+  [left-value right-value]
+  (if (instance? ResultTuple right-value)
+    (assoc left-value (:alias right-value) (:value right-value))
+    (merge left-value right-value)))
+
+(defn ^:private combine-selection-results
   "Left associative resolution of results, combined using merge."
   [left-result right-result]
-  (combine-results merge left-result right-result))
+  (combine-results merge-selected-values left-result right-result))
 
 (defn ^:private execute-nested-selections
   "Executes nested sub-selections once a value is resolved.
@@ -264,7 +280,7 @@
   ;; Then a cascade of intermediate results that combine the individual results
   ;; in the correct order.
   (let [selection-results (keep #(maybe-apply-selection execution-context %) sub-selections)]
-    (reduce combine-map-results
+    (reduce combine-selection-results
             (resolve-as (ordered-map))
             selection-results)))
 
@@ -274,14 +290,14 @@
   ;; However, sometimes a selection is disabled and returns nil instead of a ResolverResult.
   (let [next-result (resolve/resolve-promise)]
     (resolve/on-deliver! previous-resolved-result
-                         (fn [left-map]
+                         (fn [left-value]
                            ;; This is what makes it sync: we don't kick off the evaluation of the selection
                            ;; until the previous selection, left, has completed.
                            (let [sub-resolved-result (apply-selection execution-context sub-selection)]
                              (resolve/on-deliver! sub-resolved-result
-                                                  (fn [right-map]
+                                                  (fn [right-value]
                                                     (resolve/deliver! next-result
-                                                                      (merge left-map right-map)))))))
+                                                                      (merge-selected-values left-value right-value)))))))
     ;; This will deliver after the sub-selection delivers, which is only after the previous resolved result
     ;; delivers.
     next-result))
@@ -298,6 +314,8 @@
   (reduce #(combine-selection-results-sync execution-context %1 %2)
           (resolve-as (ordered-map))
           sub-selections))
+
+(defrecord ^:private SelectorContext [execution-context callback resolved-value resolved-type])
 
 (defn ^:private resolve-and-select
   "Recursive resolution of a field within a containing field's resolved value.
@@ -321,20 +339,14 @@
               (mapcat #(enhance-errors selection %))
               (swap! (:errors execution-context) into)))
 
-       (cond
-
-         (= ::schema/empty-list resolved-value)
-         (resolve-as [])
-
-         (and (some? resolved-value)
-              (seq sub-selections))
+       (if (and (some? resolved-value)
+                resolved-type
+                (seq sub-selections))
          (execute-nested-selections
            (assoc execution-context
                   :resolved-value resolved-value
                   :resolved-type resolved-type)
            sub-selections)
-
-         :else
          (resolve/resolve-as resolved-value)))
      ;; In a concrete type, we know the selector from the field definition
      ;; (a field definition on a concrete object type).  Otherwise, we need
@@ -354,15 +366,50 @@
                           :selector
                           (or (throw (ex-info "Sanity check: no selector."
                                               {:type-name resolved-type
-                                               :selection selection})))))))]
+                                               :selection selection})))))))
+
+     process-resolved-value (fn [resolved-value]
+                              (loop [resolved-value resolved-value
+                                     selector-context (->SelectorContext execution-context
+                                                                         selector-callback
+                                                                         nil
+                                                                         nil)]
+                                ;; Using satisfies? is a huge performance hit. ResolveCommand is not
+                                ;; intended as a general extension point, so we don't need to worry about
+                                ;; it being extended to existing types.
+                                (if (instance? ResolveCommand resolved-value)
+                                  (recur (resolve/nested-value resolved-value)
+                                         (resolve/apply-command resolved-value selector-context))
+                                  ;; Finally to a real value, not a wrapper.  The commands may have
+                                  ;; modified the :errors or :execution-context keys, and the pipeline
+                                  ;; will do the rest. Errors will be dealt with in the callback.
+                                  (-> selector-context
+                                      (assoc :callback selector-callback
+                                             :resolved-value resolved-value)
+                                      selector))))
+
+     direct-fn (-> selection :field-definition :direct-fn)]
 
     ;; For fragments, we start with a single value and it passes right through to
     ;; sub-selections, without changing value or type.
-    (if is-fragment?
-      (selector {:resolved-value (:resolved-value execution-context)
-                 :resolved-type resolved-type
-                 :callback selector-callback
-                 :execution-context execution-context})
+    (cond
+
+      is-fragment?
+      (selector (->SelectorContext execution-context
+                                   selector-callback
+                                   (:resolved-value execution-context)
+                                   resolved-type))
+
+      ;; Optimization: for simple fields there may be direct function.
+      ;; This is a function that synchronously provides the value from the container resolved value.
+      ;; This is almost always a default resolver.  The extracted value is passed though to
+      ;; the selector, which returns a ResolverResult. Thus we've peeled back at least one layer
+      ;; of ResolveResultPromise.
+      direct-fn
+      (-> execution-context
+          :resolved-value
+          direct-fn
+          process-resolved-value)
 
       ;; Here's where it comes together.  The field's selector
       ;; does the validations, and for list types, does the mapping.
@@ -370,27 +417,13 @@
       ;; Eventually, individual values will be passed to the callback, which can then turn around
       ;; and recurse down a level.  The result is a map or a list of maps.
 
+      :else
       (let [final-result (resolve/resolve-promise)]
         (resolve/on-deliver! (invoke-resolver-for-field execution-context selection)
                              (fn receive-resolved-value-from-field [resolved-value]
-                               (loop [resolved-value resolved-value
-                                      selector-context {:execution-context execution-context}]
-                                 ;; Using satisfies? is a huge performance hit. ResolveCommand is not
-                                 ;; intended as a general extension point, so we don't need to worry about
-                                 ;; it being extended to existing types.
-                                 (if (instance? ResolveCommand resolved-value)
-                                   (recur (resolve/nested-value resolved-value)
-                                          (resolve/apply-command resolved-value selector-context))
-                                   ;; Finally to a real value, not a wrapper.  The commands may have
-                                   ;; modified the :errors or :execution-context keys, and the pipeline
-                                   ;; will do the rest. Errors will be dealt with in the callback.
-                                   (-> selector-context
-                                       (assoc :callback selector-callback
-                                              :resolved-value resolved-value)
-                                       selector
-                                       (resolve/on-deliver!
-                                         (fn deliver-selection-for-field [resolved-value]
-                                           (resolve/deliver! final-result resolved-value))))))))
+                               (resolve/on-deliver! (process-resolved-value resolved-value)
+                                                    (fn deliver-selection-for-field [resolved-value]
+                                                      (resolve/deliver! final-result resolved-value)))))
         final-result))))
 
 (defn execute-query

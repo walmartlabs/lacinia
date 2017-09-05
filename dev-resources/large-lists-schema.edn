@@ -1,0 +1,11 @@
+{:objects
+ {:Item
+  {:fields
+   {:name {:type String}
+    :age {:type Int}
+    :id {:type Int}
+    :city {:type String}}}}
+
+ :queries
+ {:list {:type (list :Item)
+         :resolve :resolve-list}}}

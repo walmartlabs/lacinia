@@ -6,6 +6,9 @@ This would occur when the :default-field-resolver option was specified, and org.
 not on the classpath (it is a side-effect of having `com.walmartlabs.lacina/compile`
 be always instrumented).
 
+A number of small optimizations have been made, shaving a few milliseconds off selections
+on very large lists.
+
 ## 0.20.0 -- 1 Aug 2017
 
 Object fields and field arguments may now inherit their description from corresponding
