@@ -1,6 +1,7 @@
 (ns com.walmartlabs.lacinia.parser.schema-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :refer [resource]]
+            [com.walmartlabs.lacinia :refer [execute]]
             [com.walmartlabs.lacinia.parser.schema :as parser]
             [com.walmartlabs.lacinia.schema :as schema]))
 
@@ -24,9 +25,7 @@
 
 (defn ^:private add
   [ctx args _]
-  (if (= "Darth Vader" (get-in args [:character :name]))
-    false
-    true))
+  (not= "Darth Vader" (get-in args [:character :name])))
 
 (def ^:private resolver-map {:Query {:in_episode in-episode}
                              :OtherQuery {:find_by_names find-by-names}
@@ -37,51 +36,62 @@
 (def ^:private scalar-map {:Date {:parse date-parse :serialize date-parse}})
 
 (deftest schema-parsing
-  (is (= {:enums {:episode {:values [:NEWHOPE :EMPIRE :JEDI]}}
-          :scalars {:Date {:parse date-parse :serialize date-parse}}
-          :interfaces {:Human {:fields {:name {:type 'String}
-                                        :birthDate {:type :Date}}}}
-          :unions {:Queries {:members [:Query :OtherQuery]}}
-          :input-objects {:Character {:description "A character"
-                                      :fields {:name {:type '(non-null String)
-                                                      :description "Character name"}
-                                               :birthDate {:type :Date
-                                                           :description "Date of Birth"}
-                                               :episodes {:type '(list :episode)}}}}
-          :objects {:CharacterOutput {:fields {:name {:type 'String}
-                                               :birthDate {:type :Date}
-                                               :episodes {:type '(list :episode)}}
-                                      :implements [:Human]}
-                    :Query {:fields {:in_episode {:args {:episode {:type :episode
-                                                                   :defaultValue :NEWHOPE}}
-                                                  :resolve in-episode
-                                                  :description "Find all characters for a given episode"
-                                                  :type '(list :CharacterOutput)}}}
-                    :OtherQuery {:fields {:find_by_names {:args {:names {:type '(non-null (list (non-null String)))}}
-                                                          :resolve find-by-names
-                                                          :type '(list :CharacterOutput)}}}
-                    :Mutation {:fields {:add {:args {:character {:type :Character
-                                                                 :defaultValue {:name "Unspecified"
-                                                                                :episodes [:NEWHOPE :EMPIRE :JEDI]}}}
-                                              :resolve add
-                                              :type 'Boolean}}}}
-          :queries {:in_episode {:args {:episode {:type :episode
-                                                  :defaultValue :NEWHOPE}}
-                                 :description "Find all characters for a given episode"
-                                 :resolve in-episode
-                                 :type '(list :CharacterOutput)}
-                    :find_by_names {:args {:names {:type '(non-null (list (non-null String)))}}
-                                    :resolve find-by-names
-                                    :type '(list :CharacterOutput)}}
-          :mutations {:add {:args {:character {:type :Character
-                                               :defaultValue {:name "Unspecified"
-                                                              :episodes [:NEWHOPE :EMPIRE :JEDI]}}}
-                            :resolve add
-                            :type 'Boolean}}}
-         (parser/parse-schema (slurp (resource "sample_schema.gql"))
-                              resolver-map
-                              scalar-map
-                              {:Character {:description "A character"
-                                           :fields {:name "Character name"
-                                                    :birthDate "Date of Birth"}}
-                               :Query {:fields {:in_episode "Find all characters for a given episode"}}}))))
+  (let [parsed-schema (parser/parse-schema (slurp (resource "sample_schema.gql"))
+                                           resolver-map
+                                           scalar-map
+                                           {:Character {:description "A character"
+                                                        :fields {:name "Character name"
+                                                                 :birthDate "Date of Birth"}}
+                                            :Query {:fields {:in_episode "Find all characters for a given episode"}}})]
+    (testing "parsing"
+      (is (= {:enums {:episode {:values [:NEWHOPE :EMPIRE :JEDI]}}
+              :scalars {:Date {:parse date-parse :serialize date-parse}}
+              :interfaces {:Human {:fields {:name {:type 'String}
+                                            :birthDate {:type :Date}}}}
+              :unions {:Queries {:members [:Query :OtherQuery]}}
+              :input-objects {:Character {:description "A character"
+                                          :fields {:name {:type '(non-null String)
+                                                          :description "Character name"}
+                                                   :birthDate {:type :Date
+                                                               :description "Date of Birth"}
+                                                   :episodes {:type '(list :episode)}}}}
+              :objects {:CharacterOutput {:fields {:name {:type 'String}
+                                                   :birthDate {:type :Date}
+                                                   :episodes {:type '(list :episode)}}
+                                          :implements [:Human]}
+                        :Query {:fields {:in_episode {:args {:episode {:type :episode
+                                                                       :defaultValue :NEWHOPE}}
+                                                      :resolve in-episode
+                                                      :description "Find all characters for a given episode"
+                                                      :type '(list :CharacterOutput)}}}
+                        :OtherQuery {:fields {:find_by_names {:args {:names {:type '(non-null (list (non-null String)))}}
+                                                              :resolve find-by-names
+                                                              :type '(list :CharacterOutput)}}}
+                        :Mutation {:fields {:add {:args {:character {:type :Character
+                                                                     :defaultValue {:name "Unspecified"
+                                                                                    :episodes [:NEWHOPE :EMPIRE :JEDI]}}}
+                                                  :resolve add
+                                                  :type 'Boolean}}}}
+              :queries {:in_episode {:args {:episode {:type :episode
+                                                      :defaultValue :NEWHOPE}}
+                                     :description "Find all characters for a given episode"
+                                     :resolve in-episode
+                                     :type '(list :CharacterOutput)}
+                        :find_by_names {:args {:names {:type '(non-null (list (non-null String)))}}
+                                        :resolve find-by-names
+                                        :type '(list :CharacterOutput)}}
+              :mutations {:add {:args {:character {:type :Character
+                                                   :defaultValue {:name "Unspecified"
+                                                                  :episodes [:NEWHOPE :EMPIRE :JEDI]}}}
+                                :resolve add
+                                :type 'Boolean}}}
+             parsed-schema)))
+    (testing "using parsed schema"
+      (let [compiled (schema/compile parsed-schema)]
+        (is (= {:data {:in_episode [{:name "Jabba the Hutt"
+                                     :birthDate "?"
+                                     :episodes [:JEDI]}]
+                       :find_by_names [{:name "Horace the Demogorgon" :episodes []}]}}
+               (execute compiled "query { in_episode(episode: JEDI) { name birthDate episodes} find_by_names(names: [\"Horace the Demogorgon\"]) {name episodes} }" nil {})))
+        (is (= {:data {:add false}}
+               (execute compiled "mutation { add(character: {name: \"Darth Vader\"}) }" nil {})))))))
