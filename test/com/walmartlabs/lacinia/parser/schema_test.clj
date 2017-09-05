@@ -1,11 +1,12 @@
 (ns com.walmartlabs.lacinia.parser.schema-test
   (:require [clojure.test :refer [deftest is]]
             [clojure.java.io :refer [resource]]
-            [com.walmartlabs.lacinia.parser.schema :as parser]))
+            [com.walmartlabs.lacinia.parser.schema :as parser]
+            [com.walmartlabs.lacinia.schema :as schema]))
 
 (deftest schema-parsing
-  (let [date-parse (partial identity)
-        date-serialize (partial identity)
+  (let [date-parse (schema/as-conformer str)
+        date-serialize (schema/as-conformer str)
         in-episode (partial identity)
         find-by-names (partial identity)
         add (partial identity)]

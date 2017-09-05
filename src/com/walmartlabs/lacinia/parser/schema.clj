@@ -213,8 +213,8 @@
   {type-name-k {field-name-keyword resolver-fn}}
 
   `scalars` is expected to be a map of:
-  {scalar-name-k {:parse parse-fn
-                  :serialize serialize-fn}}
+  {scalar-name-k {:parse parse-spec
+                  :serialize serialize-spec}}
 
   `documentation` is expected to be a map of:
   {type-name-k {:description doc-str
@@ -234,8 +234,8 @@
 
 (s/def ::field-resolver (s/map-of simple-keyword? fn?))
 (s/def ::resolver-map (s/map-of simple-keyword? ::field-resolver))
-(s/def ::parse fn?)
-(s/def ::serialize fn?)
+(s/def ::parse s/spec?)
+(s/def ::serialize s/spec?)
 (s/def ::scalar-def (s/keys :req-un [::parse ::serialize]))
 (s/def ::scalar-map (s/map-of simple-keyword? ::scalar-def))
 (s/def ::description string?)
