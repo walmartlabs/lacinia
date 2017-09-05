@@ -87,7 +87,8 @@
   {(keyword (select1 [:typeName :name] type))
    (cond-> {:fields (apply merge (select-map xform-field [:fieldDef] type))}
      (select1 [:implementationDef] type) (-> (assoc :implements
-                                                    (mapv keyword (select [:implementationDef :typeName :name] type)))))})
+                                                    (mapv (comp keyword first)
+                                                          (select [:implementationDef :typeName :name] type)))))})
 
 (defn ^:private xform-enum
   [enum]
