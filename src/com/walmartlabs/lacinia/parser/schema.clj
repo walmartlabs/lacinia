@@ -100,7 +100,9 @@
   [field]
   {(keyword (select1 [:fieldName :name] field))
    (cond-> {:type (xform-typespec (select [:typeSpec] field))}
-     (select [:fieldArgs] field) (assoc :args (apply merge (select-map xform-field-arg [:fieldArgs :argument] field))))})
+     (select [:fieldArgs] field) (assoc :args
+                                        (apply merge
+                                               (select-map xform-field-arg [:fieldArgs :argument] field))))})
 
 (defn ^:private xform-type
   [type]
@@ -131,8 +133,8 @@
 (defn ^:private xform-scalar
   [scalar]
   {(keyword (select1 [:typeName :name] scalar))
-   {:parse identity
-    :serialize identity}})
+   {:parse nil
+    :serialize nil}})
 
 (defn ^:private xform-union
   [union]
