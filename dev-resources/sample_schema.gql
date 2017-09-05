@@ -43,8 +43,7 @@
     add(id: String, value: Character = {name: "Unspecified", preferredIceCreamFlavors: [CARROT]}, possible: POSSIBLE) : Boolean
   }
 
-  union Query2 = OtherQuery
-  union Queries = Query | Query2
+  union Queries = Query | OtherQuery
 
   schema {
     query: Queries

@@ -94,17 +94,6 @@
   {(keyword (select1 [:typeName :name] enum))
    {:values (vec (map first (select [:scalarName :name] enum)))}})
 
-(defn ^:private resolve-union-base-types
-  "Recursively walks union types to find its constituent base types"
-  [schema union-types]
-  (mapcat (fn [type]
-            (or (when (get-in schema [:objects type])
-                  #{type})
-                (some->> (get-in schema [:unions type :members])
-                         (resolve-union-base-types schema))
-                (throw (ex-info "Union member type not found" {:member-type type}))))
-          union-types))
-
 (defn ^:private xform-operation
   [schema operation]
   (let [operation-type (keyword (select1 [:typeName :name] operation))]
@@ -114,7 +103,6 @@
                    ;; GraphQL schema language does, then we need to
                    ;; resolve the union here.
                    (some->> (get-in schema [:unions operation-type :members])
-                            (resolve-union-base-types schema)
                             (map #(get-in schema [:objects % :fields]))
                             (apply merge))
                    (throw (ex-info "Operation type not found" {:operation operation-type})))
