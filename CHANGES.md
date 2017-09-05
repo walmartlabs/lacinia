@@ -1,7 +1,13 @@
 ## 0.21.0 -- UNRELEASED
 
-A number of small optimizations to shave a few milliseconds off very large
-lists.
+Simplified a clojure.spec to prevent a potential runtime error
+`Could not locate clojure/test/check/generators__init.class or clojure/test/check/generators.clj on classpath`.
+This would occur when the :default-field-resolver option was specified, and org.clojure/test.check was
+not on the classpath (it is a side-effect of having `com.walmartlabs.lacina/compile`
+be always instrumented).
+
+A number of small optimizations have been made, shaving a few milliseconds off selections
+on very large lists.
 
 ## 0.20.0 -- 1 Aug 2017
 

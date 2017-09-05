@@ -1,7 +1,6 @@
 (ns com.walmartlabs.lacinia.util
   "Useful utility functions."
   (:require
-    clojure.walk
     [com.walmartlabs.lacinia.internal-utils
      :refer [to-message map-vals cond-let update?]]))
 
@@ -21,11 +20,10 @@
                                              reference))]
 
                 (nil? callback-source)
-                (let [kw-name (name callback-kw)]
-                  (throw (ex-info (format "%s specified in schema not provided."
-                                          error-name)
-                                  {:reference reference
-                                   :callbacks (keys callbacks-map)})))
+                (throw (ex-info (format "%s specified in schema not provided."
+                                        error-name)
+                                {:reference reference
+                                 :callbacks (keys callbacks-map)}))
                 factory?
                 (assoc field callback-kw (apply callback-source (rest reference)))
 
