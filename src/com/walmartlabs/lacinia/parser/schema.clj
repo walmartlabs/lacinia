@@ -1,7 +1,6 @@
 (ns com.walmartlabs.lacinia.parser.schema
   (:require [com.walmartlabs.lacinia.internal-utils :refer [remove-vals]]
-            [com.walmartlabs.lacinia.parser :refer [antlr-parse parse-failures]]
-            [com.walmartlabs.lacinia.parser.util :refer [stringvalue->String]]
+            [com.walmartlabs.lacinia.parser :refer [antlr-parse parse-failures stringvalue->String]]
             [clojure.java.io :as io]
             [clojure.spec.alpha :as s]
             [clojure.spec.test.alpha :as stest]

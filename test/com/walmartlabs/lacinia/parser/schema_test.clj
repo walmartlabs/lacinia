@@ -3,6 +3,7 @@
             [clojure.data :refer [diff]]
             [clojure.java.io :refer [resource]]
             [com.walmartlabs.lacinia.parser.schema :as parser]))
+
 (deftest schema-parsing
   (let [date-parse (partial identity)
         date-serialize (partial identity)

@@ -7,8 +7,7 @@
              :refer [cond-let update? q map-vals filter-vals
                      with-exception-context throw-exception to-message
                      keepv as-keyword]]
-            [com.walmartlabs.lacinia.parser :refer [antlr-parse parse-failures]]
-            [com.walmartlabs.lacinia.parser.util :refer [stringvalue->String]]
+            [com.walmartlabs.lacinia.parser :refer [antlr-parse parse-failures stringvalue->String]]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.lacinia.constants :as constants]
             [clojure.spec.alpha :as s]
