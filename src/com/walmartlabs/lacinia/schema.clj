@@ -349,15 +349,9 @@
                    ::mutations
                    ::subscriptions]))
 
-(s/def ::resolver
-  (s/fspec :args (s/cat ::context (s/keys)
-                        ::arguments (s/map-of keyword? any?)
-                        ::value any?)
-           :ret any?))
-
-(s/def ::default-field-resolver
-  (s/fspec :args (s/cat :field keyword?)
-           :ret ::resolver))
+;; Again, this can be fleshed out once we have a handle on defining specs for
+;; functions:
+(s/def ::default-field-resolver fn?)
 
 (s/def ::compile-options (s/keys :opt-un [::default-field-resolver]))
 
