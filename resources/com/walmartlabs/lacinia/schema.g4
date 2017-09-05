@@ -78,7 +78,7 @@ typeSpec
   ;
 
 listType
-  : '[' typeName required? ']'
+  : '[' typeSpec ']'
   ;
 
 required

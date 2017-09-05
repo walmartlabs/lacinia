@@ -1,6 +1,7 @@
 (ns com.walmartlabs.lacinia.parser.schema
-  (:require [com.walmartlabs.lacinia.internal-utils :refer [deep-merge]]
+  (:require [com.walmartlabs.lacinia.internal-utils :refer [remove-vals]]
             [com.walmartlabs.lacinia.parser :refer [antlr-parse parse-failures]]
+            [com.walmartlabs.lacinia.parser.util :refer [stringvalue->String]]
             [clojure.java.io :as io]
             [clojure.spec.alpha :as s]
             [clojure.spec.test.alpha :as stest]
@@ -16,6 +17,12 @@
 (def ^:private grammar
   (antlr.core/parser (slurp (io/resource "com/walmartlabs/lacinia/schema.g4"))))
 
+(defn ^:private rest-or-true
+  "Return (rest coll), or true if coll only contains a single element."
+  [coll]
+  (or (seq (rest coll))
+      [true]))
+
 (defn ^:private select
   "Selects nodes from the ANTLR parse tree given a path, which is a
   vector of alternatively node keyword labels, sets of node keyword
@@ -25,7 +32,7 @@
   (let [[p & rst] path]
     (cond->> (seq (mapcat
                    (fn [node]
-                     (map rest
+                     (map rest-or-true
                           (filter (cond
                                     (keyword? p) #(= (first %) p)
                                     (set? p) #(p (first %))
@@ -54,9 +61,13 @@
 
 (defn ^:private xform-typespec
   [typespec]
-  (if-let [list-type-name (select1 [:listType :typeName :name] typespec)]
-    (list 'list (xform-type-name list-type-name))
-    (xform-type-name (select1 [:typeName :name] typespec))))
+  (cond
+    ;; list
+    (select1 [:listType] typespec) (cond->> (list 'list (xform-typespec (select [:listType :typeSpec] typespec)))
+                                     (select1 [:required] typespec) (list 'non-null))
+    ;; scalar
+    :else (cond->> (xform-type-name (select1 [:typeName :name] typespec))
+            (select1 [:required] typespec) (list 'non-null))))
 
 (declare ^:private xform-map-value)
 
@@ -68,6 +79,7 @@
       :enumValue (keyword (second value))
       :arrayValue (mapv (comp xform-default-value second) (rest arg-value))
       :objectValue (apply merge (select-map xform-map-value [:objectField] [(rest arg-value)]))
+      :stringvalue (stringvalue->String value)
       value)))
 
 (defn ^:private xform-map-value
@@ -79,9 +91,11 @@
 (defn ^:private xform-field-arg
   [arg]
   {(keyword (select1 [:name] arg))
-   {:type (xform-typespec (select [:typeSpec] arg))
-    :defaultValue (some-> (select1 [:defaultValue :value] arg)
-                          (xform-default-value))}})
+   (let [field-arg {:type (xform-typespec (select [:typeSpec] arg))}]
+     (if-let [default-value (some-> (select1 [:defaultValue :value] arg)
+                                    (xform-default-value))]
+       (assoc field-arg :defaultValue default-value)
+       field-arg))})
 
 (defn ^:private xform-field
   [field]
@@ -93,14 +107,14 @@
   [type]
   {(keyword (select1 [:typeName :name] type))
    (cond-> {:fields (apply merge (select-map xform-field [:fieldDef] type))}
-     (select1 [:implementationDef] type) (-> (assoc :implements
-                                                    (mapv (comp keyword first)
-                                                          (select [:implementationDef :typeName :name] type)))))})
+     (select1 [:implementationDef] type) (assoc :implements
+                                                (mapv (comp keyword first)
+                                                      (select [:implementationDef :typeName :name] type))))})
 
 (defn ^:private xform-enum
   [enum]
   {(keyword (select1 [:typeName :name] enum))
-   {:values (vec (map first (select [:scalarName :name] enum)))}})
+   {:values (vec (map (comp keyword first) (select [:scalarName :name] enum)))}})
 
 (defn ^:private xform-operation
   [schema operation]
@@ -150,7 +164,7 @@
   [schema resolvers]
   (reduce-kv (fn [schema' type fields]
                (reduce-kv (fn [schema'' field resolver]
-                            (assoc-in schema'' [:objects type :fields field :resolver] resolver))
+                            (assoc-in schema'' [:objects type :fields field :resolve] resolver))
                           schema'
                           fields))
              schema
@@ -165,11 +179,11 @@
 (defn ^:private attach-documentation
   [schema documentation]
   (reduce-kv (fn [schema' type {:keys [fields description]}]
-               (-> (reduce-kv (fn [schema'' field field-descr]
-                                (assoc-in schema'' [:objects type :fields field :description] field-descr))
-                              schema'
-                              fields)
-                   (assoc-in [:objects type :description] description)))
+               (cond-> (reduce-kv (fn [schema'' field field-descr]
+                                    (assoc-in schema'' [:objects type :fields field :description] field-descr))
+                                  schema'
+                                  fields)
+                 description (assoc-in [:objects type :description] description)))
              schema
              documentation))
 
@@ -203,15 +217,17 @@
   {type-name-k {:description doc-str
                 :fields {field-name-k doc-str}}}"
   [schema-string resolvers scalars documentation]
-  (xform-schema (try
-                  (antlr-parse grammar schema-string)
-                  (catch ParseError e
-                    (let [failures (parse-failures e)]
-                      (throw (ex-info "Failed to parse GraphQL schema."
-                                      {:errors failures})))))
-                resolvers
-                scalars
-                documentation))
+  (remove-vals
+   #(or (nil? %) (= {} %))
+   (xform-schema (try
+                   (antlr-parse grammar schema-string)
+                   (catch ParseError e
+                     (let [failures (parse-failures e)]
+                       (throw (ex-info "Failed to parse GraphQL schema."
+                                       {:errors failures})))))
+                 resolvers
+                 scalars
+                 documentation)))
 
 (s/def ::field-resolver (s/map-of simple-keyword? fn?))
 (s/def ::resolver-map (s/map-of simple-keyword? ::field-resolver))

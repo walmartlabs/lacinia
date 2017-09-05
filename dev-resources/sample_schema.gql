@@ -1,15 +1,9 @@
 {
 
-  enum POSSIBLE {
-    YES
-    NO
-  }
-
-  enum FLAVORS {
-    CHOCOLATE
-    VANILLA
-    STRAWBERRY
-    CARROT
+  enum episode {
+    NEWHOPE
+    EMPIRE
+    JEDI
   }
 
   scalar Date
@@ -22,25 +16,25 @@
   type CharacterOutput implements Human {
     name: String
     birthDate: Date
-    preferredIceCreamFlavors: [FLAVORS]
+    episodes: [episode]
   }
 
   input Character {
-    name: String
-    preferredIceCreamFlavors: [FLAVORS]
+    name: String!
     birthDate: Date
+    episodes: [episode]
   }
 
   type Query {
-    lookup(possible: POSSIBLE = YES) : [String]
+    in_episode(episode: episode = NEWHOPE) : [CharacterOutput]
   }
 
   type OtherQuery {
-    find_by_name(name: String) : Character
+    find_by_names(names: [String!]!) : [CharacterOutput]
   }
 
   type Mutation {
-    add(id: String, value: Character = {name: "Unspecified", preferredIceCreamFlavors: [CARROT]}, possible: POSSIBLE) : Boolean
+    add(character: Character = {name: "Unspecified", episodes: [NEWHOPE, EMPIRE, JEDI]}) : Boolean
   }
 
   union Queries = Query | OtherQuery
