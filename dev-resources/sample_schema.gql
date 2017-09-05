@@ -20,6 +20,8 @@
   }
 
   type CharacterOutput implements Human {
+    name: String
+    birthDate: Date
     preferredIceCreamFlavors: [FLAVORS]
   }
 
@@ -33,7 +35,7 @@
     lookup(possible: POSSIBLE = YES) : [String]
   }
 
-  type Query2 {
+  type OtherQuery {
     find_by_name(name: String) : Character
   }
 
@@ -41,6 +43,7 @@
     add(id: String, value: Character = {name: "Unspecified", preferredIceCreamFlavors: [CARROT]}, possible: POSSIBLE) : Boolean
   }
 
+  union Query2 = OtherQuery
   union Queries = Query | Query2
 
   schema {
