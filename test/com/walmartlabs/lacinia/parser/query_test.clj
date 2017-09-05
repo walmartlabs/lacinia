@@ -1,9 +1,8 @@
 (ns com.walmartlabs.lacinia.parser.query-test
-  (:require
-   [clojure.test :refer [deftest is testing]]
-   [com.walmartlabs.test-schema :refer [test-schema]]
-   [com.walmartlabs.lacinia.schema :as schema]
-   [com.walmartlabs.lacinia.parser.query :as parser]))
+  (:require [clojure.test :refer [deftest is testing]]
+            [com.walmartlabs.test-schema :refer [test-schema]]
+            [com.walmartlabs.lacinia.schema :as schema]
+            [com.walmartlabs.lacinia.parser.query :as parser]))
 
 (def ^:private compiled-schema
   (schema/compile test-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))
