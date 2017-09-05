@@ -1,6 +1,5 @@
 (ns com.walmartlabs.lacinia.parser.schema-test
   (:require [clojure.test :refer [deftest is]]
-            [clojure.data :refer [diff]]
             [clojure.java.io :refer [resource]]
             [com.walmartlabs.lacinia.parser.schema :as parser]))
 
