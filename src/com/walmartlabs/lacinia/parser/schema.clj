@@ -1,11 +1,8 @@
 (ns com.walmartlabs.lacinia.parser.schema
-  (:require [clojure.walk :refer [prewalk]]
-            [clj-antlr.core :as antlr.core]
-            [clj-antlr.proto :as antlr.proto]
+  (:require [com.walmartlabs.lacinia.internal-utils :refer [deep-merge]]
+            [com.walmartlabs.lacinia.parser :refer [antlr-parse parse-failures]]
             [clojure.java.io :as io]
-            [clj-antlr.common :as antlr.common]
-            [clojure.string :as str]
-            [com.walmartlabs.lacinia.parser :refer [antlr-parse parse-failures]])
+            [clj-antlr.core :as antlr.core])
   (:import (clj_antlr ParseError)
            (clojure.lang ExceptionInfo)))
 
@@ -97,18 +94,31 @@
   {(keyword (select1 [:typeName :name] enum))
    {:values (vec (map first (select [:scalarName :name] enum)))}})
 
+(defn ^:private resolve-union-base-types
+  "Recursively walks union types to find its constituent base types"
+  [schema union-types]
+  (mapcat (fn [type]
+            (or (when (get-in schema [:objects type])
+                  #{type})
+                (some->> (get-in schema [:unions type :members])
+                         (resolve-union-base-types schema))
+                (throw (ex-info "Union member type not found" {:member-type type}))))
+          union-types))
+
 (defn ^:private xform-operation
   [schema operation]
   (let [operation-type (keyword (select1 [:typeName :name] operation))]
-    (or (:fields (get-in schema [:objects operation-type]))
-        ;; Since Lacinia schemas do not support specifying a
-        ;; union type as an operation directly but the
-        ;; GraphQL schema language does, then we need to
-        ;; resolve the union here.
-        (some->> (get-in schema [:unions operation-type :members])
-                 (map #(get-in schema [:objects % :fields]))
-                 (apply merge))
-        (throw (ex-info "Operation type not found" {:operation operation-type})))))
+    (with-meta (or (:fields (get-in schema [:objects operation-type]))
+                   ;; Since Lacinia schemas do not support specifying a
+                   ;; union type as an operation directly but the
+                   ;; GraphQL schema language does, then we need to
+                   ;; resolve the union here.
+                   (some->> (get-in schema [:unions operation-type :members])
+                            (resolve-union-base-types schema)
+                            (map #(get-in schema [:objects % :fields]))
+                            (apply merge))
+                   (throw (ex-info "Operation type not found" {:operation operation-type})))
+      {:type operation-type})))
 
 (defn ^:private xform-scalar
   [scalar]
@@ -140,25 +150,47 @@
                                        [:schemaDef :operationTypeDef :mutationOperationDef]
                                        root))))
 
+(defn ^:private attach-resolvers
+  [schema resolvers]
+  (reduce (fn [schema' type]
+            (reduce (fn [schema'' field]
+                      (assoc-in schema'' [:objects type :fields field :resolver] (get-in resolvers [type field])))
+                    schema'
+                    (keys type)))
+          schema
+          (keys resolvers)))
+
+(defn ^:private attach-scalars
+  [schema scalars]
+  ;; This wipes out the placeholder scalar values since we don't want
+  ;; to fallback to any sort of unexpected default behavior.
+  (assoc schema :scalars scalars))
+
 (defn ^:private xform-schema
   "Given an ANTLR parse tree, returns a Lacinia schema."
-  [antlr-tree]
+  [antlr-tree resolvers scalars]
   (let [root (select [:graphqlSchema] [[antlr-tree]])]
     (-> {:objects (apply merge (select-map xform-type [#{:inputTypeDef :typeDef}] root))
          :enums (apply merge (select-map xform-enum [:enumDef] root))
          :scalars (apply merge (select-map xform-scalar [:scalarDef] root))
-         :unions (apply merge (select-map xform-union [:unionDef] root)) ;; TODO -- also ensure unions can be used for query/mutations
+         :unions (apply merge (select-map xform-union [:unionDef] root))
          :interfaces (apply merge (select-map xform-type [:interfaceDef] root))}
+        (attach-resolvers resolvers)
+        (attach-scalars scalars)
         (attach-operations root))))
 
 (defn parse-schema
   "Given a GraphQL schema string, parses it and returns a Lacinia EDN
   schema. Defers validation of the schema to the downstream schema
-  validator."
-  [schema-string]
+  validator.
+  resolvers is expected to be a map of {type-name-keyword {field-name-keyword resolver-fn}}.
+  scalars is expected to be a map of {scalar-name-keyword {:parse parse-fn :serialize serialize-fn}}"
+  [schema-string resolvers scalars]
   (xform-schema (try
                   (antlr-parse grammar schema-string)
                   (catch ParseError e
                     (let [failures (parse-failures e)]
                       (throw (ex-info "Failed to parse GraphQL schema."
-                                      {:errors failures})))))))
+                                      {:errors failures})))))
+                resolvers
+                scalars))
