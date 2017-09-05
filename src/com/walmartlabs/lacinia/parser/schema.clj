@@ -222,7 +222,8 @@
   {type-name-k {:description doc-str
                 :fields {field-name-k doc-str}}}"
   [schema-string resolvers scalars documentation]
-  (remove-vals
+  (remove-vals ;; Remove any empty schema components to avoid clutter
+               ;; and optimize for human readability
    #(or (nil? %) (= {} %))
    (xform-schema (try
                    (antlr-parse grammar schema-string)

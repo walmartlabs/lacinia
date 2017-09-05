@@ -1,5 +1,5 @@
 {
-
+  # Changing this will probably break tests.
   enum episode {
     NEWHOPE
     EMPIRE
