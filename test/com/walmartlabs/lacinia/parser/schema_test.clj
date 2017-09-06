@@ -3,7 +3,8 @@
             [clojure.java.io :refer [resource]]
             [com.walmartlabs.lacinia :refer [execute]]
             [com.walmartlabs.lacinia.parser.schema :as parser]
-            [com.walmartlabs.lacinia.schema :as schema]))
+            [com.walmartlabs.lacinia.schema :as schema])
+  (:import [clojure.lang ExceptionInfo]))
 
 (defn ^:private in-episode
   [ctx args _]
@@ -95,3 +96,26 @@
                (execute compiled "query { in_episode(episode: JEDI) { name birthDate episodes} find_by_names(names: [\"Horace the Demogorgon\"]) {name episodes} }" nil {})))
         (is (= {:data {:add false}}
                (execute compiled "mutation { add(character: {name: \"Darth Vader\"}) }" nil {})))))))
+
+(deftest schema-validation
+  (let [exception (is (thrown-with-msg? ExceptionInfo
+                                        #"Error parsing schema"
+                                        (parser/parse-schema (slurp (resource "bad_schema.gql"))
+                                                             {}
+                                                             {}
+                                                             {})))]
+    (is (= '#{{:error "Duplicate type names"
+               :duplicate-types ({:name "Character" :location {:line 11 :column 12}}
+                                 {:name "Character" :location {:line 22 :column 8}}
+                                 {:name "Query" :location {:line 28 :column 7}}
+                                 {:name "Query" :location {:line 32 :column 7}}
+                                 {:name "Queries" :location {:line 37 :column 8}}
+                                 {:name "Queries" :location {:line 39 :column 7}})}
+              {:error "Duplicate fields defined on type"
+               :duplicate-fields ({:name "find_by_names" :location {:line 33 :column 4}}
+                                  {:name "find_by_names" :location {:line 34 :column 4}})
+               :type "Query"}
+              {:error "Duplicate arguments defined on field"
+               :duplicate-arguments ("episode")
+               :field {:name "in_episode" :location {:line 29 :column 4}}}}
+           (set (:errors (ex-data exception)))))))

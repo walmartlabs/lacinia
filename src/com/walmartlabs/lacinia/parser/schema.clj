@@ -191,10 +191,63 @@
              schema
              documentation))
 
+(defn ^:private duplicates
+  "Returns duplicates in coll, retaining original element meta"
+  [coll]
+  (let [coll-freq (frequencies coll)]
+    (->> (remove (fn [el] (= (get coll-freq el) 1)) coll)
+         (seq))))
+
+(defn ^:private validate!
+  "Validates the schema parse tree against errors that will be hidden
+  by the transformation to the Lacinia schema."
+  [root]
+  (when-let [errors (->> (concat
+                          ;; Find duplicate types
+                          (when-let [duplicate-types (->> root
+                                                          (select [#{:typeDef :enumDef :scalarDef :unionDef :interfaceDef :inputTypeDef} :typeName])
+                                                          (map first)
+                                                          (duplicates))]
+                            [{:error "Duplicate type names" :duplicate-types (map (fn [type-name-node]
+                                                                                    {:name (second type-name-node)
+                                                                                     :location (meta type-name-node)})
+                                                                                  duplicate-types)}])
+                          ;; find duplicate fields within each type
+                          (select-map (fn [nodes]
+                                        (when-let [duplicate-fields (->> nodes
+                                                                         (select [:fieldDef :fieldName])
+                                                                         (map first)
+                                                                         (duplicates))]
+                                          {:error "Duplicate fields defined on type"
+                                           :duplicate-fields (map (fn [field-name-node]
+                                                                    {:name (second field-name-node)
+                                                                     :location (meta field-name-node)})
+                                                                  duplicate-fields)
+                                           :type (select1 [:typeName :name] nodes)}))
+                                      [#{:typeDef :inputTypeDef :interfaceDef}]
+                                      root)
+                          ;; find duplicate arguments within each field
+                          (select-map (fn [nodes]
+                                        (when-let [duplicate-args (->> nodes
+                                                                       (select [:fieldArgs :argument :name])
+                                                                       (map first)
+                                                                       (duplicates))]
+                                          {:error "Duplicate arguments defined on field"
+                                           :duplicate-arguments (distinct duplicate-args)
+                                           :field (let [field-name-node (select1 [:fieldName] nodes)]
+                                                    {:name (second field-name-node)
+                                                     :location (meta field-name-node)})}))
+                                      [#{:typeDef :interfaceDef} :fieldDef]
+                                      root))
+                         (remove nil?)
+                         (seq))]
+    (throw (ex-info "Error parsing schema" {:errors errors}))))
+
 (defn ^:private xform-schema
   "Given an ANTLR parse tree, returns a Lacinia schema."
   [antlr-tree resolvers scalars documentation]
   (let [root (select [:graphqlSchema] [[antlr-tree]])]
+    (validate! root)
     (-> {:objects (apply merge (select-map xform-type [:typeDef] root))
          :input-objects (apply merge (select-map xform-type [:inputTypeDef] root))
          :enums (apply merge (select-map xform-enum [:enumDef] root))
