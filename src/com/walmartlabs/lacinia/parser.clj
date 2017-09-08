@@ -1,6 +1,5 @@
 (ns com.walmartlabs.lacinia.parser
   (:require [clj-antlr.proto :as antlr.proto]
-            [clojure.java.io :as io]
             [clj-antlr.common :as antlr.common]
             [clojure.string :as str]
             [com.walmartlabs.lacinia.internal-utils
