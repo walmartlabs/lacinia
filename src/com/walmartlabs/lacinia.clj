@@ -1,5 +1,5 @@
 (ns com.walmartlabs.lacinia
-  (:require [com.walmartlabs.lacinia.parser.query :as parser]
+  (:require [com.walmartlabs.lacinia.parser :as parser]
             [com.walmartlabs.lacinia.constants :as constants]
             [com.walmartlabs.lacinia.executor :as executor]
             [com.walmartlabs.lacinia.validator :as validator]

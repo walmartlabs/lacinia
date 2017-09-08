@@ -5,7 +5,7 @@
    [com.walmartlabs.test-utils :refer [compile-schema execute]]
    [com.walmartlabs.lacinia :refer [execute-parsed-query]]
    [com.walmartlabs.lacinia.schema :as schema]
-   [com.walmartlabs.lacinia.parser.query :as parser]))
+   [com.walmartlabs.lacinia.parser :as parser]))
 
 (def compiled-schema (schema/compile test-schema))
 
