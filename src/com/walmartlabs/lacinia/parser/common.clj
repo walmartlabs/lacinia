@@ -1,4 +1,4 @@
-(ns com.walmartlabs.lacinia.parser.common
+(ns ^:no-doc com.walmartlabs.lacinia.parser.common
   (:require [clj-antlr.proto :as antlr.proto]
             [clj-antlr.common :as antlr.common]
             [clojure.string :as str]
