@@ -59,6 +59,12 @@
     (keyword typename)))
 
 (defn ^:private xform-typespec
+  "Transforms a type specification parse tree node.
+
+  Example node:
+  ((:typeName (:name \"Character\")))
+  or
+  ((:listType (:typeSpec (:typeName (:name \"episode\")))))"
   [typespec]
   (cond
     ;; list
@@ -71,6 +77,21 @@
 (declare ^:private xform-map-value)
 
 (defn ^:private xform-default-value
+  "Transforms a default argument value parse tree node.
+
+  Example node:
+  ((:value
+   (:objectValue
+    (:objectField
+     (:name \"name\")
+     (:value (:stringvalue \"Unspecified\")))
+    (:objectField
+     (:name \"episodes\")
+     (:value
+      (:arrayValue
+       (:value (:enumValue (:name \"NEWHOPE\")))
+       (:value (:enumValue (:name \"EMPIRE\")))
+       (:value (:enumValue (:name \"JEDI\")))))))))"
   [arg-value]
   (let [[type value & _] arg-value]
     (case type
@@ -82,12 +103,23 @@
       value)))
 
 (defn ^:private xform-map-value
+  "Transforms a map value parse tree node.
+
+  Example node:
+  ((:name \"name\")
+   (:value (:stringvalue \"Unspecified\")))"
   [object-field]
   {(keyword (select1 [:name] object-field))
    (some-> (select1 [:value] object-field)
            (xform-default-value))})
 
 (defn ^:private xform-field-arg
+  "Transforms an argument parse tree node.
+
+  Example node:
+  ((:name \"episode\")
+   (:typeSpec (:typeName (:name \"episode\")))
+   (:defaultValue (:value (:enumValue (:name \"NEWHOPE\")))))"
   [arg]
   {(keyword (select1 [:name] arg))
    (let [field-arg {:type (xform-typespec (select [:typeSpec] arg))}]
@@ -97,6 +129,11 @@
        field-arg))})
 
 (defn ^:private xform-field
+  "Transforms a field parse tree node.
+
+  Example node:
+  ((:fieldName (:name \"name\"))
+   (:typeSpec (:typeName (:name \"String\"))))"
   [field]
   {(keyword (select1 [:fieldName :name] field))
    (cond-> {:type (xform-typespec (select [:typeSpec] field))}
@@ -105,6 +142,20 @@
                                                (select-map xform-field-arg [:fieldArgs :argument] field))))})
 
 (defn ^:private xform-type
+  "Transforms a type definition parse tree node.
+
+  Example node:
+  ((:'type' \"type\")
+   (:typeName (:name \"CharacterOutput\"))
+   (:implementationDef
+    (:'implements' \"implements\")
+    (:typeName (:name \"Human\")))
+   (:fieldDef
+    (:fieldName (:name \"name\"))
+    (:typeSpec (:typeName (:name \"String\"))))
+   (:fieldDef
+    (:fieldName (:name \"birthDate\"))
+    (:typeSpec (:typeName (:name \"Date\")))))"
   [type]
   {(keyword (select1 [:typeName :name] type))
    (cond-> {:fields (apply merge (select-map xform-field [:fieldDef] type))}
@@ -113,11 +164,20 @@
                                                       (select [:implementationDef :typeName :name] type))))})
 
 (defn ^:private xform-enum
+  "Transforms an enum parse tree node.
+
+  Example node:
+  ((:'enum' \"enum\")
+   (:typeName (:name \"episode\"))
+   (:scalarName (:name \"NEWHOPE\"))
+   (:scalarName (:name \"EMPIRE\"))
+   (:scalarName (:name \"JEDI\")))"
   [enum]
   {(keyword (select1 [:typeName :name] enum))
    {:values (vec (map (comp keyword first) (select [:scalarName :name] enum)))}})
 
 (defn ^:private xform-operation
+  "Transforms an operation parse tree node by inlining the operation types."
   [schema operation]
   (let [operation-type (keyword (select1 [:typeName :name] operation))]
     (or (:fields (get-in schema [:objects operation-type]))
@@ -131,12 +191,25 @@
         (throw (ex-info "Operation type not found" {:operation operation-type})))))
 
 (defn ^:private xform-scalar
+  "Transforms a scalar parse tree node.
+
+  Example node:
+  ((:'scalar' \"scalar\") (:typeName (:name \"Date\")))"
   [scalar]
   {(keyword (select1 [:typeName :name] scalar))
    {:parse nil
     :serialize nil}})
 
 (defn ^:private xform-union
+  "Transforms a union parse tree node.
+
+  Example node:
+  ((:'union' \"union\")
+   (:typeName (:name \"Queries\"))
+   (:unionTypes
+    (:typeName (:name \"Query\"))
+    (:'|' \"|\")
+    (:typeName (:name \"OtherQuery\"))))"
   [union]
   {(keyword (select1 [:typeName :name] union))
    {:members (mapv (comp keyword first)
@@ -148,7 +221,20 @@
   operates, this resolves the queries/mutations from types.
 
   Note that one downside of this is that there will be extra, unused
-  object types floating around in the Lacinia schema."
+  object types floating around in the Lacinia schema.
+
+  Example schema definition parse tree node:
+
+  ((:schemaDef
+    (:'schema' \"schema\")
+    (:operationTypeDef
+     (:queryOperationDef
+      (:'query' \"query\")
+      (:typeName (:name \"Queries\"))))
+    (:operationTypeDef
+     (:mutationOperationDef
+      (:'mutation' \"mutation\")
+      (:typeName (:name \"Mutation\"))))))"
   [schema root]
   (assoc schema
          :queries (apply merge
