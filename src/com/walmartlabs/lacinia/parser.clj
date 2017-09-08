@@ -7,8 +7,7 @@
              :refer [keepv]])
   (:import (org.antlr.v4.runtime.tree ParseTree TerminalNode)
            (org.antlr.v4.runtime Parser ParserRuleContext Token)
-           (clj_antlr ParseError)
-           (clojure.lang ExceptionInfo)))
+           (clj_antlr ParseError)))
 
 (defn ^:private unescape-ascii
   [^String escaped-sequence]

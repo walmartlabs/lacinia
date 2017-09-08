@@ -5,8 +5,7 @@
             [clojure.spec.alpha :as s]
             [clojure.spec.test.alpha :as stest]
             [clj-antlr.core :as antlr.core])
-  (:import (clj_antlr ParseError)
-           (clojure.lang ExceptionInfo)))
+  (:import (clj_antlr ParseError)))
 
 ;; When using Clojure 1.9 alpha, the dependency on clojure-future-spec can be excluded,
 ;; and this code will not trigger
