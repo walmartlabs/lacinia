@@ -357,17 +357,17 @@
 
   `attach` should be a map consisting of the following keys:
 
-  `resolvers` is expected to be a map of:
+  `:resolvers` is expected to be a map of:
   {type-name-k {field-name-keyword resolver-fn}}
 
-  `scalars` is expected to be a map of:
+  `:scalars` is expected to be a map of:
   {scalar-name-k {:parse parse-spec
                   :serialize serialize-spec}}
 
-  `streamers` is expected to be a map of:
+  `:streamers` is expected to be a map of:
   {type-name-k {subscription-field-name-keyword stream-fn}}
 
-  `documentation` is expected to be a map of:
+  `:documentation` is expected to be a map of:
   {type-name-k {:description doc-str
                 :fields {field-name-k doc-str}}}"
   [schema-string attach]
