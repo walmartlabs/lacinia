@@ -1,4 +1,4 @@
-## 0.21.0 -- UNRELEASED
+## 0.21.0 -- 12 Sep 2017
 
 Simplified a clojure.spec to prevent a potential runtime error
 `Could not locate clojure/test/check/generators__init.class or clojure/test/check/generators.clj on classpath`.
