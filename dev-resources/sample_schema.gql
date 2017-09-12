@@ -37,10 +37,15 @@
     add(character: Character = {name: "Unspecified", episodes: [NEWHOPE, EMPIRE, JEDI]}) : Boolean
   }
 
+  type Subscription {
+    new_character(episodes: [episode!]!) : CharacterOutput
+  }
+
   union Queries = Query | OtherQuery
 
   schema {
     query: Queries
     mutation: Mutation
+    subscription: Subscription
   }
 }

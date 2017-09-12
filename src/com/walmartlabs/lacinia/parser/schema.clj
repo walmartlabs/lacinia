@@ -233,33 +233,38 @@
     (:operationTypeDef
      (:mutationOperationDef
       (:'mutation' \"mutation\")
-      (:typeName (:name \"Mutation\"))))))"
+      (:typeName (:name \"Mutation\"))))
+    (:operationTypeDef
+     (:subscriptionOperationDef
+      (:'subscription' \"subscription\")
+      (:typeName (:name \"Subscription\"))))))"
   [schema root]
-  (assoc schema
-         :queries (apply merge
-                         (select-map #(xform-operation schema %)
-                                     [:schemaDef :operationTypeDef :queryOperationDef]
-                                     root))
-         :mutations (apply merge
-                           (select-map #(xform-operation schema %)
-                                       [:schemaDef :operationTypeDef :mutationOperationDef]
-                                       root))))
+  (letfn [(build-operations [def-node-label]
+            (apply merge
+                   (select-map #(xform-operation schema %)
+                               [:schemaDef :operationTypeDef def-node-label]
+                               root)))]
+    (assoc schema
+           :queries (build-operations :queryOperationDef)
+           :mutations (build-operations :mutationOperationDef)
+           :subscriptions (build-operations :subscriptionOperationDef))))
 
-(defn ^:private attach-resolvers
-  [schema resolvers]
+(defn ^:private attach-field-fns
+  "Attaches a map of either resolvers or subscription streamers"
+  [schema fn-k fn-map]
+  {:pre [(#{:resolve :stream} fn-k)]}
   (reduce-kv (fn [schema' type fields]
-               (reduce-kv (fn [schema'' field resolver]
-                            (assoc-in schema'' [:objects type :fields field :resolve] resolver))
+               (reduce-kv (fn [schema'' field f]
+                            (assoc-in schema'' [:objects type :fields field fn-k] f))
                           schema'
                           fields))
              schema
-             resolvers))
+             fn-map))
 
 (defn ^:private attach-scalars
   [schema scalars]
-  ;; This wipes out the placeholder scalar values since we don't want
-  ;; to fallback to any sort of unexpected default behavior.
-  (assoc schema :scalars scalars))
+  (cond-> schema
+    scalars (assoc :scalars scalars)))
 
 (defn ^:private attach-documentation
   [schema documentation]
@@ -330,7 +335,7 @@
 
 (defn ^:private xform-schema
   "Given an ANTLR parse tree, returns a Lacinia schema."
-  [antlr-tree resolvers scalars documentation]
+  [antlr-tree resolvers scalars streamers documentation]
   (let [root (select [:graphqlSchema] [[antlr-tree]])]
     (validate! root)
     (-> {:objects (apply merge (select-map xform-type [:typeDef] root))
@@ -339,7 +344,8 @@
          :scalars (apply merge (select-map xform-scalar [:scalarDef] root))
          :unions (apply merge (select-map xform-union [:unionDef] root))
          :interfaces (apply merge (select-map xform-type [:interfaceDef] root))}
-        (attach-resolvers resolvers)
+        (attach-field-fns :resolve resolvers)
+        (attach-field-fns :stream streamers)
         (attach-scalars scalars)
         (attach-documentation documentation)
         (attach-operations root))))
@@ -349,6 +355,8 @@
   schema. Defers validation of the schema to the downstream schema
   validator.
 
+  `attach` should be a map consisting of the following keys:
+
   `resolvers` is expected to be a map of:
   {type-name-k {field-name-keyword resolver-fn}}
 
@@ -356,38 +364,47 @@
   {scalar-name-k {:parse parse-spec
                   :serialize serialize-spec}}
 
+  `streamers` is expected to be a map of:
+  {type-name-k {subscription-field-name-keyword stream-fn}}
+
   `documentation` is expected to be a map of:
   {type-name-k {:description doc-str
                 :fields {field-name-k doc-str}}}"
-  [schema-string resolvers scalars documentation]
-  (remove-vals ;; Remove any empty schema components to avoid clutter
-               ;; and optimize for human readability
-   #(or (nil? %) (= {} %))
-   (xform-schema (try
-                   (antlr-parse grammar schema-string)
-                   (catch ParseError e
-                     (let [failures (parse-failures e)]
-                       (throw (ex-info "Failed to parse GraphQL schema."
-                                       {:errors failures})))))
-                 resolvers
-                 scalars
-                 documentation)))
+  [schema-string attach]
+  (let [{:keys [resolvers scalars streamers documentation]} attach]
+    (remove-vals ;; Remove any empty schema components to avoid clutter
+     ;; and optimize for human readability
+     #(or (nil? %) (= {} %))
+     (xform-schema (try
+                     (antlr-parse grammar schema-string)
+                     (catch ParseError e
+                       (let [failures (parse-failures e)]
+                         (throw (ex-info "Failed to parse GraphQL schema."
+                                         {:errors failures})))))
+                   resolvers
+                   scalars
+                   streamers
+                   documentation))))
 
-(s/def ::field-resolver (s/map-of simple-keyword? fn?))
-(s/def ::resolver-map (s/map-of simple-keyword? ::field-resolver))
+(s/def ::field-fn (s/map-of simple-keyword? fn?))
+(s/def ::fn-map (s/map-of simple-keyword? ::field-fn))
 (s/def ::parse s/spec?)
 (s/def ::serialize s/spec?)
 (s/def ::scalar-def (s/keys :req-un [::parse ::serialize]))
-(s/def ::scalar-map (s/map-of simple-keyword? ::scalar-def))
 (s/def ::description string?)
 (s/def ::fields (s/map-of simple-keyword? ::description))
 (s/def ::documentation-def (s/keys :opt-un [::description ::fields]))
-(s/def ::documentation-map (s/map-of simple-keyword? ::documentation-def))
+
+(s/def ::documentation (s/map-of simple-keyword? ::documentation-def))
+(s/def ::scalars (s/map-of simple-keyword? ::scalar-def))
+(s/def ::resolvers ::fn-map)
+(s/def ::streamers ::fn-map)
 
 (s/fdef parse-schema
         :args (s/cat :schema-string string?
-                     :resolvers ::resolver-map
-                     :scalars ::scalar-map
-                     :documentation ::documentation-map))
+                     :attachments (s/keys :opt-un [::resolvers
+                                                   ::streamers
+                                                   ::scalars
+                                                   ::documentation])))
 
 (stest/instrument `parse-schema)

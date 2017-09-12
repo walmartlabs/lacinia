@@ -11,6 +11,7 @@ schemaDef
 operationTypeDef
   : queryOperationDef
   | mutationOperationDef
+  | subscriptionOperationDef
   ;
 
 queryOperationDef
@@ -19,6 +20,10 @@ queryOperationDef
 
 mutationOperationDef
   : 'mutation' ':' typeName
+  ;
+
+subscriptionOperationDef
+  : 'subscription' ':' typeName
   ;
 
 typeDef

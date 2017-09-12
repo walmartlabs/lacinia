@@ -28,6 +28,10 @@
   [ctx args _]
   (not= "Darth Vader" (get-in args [:character :name])))
 
+(defn ^:private new-character
+  [ctx args _]
+  (fn [] nil))
+
 (def ^:private resolver-map {:Query {:in_episode in-episode}
                              :OtherQuery {:find_by_names find-by-names}
                              :Mutation {:add add}})
@@ -36,14 +40,17 @@
 
 (def ^:private scalar-map {:Date {:parse date-parse :serialize date-parse}})
 
+(def ^:private streamer-map {:Subscription {:new_character new-character}})
+
 (deftest schema-parsing
   (let [parsed-schema (parser/parse-schema (slurp (resource "sample_schema.gql"))
-                                           resolver-map
-                                           scalar-map
-                                           {:Character {:description "A character"
-                                                        :fields {:name "Character name"
-                                                                 :birthDate "Date of Birth"}}
-                                            :Query {:fields {:in_episode "Find all characters for a given episode"}}})]
+                                           {:resolvers resolver-map
+                                            :scalars scalar-map
+                                            :streamers streamer-map
+                                            :documentation {:Character {:description "A character"
+                                                                        :fields {:name "Character name"
+                                                                                 :birthDate "Date of Birth"}}
+                                                            :Query {:fields {:in_episode "Find all characters for a given episode"}}}})]
     (testing "parsing"
       (is (= {:enums {:episode {:values [:NEWHOPE :EMPIRE :JEDI]}}
               :scalars {:Date {:parse date-parse :serialize date-parse}}
@@ -72,7 +79,10 @@
                                                                      :defaultValue {:name "Unspecified"
                                                                                     :episodes [:NEWHOPE :EMPIRE :JEDI]}}}
                                                   :resolve add
-                                                  :type 'Boolean}}}}
+                                                  :type 'Boolean}}}
+                        :Subscription {:fields {:new_character {:args {:episodes {:type '(non-null (list (non-null :episode)))}}
+                                                                :stream new-character
+                                                                :type :CharacterOutput}}}}
               :queries {:in_episode {:args {:episode {:type :episode
                                                       :defaultValue :NEWHOPE}}
                                      :description "Find all characters for a given episode"
@@ -85,7 +95,10 @@
                                                    :defaultValue {:name "Unspecified"
                                                                   :episodes [:NEWHOPE :EMPIRE :JEDI]}}}
                                 :resolve add
-                                :type 'Boolean}}}
+                                :type 'Boolean}}
+              :subscriptions {:new_character {:args {:episodes {:type '(non-null (list (non-null :episode)))}}
+                                              :stream new-character
+                                              :type :CharacterOutput}} }
              parsed-schema)))
     (testing "using parsed schema"
       (let [compiled (schema/compile parsed-schema)]
@@ -100,10 +113,7 @@
 (deftest schema-validation
   (let [exception (is (thrown-with-msg? ExceptionInfo
                                         #"Error parsing schema"
-                                        (parser/parse-schema (slurp (resource "bad_schema.gql"))
-                                                             {}
-                                                             {}
-                                                             {})))]
+                                        (parser/parse-schema (slurp (resource "bad_schema.gql")) {})))]
     (is (= '#{{:error "Duplicate type names"
                :duplicate-types ({:name "Character" :location {:line 11 :column 12}}
                                  {:name "Character" :location {:line 22 :column 8}}
