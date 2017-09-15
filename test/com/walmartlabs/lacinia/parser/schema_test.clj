@@ -43,7 +43,7 @@
 (def ^:private streamer-map {:Subscription {:new_character new-character}})
 
 (deftest schema-parsing
-  (let [parsed-schema (parser/parse-schema (slurp (resource "sample_schema.gql"))
+  (let [parsed-schema (parser/parse-schema (slurp (resource "sample_schema.txt"))
                                            {:resolvers resolver-map
                                             :scalars scalar-map
                                             :streamers streamer-map
