@@ -4,6 +4,7 @@
             [clojure.java.io :as io]
             [clojure.spec.alpha :as s]
             [clojure.spec.test.alpha :as stest]
+            [clojure.string :as str]
             [clj-antlr.core :as antlr.core])
   (:import (clj_antlr ParseError)))
 
@@ -266,18 +267,42 @@
   (cond-> schema
     scalars (assoc :scalars scalars)))
 
+(defn ^:private type-root
+  "Looks up the given type keyword in schema to determine if it is an
+  input or output object, and returns the corresponding root key into
+  the schema."
+  [schema type]
+  (cond
+    (get-in schema [:objects type]) :objects
+    (get-in schema [:input-objects type]) :input-objects))
+
+(defn ^:private documentation-schema-path
+  "Returns a sequence of keys representing the path where the
+  documentation string should be attached in the nested associative schema
+  structure.
+
+  `location` should be one of:
+   - `:type`
+   - `:type/field`
+   - `:type.field/arg`"
+  [location]
+  (if (simple-keyword? location)
+    ;; type description
+    [location :description]
+    (let [[type-s field-s] (str/split (namespace location) #"\.")]
+      (if field-s
+        ;; argument description
+        [(keyword type-s) :fields (keyword field-s) :args (keyword (name location)) :description]
+        ;; field description
+        [(keyword type-s) :fields (keyword (name location)) :description]))))
+
 (defn ^:private attach-documentation
   [schema documentation]
-  (reduce-kv (fn [schema' type {:keys [fields description]}]
-               (let [obj-k (cond
-                             (get-in schema' [:objects type]) :objects
-                             (get-in schema' [:input-objects type]) :input-objects
-                             :else (throw (ex-info "Error attaching documentation: type not found" {:type type})))]
-                 (cond-> (reduce-kv (fn [schema'' field field-descr]
-                                      (assoc-in schema'' [obj-k type :fields field :description] field-descr))
-                                    schema'
-                                    fields)
-                   description (assoc-in [obj-k type :description] description))))
+  (reduce-kv (fn [schema' location documentation]
+               (let [ks (documentation-schema-path location)
+                     root (type-root schema (first ks))]
+                 (when-not root (throw (ex-info "Error attaching documentation: type not found" {:type type})))
+                 (assoc-in schema' (concat [root] ks) documentation)))
              schema
              documentation))
 
@@ -358,18 +383,19 @@
   `attach` should be a map consisting of the following keys:
 
   `:resolvers` is expected to be a map of:
-  {type-name-k {field-name-keyword resolver-fn}}
+  {:type-name {:field-name resolver-fn}}
 
   `:scalars` is expected to be a map of:
-  {scalar-name-k {:parse parse-spec
-                  :serialize serialize-spec}}
+  {:scalar-name {:parse parse-spec
+                 :serialize serialize-spec}}
 
   `:streamers` is expected to be a map of:
-  {type-name-k {subscription-field-name-keyword stream-fn}}
+  {:type-name {:subscription-field-name stream-fn}}
 
   `:documentation` is expected to be a map of:
-  {type-name-k {:description doc-str
-                :fields {field-name-k doc-str}}}"
+  {:type-name doc-str
+   :type-name/field-name doc-str
+   :type-name.field-name/arg-name doc-str}"
   [schema-string attach]
   (let [{:keys [resolvers scalars streamers documentation]} attach]
     (remove-vals ;; Remove any empty schema components to avoid clutter
@@ -395,7 +421,7 @@
 (s/def ::fields (s/map-of simple-keyword? ::description))
 (s/def ::documentation-def (s/keys :opt-un [::description ::fields]))
 
-(s/def ::documentation (s/map-of simple-keyword? ::documentation-def))
+(s/def ::documentation (s/map-of keyword? string?))
 (s/def ::scalars (s/map-of simple-keyword? ::scalar-def))
 (s/def ::resolvers ::fn-map)
 (s/def ::streamers ::fn-map)

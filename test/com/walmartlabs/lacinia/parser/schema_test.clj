@@ -47,10 +47,11 @@
                                            {:resolvers resolver-map
                                             :scalars scalar-map
                                             :streamers streamer-map
-                                            :documentation {:Character {:description "A character"
-                                                                        :fields {:name "Character name"
-                                                                                 :birthDate "Date of Birth"}}
-                                                            :Query {:fields {:in_episode "Find all characters for a given episode"}}}})]
+                                            :documentation {:Character "A character"
+                                                            :Character/name "Character name"
+                                                            :Character/birthDate "Date of Birth"
+                                                            :Query/in_episode "Find all characters for a given episode"
+                                                            :Query.in_episode/episode "Episode for which to find characters"}})]
     (testing "parsing"
       (is (= {:enums {:episode {:values [:NEWHOPE :EMPIRE :JEDI]}}
               :scalars {:Date {:parse date-parse :serialize date-parse}}
@@ -68,7 +69,8 @@
                                                    :episodes {:type '(list :episode)}}
                                           :implements [:Human]}
                         :Query {:fields {:in_episode {:args {:episode {:type :episode
-                                                                       :defaultValue :NEWHOPE}}
+                                                                       :defaultValue :NEWHOPE
+                                                                       :description "Episode for which to find characters"}}
                                                       :resolve in-episode
                                                       :description "Find all characters for a given episode"
                                                       :type '(list :CharacterOutput)}}}
@@ -84,7 +86,8 @@
                                                                 :stream new-character
                                                                 :type :CharacterOutput}}}}
               :queries {:in_episode {:args {:episode {:type :episode
-                                                      :defaultValue :NEWHOPE}}
+                                                      :defaultValue :NEWHOPE
+                                                      :description "Episode for which to find characters"}}
                                      :description "Find all characters for a given episode"
                                      :resolve in-episode
                                      :type '(list :CharacterOutput)}
