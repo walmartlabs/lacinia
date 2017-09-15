@@ -1,0 +1,30 @@
+{
+  enum episode {
+    NEWHOPE
+    EMPIRE
+    JEDI
+  }
+
+  type Character {
+    name: String!
+    episodes: [episode]
+  }
+
+  input CharacterArg {
+    name: String!
+    episodes: [episode]!
+  }
+
+  type Query {
+    find_all_in_episode(episode: episode!) : [Character]
+  }
+
+  type Mutation {
+    add_character(character: CharacterArg!) : Boolean
+  }
+
+  schema {
+    query: Query
+    mutation: Mutation
+  }
+}

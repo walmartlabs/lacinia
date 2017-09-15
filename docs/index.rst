@@ -47,6 +47,7 @@ responding with JSON, it is also exceptionally useful for allowing backend syste
    input-objects
    custom-scalars
    introspection
+   schema/parsing
    samples
    clojure
    resources
