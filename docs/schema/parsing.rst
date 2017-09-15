@@ -4,7 +4,7 @@ GraphQL IDL Schema Parsing
 .. important::
    The GraphQL Interface Definition Language is not yet a formal specification
    and is still under development. As such, this part of Lacinia will continue
-   to evolve to keep up with developments, and it's possible that breaking
+   to evolve to keep up with new developments, and it's possible that breaking
    changes will occur.
 
 .. sidebar:: GraphQL IDL
@@ -35,8 +35,6 @@ to attach to the schema:
 
 Example
 -------
-
-Given the GraphQL Schema Definition:
 
 .. literalinclude:: ../_examples/sample_schema.txt
    :caption: *schema.txt*
