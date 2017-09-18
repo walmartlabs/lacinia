@@ -1,23 +1,23 @@
 (ns com.walmartlabs.lacinia.parser
   "Parsing of client querys using the ANTLR grammar."
   (:require [clj-antlr.core :as antlr.core]
-            [clj-antlr.proto :as antlr.proto]
             [clojure.java.io :as io]
-            [clj-antlr.common :as antlr.common]
             [clojure.string :as str]
             [com.walmartlabs.lacinia.internal-utils
              :refer [cond-let update? q map-vals filter-vals
                      with-exception-context throw-exception to-message
                      keepv as-keyword]]
+            [com.walmartlabs.lacinia.parser.common :refer [antlr-parse parse-failures stringvalue->String]]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.lacinia.constants :as constants]
             [clojure.spec.alpha :as s]
             [com.walmartlabs.lacinia.resolve :as resolve]
             [flatland.ordered.map :refer [ordered-map]])
-  (:import (org.antlr.v4.runtime.tree ParseTree TerminalNode)
-           (org.antlr.v4.runtime Parser ParserRuleContext Token)
-           (clj_antlr ParseError)
+  (:import (clj_antlr ParseError)
            (clojure.lang ExceptionInfo)))
+
+(def ^:private grammar
+  (antlr.core/parser (slurp (io/resource "com/walmartlabs/lacinia/Graphql.g4"))))
 
 (declare ^:private selection)
 
@@ -51,87 +51,7 @@
                            (cond-> node
                              (-> arguments :if false?) (assoc :disabled? true)))}}))
 
-(def ^:private grammar
-  (antlr.core/parser (slurp (io/resource "com/walmartlabs/lacinia/Graphql.g4"))))
-
-(defn ^:private attach-location-as-meta
-  "Attaches location information {:line ... :column ...} as metadata to the
-  sexp."
-  [^ParseTree t sexp]
-  (when sexp
-    (let [^Token token (.getStart ^ParserRuleContext t)]
-      (with-meta
-        sexp
-        {:line (.getLine token)
-         :column (.getCharPositionInLine token)}))))
-
-(def ^:private ignored-terminals
-  "Textual fragments which are to be immediately discarded as they have no
-  relevance to a formed parse tree."
-  #{"'{'" "'}'" "'('" "')'" "'['" "']'" "'...'" "'fragment'" "'on'"
-    "':'" "'='" "'$'" "'!'" "\"" "'@'"})
-
-(defn ^:private ignored-terminal?
-  [token-name]
-  (some? (some ignored-terminals #{token-name})))
-
-(defn ^:private token-name
-  "Returns the rule name of a terminal node, eg. :alias or :field."
-  [^TerminalNode ctx ^Parser parser]
-  (let [sym (.getSymbol ctx)
-        idx (.getType sym)]
-    (when-not (neg? idx)
-      (aget (.getTokenNames parser) idx))))
-
-(defn ^:private traverse
-  "Recurses through a ParseTree, returning a tree structure of the form
-  (:document [(:operationDefinition ...]).  Location information is attached
-  as metadata."
-  [^ParseTree t ^Parser p]
-  (if (instance? ParserRuleContext t)
-    (let [node (cons (->> (.getRuleIndex ^ParserRuleContext t)
-                          (antlr.common/parser-rule-name p)
-                          antlr.common/fast-keyword)
-                     (keepv (comp
-                              #(attach-location-as-meta t %)
-                              #(traverse % p))
-                            (antlr.common/children t)))]
-      (if-let [e (.exception ^ParserRuleContext t)]
-        (with-meta (list :clj-antlr/error node)
-          {:error (antlr.common/recognition-exception->map e)})
-        node))
-
-    (let [token-name* (token-name t p)]
-      (when-not (ignored-terminal? token-name*)
-        (list (keyword (str/lower-case token-name*))
-              (.getText t))))))
-
 (declare ^:private xform-argument-map)
-
-(defn ^:private unescape-ascii
-  [^String escaped-sequence]
-  (case escaped-sequence
-    "b" "\b"
-    "f" "\f"
-    "n" "\n"
-    "r" "\r"
-    "t" "\t"
-    escaped-sequence))
-
-(defn ^:private unescape-unicode
-  [^String hex-digits]
-  (-> hex-digits
-      (Integer/parseInt 16)
-      (Character/toChars)
-      (String.)))
-
-(defn ^:private xform-argument-string
-  [^String v]
-  (-> v
-      ;; Because of how parsing works, the string literal includes the enclosing quotes
-      (subs 1 (dec (.length v)))
-      (str/replace #"\\([\\\"\/bfnrt])" #(unescape-ascii (second %)))
-      (str/replace #"\\u([A-Fa-f0-9]{4})" #(unescape-unicode (second %)))))
 
 (defn ^:private xform-argument-value
   "Returns a tuple of type and string value.  True scalar values will be passed,
@@ -155,7 +75,9 @@
   [argument-value]
   (let [[type first-value & _] argument-value]
     (case type
-      :stringvalue [:scalar (xform-argument-string first-value)]
+      ;; Because of how parsing works, the string literal includes the enclosing
+      ;; quotes.
+      :stringvalue [:scalar (stringvalue->String first-value)]
       ;; For these other types, the value is still in string format, and will be
       ;; conformed a bit later.
       :intvalue [:scalar first-value]
@@ -1221,21 +1143,6 @@
      :operation-type operation-type
      constants/schema-key schema}))
 
-(defn ^:private parse-failures
-  [^ParseError e]
-  (let [errors (deref e)]
-    (map (fn [{:keys [line column message]}]
-           {:location {:line line
-                       :column column}
-            :parse-error message})
-         errors)))
-
-(defn ^:private antlr-parse
-  "Parse the query, then traverse it into nested Clojure data."
-  [query-string]
-  (let [{:keys [tree parser]} (antlr.proto/parse grammar nil query-string)]
-    (traverse tree parser)))
-
 (defn prepare-with-query-variables
   "Given a parsed query data structure and a map of variables,
   update the query, calculating field arguments and applying directives."
@@ -1255,7 +1162,7 @@
   ([schema query-string operation-name]
    (let [antlr-tree
          (try
-           (antlr-parse query-string)
+           (antlr-parse grammar query-string)
            (catch ParseError e
              (let [failures (parse-failures e)]
                (throw (ex-info "Failed to parse GraphQL query."

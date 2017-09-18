@@ -1,4 +1,4 @@
-(ns com.walmartlabs.lacinia.parser-test
+(ns com.walmartlabs.lacinia.parser.query-test
   (:require [clojure.test :refer [deftest is testing]]
             [com.walmartlabs.test-schema :refer [test-schema]]
             [com.walmartlabs.lacinia.schema :as schema]

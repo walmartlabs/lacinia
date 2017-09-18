@@ -1,11 +1,11 @@
 (ns com.walmartlabs.lacinia.variables-test
   (:require
-    [clojure.test :refer [deftest is are testing]]
-    [com.walmartlabs.test-schema :refer [test-schema]]
-    [com.walmartlabs.test-utils :refer [compile-schema execute]]
-    [com.walmartlabs.lacinia :refer [execute-parsed-query]]
-    [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.lacinia.parser :as parser]))
+   [clojure.test :refer [deftest is are testing]]
+   [com.walmartlabs.test-schema :refer [test-schema]]
+   [com.walmartlabs.test-utils :refer [compile-schema execute]]
+   [com.walmartlabs.lacinia :refer [execute-parsed-query]]
+   [com.walmartlabs.lacinia.schema :as schema]
+   [com.walmartlabs.lacinia.parser :as parser]))
 
 (def compiled-schema (schema/compile test-schema))
 

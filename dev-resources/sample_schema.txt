@@ -1,0 +1,51 @@
+{
+  # Changing this will probably break tests.
+  enum episode {
+    NEWHOPE
+    EMPIRE
+    JEDI
+  }
+
+  scalar Date
+
+  interface Human {
+    name: String
+    birthDate: Date
+  }
+
+  type CharacterOutput implements Human {
+    name: String
+    birthDate: Date
+    episodes: [episode]
+  }
+
+  input Character {
+    name: String!
+    birthDate: Date
+    episodes: [episode]
+  }
+
+  type Query {
+    in_episode(episode: episode = NEWHOPE) : [CharacterOutput]
+  }
+
+  type OtherQuery {
+    find_by_names(names: [String!]!) : [CharacterOutput]
+  }
+
+  type Mutation {
+    add(character: Character = {name: "Unspecified", episodes: [NEWHOPE, EMPIRE, JEDI]}) : Boolean
+  }
+
+  type Subscription {
+    new_character(episodes: [episode!]!) : CharacterOutput
+  }
+
+  union Queries = Query | OtherQuery
+
+  schema {
+    query: Queries
+    mutation: Mutation
+    subscription: Subscription
+  }
+}

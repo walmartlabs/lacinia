@@ -65,6 +65,15 @@ With actual functions in place, the schema can be compiled for execution.
 Compilation performs a number of checks, applies defaults, merges in introspection data about the schema,
 and performs a number of other operations to ready the schema for use.
 
+Parsing GraphQL IDL Schemas
+---------------------------
+
+Lacinia also offers support for parsing schemas defined in the `GraphQL Interface
+Definition Language <https://github.com/facebook/graphql/pull/90>`_ and tranforming
+them into the Lacinia schema data structure.
+
+See :doc:`GraphQL IDL Schema Parsing <schema/parsing>` for details.
+
 Executing Queries
 -----------------
 
