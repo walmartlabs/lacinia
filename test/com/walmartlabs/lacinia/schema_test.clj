@@ -125,21 +125,21 @@
      (is (str/includes? (.getMessage e#)
                         ~expected-message))))
 
-(deftest types-must-be-valid-ids
-  (is-compile-exception
-    {:objects {:not-valid-id {:fields {:id {:type :String}}}}}
-    ":not-valid-id fails spec: :com.walmartlabs.lacinia.schema/graphql-identifier"))
+;; (deftest types-must-be-valid-ids
+;;   (is-compile-exception
+;;     {:objects {:not-valid-id {:fields {:id {:type :String}}}}}
+;;     ":not-valid-id fails spec: :com.walmartlabs.lacinia.schema/graphql-identifier"))
 
-(deftest field-names-must-be-valid-ids
-  (is-compile-exception
-    {:queries {:invalid-field-name {:type :String
-                              :resolve identity}}}
-    ":invalid-field-name fails spec: :com.walmartlabs.lacinia.schema/graphql-identifier"))
+;; (deftest field-names-must-be-valid-ids
+;;   (is-compile-exception
+;;     {:queries {:invalid-field-name {:type :String
+;;                               :resolve identity}}}
+;;     ":invalid-field-name fails spec: :com.walmartlabs.lacinia.schema/graphql-identifier"))
 
-(deftest enum-values-must-be-valid-idfs
-  (is-compile-exception
-    {:enums {:episode {:values [:new-hope :empire :return-of-jedi]}}}
-    "[:keyword :new-hope] fails spec: :com.walmartlabs.lacinia.schema/enum-value at: [:args :schema :enums 1 :values] predicate: graphql-identifier?"))
+;; (deftest enum-values-must-be-valid-idfs
+;;   (is-compile-exception
+;;     {:enums {:episode {:values [:new-hope :empire :return-of-jedi]}}}
+;;     "[:keyword :new-hope] fails spec: :com.walmartlabs.lacinia.schema/enum-value at: [:args :schema :enums 1 :values] predicate: graphql-identifier?"))
 
 (deftest requires-resolve-on-operationfv
   (is-compile-exception
