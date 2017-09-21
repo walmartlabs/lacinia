@@ -1,3 +1,15 @@
+# Lacinia-hypen 
+
+It is a fork, with support for hypens (`-`) in graphql identifiers for better interop with clojure, it breaks qgraphql spec and you probably don't need it.
+
+To use this lib add following code to your project.clj:
+
+```
+  :repositories [["jitpack" "https://jitpack.io"]]
+  :dependencies [,,,
+                 [com.github.urbestteam/lacinia-hypen "0.21.1"]]
+```
+
 # Lacinia
 
 
