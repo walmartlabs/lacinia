@@ -11,14 +11,20 @@ definition
 
 operationDefinition
     : selectionSet
-    | operationType Name? variableDefinitions? directives? selectionSet
+    | operationType name? variableDefinitions? directives? selectionSet
     ;
+
+name
+  : NameId
+  | operationType
+  ;
 
 operationType
     : 'query'
     | 'mutation'
     | 'subscription'
     ;
+
 
 variableDefinitions
     : '(' variableDefinition+ ')'
@@ -29,7 +35,7 @@ variableDefinition
     ;
 
 variable
-    : '$' Name
+    : '$' name
     ;
 
 defaultValue
@@ -47,11 +53,11 @@ selection
     ;
 
 field
-    : alias? Name arguments? directives? selectionSet?
+    : alias? name arguments? directives? selectionSet?
     ;
 
 alias
-    : Name ':'
+    : name ':'
     ;
 
 arguments
@@ -59,7 +65,7 @@ arguments
     ;
 
 argument
-    : Name ':' value
+    : name ':' value
     ;
 
 fragmentSpread
@@ -75,7 +81,7 @@ fragmentDefinition
     ;
 
 fragmentName
-    : Name
+    : name
     ;
 
 typeCondition
@@ -95,7 +101,7 @@ value
     ;
 
 enumValue
-    : Name
+    : name
     ;
 
 arrayValue
@@ -107,7 +113,7 @@ objectValue
     ;
 
 objectField
-    : Name ':' value
+    : name ':' value
     ;
 
 directives
@@ -115,7 +121,7 @@ directives
     ;
 
 directive
-    : '@' Name arguments?
+    : '@' name arguments?
     ;
 
 type
@@ -125,7 +131,7 @@ type
     ;
 
 typeName
-    : Name
+    : name
     ;
 
 listType
@@ -150,7 +156,7 @@ Null
     : 'null'
     ;
 
-Name
+NameId
     : [_A-Za-z][_0-9A-Za-z]*
     ;
 
