@@ -367,6 +367,22 @@
                    name
                  }
                }
+               best_friend {
+                 name
+                 forceSide {
+                   name
+                 }
+               }
+             }
+           }"]
+    (is (= {:data {:hero {:best_friend {:name "Luke Skywalker"
+                                        :forceSide {:name "light"}}}}}
+           (execute default-schema q {} nil))))
+  (let [q "query {
+             hero {
+               best_friend {
+                 name
+               }
                ...on droid {
                  best_friend {
                    name
@@ -374,6 +390,42 @@
                      name
                    }
                  }
+               }
+             }
+           }"]
+    (is (= {:data {:hero {:best_friend {:name "Luke Skywalker"
+                                        :forceSide {:name "light"}}}}}
+           (execute default-schema q {} nil))))
+  (let [q "query {
+             hero {
+               best_friend {
+                 name
+                 forceSide {
+                   name
+                 }
+               }
+               ...on droid {
+                 best_friend {
+                   name
+                 }
+               }
+             }
+           }"]
+    (is (= {:data {:hero {:best_friend {:name "Luke Skywalker"
+                                        :forceSide {:name "light"}}}}}
+           (execute default-schema q {} nil))))
+  (let [q "query {
+             hero {
+               ...on droid {
+                 best_friend {
+                   name
+                   forceSide {
+                     name
+                   }
+                 }
+               }
+               best_friend {
+                 name
                }
              }
            }"]
