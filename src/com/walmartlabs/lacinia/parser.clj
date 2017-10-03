@@ -872,12 +872,14 @@
   consists of the field name or alias, and the arguments."
   [selection]
   (let [{:keys [:selection-type :alias :concrete-types :fragment-name]} selection]
+    ;; TODO: This may be too simplified ... worried about loss of data when merging things together
+    ;; at runtime.
     (case selection-type
       :field
       alias
 
       :inline-fragment
-      (keyword (str "inline-fragment-" (str/join concrete-types "-")))
+      (keyword (str "inline-fragment-" (str/join "-" concrete-types)))
 
       :fragment-spread
       fragment-name)))
