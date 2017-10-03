@@ -437,6 +437,8 @@
                ...on droid {
                  best_friend {
                    name
+                 }
+                 best_friend {
                    forceSide {
                      name
                    }
@@ -447,6 +449,56 @@
                    name
                  }
                }
+             }
+           }"]
+    (is (= {:data {:hero {:best_friend {:name "Luke Skywalker"
+                                        :forceSide {:name "light"}}}}}
+           (execute default-schema q {} nil))))
+  (let [q "query {
+             hero {
+               ...DroidWithBestFriendName
+               ...DroidWithBestFriendNameAndForceSide
+             }
+           }
+           fragment DroidWithBestFriendNameAndForceSide on droid {
+             best_friend {
+              name
+             }
+             best_friend {
+               forceSide {
+                 name
+               }
+             }
+           }
+
+           fragment DroidWithBestFriendName on droid {
+             best_friend {
+               name
+             }
+           }"]
+    (is (= {:data {:hero {:best_friend {:name "Luke Skywalker"
+                                        :forceSide {:name "light"}}}}}
+           (execute default-schema q {} nil))))
+  (let [q "query {
+             hero {
+               ...DroidWithBestFriendNameAndForceSide
+               ...DroidWithBestFriendName
+             }
+           }
+           fragment DroidWithBestFriendNameAndForceSide on droid {
+             best_friend {
+              name
+             }
+             best_friend {
+               forceSide {
+                 name
+               }
+             }
+           }
+
+           fragment DroidWithBestFriendName on droid {
+             best_friend {
+               name
              }
            }"]
     (is (= {:data {:hero {:best_friend {:name "Luke Skywalker"
