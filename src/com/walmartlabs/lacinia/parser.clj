@@ -871,12 +871,16 @@
   "The selection key only applies to fields (not fragments) and
   consists of the field name or alias, and the arguments."
   [selection]
-  (let [{:keys [:selection-type :alias]} selection]
-    (if (= selection-type :field)
+  (let [{:keys [:selection-type :alias :concrete-types :fragment-name]} selection]
+    (case selection-type
+      :field
       alias
-      ;; TODO: This may be too simplified ... worried about loss of data when merging things together
-      ;; at runtime.
-      (gensym "fragment-"))))
+
+      :inline-fragment
+      (keyword (str "inline-fragment-" (str/join concrete-types "-")))
+
+      :fragment-spread
+      fragment-name)))
 
 (declare ^:private coalesce-selections)
 
