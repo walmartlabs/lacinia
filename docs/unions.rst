@@ -38,3 +38,9 @@ This may vary result by result even within a single request:
 .. literalinclude:: _examples/unions-query-response.edn
    :language: clojure
 
+.. tip::
+
+   When a field or operation type is a union,
+   the field resolver may return any of a number of different
+   concrete object types, and Lacinia has no way to determine which;
+   this information must be :doc:`explicitly provided <resolve/type-tags>`.

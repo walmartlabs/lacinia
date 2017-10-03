@@ -27,3 +27,10 @@ the interface.
 
 The :doc:`object definition <objects>` must include all the fields of all extended interfaces.
 
+
+.. tip::
+
+   When a field or operation type is an interface,
+   the field resolver may return any of a number of different
+   concrete object types, and Lacinia has no way to determine which;
+   this information must be :doc:`explicitly provided <resolve/type-tags>`.
