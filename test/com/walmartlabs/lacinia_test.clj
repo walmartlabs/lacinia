@@ -396,6 +396,7 @@
     (is (= {:data {:hero {:best_friend {:name "Luke Skywalker"
                                         :forceSide {:name "light"}}}}}
            (execute default-schema q {} nil))))
+  ;; FIXME: test below fails
   (let [q "query {
              hero {
                best_friend {
@@ -414,6 +415,7 @@
     (is (= {:data {:hero {:best_friend {:name "Luke Skywalker"
                                         :forceSide {:name "light"}}}}}
            (execute default-schema q {} nil))))
+  ;; FIXME: test below fails
   (let [q "query {
              hero {
                ...on droid {
@@ -479,6 +481,7 @@
     (is (= {:data {:hero {:best_friend {:name "Luke Skywalker"
                                         :forceSide {:name "light"}}}}}
            (execute default-schema q {} nil))))
+  ;; FIXME: test below fails
   (let [q "query {
              hero {
                ...DroidWithBestFriendNameAndForceSide
