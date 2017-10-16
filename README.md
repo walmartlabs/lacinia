@@ -44,6 +44,10 @@ Lacinia has been developed with a set of core philosophies:
 
 - Do the right thing: apply reasonable defaults without a lot of "magic".
 
+This library can be plugged into any Clojure HTTP pipeline.
+The companion library [lacinia-pedestal](https://github.com/walmartlabs/lacinia-pedestal) provides
+full HTTP support, including GraphQL subscriptions, for [Pedestal](https://github.com/pedestal/pedestal).
+
 ## Getting Started
 
 For more detailed documentation, [read the manual](http://lacinia.readthedocs.io/en/latest/).

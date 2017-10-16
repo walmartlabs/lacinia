@@ -65,6 +65,13 @@ Using this library
 This library aims to maintain feature parity to that of the `official reference JavaScript implementation <https://github.com/graphql/graphql-js/>`_
 and be fully compliant with the GraphQL specification.
 
+Lacinia can be plugged into any Clojure HTTP pipeline.
+The companion library `lacinia-pedestal <https://github.com/walmartlabs/lacinia-pedestal>`_ provides
+full HTTP support, including
+:doc:`GraphQL subscriptions <subscriptions/index>`,
+for `Pedestal <https://github.com/pedestal/pedestal>`_.
+
+
 Overview
 --------
 
@@ -106,25 +113,11 @@ Lacinia will return this as Clojure data:
 .. literalinclude:: _examples/hero-query-response.edn
    :language: clojure
 
-
 This is because R2-D2 is, of course, considered the hero of
 the Star Wars trilogy.
 
 This Clojure data can be trivially converted into JSON or other formats when Lacinia is used
 as part of an HTTP server application.
-
-.. note::
-
-   GraphQL is intended to be used over the Internet, to allow
-   clients to efficiently and flexibly obtain the data they require from GraphQL servers.
-   However, Lacinia does not address network issues; it is a set of functions to be
-   invoked by your web pipeline, be it Ring, Pedestal, or something else.
-
-   The library `com.walmartlabs/lacinia-pedestal <https://github.com/walmartlabs/lacinia-pedestal>`_
-   provides the necessary bits when building a server based on
-   `Pedestal <https://github.com/pedestal/pedestal>`_, including an easy way to
-   optionally expose a `GraphiQL IDE <https://github.com/graphql/graphiql>`_.
-
 
 A key takeaway: GraphQL is a contract between a client and a server; it doesn't know or care where
 the data comes from; that's the province of the field resolvers.

@@ -22,4 +22,3 @@ of some long-lived process.
    overview
    streamer
    resolver
-   lacinia-pedestal
