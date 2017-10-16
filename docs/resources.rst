@@ -11,4 +11,4 @@ Other Resources
 * An good introductory `Blog Post by James Borden <https://jborden.github.io/2017/05/15/using-lacinia>`_.
 
 * A talk at `Clojure/Conj 2017 <http://2017.clojure-conj.org/the-power-of-lacinia-hystrix/>`_:
-  `The Power of Lacinia & Hystrix in Production` is available on `You Tube <https://www.youtube.com/watch?v=uL9QavmAInw&t=5s>`_.
+  `The Power of Lacinia & Hystrix in Production` is available on `You Tube <https://www.youtube.com/watch?v=uL9QavmAInw>`_.
