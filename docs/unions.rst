@@ -5,7 +5,7 @@ A union type is a type that may be any of a list of possible objects.
 
 .. sidebar:: GraphQL Spec
 
-   Read about `unions <https://facebook.github.io/graphql/#sec-Unions>`_.
+   Read about :spec:`unions <Unions>`.
 
 A union is a type defined in terms of different objects:
 

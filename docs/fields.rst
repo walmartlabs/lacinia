@@ -45,7 +45,7 @@ The built-in scalar types:
 
 .. sidebar:: GraphQL Spec
 
-   Read about `scalar types <https://facebook.github.io/graphql/#sec-Built-in-Scalars>`_.
+   Read about :spec:`scalar types <Built-in-Scalars>`.
 
 * String
 * Float

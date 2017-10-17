@@ -5,7 +5,7 @@ Defining custom scalars may allow users to better model their domain.
 
 .. sidebar:: GraphQL Spec
 
-   Read about `custom scalars <https://facebook.github.io/graphql/#sec-Scalars>`_.
+   Read about :spec:`custom scalars <Scalars>`.
 
 
 To define a custom scalar, you must provide implementations, in your schema, for two transforming operations:
@@ -54,7 +54,7 @@ Scalars and Variables
 
 .. sidebar:: GraphQL Spec
 
-   Read about `variables <http://facebook.github.io/graphql/#sec-Language.Variables>`_.
+   Read about :spec:`variables <Language.Variables>`.
 
 When using variables, the scalar parser will be provided not with a string per-se, but
 with a Clojure value: a native Long, Double, or Boolean. In this case, the parser
@@ -62,7 +62,7 @@ is, not so much parsing, as validating and transforming.
 
 For example, the built-in ``Int`` parser handles strings and all kinds of numbers
 (including non-integers). It also ensures that ``Int`` values are, as identified in
-the `specification <http://facebook.github.io/graphql/#sec-Int>`_, limited to signed
+the :spec:`specification <Int>`, limited to signed
 32 bit numbers.
 
 Attaching Scalar Transformers

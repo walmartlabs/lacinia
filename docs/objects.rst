@@ -7,7 +7,7 @@ and exposed by GraphQL.
 
 .. sidebar:: GraphQL Spec
 
-   Read about `server-side types <https://facebook.github.io/graphql/#sec-Type-System>`_.
+   Read about :spec:`server-side types <Type-System>`.
 
 GraphQL supports objects, interfaces, unions, and enums.
 
