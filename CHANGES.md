@@ -1,3 +1,10 @@
+## 0.22.0 -- UNRELEASED
+
+Previously, the reserved words 'query', 'mutation', and 'subscription'
+could not be used as the name of an operation, variable, field, etc.
+The grammar and parser have been changed to allow this.
+
+
 ## 0.21.0 -- 12 Sep 2017
 
 Simplified a clojure.spec to prevent a potential runtime error

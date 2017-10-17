@@ -51,6 +51,25 @@
                            (cond-> node
                              (-> arguments :if false?) (assoc :disabled? true)))}}))
 
+(defn ^:private name-from
+  "Converts a Parser node into a keyword. The node looks like
+  this:
+
+  [:name
+    [:nameid \"foo\"]]
+
+  OR
+
+  [:name
+    [:operationType [:'query' \"query\"]]]"
+  [node]
+  (let [inner (second node)
+        inner-type (first inner)
+        text (if (= :nameid inner-type)
+               (second inner)
+               (-> inner second second))]
+    (keyword text)))
+
 (declare ^:private xform-argument-map)
 
 (defn ^:private xform-argument-value
@@ -84,17 +103,17 @@
       :floatvalue [:scalar first-value]
       :booleanvalue [:scalar first-value]
       :nullvalue [:null nil]
-      :enumValue [:enum (-> first-value second as-keyword)]
+      :enumValue [:enum (-> first-value name-from)]
       :objectValue [:object (xform-argument-map (next argument-value))]
       :arrayValue [:array (mapv (comp xform-argument-value second) (next argument-value))]
-      :variable [:variable (-> first-value second keyword)])))
+      :variable [:variable (-> first-value name-from)])))
 
 (defn ^:private xform-argument-map
   [nodes]
   (->> nodes
-       (reduce (fn [m [_ [_ k] [_ v]]]
+       (reduce (fn [m [_ name-node [_ v]]]
                  (assoc! m
-                         (keyword k)
+                         (name-from name-node)
                          (xform-argument-value v)))
                (transient {}))
        persistent!))
@@ -118,10 +137,10 @@
   [acc [k :as node]]
   (case k
     :name
-    (assoc acc :field (keyword (second node)))
+    (assoc acc :field (name-from node))
 
     :alias
-    (assoc acc :alias (keyword (second (second node))))
+    (assoc acc :alias (-> node second name-from))
 
     :arguments
     (let [args (xform-argument-map (rest node))]
@@ -131,17 +150,17 @@
 
     :typeCondition
     ;; Part of inline fragments and fragment definitions
-    (assoc acc :type (keyword (second (second (second node)))))
+    (assoc acc :type (-> node second name-from))
 
     :fragmentName
     ;; Part of a fragment reference (... ADefinedFragment)
-    (assoc acc :fragment-name (keyword (second (second node))))
+    (assoc acc :fragment-name (name-from node))
 
     :directives
     (->> (rest node)
-         (reduce (fn ([acc [_ [_ k] v]]
+         (reduce (fn ([acc [_ name-node v]]
                        ;; TODO: Spec indicates that directives must be unique by name
-                      (assoc! acc (keyword k) (node-reducer {} v))))
+                      (assoc! acc (name-from name-node) (node-reducer {} v))))
                  (transient {}))
          persistent!
          (assoc acc :directives))
@@ -771,10 +790,11 @@
     single-op?
     first-op
 
-    :let [operation (some #(when (= operation-name
+    :let [operation-k (keyword operation-name)
+          operation (some #(when (= operation-k
                                     ;; We can only check named documents
                                     (and (< 2 (count %))
-                                         (-> % (nth 2) second)))
+                                         (-> % (nth 2) name-from)))
                              %)
                           operations)]
 
@@ -1039,7 +1059,7 @@
     (case type
       :typeName
       {:kind :root
-       :type (-> value second keyword)}
+       :type (name-from value)}
 
       :nonNullType
       {:kind :non-null
@@ -1056,7 +1076,7 @@
   schema-type like an argument definition."
   [schema variable-definition]
   (let [m (element->map variable-definition)
-        var-name (-> m :variable first second keyword)
+        var-name (-> m :variable first name-from)
         var-def {:type (-> m :type first construct-var-type-map)
                  :var-name var-name}
         ;; Simulate a field definition around the raw type:

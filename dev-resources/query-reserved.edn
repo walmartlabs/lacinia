@@ -1,0 +1,8 @@
+{:objects
+ {:subscription
+  {:fields {:mutation {:type Boolean}}}}
+ :queries
+ {:query
+  {:type :subscription
+   :args {:mutation {:type Boolean}}
+   :resolve :resolve-query}}}
