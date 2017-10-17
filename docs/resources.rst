@@ -12,3 +12,5 @@ Other Resources
 
 * A talk at `Clojure/Conj 2017 <http://2017.clojure-conj.org/the-power-of-lacinia-hystrix/>`_:
   `The Power of Lacinia & Hystrix in Production` is available on `You Tube <https://www.youtube.com/watch?v=uL9QavmAInw>`_.
+
+* Blog Post: `The Case for Clojure and GraphQL: Replacing Django <https://cheesecakelabs.com/blog/case-clojure-graphql-replacing-django/>`_.
