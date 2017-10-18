@@ -246,7 +246,10 @@ class RemoteExample(Directive):
         content = [".. remoteinclude:: " + url ]
 
         for k, v in self.options.iteritems():
-            content += ['  :' + k + ': ' + v]
+            if v is None:
+                content += ['  :' + k + ':']
+            else:
+                content += ['  :' + k + ': ' + v]
 
         if not(self.options.has_key('language')):
             content += ['  :language: clojure']
