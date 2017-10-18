@@ -7,6 +7,7 @@ Tutorial
    prereqs
    domain
    create-project
+   init-schema
 
 .. caution::
 
@@ -22,3 +23,4 @@ you can fork and experinment with your self.
 Along the way, we hope you'll learn quite a bit about not just Lacinia and GraphQL,
 but about building Clojure applications in general.
 
+You can pull down the full source for the tutorial from GitHub: https://github.com/walmartlabs/clojure-game-geek
