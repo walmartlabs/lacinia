@@ -55,7 +55,8 @@ sys.path.append(os.path.abspath('_exts'))
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = ['sphinx.ext.graphviz', 'sphinx.ext.todo',
-  'sphinx.ext.extlinks', 'remotecode']
+              'sphinx.ext.extlinks',
+              'remote']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

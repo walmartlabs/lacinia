@@ -1,6 +1,4 @@
-import sys
 import urllib
-import codecs
 
 from docutils import nodes
 from docutils.parsers.rst import Directive, directives
