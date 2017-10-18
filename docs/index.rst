@@ -1,9 +1,6 @@
 Lacinia - GraphQL for Clojure
 =============================
 
-.. remoteinclude:: https://raw.githubusercontent.com/walmartlabs/lacinia/master/project.clj
-   :language: clojure
-
 Lacinia is a library for implementing
 Facebook's
 `GraphQL <https://facebook.github.io/react/blog/2015/05/01/graphql-introduction.html>`_

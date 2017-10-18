@@ -43,8 +43,8 @@ def container_wrapper(directive, literal_node, caption):
 
 class RemoteInclude(Directive):
     """
-    Cut-n-pase of LiteralInclude from sphinx 1.5.5; the argument is a URI instead of a local file name.
-    Removed the diff option.
+    Cut-n-paste of LiteralInclude from sphinx 1.5.5; the argument is a URI instead of a local file name.
+    Removed the diff and pyobject options.
     """
 
     has_content = False
@@ -59,7 +59,6 @@ class RemoteInclude(Directive):
         'tab-width': int,
         'language': directives.unchanged_required,
         'encoding': directives.encoding,
-        'pyobject': directives.unchanged_required,
         'lines': directives.unchanged_required,
         'start-after': directives.unchanged_required,
         'end-before': directives.unchanged_required,
@@ -74,6 +73,9 @@ class RemoteInclude(Directive):
     }
 
     def read_uri(self, uri, document):
+
+        print "Pulling source content from " + uri
+
         try:
                 f = urllib.urlopen(uri)
                 lines = f.readlines()
@@ -89,7 +91,6 @@ class RemoteInclude(Directive):
         if not document.settings.file_insertion_enabled:
             return [document.reporter.warning('File insertion disabled',
                                               line=self.lineno)]
-        env = document.settings.env
         uri =self.arguments[0]
 
         if 'pyobject' in self.options and 'lines' in self.options:
@@ -118,26 +119,11 @@ class RemoteInclude(Directive):
                 'Cannot use both "end-before" and "end-at" options',
                 line=self.lineno)]
 
-        encoding = self.options.get('encoding', env.config.source_encoding)
-
         lines = self.read_uri(uri, document)
         if lines and not isinstance(lines[0], string_types):
             return lines
 
         linenostart = self.options.get('lineno-start', 1)
-        objectname = self.options.get('pyobject')
-        if objectname is not None:
-            from sphinx.pycode import ModuleAnalyzer
-            analyzer = ModuleAnalyzer.for_file(filename, '')
-            tags = analyzer.find_tags()
-            if objectname not in tags:
-                return [document.reporter.warning(
-                    'Object named %r not found in include file %r' %
-                    (objectname, filename), line=self.lineno)]
-            else:
-                lines = lines[tags[objectname][1] - 1: tags[objectname][2] - 1]
-                if 'lineno-match' in self.options:
-                    linenostart = tags[objectname][1]
 
         linespec = self.options.get('lines')
         if linespec:
@@ -161,8 +147,8 @@ class RemoteInclude(Directive):
             lines = [lines[i] for i in linelist if i < len(lines)]
             if not lines:
                 return [document.reporter.warning(
-                    'Line spec %r: no lines pulled from include file %r' %
-                    (linespec, filename), line=self.lineno)]
+                    'Line spec %r: no lines pulled from resource %r' %
+                    (linespec, uri), line=self.lineno)]
 
         linespec = self.options.get('emphasize-lines')
         if linespec:
@@ -242,9 +228,40 @@ class RemoteInclude(Directive):
 
         return [retnode]
 
+# This is kind of like a macro for RemoteInclude that figures out the right
+# GitHub URL from the two required arguments (tag and path).
+class RemoteExample(Directive):
+
+    has_content = False
+    required_arguments = 2  # tag and path
+    optional_arguments = 1
+
+    option_spec = RemoteInclude.option_spec
+
+    def run(self):
+        tag = self.arguments[0]
+        path = self.arguments[1]
+        # TODO: Change to the actual tutorial project, once it exists
+        url = 'https://raw.githubusercontent.com/walmartlabs/lacinia/' + tag + '/' + path
+
+        content = [".. remoteinclude:: " + url ]
+
+        for k, v in self.options.iteritems():
+            content += ['  :' + k + ': ' + v]
+
+        if not(self.options.has_key('language')):
+            content += ['  :language: clojure']
+
+        vl = ViewList(content, source='')
+        node = nodes.Element()
+
+        self.state.nested_parse(vl, self.content_offset, node)
+
+        return node.children
 
 def setup(app):
     app.add_directive('remoteinclude', RemoteInclude)
+    app.add_directive('ex', RemoteExample)
 
     return {
         'version': '0.1',
