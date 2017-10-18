@@ -59,12 +59,12 @@ This ``simplify`` function finds all the ordered maps and converts them into
 ordinary maps.
 It also finds an lists can converts them to vectors.
 
-With that in place, we're ready to run some queries[#repl]_::
+With that in place, we're ready to run some queries::
 
    (q "{ game_by_id(id: \"anything\") { id name summary }}")
    => {:data {:game_by_id nil}}
 
-This hasn't changed, except that it's standard maps, which are easier to look at.
+This hasn't changed [#repl]_, except that it's standard maps, which are easier to look at.
 
 However, we can also get real data back from our query::
 
@@ -83,6 +83,6 @@ We've made our first true steps.
 
 .. [#too-much] This is overkill for this very simple case, but its nice to demonstrate
    techniques that are likely to be used in real applications.
-.. [#repl] This REPL output is a bit different that before; we've switched from
-   the standard Leiningen REPL to the Cursive REPL; the latter pretty-prints
-   the results returned by invoked functions.
+.. [#repl] This REPL output is a bit different than earlier examples; we've switched from
+   the standard Leiningen REPL to the `Cursive REPL <https://cursive-ide.com/>`_; the latter pretty-prints
+   the returned values.
