@@ -241,8 +241,7 @@ class RemoteExample(Directive):
     def run(self):
         tag = self.arguments[0]
         path = self.arguments[1]
-        # TODO: Change to the actual tutorial project, once it exists
-        url = 'https://raw.githubusercontent.com/walmartlabs/lacinia/' + tag + '/' + path
+        url = 'https://raw.githubusercontent.com/walmartlabs/clojure-game-geek/' + tag + '/' + path
 
         content = [".. remoteinclude:: " + url ]
 
