@@ -34,6 +34,7 @@ responding with JSON, it is also exceptionally useful for allowing backend syste
    :hidden:
 
    overview
+   tutorial/index
    fields
    objects
    interfaces
