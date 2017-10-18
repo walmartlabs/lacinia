@@ -8,6 +8,8 @@ Tutorial
    domain
    create-project
    init-schema
+   game-data
+
 
 .. caution::
 

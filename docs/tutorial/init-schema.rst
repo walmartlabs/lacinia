@@ -8,7 +8,7 @@ By the end of this stage, we'll have a minimal schema and be able to execute our
 Schema EDN File
 ---------------
 
-Our initial schema is just for the ``BoardGame`` entity, and single operation to retrieve
+Our initial schema is just for the ``BoardGame`` entity, and a single operation to retrieve
 a game by its id:
 
 .. ex:: init-schema resources/cgg-schema.edn
@@ -19,6 +19,8 @@ a game by its id:
 
 This simply defines the ``BoardGame`` entity and a few common fields.
 The :description property can appear in many places.
+We'll add more fields, more types, relationships between types, and more operations
+as we go.
 
 We're using a few conventions here:
 
@@ -59,6 +61,13 @@ passed to it, and simply returns nil.
 user namespace
 --------------
 
+.. sidebar:: Not too much!
+
+   An annoyance with putting code into the ``user`` namespace is that you can't
+   start a new REPL unless and until the ``user`` namespace loads.
+   Every so often, you have to go in and comment everything out just to get
+   a REPL running, to start debugging an error elsewhere.
+
 A key advantage of Clojure is REPL-oriented development: we want to be able to
 run our code through its paces almost as soon as we've written it.
 
@@ -70,7 +79,7 @@ that it is not packaged up with the rest of our application when we deploy.
 
 .. ex:: init-schema dev-resources/user.clj
 
-With the in place, we can launch a REPL and try it out::
+With all that in place, we can launch a REPL and try it out::
 
   14:26:41 ~/workspaces/github/clojure-game-geek > lein repl
   nREPL server started on port 56053 on host 127.0.0.1 - nrepl://127.0.0.1:56053
