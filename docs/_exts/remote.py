@@ -251,6 +251,9 @@ class RemoteExample(Directive):
         if not(self.options.has_key('language')):
             content += ['  :language: clojure']
 
+        if not(self.options.has_key('caption')):
+            content += ['  :caption: ' + path]
+
         vl = ViewList(content, source='')
         node = nodes.Element()
 
