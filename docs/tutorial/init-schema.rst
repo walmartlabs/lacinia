@@ -8,7 +8,7 @@ By the end of this stage, we'll have a minimal schema and be able to execute our
 Schema EDN File
 ---------------
 
-Our initial schema is just for the ``BoardGame`` entity, and a single operation to retrieve
+Our initial schema is just for the BoardGame entity, and a single operation to retrieve
 a game by its id:
 
 .. ex:: init-schema resources/cgg-schema.edn
@@ -17,7 +17,7 @@ a game by its id:
 
   See documentation about :doc:`/objects`, :doc:`/fields`, and :doc:`/queries`.
 
-This simply defines the ``BoardGame`` entity and a few common fields.
+This simply defines the BoardGame entity and a few common fields.
 The :description property can appear in many places.
 We'll add more fields, more types, relationships between types, and more operations
 as we go.
@@ -26,7 +26,7 @@ We're using a few conventions here:
 
 * Built-in scalar types, such as ``ID``, ``String``, and ``Int`` are referenced as symbols.
 
-* Schema-defined types, such as ``BoardGame`` are referenced as keywords.
+* Schema-defined types, such as BoardGame are referenced as keywords.
 
 * Fields are lower-case names, and types are CamelCase.
 
@@ -107,7 +107,7 @@ they appear in the result.
 In any case, this result is equivalent to ``{:data {:game_by_id nil}}``.
 
 That's as it should be: the resolver was unable to resolve the provided id
-to a ``BoardGame``, so it returned nil.
+to a BoardGame, so it returned nil.
 This is not an error ... remember that we defined the type of the
 ``game_by_id`` operation for this specific situation.
 

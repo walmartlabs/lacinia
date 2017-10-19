@@ -22,9 +22,9 @@ The basic types are as follows:
 
    }
 
-A ``BoardGame`` may be published by multiple ``Publisher`` companies (the ``Publisher`` may
+A BoardGame may be published by multiple Publisher companies (the Publisher may
 be different for different countries, or may simply vary over time).
 
-A ``BoardGame`` may have any number of ``Designers``.
+A BoardGame may have any number of Designers.
 
-Users, represented as ``AppUser``, may leave reviews for board games.
+Users, represented as AppUser, may leave reviews for board games.

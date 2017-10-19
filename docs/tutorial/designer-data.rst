@@ -1,9 +1,9 @@
 Adding Designers
 ================
 
-So far, we've been working with just a single entity type, ``BoardGame``.
+So far, we've been working with just a single entity type, BoardGame.
 
-Let's see what we can do when we add ``Designer`` to the mix.
+Let's see what we can do when we add Designer to the mix.
 
 Initially, we'll define each designer in terms of an id, name, and an optional
 home page URL.
@@ -12,8 +12,8 @@ home page URL.
    :emphasize-lines: 7,11,16,22,26-
 
 If this was a relational database, we'd likely have a join table between
-``BoardGame`` and ``Designer``, but that come later.
-For now, we have a set of designer `ids` inside each ``BoardGame``.
+BoardGame and Designer, but that come later.
+For now, we have a set of designer `ids` inside each BoardGame.
 
 Schema Changes
 --------------
@@ -21,8 +21,8 @@ Schema Changes
 .. ex:: add-designers resources/cgg-schema.edn
    :emphasize-lines: 11-13,21-30
 
-We've added a ``:designers`` field to ``BoardGame``, and added
-a new ``Designer`` type.
+We've added a ``:designers`` field to BoardGame, and added
+a new Designer type.
 
 Notice that we've defined the ``:designers`` field as ``(not-null (list :Designer))``.
 This is somewhat overkill (the world won't end if we generate a nil instead of an
@@ -34,9 +34,9 @@ not really adding value.
 
 We need a field resolver for the ``:designers`` field, to convert from
 what's in our data (a set of designer ids) into what we are promising in the schema:
-a list of ``Designer`` objects.
+a list of Designer objects.
 
-Likewise, we need a field resolver in the ``Designer`` entity to figure out which ``BoardGame``s
+Likewise, we need a field resolver in the Designer entity to figure out which BoardGames
 are associated with the designer.
 
 Code Changes
@@ -54,8 +54,8 @@ when it matter, it falls on us to add documentation to describe the order,
 or even field arguments to control the order.
 
 The inverse of ``resolve-board-game-designers`` is ``resolve-designer-games``.
-It starts with a ``Designer`` and uses the designers id as a filter to find
-``BoardGame``s whose ``:designers`` set contains the designer.
+It starts with a Designer and uses the designers id as a filter to find
+BoardGames whose ``:designers`` set contains the designer.
 
 Testing It Out
 --------------
@@ -81,7 +81,7 @@ if you stop at a compound type, Lacinia will report an error instead::
 Notice how the ``:data`` key is not present here ... that indicates that the error
 occured during the parse and prepare phases, before execution in earnest began.
 
-To really demonstrate navigation, we can go from ``BoardGame`` to ``Designer`` and back::
+To really demonstrate navigation, we can go from BoardGame to Designer and back::
 
   (q "{ game_by_id(id: \"1234\") { name designers { name games { name }}}}")
   => {:data {:game_by_id {:name "Zertz", :designers [{:name "Kris Burm", :games [{:name "Zertz"}]}]}}}
