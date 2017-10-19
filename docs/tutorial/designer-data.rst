@@ -12,7 +12,7 @@ home page URL.
    :emphasize-lines: 7,11,16,22,26-
 
 If this was a relational database, we'd likely have a join table between
-BoardGame and Designer, but that come later.
+BoardGame and Designer, but that can come later.
 For now, we have a set of designer `ids` inside each BoardGame.
 
 Schema Changes
@@ -47,6 +47,7 @@ Code Changes
 
 ``resolve-board-game-designers`` is pretty straight forward.
 As with all field resolvers [#root]_, it is passed the containing resolved value
+(a BoardGame, in this case)
 and in turn, resolves the next step down.
 
 GraphQL doesn't make any guarantees about order of values in a list field;
@@ -54,7 +55,7 @@ when it matter, it falls on us to add documentation to describe the order,
 or even field arguments to control the order.
 
 The inverse of ``resolve-board-game-designers`` is ``resolve-designer-games``.
-It starts with a Designer and uses the designers id as a filter to find
+It starts with a Designer and uses the designer's id as a filter to find
 BoardGames whose ``:designers`` set contains the designer.
 
 Testing It Out

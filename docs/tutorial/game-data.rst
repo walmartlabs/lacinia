@@ -3,7 +3,7 @@ Placeholder Game Data
 
 It would be nice to do some queries that actually return some data!
 
-One option would be to fie up a database, define some tables, and load some data in.
+One option would be to fire up a database, define some tables, and load some data in.
 
 ... but that would slow us down by hours, and not teach us anything about Lacinia
 and GraphQL.
@@ -77,7 +77,7 @@ However, we can also get real data back from our query::
 Success!
 Lacinia has parsed our query string and executed it against our compiled schema.
 At the correct time, it dropped into our resolver function, which supplied the data
-that it then slice and diced to compose the result map.
+that it then sliced and diced to compose the result map.
 
 We've made our first true steps.
 

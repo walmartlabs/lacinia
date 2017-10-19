@@ -24,9 +24,10 @@ as we go.
 
 We're using a few conventions here:
 
-* Built-in scalar types, such as ``ID``, ``String``, and ``Int`` are referenced as symbols.
+* Built-in scalar types, such as ID, String, and Int are referenced as
+  symbols. [#internal]_
 
-* Schema-defined types, such as BoardGame are referenced as keywords.
+* Schema-defined types, such as ``:BoardGame``, are referenced as keywords.
 
 * Fields are lower-case names, and types are CamelCase.
 
@@ -114,3 +115,6 @@ This is not an error ... remember that we defined the type of the
 However, Lacinia still returns a map with the operation name and operation result.
 Failure to return a result with a ``:data`` key would signify an error executing
 the query. That's not the case here at all.
+
+.. [#internal] Internally, `everything` is converted to keywords, so if you prefer
+   to use symbols everywhere, nothing will break.
