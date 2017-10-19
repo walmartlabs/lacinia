@@ -37,7 +37,7 @@ resolver function arguments: context, args, and value.
 Field resolvers are passed a map of arguments, with keyword ids.
 We use a bit of destructing to extract the id [#too-much]_.
 The data in the map is already in a form that matches the GraphQL schema, so it's
-just a matter of `get`-ing it out of the games map.
+just a matter of ``get``-ing it out of the games map.
 
 Inside ``resolver-map``, we read the data, then use typical Clojure data manipulation
 to get it into the form that we want.

@@ -51,6 +51,8 @@ The compilation step is necessary before it is possible to execute queries.
 Compilation reorganizes the map, computes defaults, perform verifications,
 and does a number of other necessary steps.
 
+The keyword ``:query/game-by-id`` is a placeholder; we'll see how its used shortly.
+
 We're using a namespaced keyword for the resolver in the schema, and in the
 ``resolve-map`` function; this is a good habit to get into early, before your
 schema gets very large.
@@ -69,9 +71,11 @@ user namespace
    a REPL running, to start debugging an error elsewhere.
 
 A key advantage of Clojure is REPL-oriented development: we want to be able to
-run our code through its paces almost as soon as we've written it.
+run our code through its paces almost as soon as we've written it - and when we
+change code, we wan't to be able to try out the new version instantly.
 
-We can a bit of scaffolding in place in the ``user`` namespace.
+We can add a bit of scaffolding to the ``user`` namespace, specific to
+our needs in this project.
 When you launch a REPL, it always starts in this namespace.
 
 We can define the user namespace in the ``dev-resources`` folder; this ensures

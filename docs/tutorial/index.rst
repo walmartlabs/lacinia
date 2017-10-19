@@ -9,6 +9,7 @@ Tutorial
    create-project
    init-schema
    game-data
+   designer-data
 
 
 .. caution::
