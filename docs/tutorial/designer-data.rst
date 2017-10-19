@@ -55,8 +55,8 @@ when it matter, it falls on us to add documentation to describe the order,
 or even field arguments to control the order.
 
 The inverse of ``resolve-board-game-designers`` is ``resolve-designer-games``.
-It starts with a Designer and uses the designer's id as a filter to find
-BoardGames whose ``:designers`` set contains the designer.
+It starts with a Designer and uses the Designer's id as a filter to find
+BoardGames whose ``:designers`` set contains the id.
 
 Testing It Out
 --------------

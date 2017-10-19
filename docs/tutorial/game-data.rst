@@ -21,6 +21,8 @@ This file defines just a few games I've recently played.
 It will take the place of an external database.
 Later, we can add more data for the other entities and their relationships.
 
+Later still, we'll actually connect our application up to an external database.
+
 Resolver
 --------
 
@@ -42,8 +44,8 @@ just a matter of ``get``-ing it out of the games map.
 Inside ``resolver-map``, we read the data, then use typical Clojure data manipulation
 to get it into the form that we want.
 
-The use of `partial` explains why ``resolve-game-by-id`` takes four parameters:
-the wrapper function returned by `partial` supplies that first parameter, and passes the remaining three parameters
+The use of ``partial`` explains why ``resolve-game-by-id`` takes four parameters:
+the wrapper function returned by ``partial`` supplies that first parameter, and passes the remaining three parameters
 through into ``resolve-game-by-id``.
 
 Running Queries

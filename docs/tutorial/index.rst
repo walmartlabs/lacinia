@@ -11,6 +11,8 @@ Tutorial
    game-data
    designer-data
 
+   wrap-up
+
 
 .. caution::
 
@@ -21,7 +23,7 @@ Our goal with this tutorial is to build up the essentials of a full application
 implemented in Lacinia, starting from nothing.
 
 Unlike many of the snippets used elsewhere in the Lacinia documentation, this will be something
-you can fork and experinment with your self.
+you can fork and experiment with yourself.
 
 Along the way, we hope you'll learn quite a bit about not just Lacinia and GraphQL,
 but about building Clojure applications in general.
