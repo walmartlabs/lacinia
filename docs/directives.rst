@@ -7,8 +7,8 @@ For example, we can use directives to include or skip a field if certain criteri
 
 .. sidebar:: GraphQL Spec
 
-   Read about directives `here <https://facebook.github.io/graphql/#sec-Language.Directives>`_
-   and `here <https://facebook.github.io/graphql/#sec-Type-System.Directives>`_.
+   Read about directives :spec:`here <Language.Directives>`
+   and :spec:`here <Type-System.Directives>`.
 
 Currently Lacinia supports just the two standard directives: ``@skip`` and ``@include``, but future versions
 may include more.

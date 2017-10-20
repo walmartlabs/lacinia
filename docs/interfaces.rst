@@ -5,7 +5,7 @@ GraphQL supports the notion of *interfaces*, collections of fields and their arg
 
 .. sidebar:: GraphQL Spec
 
-   Read about `interfaces <https://facebook.github.io/graphql/#sec-Interfaces>`_.
+   Read about :spec:`interfaces <Interfaces>`.
 
 
 To keep things simple, interfaces can not extend other interfaces.

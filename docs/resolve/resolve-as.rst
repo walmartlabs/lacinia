@@ -5,7 +5,7 @@ A field resolver usually just returns the resolved value, or (for a list type) a
 
 .. sidebar:: GraphQL Spec
 
-   Read about `errors <http://facebook.github.io/graphql/#sec-Errors>`_.
+   Read about :spec:`errors <Errors>`.
 
 What if you want to add errors?  This is accomplished with a special return value, ResolverResult, which
 contains both a resolved value and an error map, or seq of error maps.

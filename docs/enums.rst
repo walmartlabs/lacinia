@@ -3,7 +3,7 @@ Enums
 
 .. sidebar:: GraphQL Spec
 
-   Read about `enums <https://facebook.github.io/graphql/#sec-Enums>`_.
+   Read about :spec:`enums <Enums>`.
 
 GraphQL supports enumerated types, types whose value is limited to a explicit list.
 
