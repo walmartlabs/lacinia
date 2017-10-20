@@ -4,6 +4,10 @@ Previously, the reserved words 'query', 'mutation', and 'subscription'
 could not be used as the name of an operation, variable, field, etc.
 The grammar and parser have been changed to allow this.
 
+Lacinia has a new API for parsing a GraphQL schema as an alternative
+to using Lacinia's EDN format.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/9?closed=1)
 
 ## 0.21.0 -- 12 Sep 2017
 
