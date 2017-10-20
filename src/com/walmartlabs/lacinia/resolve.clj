@@ -165,7 +165,7 @@
 
 (defn is-resolver-result?
   "Is the provided value actually a ResolverResult?"
-  {:added "0.22.0"}
+  {:added "0.23.0"}
   [value]
   (when value
     ;; This is a little bit of optimization; satisfies? can
@@ -188,7 +188,7 @@
 
   Note that the wrapper function must return a value, possibly wrapped by
   [[with-error]] or [[with-context]] but not a [[ResolverResult]]."
-  {:added "0.22.0"}
+  {:added "0.23.0"}
   [resolver-fn wrapper-fn]
   ^ResolverResult
   (fn [context args value]

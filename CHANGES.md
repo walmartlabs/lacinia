@@ -1,3 +1,9 @@
+## 0.23.0 -- UNRELEASED
+
+Added `com.walmartlabs.lacina.resolve/wrap-resolver-fn` which makes it easier
+to wrap an existing resolver function, but safely manipulate the resolved
+value.
+
 ## 0.22.0 -- UNRELEASED
 
 Previously, the reserved words 'query', 'mutation', and 'subscription'
