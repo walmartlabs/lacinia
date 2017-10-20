@@ -15,7 +15,7 @@
      :refer [map-vals map-kvs filter-vals deep-merge q
              is-internal-type-name? sequential-or-set? as-keyword
              cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag]]
-    [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolve-as combine-results]]
+    [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolve-as combine-results is-resolver-result?]]
     [clojure.string :as str]
     [clojure.set :refer [difference]]
     [clojure.spec.test.alpha :as stest])
@@ -517,11 +517,7 @@
     resolver
     (fn [context args value]
       (let [raw-value (resolver context args value)
-            is-result? (when raw-value
-                         ;; This is a little bit of optimization; satisfies? can
-                         ;; be a bit expensive.
-                         (or (instance? ResolverResultImpl raw-value)
-                             (satisfies? ResolverResult raw-value)))]
+            is-result? (is-resolver-result? raw-value)]
         (if is-result?
           raw-value
           (resolve-as raw-value))))))
