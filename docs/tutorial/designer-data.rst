@@ -5,7 +5,7 @@ So far, we've been working with just a single entity type, BoardGame.
 
 Let's see what we can do when we add Designer to the mix.
 
-Initially, we'll define each designer in terms of an id, name, and an optional
+Initially, we'll define each designer in terms of an id, a name, and an optional
 home page URL.
 
 .. ex:: add-designers dev-resources/cgg-data.edn
@@ -25,7 +25,7 @@ We've added a ``:designers`` field to BoardGame, and added
 a new Designer type.
 
 Notice that we've defined the ``:designers`` field as ``(not-null (list :Designer))``.
-This is somewhat overkill (the world won't end if we generate a nil instead of an
+This is somewhat overkill (the world won't end if the result map contains a nil instead of an
 empty list), but demonstrates that the ``list`` and ``not-null`` modifiers can
 nest properly.
 
@@ -45,10 +45,14 @@ Code Changes
 .. ex:: add-designers src/clojure_game_geek/schema.clj
    :emphasize-lines: 14-25, 41-42
 
-``resolve-board-game-designers`` is pretty straight forward.
-As with all field resolvers [#root]_, it is passed the containing resolved value
+As with all field resolvers [#root]_, ``resolve-board-game-designers`` is passed the containing resolved value
 (a BoardGame, in this case)
-and in turn, resolves the next step down.
+and in turn, resolves the next step down, in this case, a list of Designers.
+
+This is an important point: the data from your external source does not have to be in the shape
+described by your schema ... you just must be able to transform it into that shape.
+Field resolvers come into play both when you need to fetch data from an external source,
+and when you need to reshape that data to match the schema.
 
 GraphQL doesn't make any guarantees about order of values in a list field;
 when it matter, it falls on us to add documentation to describe the order,

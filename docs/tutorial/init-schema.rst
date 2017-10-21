@@ -22,26 +22,23 @@ It is a map of maps; the top level keys identify the type of definition: ``:obje
 ``:queries``, ``:interfaces``, ``:enums``, and so forth.
 Each type has its own structure.
 
-This schema defines the BoardGame entity and a few basic fields, along with a query
-to select a specific BoardGame.
-
 A schema is declarative: it defines what operation are possible, and what types and fields exist,
 but has nothing to say about where any of the data comes from.
 In fact, Lacinia has no opinion about that either!
 GraphQL is a contract between a consumer and a provider for how to request
-and present data: it is not an Object Relational Mapper or anything like that ...
-that is simply outside the scope of Lacinia and GraphQL.
+and present data.
 
-Instead, Lacinia provides a callback hook, a field resolver, that is the point
-where your application's code can be supplied, to actually go out and get
+Instead, Lacinia provides a callback hook, a
+:doc:`field resolver </resolve/index>`, that is the point
+where your application's code is invoked, to actually go out and get
 the data.
 Ultimately, field resolvers are functions, but those can't, and shouldn't, be
-expressed inside an EDN field.  Instead we put a placeholder in the EDN,
+expressed inside an EDN file.  Instead we put a placeholder in the EDN,
 and then `attach` the actual resolver later.
 
-The keyword ``:query/game-by-id`` is such a placeholder; we'll see how it is used shortly.
+The keyword ``:query/game-by-id`` is just such a placeholder; we'll see how it is used shortly.
 
-We've made liberal use of the ``:description`` propery.
+We've made liberal use of the ``:description`` property in the schema.
 There are the equivalent of doc-strings on Clojure functions, and we'll see them
 show up later when we discuss GraphiQL.
 It's an excellent habit to add descriptions early, rather than try and go back
@@ -59,11 +56,15 @@ We've also demonstrated the use of a few Lacinia conventions in our schema:
 
 * Fields are lower-case names, and types are CamelCase.
 
-* Fields and operations are named with underscores (this is a requirement, not a convention).
+In addition, all GraphQL names (for fields, types, and so forth) must contain only alphanumerics
+and the underscore.
+The dash character is, unfortunately, not allowed.
+If we tried to name the query ``query-by-id``, Lacinia would throw an exception when we attempted
+to use the schema.
 
 Notice that the return type of the ``game_by_id`` query is ``:BoardGame`` and `not`
 ``(non-null :BoardGame)``.
-This is because we can't guarantee that a game can be resolved, if the id provided is not valid.
+This is because we can't guarantee that a game can be resolved, if the id provided in the client query is not valid.
 
 In any case, this is a good starting point.
 
@@ -74,10 +75,10 @@ The next step is to write code to load the schema into memory, and make it opera
 
 .. ex:: init-schema src/clojure_game_geek/schema.clj
 
-This code loads the schema EDN file, attaches :doc:`field resolvers </resolve/index>` to the schema,
+This code loads the schema EDN file, :doc:`attaches field resolvers </resolve/attach>` to the schema,
 then `compiles` the schema.
 The compilation step is necessary before it is possible to execute queries.
-Compilation reorganizes the schema, computes defaults, perform verifications,
+Compilation reorganizes the schema, computes various defaults, perform verifications,
 and does a number of other necessary steps.
 
 We're using a namespaced keyword for the resolver in the schema, and in the

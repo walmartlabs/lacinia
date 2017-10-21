@@ -10,7 +10,7 @@ and GraphQL.
 
 Instead, we'll create an EDN file with some test data in it, and wire that up
 to the schema.
-We can fuss with database and all that later in the tutorial.
+We can fuss with database access and all that later in the tutorial.
 
 cgg-data.edn
 ------------
@@ -37,7 +37,7 @@ It is provided with a map of games, and the standard trio of
 resolver function arguments: context, args, and value.
 
 Field resolvers are passed a map of arguments, with keyword ids.
-We use a bit of destructing to extract the id [#too-much]_.
+We use a bit of :clojure:`destructuring <reference/special_forms#_map_binding_destructuring>` to extract the id [#too-much]_.
 The data in the map is already in a form that matches the GraphQL schema, so it's
 just a matter of ``get``-ing it out of the games map.
 
@@ -52,14 +52,14 @@ Running Queries
 ---------------
 
 We're finally almost ready to run queries ... but first, let's get rid of
-that #ordered/map business.
+that ``#ordered/map`` business.
 
 .. ex:: game-data dev-resources/user.clj
    :emphasize-lines: 10-25,30
 
 This ``simplify`` function finds all the ordered maps and converts them into
 ordinary maps.
-It also finds an lists can converts them to vectors.
+It also finds any lists and converts them to vectors.
 
 With that in place, we're ready to run some queries::
 
@@ -75,6 +75,14 @@ However, we can also get real data back from our query::
    {:data {:game_by_id {:id "1236",
                         :name "Tiny Epic Galaxies",
                         :summary "Fast dice-based sci-fi space game with a bit of chaos"}}}
+
+.. sidebar:: JSON?
+
+   It's perfectly acceptible to return EDN rather than JSON.
+   The GraphQL spec goes to some length to identify JSON as just one
+   possible over-the-wire format.
+   It's easy enough to convert EDN to JSON, and even reasonable to
+   support clients that can consume the EDN directly.
 
 Success!
 Lacinia has parsed our query string and executed it against our compiled schema.
