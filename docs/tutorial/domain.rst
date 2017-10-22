@@ -17,7 +17,8 @@ The basic types are as follows:
     AppUser
     Review
 
-    BoardGame -> {Designer, Review, Publisher} [taillabel="1", headlabel="n"]
+    BoardGame -> Review [taillabel="1", headlabel="n"]
+    BoardGame -> {Publisher, Designer} [taillabel="n", headlabel="m"]
     Review -> AppUser [taillabel="n", headlabel="1" ]
 
    }
