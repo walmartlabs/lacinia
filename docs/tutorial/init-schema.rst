@@ -40,7 +40,7 @@ The keyword ``:query/game-by-id`` is just such a placeholder; we'll see how it i
 
 We've made liberal use of the ``:description`` property in the schema.
 There are the equivalent of doc-strings on Clojure functions, and we'll see them
-show up later when we discuss GraphiQL.
+show up later when we :doc:`discuss GraphiQL <pedestal>`.
 It's an excellent habit to add descriptions early, rather than try and go back
 and add them in later.
 
