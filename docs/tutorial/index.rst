@@ -10,6 +10,7 @@ Tutorial
    init-schema
    game-data
    designer-data
+   pedestal
 
    wrap-up
 
