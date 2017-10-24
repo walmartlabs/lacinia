@@ -34,6 +34,7 @@ responding with JSON, it is also exceptionally useful for allowing backend syste
    :hidden:
 
    overview
+   tutorial/index
    fields
    objects
    interfaces
@@ -124,4 +125,6 @@ the data comes from; that's the province of the field resolvers.
 That's great news: it means Lacinia is equally adept at pulling data out of a single database
 as it is at integrating and organizing data from multiple backend systems.
 
-.. _graphiql: https://github.com/graphql/graphiql
+.. _graphiql:
+
+https://github.com/graphql/graphiql

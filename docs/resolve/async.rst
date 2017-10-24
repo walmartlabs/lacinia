@@ -49,7 +49,7 @@ matches the order in the query.
 
 .. sidebar:: GraphQL Spec
 
-   Read about `execution <http://facebook.github.io/graphql/#sec-Normal-and-Serial-Execution>`_.
+   Read about :spec:`execution <Normal-and-Serial-Execution>`.
 
 For mutations, the top-level operations execute serially.
 That is, Lacinia will execute one top-level operation entirely before

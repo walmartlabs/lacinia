@@ -5,7 +5,7 @@ The specification discusses a `source stream` and a `response stream`.
 
 Lacinia implements the source stream as a callback function.
 The response stream is largely the responsibility of
-the :doc:`web tier <lacinia-pedestal>`.
+the `web tier <https://github.com/walmartlabs/lacinia-pedestal>`_.
 
 - Lacinia invokes a streamer function once, to initialize the subscription stream.
 

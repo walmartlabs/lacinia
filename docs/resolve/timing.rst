@@ -18,7 +18,7 @@ Timing collection is enabled using the key, ``:com.walmartlabs.lacinia/enable-ti
 .. sidebar:: Extensions key?
 
    GraphQL supports a third result key, ``extensions``, as
-   described in `the spec <https://facebook.github.io/graphql/#sec-Response-Format>`_.
+   described in :spec:`the spec <Response-Format>`.
    It exists just for this kind of extra information in the response.
 
 Timings are returned in a tree structure below the ``:extensions`` key of the result.

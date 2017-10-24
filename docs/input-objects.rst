@@ -3,7 +3,7 @@ Input Objects
 
 .. sidebar:: GraphQL Spec
 
-   Read about `input objects <https://facebook.github.io/graphql/#sec-Input-Objects>`_.
+   Read about :spec:`input objects <Input-Objects>`.
 
 In some cases, it is desirable for a query to include arguments with more complex data than a single value.
 A typical example would be passing a bundle of values as part of a

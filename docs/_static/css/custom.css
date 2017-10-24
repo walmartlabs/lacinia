@@ -2,3 +2,7 @@
 div.highlight-clojure {
   clear: right;
 }
+
+a.headerlink {
+  float: right;
+}

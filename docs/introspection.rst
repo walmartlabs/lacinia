@@ -5,7 +5,7 @@ Introspection is a key part of GraphQL: the schema is self-describing.
 
 .. sidebar:: GraphQL Spec
 
-   Read about `introspection <https://facebook.github.io/graphql/#sec-Introspection>`_.
+   Read about :spec:`introspection <Introspection>`.
 
 Introspection data is derived directly from the schema.
 Often, a ``:description`` key is added to the schema to provide additional help.

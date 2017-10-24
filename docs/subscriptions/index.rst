@@ -7,7 +7,7 @@ subscriptions are to be implemented.
 
 .. sidebar:: GraphQL Spec
 
-   Read about `subscriptions <http://facebook.github.io/graphql/#sec-Subscription>`_.
+   Read about :spec:`subscriptions <Subscription>`.
 
 With subscriptions, a client can establish a long-lived connection to a server, and
 will receive new data on the connection as it becomes available to the server.

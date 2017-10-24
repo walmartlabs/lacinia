@@ -3,7 +3,7 @@ Queries
 
 .. sidebar:: GraphQL Spec
 
-   Read about `operations <https://facebook.github.io/graphql/#sec-Executing-Operations>`_.
+   Read about :spec:`operations <Executing-Operations>`.
 
 Queries are responsible for generating the initial resolved values that will be
 picked apart to form the result map.

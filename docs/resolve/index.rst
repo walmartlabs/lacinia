@@ -5,7 +5,7 @@ Field resolvers are how Lacinia goes beyond data modelling to actually providing
 
 .. sidebar:: GraphQL Spec
 
-   Read about `value resolution <https://facebook.github.io/graphql/#sec-Value-Resolution>`_.
+   Read about :spec:`value resolution <Value-Resolution>`.
 
 Field resolvers are attached to fields, but also to top-level query and mutation operations.
 It is only inside field resolvers that a Lacinia application can connect to a database or
