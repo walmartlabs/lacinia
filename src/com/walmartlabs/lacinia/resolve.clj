@@ -186,26 +186,37 @@
   The wrapper-fn is passed the underlying value and must return a new value.
   The new value will be re-wrapped as necessary.
 
-  Note that the wrapper function must return a value, possibly wrapped by
-  [[with-error]] or [[with-context]] but not a [[ResolverResult]]."
+  The wrapped value may itself be a ResolverResult, and the
+  value (either plain, or inside a ResolverResult) may also be decorated
+  with `with-error` or `with-context`."
   {:added "0.23.0"}
   [resolver-fn wrapper-fn]
   ^ResolverResult
   (fn [context args value]
     (let [initial-result (resolver-fn context args value)
           final-result (resolve-promise)
-          invoke-wrapper (fn invoke-wrapper [value]
-                           ;; Wait, did someone just say "monad"?
-                           (if (satisfies? ResolveCommand value)
-                             (->> value
-                                  nested-value
-                                  invoke-wrapper
-                                  (replace-nested-value value))
-                             (wrapper-fn context args value value)))
-          wrap-and-deliver (fn [result-value] (deliver! final-result (invoke-wrapper result-value)))]
+          deliver-final-result (fn [commands new-value]
+                                 (deliver! final-result
+                                           (if-not (seq commands)
+                                             new-value
+                                             (reduce #(replace-nested-value %2 %1)
+                                                     new-value
+                                                     (reverse commands)))))
+          invoke-wrapper (fn invoke-wrapper
+                           ([value]
+                            (invoke-wrapper [] value))
+                           ([commands value]
+                             ;; Wait, did someone just say "monad"?
+                            (if (satisfies? ResolveCommand value)
+                              (recur (conj commands value)
+                                     (nested-value value))
+                              (let [new-value (wrapper-fn context args value value)]
+                                (if (is-resolver-result? new-value)
+                                  (on-deliver! new-value #(deliver-final-result commands %))
+                                  (deliver-final-result commands new-value))))))]
 
       (if (is-resolver-result? initial-result)
-        (on-deliver! initial-result wrap-and-deliver)
-        (wrap-and-deliver initial-result))
+        (on-deliver! initial-result invoke-wrapper)
+        (invoke-wrapper initial-result))
 
       final-result)))

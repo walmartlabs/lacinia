@@ -1,6 +1,6 @@
 ## 0.23.0 -- UNRELEASED
 
-Added `com.walmartlabs.lacina.resolve/wrap-resolver-fn` which makes it easier
+Added `com.walmartlabs.lacina.resolve/wrap-resolver-result` which makes it easier
 to wrap an existing resolver function, but safely manipulate the resolved
 value.
 

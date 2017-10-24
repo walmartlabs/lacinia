@@ -111,3 +111,11 @@
     (is (= {:errors [:fail]
             :execution-context {:context {:gnip :gnop}}}
            sc))))
+
+(deftest wrapped-value-may-itself-be-resolver-result
+  (let [resolver-promise (r/resolve-promise)
+        resolver-fn (constantly resolver-promise)
+        wrapped (r/wrap-resolver-result resolver-fn inc-wrapper)
+        *result (as-promise (wrapped nil nil nil))]
+    (r/deliver! resolver-promise 500)
+    (is (= 501 (deref *result 100 ::no-value)))))
