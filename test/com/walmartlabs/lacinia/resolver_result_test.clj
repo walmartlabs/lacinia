@@ -103,12 +103,13 @@
 (deftest restores-commands-around-wrapped-value
   (let [resolver-fn (constantly (-> 300
                                     (r/with-context {:gnip :gnop})
-                                    (r/with-error :fail)))
+                                    (r/with-error :fail-1)
+                                    (r/with-error :fail-2)))
         wrapped (r/wrap-resolver-result resolver-fn inc-wrapper)
         *result (as-promise (wrapped nil nil nil))
         [sc final-value] (apply-resolve-command {} @*result)]
     (is (= 301 final-value))
-    (is (= {:errors [:fail]
+    (is (= {:errors [:fail-1 :fail-2]                       ; check order of application
             :execution-context {:context {:gnip :gnop}}}
            sc))))
 

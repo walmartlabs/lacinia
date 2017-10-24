@@ -23,7 +23,7 @@
     "Returns a new instance of the same command, but wrapped around a different nested value."))
 
 (defn with-error
-  "Wraps a value with an error map (or seq of error maps)."
+  "Decorates a value with an error map (or seq of error maps)."
   {:added "0.19.0"}
   [value error]
   (reify
@@ -38,7 +38,7 @@
       (with-error new-value error))))
 
 (defn with-context
-  "Wraps a value so that when nested fields (at any depth) are executed, the provided values will be in the context.
+  "Decorates a value so that when nested fields (at any depth) are executed, the provided values will be in the context.
 
    The provided context-map is merged onto the application context."
   {:added "0.19.0"}
@@ -181,7 +181,7 @@
   resolver.
 
   `wrap-resolver-result` understand resolver functions that return a [[ResolverResult]]
-  instead of a bare value, as well as functions that have used [[with-error]] or
+  instead of a bare value, as well as functions that have decorated a value using [[with-error]] or
   [[with-context]].
   The wrapper-fn is passed the underlying value and must return a new value.
   The new value will be re-wrapped as necessary.
@@ -193,7 +193,7 @@
   [resolver-fn wrapper-fn]
   ^ResolverResult
   (fn [context args value]
-    (let [initial-result (resolver-fn context args value)
+    (let [resolved-value (resolver-fn context args value)
           final-result (resolve-promise)
           deliver-final-result (fn [commands new-value]
                                  (deliver! final-result
@@ -201,22 +201,22 @@
                                              new-value
                                              (reduce #(replace-nested-value %2 %1)
                                                      new-value
-                                                     (reverse commands)))))
+                                                     commands))))
           invoke-wrapper (fn invoke-wrapper
                            ([value]
-                            (invoke-wrapper [] value))
+                            (invoke-wrapper nil value))
                            ([commands value]
                              ;; Wait, did someone just say "monad"?
                             (if (satisfies? ResolveCommand value)
-                              (recur (conj commands value)
+                              (recur (cons value commands)
                                      (nested-value value))
                               (let [new-value (wrapper-fn context args value value)]
                                 (if (is-resolver-result? new-value)
                                   (on-deliver! new-value #(deliver-final-result commands %))
                                   (deliver-final-result commands new-value))))))]
 
-      (if (is-resolver-result? initial-result)
-        (on-deliver! initial-result invoke-wrapper)
-        (invoke-wrapper initial-result))
+      (if (is-resolver-result? resolved-value)
+        (on-deliver! resolved-value invoke-wrapper)
+        (invoke-wrapper resolved-value))
 
       final-result)))
