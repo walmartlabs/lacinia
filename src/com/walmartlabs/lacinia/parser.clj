@@ -51,6 +51,24 @@
                            (cond-> node
                              (-> arguments :if false?) (assoc :disabled? true)))}}))
 
+(defn ^:private name-string-from
+  "Converts a Parser node into a string. The node looks like
+  this:
+
+  [:name
+    [:nameid \"foo\"]]
+
+  OR
+
+  [:name
+    [:operationType [:'query' \"query\"]]]"
+  [node]
+  (let [inner (second node)
+        inner-type (first inner)]
+    (if (= :nameid inner-type)
+      (second inner)
+      (-> inner second second))))
+
 (defn ^:private name-from
   "Converts a Parser node into a keyword. The node looks like
   this:
@@ -63,12 +81,7 @@
   [:name
     [:operationType [:'query' \"query\"]]]"
   [node]
-  (let [inner (second node)
-        inner-type (first inner)
-        text (if (= :nameid inner-type)
-               (second inner)
-               (-> inner second second))]
-    (keyword text)))
+  (keyword (name-string-from node)))
 
 (declare ^:private xform-argument-map)
 
@@ -782,7 +795,7 @@
          operation-name
          (or (not (< 2 (count first-op)))
              (not= operation-name
-                   (-> first-op (nth 2) second))))
+                   (-> first-op (nth 2) name-string-from))))
 
     (throw-exception "Single operation did not provide a matching name."
                      {:op-name operation-name})

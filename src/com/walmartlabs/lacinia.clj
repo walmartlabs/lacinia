@@ -75,12 +75,17 @@
   context (optional)
   : Additional data that will ultimately be passed to resolver functions.
 
+  options (optional)
+  : The only option currently is `:operation-name`, used to identify which
+    operation to execute, when the query specifies more than one.
+
   This function parses the query and invokes [[execute-parsed-query]]."
   ([schema query variables context]
    (execute schema query variables context {}))
-  ([schema query variables context {:keys [operation-name] :as options}]
+  ([schema query variables context options]
    {:pre [(string? query)]}
-   (let [[parsed error-result] (try
+   (let [{:keys [operation-name]} options
+         [parsed error-result] (try
                                  [(parser/parse-query schema query operation-name)]
                                  (catch ExceptionInfo e
                                    [nil (as-errors e)]))]
