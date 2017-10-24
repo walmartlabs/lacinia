@@ -1,4 +1,4 @@
-## 0.22.0 -- UNRELEASED
+## 0.22.0 -- 24 Oct 2017
 
 Previously, the reserved words 'query', 'mutation', and 'subscription'
 could not be used as the name of an operation, variable, field, etc.
