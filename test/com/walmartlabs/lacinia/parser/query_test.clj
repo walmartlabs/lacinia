@@ -62,3 +62,8 @@
         result (execute schema "{ query(mutation: true) { mutation }}")]
     (is (= {:data {:query {:mutation true}}}
            result))))
+
+(deftest requires-compiled-schema
+  (is (thrown-with-msg? IllegalStateException
+                        #"The provided schema has not been compiled"
+                        (execute {} "{ whatever }"))))
