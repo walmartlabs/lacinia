@@ -479,7 +479,26 @@
     ;; adds anything to the test-schema; perhaps we can change it to just ensure that
     ;; there are no errors, and break it up into smaller tests against small, ad-hoc
     ;; features?
-    (is (= {:directives []
+    (is (= {:directives [{:args [{:defaultValue nil
+                                  :description "Triggering argument for skip directive."
+                                  :name "if"
+                                  :type {:kind :NON_NULL
+                                         :name nil
+                                         :ofType {:kind :SCALAR
+                                                  :name "Boolean"
+                                                  :ofType nil}}}]
+                          :description "Skip the selection only when the `if` argument is true."
+                          :name "skip"}
+                         {:args [{:defaultValue nil
+                                  :description "Triggering argument for include directive."
+                                  :name "if"
+                                  :type {:kind :NON_NULL
+                                         :name nil
+                                         :ofType {:kind :SCALAR
+                                                  :name "Boolean"
+                                                  :ofType nil}}}]
+                          :description "Include the selection only when the `if` argument is true."
+                          :name "include"}]
             :mutationType {:name "MutationRoot"}
             :queryType {:name "QueryRoot"}
             :types [{:description nil
