@@ -1,4 +1,4 @@
-## 0.22.1 -- UNRELEASED
+## 0.22.1 -- 27 Oct 2015
 
 Fixes a bug that prevented operation names from working when a query
 defined only a single operation.
