@@ -20,7 +20,7 @@
 
 (defn ^:private assert-and-wrap-error
   "An error returned by a resolver should be nil, a map, or a collection
-  of maps, and the map(s) must contain at least :message key with a string value.
+  of maps, and the map(s) must contain at least a :message key with a string value.
 
   Returns nil, or a collection of one or more valid error maps."
   [error-map-or-maps]
