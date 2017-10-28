@@ -4,6 +4,8 @@
     [clojure.test :refer [deftest testing is are try-expr do-report]]
     [clojure.spec.alpha :as s]
     [com.walmartlabs.lacinia.schema :as schema]
+    [com.walmartlabs.lacinia.executor :as executor]
+    [com.walmartlabs.lacinia.util :as util]
     [com.walmartlabs.test-utils :refer [is-thrown]]
     [clojure.string :as str]))
 
@@ -61,6 +63,23 @@
     {:implements [:fred :barney]
      :fields {:dinosaur {:type :raptor}}}}})
 
+(def schema-generated-data
+  [:one :two :three])
+
+(defn schema-generated-resolver [context args value]
+  (keys (executor/selections-tree context)))
+
+(def schema-generated-lists
+  {:objects
+   (into {}
+     (for [f schema-generated-data]
+       [f {:fields {:name {:type 'String}}}]))
+   :queries
+   (into {}
+     (for [f schema-generated-data]
+       [f {:type `(~'list ~f)
+           :resolve :schema-generated-resolver}]))})
+
 (deftest invalid-schemas
   []
   (is-thrown [e (schema/compile schema-object-references-unknown-interface)]
@@ -72,7 +91,12 @@
                (is (= [:fred :barney :bam_bam :pebbles] (-> d :object :implements)))))
 
   (is-thrown [e (schema/compile schema-references-unknown-type)]
-    (is (= (.getMessage e) "Field `dino/dinosaur' references unknown type `raptor'."))))
+    (is (= (.getMessage e) "Field `dino/dinosaur' references unknown type `raptor'.")))
+
+  (is (schema/compile
+        (util/attach-resolvers
+          schema-generated-lists
+          {:schema-generated-resolver schema-generated-resolver}))))
 
 (deftest custom-scalars
   []
