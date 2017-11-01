@@ -20,8 +20,7 @@
 
 (defn ^:private assert-and-wrap-error
   "An error returned by a resolver should be nil, a map, or a collection
-  of maps. These maps should contain a :message key, but may contain others.
-  Wrap them in a vector if necessary.
+  of maps, and the map(s) must contain at least a :message key with a string value.
 
   Returns nil, or a collection of one or more valid error maps."
   [error-map-or-maps]
@@ -39,7 +38,7 @@
 
     :else
     (throw (ex-info (str "Errors must be nil, a map, or a sequence of maps "
-                         "each containing, at minimum, a :message key.")
+                         "each containing, at minimum, a :message key and a string value.")
                     {:error error-map-or-maps}))))
 
 (defn ^:private enhance-errors
