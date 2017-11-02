@@ -23,7 +23,7 @@ they should use the ``com.walmartlabs.lacinia.resolve/resolve-as`` function to r
 
 Errors will be exposed as the top-level ``:errors`` key of the execution result.
 
-Error maps contain at a minimum a ``:message`` key of type String.
+Error maps must contain at a minimum a ``:message`` key with a value of type String.
 You may specify other keys and values as you wish, but these values will be part of the ultimate
 result map, so they should be both concise and safe for the transport medium.
 Generally, this means not to include values that can't be converted into JSON values.

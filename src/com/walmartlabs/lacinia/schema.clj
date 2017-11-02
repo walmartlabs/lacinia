@@ -437,7 +437,7 @@
   ;; cheap: just use last.
   [type]
   (cond
-    (list? type)
+    (sequential? type)
     (let [[modifier next-type & anything-else] type
           kind (get {'list :list
                      'non-null :non-null} modifier)]
@@ -1102,7 +1102,8 @@
          introspection-schema (introspection/introspection-schema)]
      (-> schema
          (deep-merge introspection-schema)
-         (construct-compiled-schema options')))))
+         (construct-compiled-schema options')
+         (vary-meta assoc ::compiled true)))))
 
 (s/fdef compile
         :args (s/cat :schema ::schema-object

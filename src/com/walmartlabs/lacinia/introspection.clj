@@ -5,7 +5,6 @@
     [clojure.java.io :as io]
     [com.walmartlabs.lacinia.util :as util]
     [com.walmartlabs.lacinia.internal-utils :refer [remove-keys is-internal-type-name?]]
-    [clojure.string :as str]
     [com.walmartlabs.lacinia.constants :as constants]))
 
 (def ^:private category->kind
@@ -41,7 +40,7 @@
            interfaces))))
 
 (defn ^:private resolve-field
-  [schema field-def]
+  [field-def]
   {:name (-> field-def :field-name name)
    :description (:description field-def)
    :args (for [arg-def (->> field-def :args vals (sort-by :arg-name))]
@@ -56,11 +55,10 @@
    ::type-map (:type field-def)})
 
 (defn ^:private resolve-fields
-  [context args object-or-interface]
-  (let [schema (get context constants/schema-key)
-        {:keys [::category ::type-def]} object-or-interface]
+  [_ _ object-or-interface]
+  (let [{:keys [::category ::type-def]} object-or-interface]
     (when (#{:object :interface} category)
-      (map #(resolve-field schema %)
+      (map #(resolve-field %)
            (->> type-def
                 :fields
                 vals
@@ -79,8 +77,22 @@
         omit-subs (-> subs-root :fields empty?)
         type-names' (cond-> (set type-names)
                       omit-mutations (disj constants/mutation-root)
-                      omit-subs (disj constants/subscription-root))]
-    (cond-> {:directives []                                 ; TODO!
+                      omit-subs (disj constants/subscription-root))
+        not-null-boolean {:kind :non-null
+                          :type {:kind :root
+                                 :type :Boolean}}]
+    (cond-> {:directives [{:name "skip"
+                           :description "Skip the selection only when the `if` argument is true."
+                           :locations [:INLINE_FRAGMENT :FIELD :FRAGMENT_SPREAD]
+                           :args [{:name "if"
+                                   :description "Triggering argument for skip directive."
+                                   ::type-map not-null-boolean}]}
+                          {:name "include"
+                           :description "Include the selection only when the `if` argument is true."
+                           :locations [:INLINE_FRAGMENT :FIELD :FRAGMENT_SPREAD]
+                           :args [{:name "if"
+                                   :description "Triggering argument for include directive."
+                                   ::type-map not-null-boolean}]}]
              :types (->> type-names'
                          sort
                          (map #(type-name->schema-type schema %)))

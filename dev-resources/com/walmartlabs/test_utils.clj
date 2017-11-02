@@ -74,4 +74,6 @@
   ([compiled-schema query]
     (execute compiled-schema query nil nil))
   ([compiled-schema query vars context]
-    (simplify (lacinia/execute compiled-schema query vars context))))
+   (execute compiled-schema query vars context nil))
+  ([compiled-schema query vars context options]
+   (simplify (lacinia/execute compiled-schema query vars context options))))

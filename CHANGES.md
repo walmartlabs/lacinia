@@ -4,6 +4,13 @@ Added `com.walmartlabs.lacina.resolve/wrap-resolver-result` which makes it easie
 to wrap an existing resolver function, but safely manipulate the resolved
 value.
 
+## 0.22.1 -- 27 Oct 2015
+
+Fixes a bug that prevented operation names from working when a query
+defined only a single operation.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/10?closed=1)
+
 ## 0.22.0 -- 24 Oct 2017
 
 Previously, the reserved words 'query', 'mutation', and 'subscription'

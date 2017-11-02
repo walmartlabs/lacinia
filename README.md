@@ -7,6 +7,8 @@
 
 [Lacinia Manual](http://lacinia.readthedocs.io/en/latest/)
 
+[Lacinia Tutorial](http://lacinia.readthedocs.io/en/latest/tutorial)
+
 [API Documentation](http://walmartlabs.github.io/lacinia/)
 
 This library is a full implementation of

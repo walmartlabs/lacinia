@@ -149,7 +149,8 @@
    (:typeName (:name \"CharacterOutput\"))
    (:implementationDef
     (:'implements' \"implements\")
-    (:typeName (:name \"Human\")))
+    (:typeName (:name \"Human\"))
+    (:typeName (:name \"Jedi\"))
    (:fieldDef
     (:fieldName (:name \"name\"))
     (:typeSpec (:typeName (:name \"String\"))))
@@ -158,10 +159,13 @@
     (:typeSpec (:typeName (:name \"Date\")))))"
   [type]
   {(keyword (select1 [:typeName :name] type))
-   (cond-> {:fields (apply merge (select-map xform-field [:fieldDef] type))}
-     (select1 [:implementationDef] type) (assoc :implements
-                                                (mapv (comp keyword first)
-                                                      (select [:implementationDef :typeName :name] type))))})
+   (let [[_ _ maybe-impl-def] (first type)
+         implemented-types (when (= :implementationDef (first maybe-impl-def))
+                             (->> maybe-impl-def
+                                  (drop 2)                  ; :implementationDef and :implements pair
+                                  (map (comp keyword second second))))]
+     (cond-> {:fields (apply merge (select-map xform-field [:fieldDef] type))}
+       implemented-types (assoc :implements implemented-types)))})
 
 (defn ^:private xform-enum
   "Transforms an enum parse tree node.

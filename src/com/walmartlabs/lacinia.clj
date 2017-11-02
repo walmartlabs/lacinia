@@ -70,17 +70,35 @@
 
   variables
   : compile-time variables that can be referenced inside the query using the
-    `$variable-name` production. A map of keyword keys and values.
+    `$variable-name` production.
 
   context (optional)
   : Additional data that will ultimately be passed to resolver functions.
 
-  This function parses the query and invokes [[execute-parsed-query]]."
+  options (optional)
+  : The only option currently is `:operation-name`, used to identify which
+    operation to execute, when the query specifies more than one.
+
+  This function parses the query and invokes [[execute-parsed-query]].
+
+  When a GraphQL query contains variables, the values for those variables
+  arrive seperately; for example, a JSON request may have the query
+  in the \"query\" property, and the variables in the \"variables\" property.
+
+  The values for those variables are provided in the variables parameter.
+  The keys are keyword-ized names of the variable (without the leading
+  '$'); if a variable is named `$user_id` in the query, the corresponding
+  key should be `:user_id`.
+
+  The values in the variables map should be of a type matching the
+  variable's declaration in the query; typically a string or other scalar value,
+  or a map for a variable of type InputObject."
   ([schema query variables context]
    (execute schema query variables context {}))
-  ([schema query variables context {:keys [operation-name] :as options}]
+  ([schema query variables context options]
    {:pre [(string? query)]}
-   (let [[parsed error-result] (try
+   (let [{:keys [operation-name]} options
+         [parsed error-result] (try
                                  [(parser/parse-query schema query operation-name)]
                                  (catch ExceptionInfo e
                                    [nil (as-errors e)]))]
