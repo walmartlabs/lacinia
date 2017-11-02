@@ -437,7 +437,7 @@
   ;; cheap: just use last.
   [type]
   (cond
-    (list? type)
+    (sequential? type)
     (let [[modifier next-type & anything-else] type
           kind (get {'list :list
                      'non-null :non-null} modifier)]
