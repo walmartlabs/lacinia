@@ -1,7 +1,7 @@
 (ns com.walmartlabs.lacinia.parser.schema-test
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :refer [resource]]
-            [com.walmartlabs.lacinia :refer [execute]]
+            [com.walmartlabs.test-utils :refer [execute]]
             [com.walmartlabs.lacinia.parser.schema :as parser]
             [com.walmartlabs.lacinia.schema :as schema])
   (:import [clojure.lang ExceptionInfo]))
@@ -43,7 +43,7 @@
 (def ^:private streamer-map {:Subscription {:new_character new-character}})
 
 (deftest schema-parsing
-  (let [parsed-schema (parser/parse-schema (slurp (resource "sample_schema.txt"))
+  (let [parsed-schema (parser/parse-schema (slurp (resource "sample_schema.sdl"))
                                            {:resolvers resolver-map
                                             :scalars scalar-map
                                             :streamers streamer-map
@@ -116,7 +116,7 @@
 (deftest schema-validation
   (let [exception (is (thrown-with-msg? ExceptionInfo
                                         #"Error parsing schema"
-                                        (parser/parse-schema (slurp (resource "bad_schema.gql")) {})))]
+                                        (parser/parse-schema (slurp (resource "bad_schema.sdl")) {})))]
     (is (= '#{{:error "Duplicate type names"
                :duplicate-types ({:name "Character" :location {:line 11 :column 12}}
                                  {:name "Character" :location {:line 22 :column 8}}
@@ -132,3 +132,15 @@
                :duplicate-arguments ("episode")
                :field {:name "in_episode" :location {:line 29 :column 4}}}}
            (set (:errors (ex-data exception)))))))
+
+(deftest supports-multiple-inheritance
+  (let [schema (-> "mult-inheritance.sdl"
+                   resource
+                   slurp
+                   (parser/parse-schema {:resolvers {:Query {:me (constantly {:id "101"
+                                                                              :ip "127.0.0.1"})}}})
+                   schema/compile)
+        result (execute schema "{ me { id ip } }")]
+    (is (= {:data {:me {:id "101"
+                        :ip "127.0.0.1"}}}
+           result))))

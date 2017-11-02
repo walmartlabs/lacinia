@@ -1,25 +1,25 @@
-GraphQL IDL Schema Parsing
-==========================
+GraphQL SDL Parsing
+===================
 
 .. important::
-   The GraphQL Interface Definition Language is not yet a formal specification
+   The GraphQL Schema Definition Language is not yet a formal specification
    and is still under development. As such, this part of Lacinia will continue
    to evolve to keep up with new developments, and it's possible that breaking
    changes will occur.
 
-.. sidebar:: GraphQL IDL
+.. sidebar:: GraphQL SDL
 
   See the `RFC PR <https://github.com/facebook/graphql/pull/90>`_ for details
-  on the GraphQL Interface Definition Language.
+  on the GraphQL Schema Definition Language.
 
 As noted in the :doc:`overview <../overview>`, Lacinia schemas are represented as
 Clojure data. However, Lacinia also contains a facility to transform schemas
 written in the GraphQL Interface Definition Language into the form usable by Lacinia.
 This is exposed by the function ``com.walmartlabs.lacinia.parser.schema/parse-schema``.
 
-The Lacinia schema definition includes things which are not available in the IDL, such as
+The Lacinia schema definition includes things which are not available in the SDL, such as
 resolvers, subscription streamers, custom scalar parsers/serializers and documentation.
-To add these, ``parse-schema`` has two arguments: a string containing the IDL
+To add these, ``parse-schema`` has two arguments: a string containing the SDL
 schema definition, and a map of resolvers, streamers, scalar functions and documentation
 to attach to the schema:
 
@@ -36,7 +36,7 @@ to attach to the schema:
 Example
 -------
 
-.. literalinclude:: ../_examples/sample_schema.txt
+.. literalinclude:: /_examples/sample_schema.txt
    :caption: *schema.txt*
    :name: schema
 
@@ -50,13 +50,13 @@ Example
                                  :Query/find_all_in_episode "Find all characters in the given episode"
                                  :Query.find_all_in_episode/episode "Episode for which to find characters."}})
 
-.. literalinclude:: ../_examples/parsed_sample_schema.edn
+.. literalinclude:: /_examples/parsed_sample_schema.edn
    :caption: *Return value of parse-schema*
    :name: return-value
    :language: clojure
 
 .. note::
-  The GraphQL IDL represents queries, mutations and subscriptions as types,
+  The GraphQL SDL represents queries, mutations and subscriptions as types,
   and Lacinia represents them as fields on ``:queries``, ``:mutations``, and
   ``:subscriptions``. The Lacinia schema will retain the original types under
   ``:objects``, which may be unused unless other parts of your schema definition
