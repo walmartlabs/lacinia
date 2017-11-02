@@ -1,0 +1,22 @@
+{
+  interface Node {
+    id: ID!
+  }
+
+  interface Client {
+    ip: String
+  }
+
+  type User implements Node, Client {
+    id: ID!
+    ip: String
+  }
+
+  type Query {
+    me: User
+  }
+
+  schema {
+    query: Query
+  }
+}

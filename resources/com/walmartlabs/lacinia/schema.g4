@@ -31,7 +31,7 @@ typeDef
   ;
 
 implementationDef
-  : 'implements' typeName
+  : 'implements' typeName+
   ;
 
 inputTypeDef
