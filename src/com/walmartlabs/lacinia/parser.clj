@@ -1193,6 +1193,8 @@
   ;; one is being selected. With an eye towards fast execution of parsed and cached queries, this may
   ;; not be the right approach.
   ([schema query-string operation-name]
+   (when-not (-> schema meta ::schema/compiled)
+     (throw (IllegalStateException. "The provided schema has not been compiled.")))
    (let [antlr-tree
          (try
            (antlr-parse grammar query-string)

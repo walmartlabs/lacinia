@@ -1106,7 +1106,8 @@
          introspection-schema (introspection/introspection-schema)]
      (-> schema
          (deep-merge introspection-schema)
-         (construct-compiled-schema options')))))
+         (construct-compiled-schema options')
+         (vary-meta assoc ::compiled true)))))
 
 (s/fdef compile
         :args (s/cat :schema ::schema-object
