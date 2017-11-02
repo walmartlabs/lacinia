@@ -180,8 +180,8 @@
   as passed to a resolver function, then the resolved value from the
   resolver.
 
-  `wrap-resolver-result` understand resolver functions that return a [[ResolverResult]]
-  instead of a bare value, as well as functions that have decorated a value using [[with-error]] or
+  `wrap-resolver-result` understands resolver functions that return either a [[ResolverResult]]
+  or a bare value, as well as functions that have decorated a value using [[with-error]] or
   [[with-context]].
   The wrapper-fn is passed the underlying value and must return a new value.
   The new value will be re-wrapped as necessary.
