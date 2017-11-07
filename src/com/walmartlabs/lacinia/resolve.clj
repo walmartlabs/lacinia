@@ -15,11 +15,15 @@
   is not part of Lacinia's public API."
   (^:no-doc apply-command [this selection-context]
     "Applies changes to the selection context, which is returned.")
+
   (^:no-doc nested-value [this]
-    "Returns the value wrapped by this command, which may be another command or a final result."))
+    "Returns the value wrapped by this command, which may be another command or a final result.")
+
+  (^:no-doc replace-nested-value [this new-value]
+    "Returns a new instance of the same command, but wrapped around a different nested value."))
 
 (defn with-error
-  "Wraps a value with an error map (or seq of error maps)."
+  "Decorates a value with an error map (or seq of error maps)."
   {:added "0.19.0"}
   [value error]
   (reify
@@ -28,10 +32,13 @@
     (apply-command [_ selection-context]
       (update selection-context :errors conj error))
 
-    (nested-value [_] value)))
+    (nested-value [_] value)
+
+    (replace-nested-value [_ new-value]
+      (with-error new-value error))))
 
 (defn with-context
-  "Wraps a value so that when nested fields (at any depth) are executed, the provided values will be in the context.
+  "Decorates a value so that when nested fields (at any depth) are executed, the provided values will be in the context.
 
    The provided context-map is merged onto the application context."
   {:added "0.19.0"}
@@ -39,10 +46,13 @@
   (reify
     ResolveCommand
 
-    (apply-command [_ selection-contexct]
-      (update-in selection-contexct [:execution-context :context] merge context-map))
+    (apply-command [_ selection-context]
+      (update-in selection-context [:execution-context :context] merge context-map))
 
-    (nested-value [_] value)))
+    (nested-value [_] value)
+
+    (replace-nested-value [_ new-value]
+      (with-context new-value context-map))))
 
 (defprotocol ResolverResult
   "A special type returned from a field resolver that can contain a resolved value
@@ -151,3 +161,62 @@
                                 (fn receive-right-value [right-value]
                                   (deliver! combined-result (f left-value right-value))))))
     combined-result))
+
+
+(defn is-resolver-result?
+  "Is the provided value actually a ResolverResult?"
+  {:added "0.23.0"}
+  [value]
+  (when value
+    ;; This is a little bit of optimization; satisfies? can
+    ;; be a bit expensive.
+    (or (instance? ResolverResultImpl value)
+        (satisfies? ResolverResult value))))
+
+(defn wrap-resolver-result
+  "Wraps a resolver function, passing the result through a wrapper function.
+
+  The wrapper function is passed four values:  the context, arguments, and value
+  as passed to a resolver function, then the resolved value from the
+  resolver.
+
+  `wrap-resolver-result` understands resolver functions that return either a [[ResolverResult]]
+  or a bare value, as well as functions that have decorated a value using [[with-error]] or
+  [[with-context]].
+  The wrapper-fn is passed the underlying value and must return a new value.
+  The new value will be re-wrapped as necessary.
+
+  The wrapped value may itself be a ResolverResult, and the
+  value (either plain, or inside a ResolverResult) may also be decorated
+  with `with-error` or `with-context`."
+  {:added "0.23.0"}
+  [resolver-fn wrapper-fn]
+  ^ResolverResult
+  (fn [context args value]
+    (let [resolved-value (resolver-fn context args value)
+          final-result (resolve-promise)
+          deliver-final-result (fn [commands new-value]
+                                 (deliver! final-result
+                                           (if-not (seq commands)
+                                             new-value
+                                             (reduce #(replace-nested-value %2 %1)
+                                                     new-value
+                                                     commands))))
+          invoke-wrapper (fn invoke-wrapper
+                           ([value]
+                            (invoke-wrapper nil value))
+                           ([commands value]
+                             ;; Wait, did someone just say "monad"?
+                            (if (satisfies? ResolveCommand value)
+                              (recur (cons value commands)
+                                     (nested-value value))
+                              (let [new-value (wrapper-fn context args value value)]
+                                (if (is-resolver-result? new-value)
+                                  (on-deliver! new-value #(deliver-final-result commands %))
+                                  (deliver-final-result commands new-value))))))]
+
+      (if (is-resolver-result? resolved-value)
+        (on-deliver! resolved-value invoke-wrapper)
+        (invoke-wrapper resolved-value))
+
+      final-result)))

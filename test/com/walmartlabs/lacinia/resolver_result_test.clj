@@ -70,3 +70,53 @@
 
     (is (= 1 @*execute-count))
     (is (= [resolved-value] @*callback-values))))
+
+(defn ^:private inc-wrapper
+  [_ _ _ value]
+  (inc value))
+
+(defn ^:private as-promise [resolver-result]
+  (let [p (promise)]
+    (r/on-deliver! resolver-result #(deliver p %))
+    p))
+
+(defn ^:private apply-resolve-command
+  [selection-context value]
+  (if (satisfies? r/ResolveCommand value)
+    (apply-resolve-command
+      (r/apply-command value selection-context)
+      (r/nested-value value))
+    [selection-context value]))
+
+(deftest wrapper-invoked-for-raw-value
+  (let [resolver-fn (constantly 100)
+        wrapped (r/wrap-resolver-result resolver-fn inc-wrapper)
+        *result (as-promise (wrapped nil nil nil))]
+    (is (= 101 @*result))))
+
+(deftest wrapper-invoked-with-value-unpacked-from-resolver-result
+  (let [resolver-fn (constantly (r/resolve-as 200))
+        wrapped (r/wrap-resolver-result resolver-fn inc-wrapper)
+        *result (as-promise (wrapped nil nil nil))]
+    (is (= 201 @*result))))
+
+(deftest restores-commands-around-wrapped-value
+  (let [resolver-fn (constantly (-> 300
+                                    (r/with-context {:gnip :gnop})
+                                    (r/with-error :fail-1)
+                                    (r/with-error :fail-2)))
+        wrapped (r/wrap-resolver-result resolver-fn inc-wrapper)
+        *result (as-promise (wrapped nil nil nil))
+        [sc final-value] (apply-resolve-command {} @*result)]
+    (is (= 301 final-value))
+    (is (= {:errors [:fail-1 :fail-2]                       ; check order of application
+            :execution-context {:context {:gnip :gnop}}}
+           sc))))
+
+(deftest wrapped-value-may-itself-be-resolver-result
+  (let [resolver-promise (r/resolve-promise)
+        resolver-fn (constantly resolver-promise)
+        wrapped (r/wrap-resolver-result resolver-fn inc-wrapper)
+        *result (as-promise (wrapped nil nil nil))]
+    (r/deliver! resolver-promise 500)
+    (is (= 501 (deref *result 100 ::no-value)))))
