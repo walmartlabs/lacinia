@@ -5,10 +5,8 @@
 
 [![CircleCI](https://circleci.com/gh/walmartlabs/lacinia/tree/master.svg?style=svg)](https://circleci.com/gh/walmartlabs/lacinia/tree/master)
 
-[Lacinia Manual](http://lacinia.readthedocs.io/en/latest/)
-
-[Lacinia Tutorial](http://lacinia.readthedocs.io/en/latest/tutorial)
-
+[Lacinia Manual](http://lacinia.readthedocs.io/en/latest/) |
+[Lacinia Tutorial](http://lacinia.readthedocs.io/en/latest/tutorial) |
 [API Documentation](http://walmartlabs.github.io/lacinia/)
 
 This library is a full implementation of
