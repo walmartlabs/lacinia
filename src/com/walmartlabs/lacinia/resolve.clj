@@ -63,11 +63,12 @@
     The callback is passed the ResolverResult's value.
 
     `on-deliver!` should only be invoked once.
-    It invokes the callback in the current thread.
     It returns `this`.
 
     On a simple ResolverResult (not a ResolverResultPromise), the callback is invoked
     immediately.
+
+    For a [[ResolverResultPromise]], the callback may be invoked on another thread.
 
     The callback is invoked for side-effects; its result is ignored."))
 
@@ -99,7 +100,9 @@
 
   The two-arguments version is a convienience around using [[with-error]].
 
-  This is an immediately realized ResolverResult."
+  This is an immediately realized ResolverResult.
+
+  When [[on-deliver!]] is invoked, the provided callback is immediately invoked (in the same thread)."
   ([resolved-value]
    (->ResolverResultImpl resolved-value))
   ([resolved-value resolver-errors]
