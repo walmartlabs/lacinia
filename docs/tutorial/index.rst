@@ -11,6 +11,7 @@ Tutorial
    game-data
    designer-data
    pedestal
+   component
 
    wrap-up
 
