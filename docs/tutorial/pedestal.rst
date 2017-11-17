@@ -12,9 +12,10 @@ Add Dependencies
 ----------------
 
 .. ex:: pedestal project.clj
-   :emphasize-lines: 8-9
+   :emphasize-lines: 7-8
 
 We've added two libraries: ``lacinia-pedestal`` and ``io.aviso/logging``.
+We no longer need to list ``lacinia``, as that is a transitive dependency of ``lacinia-pedestal``. [#deps]_
 
 The former brings in quite a few dependencies, including Pedestal, and the underlying
 `Jetty <https://www.eclipse.org/jetty/>`_ layer that Pedestal builds upon.
@@ -46,9 +47,9 @@ the Pedestal server.
    :emphasize-lines: 5-7,35-
 
 This new code is almost entirely boilerplate for Pedestal and for Lacinia-Pedestal.
-The core function is ``com.walmartlabs.lacinia.pedestal/pedestal-service`` which is passed the compiled schema
+The core function is ``com.walmartlabs.lacinia.pedestal/service-map`` which is passed the compiled schema
 and a map of options, and returns a Pedestal service map which is then used
-to define the Pedestal server.
+to create the Pedestal server.
 
 GraphiQL is not enabled by default; it is opt-in, and should generally only be enabled
 for development servers, or behind a firewall that limits access from the outside world.
@@ -73,14 +74,18 @@ At this point, your web browser should open to the GraphiQL application:
 .. tip::
 
    It's really worth following along with this section, especially if you haven't played
-   with GraphiQL before. GraphiQL assists you with formatting, pop-up help, flagging of errors,
-   and automatic input completion. It makes for quite the demo!
+   with GraphiQL before.
+   GraphiQL assists you with formatting, provides pop-up help, flags errors
+   in your query,
+   and supplies automatic input completion.
+   It can even pretty print your query.
+   It makes for quite the demo!
 
 Running Queries
 ---------------
 
 We can now type a query into the large text area on the left and then click
-the right arrow button (or type ``Command+Enter``), and see pretty-printed JSON on the right:
+the right arrow button (or type ``Command+Enter``), and see the server response as pretty-printed JSON on the right:
 
 .. image:: /_static/tutorial/graphiql-basic-query.png
 
@@ -105,12 +110,16 @@ The ``< Docs`` button on the right opens the documentation browser:
 .. image:: /_static/tutorial/graphiql-doc-browser.png
 
 The documentation browser is invaluable: it allows you to navigate around your schema, drilling down
-to queries, objects, and fields to see a summary of their
-declaration, as well as their documentation - those
+to queries, objects, and fields to see a summary of each
+declaration, as well as documentation - those
 ``:documentation`` values we added way back
 :doc:`at the beginning <init-schema>`.
 
 Take some time to learn what GraphiQL can do for you.
+
+.. [#deps] Occasionally, you'll list an explicit lacinia dependency to get a newer version
+   than the one lacinia-pedestal declares. Adding such a dependency directly to your
+   :file:`project.clj` is the correct way to override such a transitive dependency.
 
 .. [#split] That is, where one team or set of developers `just` does the user interface,
    and the other team `just` does the server side (including Lacinia). Part of the
