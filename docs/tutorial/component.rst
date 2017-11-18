@@ -10,7 +10,7 @@ namespaces, grow in number and complexity.
 In our :doc:`previous example <pedestal>`, we saw that the logic to
 start the Jetty instance was strewn across the ``user`` namespace.
 
-This isn't a problem in our toy application, but in a real application we'd
+This isn't a problem in our toy application, but as a real application grows, we'd
 start to see some issues and concerns:
 
 * A single 'startup' namespace (maybe with a ``-main`` method) imports every
@@ -21,11 +21,11 @@ start to see some issues and concerns:
 * Is there a way to mock parts of the system (for testing purposes)?
 * We really want to avoid a proliferation of global variables. Ideally, none!
 
-Component is a simple, non-nonsense way to achieve the above goals.
+Component is a simple, no-nonsense way to achieve the above goals.
 It gives you a clear way to organize your code, and it does things in a fully
 `functional` way: no globals, no update-in-place, and easy to reason about.
 
-The building-block of Component is, unsurprisingly, Components.
+The building-block of Component is, unsurprisingly, components.
 These components are simply ordinary Clojure maps (though typically,
 a Clojure record is used).
 
@@ -40,7 +40,7 @@ protocol with methods ``start`` and ``stop``.
 Rather than get into the minutiae, let's see how it fits together in
 our Clojure Game Geek application.
 
-We're starting quite small, with just two components:
+We're starting quite small, with just two components in our system:
 
 .. graphviz::
 
@@ -53,8 +53,8 @@ We're starting quite small, with just two components:
 
     }
 
-The Server component is responsible for setting up the Pedestal service.
-Nearly all of that is generic *but* it needs a compiled Lacinia schema.
+The Server component is responsible for setting up the Pedestal service,
+which requires a compiled Lacinia schema.
 The SchemaProvider component exposes that schema as its ``:schema`` key.
 
 Later, we'll be adding additional components for other logic, such as database connections,
@@ -72,12 +72,12 @@ SchemaProvider.
 Secondly, the *started* version of a dependency is ``assoc``-ed into
 the dependening component.
 After SchemaProvider starts, the started version of the component
-will be added to the Server component.
+will be ``assoc`-ed as the ``:schema-provider'' key of the Server component.
 
 Once a component has its dependencies ``assoc``-ed in, and is itself started
 (more on that in a moment), it may be ``assoc``-ed into further components.
 
-Component really embraces the identity vs. state concept; the identity of
+The Component library really embraces the identity vs. state concept; the identity of
 the component is its key in the system map ... its state is a series of transformations
 of the initial map.
 
@@ -105,7 +105,7 @@ generally because a field resolver will need access to the component.
 
 When you implement a protocol, you must implement all the methods of the
 protocol.
-In Component, you typically will undo in ``stop`` whatever you did in ``start``.
+In Component's Lifecycle protocol, you typically will undo in ``stop`` whatever you did in ``start``.
 Here we can just get rid of the compiled schema, but it is also common
 and acceptible for a ``stop`` method to just return ``this``.
 
@@ -157,13 +157,13 @@ user namespace
 
 The user namespace has shrunk; previously
 it was responsible for loading the schema, and creating and starting
-the Pedestal service; this has all shifted to components.
+the Pedestal service; this has all shifted to the individual components.
 
-Intead, the user namespace creates an initial system, and can use
-``start-system`` and ``stop-system`` on it: no direct knowledge of
+Instead, the user namespace creates an initial system, and can use
+``start-system`` and ``stop-system`` on that system: no direct knowledge of
 loading schemas or starting and stopping Pedestal is present.
 
-The user namespace used to have vars for both the schema and the Pedestal
+The user namespace previously had vars for both the schema and the Pedestal
 system.
 Now it only has a single var, for the Component system.
 
@@ -182,7 +182,7 @@ and extract the schema from that component.
    testing. That will change shortly.
 .. [#system] This is just one approach; another would be to provide a function
    that ``assoc``-ed the component into the system map.
-.. [#clear]_ You might be tempted to use a ``dissoc`` here, but if you
-   dissoc a declared key of a record, the record converts into an ordinary
+.. [#clear] You might be tempted to use a ``dissoc`` here, but if you
+   ``dissoc`` a declared key of a record, the result is an ordinary
    map, which can break tests that rely on repeatedly starting and stopping
    the system.
