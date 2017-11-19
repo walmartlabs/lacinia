@@ -30,15 +30,19 @@ These components are simply ordinary Clojure maps (though typically,
 a Clojure record is used).
 
 The components are formed into a system, which again is just a map.
+Each component has a unique, well-known key in the system map.
 
 Components `may` have dependencies on other components.
 That's where the fun really starts.
 
-Comopnents `may` have a lifecycle; this is represented by a Lifecycle
-protocol with methods ``start`` and ``stop``.
+Components `may` have a lifecycle; this is represented by a Lifecycle
+protocol containing methods ``start`` and ``stop``.
 
-Rather than get into the minutiae, let's see how it fits together in
+Rather than get into the minutiae, let's see how it all fits together in
 our Clojure Game Geek application.
+
+System Map
+----------
 
 We're starting quite small, with just two components in our system:
 
@@ -46,16 +50,16 @@ We're starting quite small, with just two components in our system:
 
     digraph {
 
-      server [label="Server"]
-      schema [label="SchemaProvider"]
+      server [label=":server"]
+      schema [label=":schema-provider"]
 
       server -> schema
 
     }
 
-The Server component is responsible for setting up the Pedestal service,
+The ``:server`` component is responsible for setting up the Pedestal service,
 which requires a compiled Lacinia schema.
-The SchemaProvider component exposes that schema as its ``:schema`` key.
+The ``:schema-provider`` component exposes that schema as its ``:schema`` key.
 
 Later, we'll be adding additional components for other logic, such as database connections,
 thread pools, authentication/authorization checks, caching, and so forth.
@@ -66,13 +70,13 @@ Dependencies are acted upon when the system is started (and again when
 the system is stopped).
 
 The dependencies influence the order in which each component is started.
-Here, SchemaProvider is started before Server, as Server depends on
-SchemaProvider.
+Here, ``:schema-provider`` is started before ``:server``, as ``:server`` depends on
+``:schema-provider``.
 
 Secondly, the *started* version of a dependency is ``assoc``-ed into
 the dependening component.
-After SchemaProvider starts, the started version of the component
-will be ``assoc`-ed as the ``:schema-provider'' key of the Server component.
+After ``:schema-provider`` starts, the started version of the component
+will be ``assoc``-ed as the ``:schema-provider`` key of the ``:server`` component.
 
 Once a component has its dependencies ``assoc``-ed in, and is itself started
 (more on that in a moment), it may be ``assoc``-ed into further components.
@@ -81,11 +85,11 @@ The Component library really embraces the identity vs. state concept; the identi
 the component is its key in the system map ... its state is a series of transformations
 of the initial map.
 
-SchemaProvider
---------------
+:schema-provider component
+--------------------------
 
 The ``clojure-game-geek.schema`` namespace has been extended to provide
-the SchemaProvider component.
+the ``:schema-provider`` component.
 
 .. ex:: component src/clojure_game_geek/schema.clj
    :emphasize-lines: 7, 35, 46, 50, 53-
@@ -99,26 +103,32 @@ In our case, we use the ``start`` method as an opportunity to
 load and compile the Lacinia schema.
 
 Notice that we are passing the component into ``load-schema``.
-This isn't necessary yet, but in later iterations, the
-SchemaProvider component will have dependencies on other components,
+This isn't necessary yet, but in later iterations of the Clojure Game Geek application, the
+``:schema-provider`` component will have dependencies on other components,
 generally because a field resolver will need access to the component.
 
 When you implement a protocol, you must implement all the methods of the
 protocol.
 In Component's Lifecycle protocol, you typically will undo in ``stop`` whatever you did in ``start``.
-Here we can just get rid of the compiled schema, but it is also common
-and acceptible for a ``stop`` method to just return ``this``.
+For example, a Component that manages a database connection will open it in ``start`` and
+close it in ``stop``.
+
+Here we just get rid of the compiled schema, [#clear]_
+but it is also common
+and acceptible for a ``stop`` method to just return ``this`` if the component
+doesn't have external resources,
+such as a database connection, to manage.
 
 Finally, the ``new-schema-provider`` function is a constructor around the
 SchemaProvider record.
-It returns a single-element map, associating a system key for
-the component with the component itself. [#system]_
+It returns a single-element map, associating the ``:schema-provider`` system key for
+the component with the initial iteration of the component itself. [#system]_
 
-Server
-------
+:server component
+-----------------
 
 Likewise, the ``clojure-game-geek.server`` namespace now provides the
-Server component.
+``:server`` component.
 
 .. ex:: component src/clojure_game_geek/server.clj
 
@@ -126,17 +136,17 @@ Much of the code previously in the ``user`` namespace has moved here.
 
 You can see how the components work together, inside the ``start``
 method.
-The Component library has ``assoc``-ed the SchemaProvider component
-into the Server component, so it's possible to get the ``:schema`` key
+The Component library has ``assoc``-ed the ``:schema-provider`` component
+into the ``:server`` component, so it's possible to get the ``:schema`` key
 and build the Pedestal server from it.
 
 ``start`` and ``stop`` methods often have side-effects.
 This is explicit here, with the call to ``http/stop`` before clearing
-the ``:server`` key. [#clear]_
+the ``:server`` key.
 
 The ``new-server`` function not only gives the component its system key
 and initial state, but also invokes ``component/using`` to establish
-the dependency on the SchemaProvider component.
+the dependency on the ``:schema-provider`` component.
 
 system namespace
 ----------------
@@ -172,7 +182,7 @@ not change at all, just the system map it gets from ``system/new-system`` will
 expand.
 
 The only wrinkle here is our ``q`` function; since there's no longer a local
-``schema`` var it is necessary to pull the SchemaProvider from the system map,
+``schema`` var it is necessary to pull the ``:schema-provider`` component from the system map,
 and extract the schema from that component.
 
 
@@ -180,9 +190,9 @@ and extract the schema from that component.
    `Clojure/West 2014 talk <https://www.youtube.com/watch?v=13cmHf_kt-Q&t=1106s>`_.
 .. [#test] We've been sloppy so far, in that we haven't even thought about
    testing. That will change shortly.
-.. [#system] This is just one approach; another would be to provide a function
-   that ``assoc``-ed the component into the system map.
 .. [#clear] You might be tempted to use a ``dissoc`` here, but if you
    ``dissoc`` a declared key of a record, the result is an ordinary
    map, which can break tests that rely on repeatedly starting and stopping
    the system.
+.. [#system] This is just one approach; another would be to provide a function
+   that ``assoc``-ed the component into the system map.
