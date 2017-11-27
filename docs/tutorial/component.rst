@@ -1,7 +1,7 @@
 Refactoring to Components
 =========================
 
-Before we add the next bit of functionality to our application, its time to
+Before we add the next bit of functionality to our application, it's time to
 take a small detour, into the use of Stuart Sierra's
 `component <https://github.com/stuartsierra/component>`_ library. [#vid]_
 
@@ -40,6 +40,15 @@ protocol containing methods ``start`` and ``stop``.
 
 Rather than get into the minutiae, let's see how it all fits together in
 our Clojure Game Geek application.
+
+Add Dependencies
+----------------
+
+.. ex:: component project.clj
+   :emphasize-lines: 7
+
+We've added the ``component`` library.
+
 
 System Map
 ----------
@@ -115,7 +124,7 @@ close it in ``stop``.
 
 Here we just get rid of the compiled schema, [#clear]_
 but it is also common
-and acceptible for a ``stop`` method to just return ``this`` if the component
+and acceptable for a ``stop`` method to just return ``this`` if the component
 doesn't have external resources,
 such as a database connection, to manage.
 
@@ -163,7 +172,7 @@ user namespace
 --------------
 
 .. ex:: component dev-resources/user.clj
-  :emphasize-lines: 7, 31,34, 37-
+  :emphasize-lines: 5, 7, 27, 31-34, 37-
 
 The user namespace has shrunk; previously
 it was responsible for loading the schema, and creating and starting
