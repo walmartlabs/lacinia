@@ -136,7 +136,7 @@
    (throw-exception message data nil))
   ([message data cause]
    (throw (ex-info message
-                   (merge *exception-context* (ex-data cause) data)
+                   (merge {} *exception-context* (ex-data cause) data)
                    cause))))
 
 (defmacro with-exception-context
