@@ -1,3 +1,8 @@
+## 0.24.0 -- UNRELEASED
+
+Added the FieldResolver protocol that allows a Clojure record, such as a
+[Component](https://github.com/stuartsierra/component), to act as a field resolver.
+
 ## 0.23.0 -- UNRELEASED
 
 Added `com.walmartlabs.lacina.resolve/wrap-resolver-result` which makes it easier

@@ -4,8 +4,10 @@
     [clojure.test :refer [deftest is use-fixtures]]
     [com.walmartlabs.test-schema :refer [test-schema]]
     [com.walmartlabs.lacinia :as graphql :refer [execute]]
+    [com.walmartlabs.test-utils :refer [compile-schema] :as tu]
     [clojure.walk :refer [postwalk]]
-    [com.walmartlabs.lacinia.schema :as schema]))
+    [com.walmartlabs.lacinia.schema :as schema]
+    [com.walmartlabs.lacinia.resolve :as resolve]))
 
 (def resolve-contexts (atom []))
 
@@ -106,3 +108,12 @@
                                                         :resolve (constantly return-value)}}})]
     (is (= {:data {:catchphrase return-value}}
            (graphql/execute schema "{catchphrase}" nil nil))) 1))
+
+(deftest field-resolver-protocol
+  (let [resolver (reify resolve/FieldResolver
+                   (resolve-value [_ _ _ _]
+                     "Like magic!"))
+        schema (compile-schema "field-resolver-protocol-schema.edn"
+                               {:query/hello resolver})]
+    (is (= {:data {:hello "Like magic!"}}
+           (tu/execute schema "{ hello }")))))
