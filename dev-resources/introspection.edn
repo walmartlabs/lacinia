@@ -211,4 +211,25 @@
                             :interfaces [{:kind :INTERFACE, :name "character", :ofType nil}],
                             :enumValues [],
                             :possibleTypes []}],
-                   :directives []}}}
+                   :directives [{:name "skip",
+                                 :description
+                                 "Skip the selection only when the `if` argument is true.",
+                                 :args
+                                 [{:name "if",
+                                   :description "Triggering argument for skip directive.",
+                                   :type
+                                   {:kind :NON_NULL,
+                                    :name nil,
+                                    :ofType {:kind :SCALAR, :name "Boolean", :ofType nil}},
+                                   :defaultValue nil}]}
+                                {:name "include",
+                                 :description
+                                 "Include the selection only when the `if` argument is true.",
+                                 :args
+                                 [{:name "if",
+                                   :description "Triggering argument for include directive.",
+                                   :type
+                                   {:kind :NON_NULL,
+                                    :name nil,
+                                    :ofType {:kind :SCALAR, :name "Boolean", :ofType nil}},
+                                   :defaultValue nil}]}]}}}
