@@ -176,6 +176,56 @@
     (or (instance? ResolverResultImpl value)
         (satisfies? ResolverResult value))))
 
+(defn ^:private deliver-final-result
+  [result-promise commands new-value]
+  (deliver! result-promise
+            (if-not (seq commands)
+              new-value
+              (reduce #(replace-nested-value %2 %1)
+                      new-value
+                      commands))))
+
+(defn ^:private make-invoke-transform
+  [result-promise transform-fn]
+  (fn invoke-transform
+    ([value]
+     (invoke-transform nil value))
+    ([commands value]
+     (if (satisfies? ResolveCommand value)
+       (recur (cons value commands)
+              (nested-value value))
+       (let [new-value (transform-fn value)]
+         (if (is-resolver-result? new-value)
+           (on-deliver! new-value #(deliver-final-result result-promise commands %))
+           (deliver-final-result result-promise commands new-value)))))))
+
+(defn chain*
+  "Threads a ResolverResult through a transform function.
+
+  The resolved value (stripped of any wrappers) is passed to the transform function.
+
+  The transform function can return a new value, a wrapped value, or
+  a ResolverResult.
+
+  Returns a new ResolverResult (a promise)."
+  {:added "0.24.0"}
+  [resolver-result transform-fn]
+  (let [combined-result (resolve-promise)
+        invoke-transform (make-invoke-transform combined-result transform-fn)]
+    (on-deliver! resolver-result #(invoke-transform %))
+    combined-result))
+
+(defmacro chain
+  "Chains a resolver result through a series of expressions, using [[chain*]].
+
+  Each expression is passed the resolved value of the previous ResolverResult
+  as `$`.  As with [[chain*]], the expression may return a simple value, a wrapped value,
+  or a ResolverResult."
+  [resolver-result & exprs]
+  {:added "0.24.0"}
+  `(-> ~resolver-result
+       ~@(map (fn [e] (list `chain* `(fn [~'$] ~e))) exprs)))
+
 (defn wrap-resolver-result
   "Wraps a resolver function, passing the result through a wrapper function.
 
@@ -197,29 +247,13 @@
   ^ResolverResult
   (fn [context args value]
     (let [resolved-value (resolver-fn context args value)
+          transform-fn (fn [resolved-value]
+                         (wrapper-fn context args value resolved-value))
           final-result (resolve-promise)
-          deliver-final-result (fn [commands new-value]
-                                 (deliver! final-result
-                                           (if-not (seq commands)
-                                             new-value
-                                             (reduce #(replace-nested-value %2 %1)
-                                                     new-value
-                                                     commands))))
-          invoke-wrapper (fn invoke-wrapper
-                           ([value]
-                            (invoke-wrapper nil value))
-                           ([commands value]
-                             ;; Wait, did someone just say "monad"?
-                            (if (satisfies? ResolveCommand value)
-                              (recur (cons value commands)
-                                     (nested-value value))
-                              (let [new-value (wrapper-fn context args value value)]
-                                (if (is-resolver-result? new-value)
-                                  (on-deliver! new-value #(deliver-final-result commands %))
-                                  (deliver-final-result commands new-value))))))]
+          invoke-transform (make-invoke-transform final-result transform-fn)]
 
       (if (is-resolver-result? resolved-value)
-        (on-deliver! resolved-value invoke-wrapper)
-        (invoke-wrapper resolved-value))
+        (on-deliver! resolved-value invoke-transform)
+        (invoke-transform resolved-value))
 
       final-result)))
