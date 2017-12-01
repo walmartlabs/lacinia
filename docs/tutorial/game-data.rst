@@ -55,7 +55,7 @@ We're finally almost ready to run queries ... but first, let's get rid of
 that ``#ordered/map`` business.
 
 .. ex:: game-data dev-resources/user.clj
-   :emphasize-lines: 10-25,30
+   :emphasize-lines: 5-6,10-25,29-30
 
 This ``simplify`` function finds all the ordered maps and converts them into
 ordinary maps.
@@ -78,7 +78,7 @@ However, we can also get real data back from our query::
 
 .. sidebar:: JSON?
 
-   It's perfectly acceptible to return EDN rather than JSON.
+   It's perfectly acceptable to return EDN rather than JSON.
    The GraphQL spec goes to some length to identify JSON as just one
    possible over-the-wire format.
    It's easy enough to convert EDN to JSON, and even reasonable to
@@ -91,7 +91,7 @@ that it then sliced and diced to compose the result map.
 
 We've made our first true steps.
 
-.. [#too-much] This is overkill for this very simple case, but its nice to demonstrate
+.. [#too-much] This is overkill for this very simple case, but it's nice to demonstrate
    techniques that are likely to be used in real applications.
 .. [#repl] This REPL output is a bit different than earlier examples; we've switched from
    the standard Leiningen REPL to the `Cursive REPL <https://cursive-ide.com/>`_; the latter pretty-prints
