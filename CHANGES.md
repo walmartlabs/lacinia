@@ -1,4 +1,4 @@
-## 0.23.0 -- UNRELEASED
+## 0.23.0 -- 5 Dec 2017
 
 Added `com.walmartlabs.lacina.resolve/wrap-resolver-result` which makes it easier
 to wrap an existing resolver function, but safely manipulate the resolved
@@ -6,7 +6,7 @@ value.
 
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/11?closed=1)
 
-## 0.22.1 -- 27 Oct 2015
+## 0.22.1 -- 27 Oct 2017
 
 Fixes a bug that prevented operation names from working when a query
 defined only a single operation.
