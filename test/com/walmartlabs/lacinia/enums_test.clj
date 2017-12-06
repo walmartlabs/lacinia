@@ -32,7 +32,7 @@
     (report result
       (is (= "Luke Skywalker" hero-name)))))
 
-(deftest handling-of-invalid-enum-value
+(deftest handling-of-invalid-enum-value-as-argument
   (let [result (q "{ hero (episode: CLONES) { name }}")
         errors (-> result :errors)
         first-error (first errors)]
@@ -50,6 +50,12 @@
             :query-path []
             :value :CLONES}
            first-error))))
+
+(deftest handling-of-invalid-enum-value-as-field
+  (let [result (q "{ human (id: 1005) { appears_in } }")
+        errors (:errors result)]
+    (is (-> result (contains? :data) not))
+    (is (= 1 (count errors)))))
 
 (deftest enum-values-must-be-unique
   (let [e (is (thrown? ExceptionInfo

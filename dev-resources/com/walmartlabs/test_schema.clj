@@ -51,6 +51,12 @@
          :enemies    ["1000"]
          :appears-in [:NEWHOPE]
          :force-side  "3000"}
+        {:id         "1005"
+         :name       "Star-Wars Fan"
+         :friends    []
+         :enemies    []
+         :appears-in [:NON_EXIST]
+         :force-side  "3000"}
         ]
        (hash-map-by :id)
        (map-vals #(assoc % ::type :human))))
