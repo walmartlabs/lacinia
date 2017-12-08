@@ -12,6 +12,7 @@ Tutorial
    designer-data
    pedestal
    component
+   member-ratings
 
    wrap-up
 
