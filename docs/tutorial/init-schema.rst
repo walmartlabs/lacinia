@@ -22,7 +22,7 @@ It is a map of maps; the top level keys identify the type of definition: ``:obje
 ``:queries``, ``:interfaces``, ``:enums``, and so forth.
 Each type has its own structure.
 
-A schema is declarative: it defines what operation are possible, and what types and fields exist,
+A schema is declarative: it defines what operations are possible, and what types and fields exist,
 but has nothing to say about where any of the data comes from.
 In fact, Lacinia has no opinion about that either!
 GraphQL is a contract between a consumer and a provider for how to request
@@ -39,7 +39,7 @@ and then `attach` the actual resolver later.
 The keyword ``:query/game-by-id`` is just such a placeholder; we'll see how it is used shortly.
 
 We've made liberal use of the ``:description`` property in the schema.
-There are the equivalent of doc-strings on Clojure functions, and we'll see them
+They are the equivalent of doc-strings on Clojure functions, and we'll see them
 show up later when we :doc:`discuss GraphiQL <pedestal>`.
 It's an excellent habit to add descriptions early, rather than try and go back
 and add them in later.
@@ -100,7 +100,7 @@ user namespace
 
 A key advantage of Clojure is REPL-oriented development: we want to be able to
 run our code through its paces almost as soon as we've written it - and when we
-change code, we wan't to be able to try out the new version instantly.
+change code, we want to be able to try out the new version instantly.
 
 We can add a bit of scaffolding to the ``user`` namespace, specific to
 our needs in this project.

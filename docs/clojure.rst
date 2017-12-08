@@ -4,7 +4,7 @@ Clojure 1.9
 Lacinia is currently designed for Clojure 1.8.
 
 Lacinia makes use of features of ``clojure.spec``, introduced in Clojure 1.9.
-Clojure 1.9 is currently still in an alpha state.
+Clojure 1.9 already has a `Release Candidate <https://github.com/clojure/clojure/releases>`_.
 
 Lacinia uses `clojure-future-spec <https://github.com/tonsky/clojure-future-spec>`_ to enable
 use of ``clojure.spec`` features with Clojure 1.8.

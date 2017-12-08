@@ -43,7 +43,7 @@ Code Changes
 ------------
 
 .. ex:: add-designers src/clojure_game_geek/schema.clj
-   :emphasize-lines: 14-25, 41-42
+   :emphasize-lines: 14-31, 38-39, 41-42
 
 As with all field resolvers [#root]_, ``resolve-board-game-designers`` is passed the containing resolved value
 (a BoardGame, in this case)
@@ -55,7 +55,7 @@ Field resolvers come into play both when you need to fetch data from an external
 and when you need to reshape that data to match the schema.
 
 GraphQL doesn't make any guarantees about order of values in a list field;
-when it matter, it falls on us to add documentation to describe the order,
+when it matters, it falls on us to add documentation to describe the order,
 or even field arguments to control the order.
 
 The inverse of ``resolve-board-game-designers`` is ``resolve-designer-games``.

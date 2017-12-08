@@ -1,5 +1,5 @@
 (require
-  '[com.walmartlabs.lacinia.resolver :as resolve]
+  '[com.walmartlabs.lacinia.resolve :as resolve]
   '[clojure.core.async :refer [thread]])
 
 (defn ^:private get-user
