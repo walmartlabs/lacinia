@@ -13,6 +13,7 @@ Tutorial
    pedestal
    component
    member-ratings
+   mutable-database
 
    wrap-up
 
