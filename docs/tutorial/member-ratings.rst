@@ -3,7 +3,7 @@ Adding Members and Ratings
 
 We're now starting an arc towards adding our first mutations.
 
-We're going to extend or schema to add Members (the name for a user of the Clojure Game Geek web site),
+We're going to extend our schema to add Members (the name for a user of the Clojure Game Geek web site),
 and GameRatings ... how a member has rating a game.
 
 Each Member can rate any BoardGame, but can only rate the game once.
