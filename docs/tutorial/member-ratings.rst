@@ -3,10 +3,10 @@ Adding Members and Ratings
 
 We're now starting an arc towards adding our first mutations.
 
-We're going to extend or schema to add Members (the name for a user of the Clojure Game Geek web site),
+We're going to extend our schema to add Members (the name for a user of the Clojure Game Geek web site),
 and GameRatings ... how a member has rated a game, on a scale of one to five.
 
-Each Member can rate any BoardGame, but can only rate the game once.
+Each Member can rate any BoardGame, but can only rate any single game once.
 
 Schema Changes
 --------------
@@ -47,7 +47,7 @@ We've introduced three new resolvers, ``rating-summary``, ``member-ratings``, an
 These new resolvers are implemented using a new pattern.
 The existing resolvers, such as ``resolve-designer-games``, took an initial parameter
 (a slice of the in-memory database), plus
-the standard triumvirate of context, field arguments, and containing value.
+the standard triumvirate of context, field arguments, and container value.
 This approach is concise, but requires the use of ``partial`` (to supply that initial parameter)
 when building the resolvers map.
 
@@ -58,6 +58,12 @@ No use of ``partial`` needed anymore.
 
 Further, this new pattern is closer to what we'll end up with in a later tutorial chapter, when we see
 how to use a Component as a field resolver.
+
+It's worth emphasising again that field resolvers don't just access data, they can transform it.
+The ``rating-summary`` field resolver is an example of that; there's no database entity directly
+corresponding to the schema type ``:GameRatingSummary``, but the field resolver can build that information directly.
+There doesn't even have to be a special type or record ... just a standard Clojure map
+with the correctly named keys.
 
 Testing it Out
 --------------

@@ -72,3 +72,6 @@ Lacinia has just a few dependencies of its own:
 `Antlr <http://www.antlr.org/>`_ is used to parse GraphQL queries and schemas.
 ``org.flatland/ordered`` provides the ordered map type, used to ensure that response
 keys and values are in the client-specified order, as per the GraphQL spec.
+
+Like any open source project, Lacinia is evolving all the time.
+In later tutorial steps, we will change these dependencies to access newly added Lacinia features.

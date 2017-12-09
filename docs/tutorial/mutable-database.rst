@@ -45,18 +45,18 @@ That Atom is created and initialized inside the ``start`` lifecycle method.
 
 All of those data access functions follow.
 
-The conventions we're using are:
+This code employs a few reasonable conventions:
 
 * ``find-`` prefix for functions that get data by primary key, and may return nil if not found
 
 * ``list-`` prefix is like ``find-``, but returns a seq of matches
 
-* The ``:db`` component is always the first parameter
+* The ``:db`` component is always the first parameter, as ``db``
 
 Later, when we add some mutations, we'll define further functions and new naming and coding conventions.
 
 The common trait for all of these is the ``(-> db :data deref ...)`` code; in other words,
-reach into the component, access the ``:data`` property (the Atom) and deref it to get the
+reach into the component, access the ``:data`` property (the Atom) and deref the Atom to get the
 immutable map.
 
 Looking forward to when we do have an external database ... these functions will change, but
