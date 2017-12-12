@@ -1,3 +1,10 @@
+## 0.24.0 -- UNRELEASED
+
+Field resolvers for enum types are now required to return a keyword, and that
+keyword must match one of the values defined for the enum.
+Previously, Lacinia failed to peform any checks in this case, which could result
+in invalid data present in the result map.
+
 ## 0.23.0 -- 5 Dec 2017
 
 Added `com.walmartlabs.lacina.resolve/wrap-resolver-result` which makes it easier

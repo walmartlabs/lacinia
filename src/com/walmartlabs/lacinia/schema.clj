@@ -558,8 +558,12 @@
         category (:category field-type)
 
         ;; Build up layers of checks and other logic and a series of chained selector functions.
+        ;; Normally, don't redefine local symbols, but here is makes it easier to follow and less
+        ;; brittle.
 
-        coercion (if (= :scalar category)
+        selector floor-selector
+
+        selector (if (= :scalar category)
                    (let [serializer (:serialize field-type)]
                      (fn select-coerion [selector-context]
                        (let [{:keys [resolved-value]} selector-context
@@ -575,56 +579,69 @@
                            (selector-error selector-context serialized)
 
                            :else
-                           (floor-selector (assoc selector-context :resolved-value serialized))))))
-                   floor-selector)
+                           (selector (assoc selector-context :resolved-value serialized))))))
+                   selector)
 
-        allowed-types (if (#{:interface :union} category)
-                        (let [member-types (:members field-type)]
-                          (fn select-allowed-types [{:keys [resolved-type]
-                                                     :as selector-context}]
-                            (cond
+        selector (if (= :enum category)
+                   (let [possible-values (-> field-type :values set)]
+                     (fn validate-enum [{:keys [resolved-value]
+                                         :as selector-context}]
+                       (if (and (some? resolved-value)
+                                (not (possible-values resolved-value)))
+                         (selector-error selector-context
+                                         (error "Field resolver returned an undefined enum value."
+                                                {:resolved-value resolved-value
+                                                 :enum-values possible-values}))
+                         (selector selector-context))))
+                   selector)
 
-                              (contains? member-types resolved-type)
-                              (coercion selector-context)
+        selector (if (#{:interface :union} category)
+                   (let [member-types (:members field-type)]
+                     (fn select-allowed-types [{:keys [resolved-type]
+                                                :as selector-context}]
+                       (cond
 
-                              (nil? resolved-type)
-                              (selector-error selector-context (error "Field resolver returned an instance not tagged with a schema type."))
+                         (contains? member-types resolved-type)
+                         (selector selector-context)
 
-                              :else
-                              (selector-error selector-context (error "Value returned from resolver has incorrect type for field."
-                                                                      {:field-type field-type-name
-                                                                       :actual-type resolved-type
-                                                                       :allowed-types member-types})))))
-                        coercion)
+                         (nil? resolved-type)
+                         (selector-error selector-context (error "Field resolver returned an instance not tagged with a schema type."))
 
-        unwrap-tagged-type (fn select-unwrap-tagged-type [selector-context]
-                             (cond-let
-                               :let [resolved-value (:resolved-value selector-context)]
-                               (is-tagged-value? resolved-value)
-                               (allowed-types (assoc selector-context
-                                                     :resolved-value (extract-value resolved-value)
-                                                     :resolved-type (extract-type-tag resolved-value)))
+                         :else
+                         (selector-error selector-context (error "Value returned from resolver has incorrect type for field."
+                                                                 {:field-type field-type-name
+                                                                  :actual-type resolved-type
+                                                                  :allowed-types member-types})))))
+                   selector)
 
-                               :let [type-name (-> resolved-value meta ::type-name)]
+        selector (fn select-unwrap-tagged-type [selector-context]
+                   (cond-let
+                     :let [resolved-value (:resolved-value selector-context)]
+                     (is-tagged-value? resolved-value)
+                     (selector (assoc selector-context
+                                      :resolved-value (extract-value resolved-value)
+                                      :resolved-type (extract-type-tag resolved-value)))
 
-                               (some? type-name)
-                               (allowed-types (assoc selector-context :resolved-type type-name))
+                     :let [type-name (-> resolved-value meta ::type-name)]
 
-                               :else
-                               (allowed-types selector-context)))
+                     (some? type-name)
+                     (selector (assoc selector-context :resolved-type type-name))
 
-        apply-static-type (if (#{:object :input-object} category)
-                            (fn select-apply-static-type [selector-context]
-                              ;; TODO: Maybe a check that if the resolved value is tagged, that the tag matches the expected tag?
-                              (unwrap-tagged-type (assoc selector-context :resolved-type field-type-name)))
-                            unwrap-tagged-type)]
+                     :else
+                     (selector selector-context)))
+
+        selector (if (#{:object :input-object} category)
+                   (fn select-apply-static-type [selector-context]
+                     ;; TODO: Maybe a check that if the resolved value is tagged, that the tag matches the expected tag?
+                     (selector (assoc selector-context :resolved-type field-type-name)))
+                   selector)]
 
     (fn select-require-single-value [{:keys [resolved-value]
                                       :as selector-context}]
       (if (sequential-or-set? resolved-value)
         (selector-error selector-context
                         (error "Field resolver returned a collection of values, expected only a single value."))
-        (apply-static-type selector-context)))))
+        (selector selector-context)))))
 
 (defn ^:private assemble-selector
   "Assembles a selector function for a field.

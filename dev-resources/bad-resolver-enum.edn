@@ -1,0 +1,8 @@
+{:enums
+ {:status
+  {:values [:good :bad]}}
+
+ :queries
+ {:current_status
+  {:type :status
+   :resolve :query/current-status}}}
