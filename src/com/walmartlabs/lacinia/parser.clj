@@ -231,7 +231,7 @@
   [field-map]                                               ; also works with arguments
   (->> field-map
        (map-vals :default-value)
-       (filter-vals identity)))
+       (filter-vals some?)))
 
 (defn ^:private use-nested-type
   "Replaces the :type of the def with the nested type; this is used to strip off a
