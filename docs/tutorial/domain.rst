@@ -15,11 +15,11 @@ The basic types are as follows:
     Publisher
     Designer
     Member
-    Rating
+    GameRating
 
-    BoardGame -> Rating [taillabel="1", headlabel="n"]
+    BoardGame -> GameRating [taillabel="1", headlabel="n"]
     BoardGame -> {Publisher, Designer} [taillabel="n", headlabel="m"]
-    Rating -> Member [taillabel="n", headlabel="1" ]
+    GameRating -> Member [taillabel="n", headlabel="1" ]
 
    }
 
