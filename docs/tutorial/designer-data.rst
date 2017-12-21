@@ -24,12 +24,12 @@ Schema Changes
 We've added a ``:designers`` field to BoardGame, and added
 a new Designer type.
 
-Notice that we've defined the ``:designers`` field as ``(not-null (list :Designer))``.
+Notice that we've defined the ``:designers`` field as ``(non-null (list :Designer))``.
 This is somewhat overkill (the world won't end if the result map contains a nil instead of an
-empty list), but demonstrates that the ``list`` and ``not-null`` modifiers can
+empty list), but demonstrates that the ``list`` and ``non-null`` modifiers can
 nest properly.
 
-We could go further: ``(not-null (list (not-null :Designer)))`` ... but that's
+We could go further: ``(non-null (list (non-null :Designer)))`` ... but that's
 not really adding value.
 
 We need a field resolver for the ``:designers`` field, to convert from
@@ -56,7 +56,7 @@ and when you need to reshape that data to match the schema.
 
 GraphQL doesn't make any guarantees about order of values in a list field;
 when it matters, it falls on us to add documentation to describe the order,
-or even field arguments to control the order.
+or even provide field arguments to let the client specify the order.
 
 The inverse of ``resolve-board-game-designers`` is ``resolve-designer-games``.
 It starts with a Designer and uses the Designer's id as a filter to find
@@ -89,8 +89,9 @@ occured during the parse and prepare phases, before execution in earnest began.
 To really demonstrate navigation, we can go from BoardGame to Designer and back::
 
   (q "{ game_by_id(id: \"1234\") { name designers { name games { name }}}}")
-  => {:data {:game_by_id {:name "Zertz", :designers [{:name "Kris Burm", :games [{:name "Zertz"}]}]}}}
-
+  => {:data {:game_by_id {:name "Zertz",
+                          :designers [{:name "Kris Burm",
+                                       :games [{:name "Zertz"}]}]}}}
 
 .. [#root] Root resolvers, such as for the ``game_by_id`` query operation, are the
    exception: they are passed nil.

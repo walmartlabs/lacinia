@@ -14,12 +14,12 @@ The basic types are as follows:
     BoardGame
     Publisher
     Designer
-    AppUser
-    Review
+    Member
+    GameRating
 
-    BoardGame -> Review [taillabel="1", headlabel="n"]
+    BoardGame -> GameRating [taillabel="1", headlabel="n"]
     BoardGame -> {Publisher, Designer} [taillabel="n", headlabel="m"]
-    Review -> AppUser [taillabel="n", headlabel="1" ]
+    GameRating -> Member [taillabel="n", headlabel="1" ]
 
    }
 
@@ -28,4 +28,5 @@ be different for different countries, or may simply vary over time).
 
 A BoardGame may have any number of Designers.
 
-Users, represented as AppUser, may leave reviews for board games.
+Users of Clojure Game Geek, represented as type Member, may provide their personal ratings for board games.
+

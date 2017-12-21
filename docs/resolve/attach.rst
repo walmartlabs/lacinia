@@ -25,7 +25,7 @@ There are often cases where many fields will need very similar field resolvers.
 A second resolver option exist for this case, where the schema references a *field resolver factory*
 rather than a field resolver itself.
 
-In the schema, the value for the ``:resolve` key is a vector of a keyword and then
+In the schema, the value for the ``:resolve`` key is a vector of a keyword and then
 additional arguments:
 
 .. literalinclude:: /_examples/resolver-factory-schema.edn

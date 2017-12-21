@@ -5,7 +5,8 @@
     [com.walmartlabs.lacinia :refer [execute]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.test-reporting :refer [report]]
-    [com.walmartlabs.test-utils :refer [simplify]])
+    [com.walmartlabs.test-utils :refer [simplify]]
+    [com.walmartlabs.test-utils :as utils])
   (:import
     (clojure.lang ExceptionInfo)))
 
@@ -66,3 +67,17 @@
   (is (= {:data {:hero {:name "Luke Skywalker"}}}
          (q "query ($ep : episode!) { hero (episode: $ep) { name }}"
             {:ep "NEWHOPE"}))))
+
+(deftest resolver-must-return-defined-enum
+  (let [schema (utils/compile-schema "bad-resolver-enum.edn"
+                                     {:query/current-status (constantly :ok)})
+        result (utils/execute schema "{ current_status }")]
+    (is (= {:data {:current_status nil}
+            :errors [{:enum-values #{:bad
+                                     :good}
+                      :locations [{:column 0
+                                   :line 1}]
+                      :message "Field resolver returned an undefined enum value."
+                      :query-path [:current_status]
+                      :resolved-value :ok}]}
+           result))))

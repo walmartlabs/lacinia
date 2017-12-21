@@ -12,14 +12,21 @@ Tutorial
    designer-data
    pedestal
    component
+   member-ratings
+   mutable-database
+   rating-mutation
 
    wrap-up
 
 
 .. caution::
 
-   This tutorial is a work-in-progress ... and work has only *just* started.
+   This tutorial is a work-in-progress.
    It will likely be weeks or months of part-time work.  PR's welcome!
+
+   Once the overall structure of the tutorial comes together, we'll make a pass
+   over the pages to add more cross-reference links and so forth. We're
+   aware that each chapter ends a bit suddenly.
 
 Our goal with this tutorial is to build up the essentials of a full application
 implemented in Lacinia, starting from nothing.

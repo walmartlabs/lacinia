@@ -33,20 +33,23 @@ that can access it.
    :emphasize-lines: 9-22
 
 The resolver itself is the ``resolve-game-by-id`` function.
-It is provided with a map of games, and the standard trio of
-resolver function arguments: context, args, and value.
+It is provided with a map of games, and the standard triumvirate of
+resolver function arguments: context, field arguments, and container value.
 
-Field resolvers are passed a map of arguments, with keyword ids.
+Field resolvers are passed a map of the field arguments (from the client query).
+This map contains keyword keys, and values of varying types (because field arguments have a type in
+the GraphQL schema).
+
 We use a bit of :clojure:`destructuring <reference/special_forms#_map_binding_destructuring>` to extract the id [#too-much]_.
 The data in the map is already in a form that matches the GraphQL schema, so it's
 just a matter of ``get``-ing it out of the games map.
 
-Inside ``resolver-map``, we read the data, then use typical Clojure data manipulation
+Inside ``resolver-map``, we read the sample game data, then use typical Clojure data manipulation
 to get it into the form that we want.
 
 The use of ``partial`` explains why ``resolve-game-by-id`` takes four parameters:
 the wrapper function returned by ``partial`` supplies that first parameter, and passes the remaining three parameters
-through into ``resolve-game-by-id``.
+(context, args, and value) through into ``resolve-game-by-id``.
 
 Running Queries
 ---------------

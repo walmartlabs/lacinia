@@ -26,20 +26,23 @@ A schema is declarative: it defines what operations are possible, and what types
 but has nothing to say about where any of the data comes from.
 In fact, Lacinia has no opinion about that either!
 GraphQL is a contract between a consumer and a provider for how to request
-and present data.
+and present data, it's not any form of database layer, object relational mapper, or anything
+of that type.
 
-Instead, Lacinia provides a callback hook, a
-:doc:`field resolver </resolve/index>`, that is the point
-where your application's code is invoked, to actually go out and get
-the data.
-Ultimately, field resolvers are functions, but those can't, and shouldn't, be
-expressed inside an EDN file.  Instead we put a placeholder in the EDN,
-and then `attach` the actual resolver later.
+Instead, Lacinia handles the parsing of a client query, and guides
+the execution of that query, ultimately invoking applicatio-specific callback hooks:
+:doc:`field resolvers </resolve/index>`.
+Field resolvers are the only source of actual data.
+Ultimately, field resolvers are simple Clojure functions, but those can't, and shouldn't, be
+expressed inside an EDN file.
+Instead we put a placeholder in the EDN, and then `attach` the actual resolver later.
 
 The keyword ``:query/game-by-id`` is just such a placeholder; we'll see how it is used shortly.
 
 We've made liberal use of the ``:description`` property in the schema.
-They are the equivalent of doc-strings on Clojure functions, and we'll see them
+These descriptions are intended for developers who will make use of your
+GraphQL interface.
+Descriptions are the equivalent of doc-strings on Clojure functions, and we'll see them
 show up later when we :doc:`discuss GraphiQL <pedestal>`.
 It's an excellent habit to add descriptions early, rather than try and go back
 and add them in later.
@@ -62,16 +65,23 @@ The dash character is, unfortunately, not allowed.
 If we tried to name the query ``query-by-id``, Lacinia would throw an exception when we attempted
 to use the schema.
 
+In Lacinia, there are base types, such as ``String`` and ``:BoardGame`` and wrapped types, such
+as ``(non-null String)``.
+The two wrappers are ``non-null`` (a value *must* be present) and
+``list`` (the type is a list of values, not a single value).
+These can even be combined!
+
 Notice that the return type of the ``game_by_id`` query is ``:BoardGame`` and `not`
 ``(non-null :BoardGame)``.
 This is because we can't guarantee that a game can be resolved, if the id provided in the client query is not valid.
+If the client provides an invalid id, then the result will be nil, and that's not considered an error.
 
-In any case, this is a good starting point.
+In any case, this single BoardGame entity is a good starting point.
 
 schema namespace
 ----------------
 
-The next step is to write code to load the schema into memory, and make it operational for queries:
+With the schema defined, the next step is to write code to load the schema into memory, and make it operational for queries:
 
 .. ex:: init-schema src/clojure_game_geek/schema.clj
 
@@ -113,7 +123,7 @@ that it is not packaged up with the rest of our application when we deploy.
 
 The key function is ``q``, which invokes ``com.walmartlabs.lacinia/execute``.
 We'll use that to test GraphQL queries against our schema and see the results
-direclty in the REPL: no web browser necessary!
+directly in the REPL: no web browser necessary!
 
 With all that in place, we can launch a REPL and try it out::
 

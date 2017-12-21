@@ -26,8 +26,8 @@ It gives you a clear way to organize your code, and it does things in a fully
 `functional` way: no globals, no update-in-place, and easy to reason about.
 
 The building-block of Component is, unsurprisingly, components.
-These components are simply ordinary Clojure maps (though typically,
-a Clojure record is used).
+These components are simply ordinary Clojure maps -- though for reasons we'll discuss
+shortly, Clojure record types are more typically used.
 
 The components are formed into a system, which again is just a map.
 Each component has a unique, well-known key in the system map.
@@ -35,8 +35,9 @@ Each component has a unique, well-known key in the system map.
 Components `may` have dependencies on other components.
 That's where the fun really starts.
 
-Components `may` have a lifecycle; this is represented by a Lifecycle
+Components `may` have a lifecycle; if they do, they implement the Lifecycle
 protocol containing methods ``start`` and ``stop``.
+This is why many components are implemented as Clojure records ... records can implement a protocol.
 
 Rather than get into the minutiae, let's see how it all fits together in
 our Clojure Game Geek application.
@@ -178,9 +179,9 @@ The user namespace has shrunk; previously
 it was responsible for loading the schema, and creating and starting
 the Pedestal service; this has all shifted to the individual components.
 
-Instead, the user namespace creates an initial system, and can use
-``start-system`` and ``stop-system`` on that system: no direct knowledge of
-loading schemas or starting and stopping Pedestal is present.
+Instead, the user namespace creates an  map, and can use
+``start-system`` and ``stop-system`` on that system map: no direct knowledge of
+loading schemas or starting and stopping Pedestal is present any longer.
 
 The user namespace previously had vars for both the schema and the Pedestal
 system.
@@ -190,7 +191,7 @@ Interestingly, as our system grows later, the user namespace will likely
 not change at all, just the system map it gets from ``system/new-system`` will
 expand.
 
-The only wrinkle here is our ``q`` function; since there's no longer a local
+The only wrinkle here is in the ``q`` function; since there's no longer a local
 ``schema`` var it is necessary to pull the ``:schema-provider`` component from the system map,
 and extract the schema from that component.
 
