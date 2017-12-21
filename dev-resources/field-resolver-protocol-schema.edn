@@ -1,0 +1,3 @@
+{:queries
+ {:hello {:type String
+          :resolve :query/hello}}}

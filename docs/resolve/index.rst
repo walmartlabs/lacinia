@@ -26,6 +26,7 @@ In some cases, a field resolver may need to perform additional queries against a
     type-tags
     exceptions
     resolve-as
+    field-resolver-protocol
     async
     selections
     context

@@ -8,6 +8,12 @@
   when ResolveResultPromises are delivered."
   nil)
 
+(defprotocol ^{:added "0.24.0"} FieldResolver
+  "Allows a Clojure record to operate as a field resolver."
+  (resolve-value [this context args value]
+    "The analog of a field resolver function, this method is passed the instance, and the standard
+    context, field arguments, and container value, and returns a resolved value."))
+
 (defprotocol ^:no-doc ResolveCommand
   "Used to define special wrappers around resolved values, such as [[with-error]].
 

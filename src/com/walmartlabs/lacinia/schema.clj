@@ -18,7 +18,8 @@
     [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolve-as combine-results is-resolver-result?]]
     [clojure.string :as str]
     [clojure.set :refer [difference]]
-    [clojure.spec.test.alpha :as stest])
+    [clojure.spec.test.alpha :as stest]
+    [com.walmartlabs.lacinia.resolve :as resolve])
   (:import
     (com.walmartlabs.lacinia.resolve ResolverResultImpl)
     (clojure.lang IObj)))
@@ -269,7 +270,8 @@
 ;; Defining these callbacks in spec has been a challenge. At some point,
 ;; we can expand this to capture a bit more about what a field resolver
 ;; is passed and should return.
-(s/def ::resolve fn?)
+(s/def ::resolve (s/or :function fn?
+                       :protocol #(satisfies? resolve/FieldResolver %)))
 (s/def ::field (s/keys :opt-un [::description
                                 ::resolve
                                 ::args]
@@ -511,10 +513,25 @@
 
 (defn ^:private wrap-resolver-to-ensure-resolver-result
   [resolver]
-  ;; If a resolver reports its type as ResolverResult, then we don't
-  ;; need to wrap it. This can really add up for all the default resolvers.
-  (if (-> resolver meta :tag (identical? ResolverResult))
+  (cond
+    ;; The FieldResolver protocol allows a record (e.g., a component) to act as a field
+    ;; resolver. This is where we turn it into a function. We can't tell whether
+    ;; the method will return a ResolverResult or a bare value, so it will end up on
+    ;; the less efficient path (the :else clause).
+    ;; This also works with reify-ed instances of FieldResolver.
+    (satisfies? resolve/FieldResolver resolver)
+    (wrap-resolver-to-ensure-resolver-result (fn [context args value]
+                                               (resolve/resolve-value resolver context args value)))
+
+    ;; If a resolver reports its type as ResolverResult, then we don't
+    ;; need to wrap it. This can really add up for all the default resolvers.
+    ;; It's not so important for general resolvers.
+    (-> resolver meta :tag (identical? ResolverResult))
     resolver
+
+    ;; This is the "less efficient" path, as the result has to be tested to see
+    ;; it is is a resolver result or not.
+    :else
     (fn [context args value]
       (let [raw-value (resolver context args value)
             is-result? (is-resolver-result? raw-value)]

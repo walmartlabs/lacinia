@@ -1,5 +1,8 @@
 ## 0.24.0 -- UNRELEASED
 
+Added the FieldResolver protocol that allows a Clojure record, such as a
+[Component](https://github.com/stuartsierra/component), to act as a field resolver.
+
 Field resolvers for enum types are now required to return a keyword, and that
 keyword must match one of the values defined for the enum.
 Previously, Lacinia failed to peform any checks in this case, which could result
