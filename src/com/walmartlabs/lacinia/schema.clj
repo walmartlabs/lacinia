@@ -298,8 +298,10 @@
                                  :keyword simple-keyword?
                                  :symbol simple-symbol?)
                            graphql-identifier?))
-(s/def ::values (s/and (s/coll-of ::enum-value)
-                       seq))
+(s/def ::enum-value-def (s/or :bare-value ::enum-value
+                              :described (s/keys :req-un [::enum-value]
+                                                 :opt-un [::description])))
+(s/def ::values (s/and (s/coll-of ::enum-value-def) seq))
 (s/def ::enum (s/keys :opt-un [::description]
                       :req-un [::values]))
 ;; The type of an input object field is more constrained than an ordinary field, but that is
@@ -848,16 +850,32 @@
                            :schema-types (type-map schema)})))))
     (assoc union :members members)))
 
+(defn ^:private normalize-enum-value-def
+  "The :values key of an enum definition is either a seq of enum values, or a seq of enum value defs.
+  The enum values are just the keyword/symbol/string.
+  The enum value defs have keys :enum-value and :description.
+  This normalizes into the enum value def form, and ensures that the :enum-value key is a keyword."
+  [value-def]
+  (if (map? value-def)
+    (update value-def :enum-value as-keyword)
+    {:enum-value (as-keyword value-def)}))
+
 (defmethod compile-type :enum
-  [enum-def schema]
-  (let [values (->> enum-def :values (mapv as-keyword))
-        values-set (set values)]
+  [enum-def _]
+  (let [value-defs (->> enum-def :values (mapv normalize-enum-value-def))
+        values (mapv :enum-value value-defs)
+        values-set (set values)
+        descriptions (reduce (fn [m {:keys [enum-value description]}]
+                               (assoc m enum-value description))
+                             {}
+                             value-defs)]
     (when-not (= (count values) (count values-set))
       (throw (ex-info (format "Values defined for enum %s must be unique."
                               (-> enum-def :type-name q))
                       {:enum enum-def})))
     (assoc enum-def
            :values values
+           :descriptions descriptions
            :values-set values-set)))
 
 (defmethod compile-type :scalar
