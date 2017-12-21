@@ -120,3 +120,19 @@
         *result (as-promise (wrapped nil nil nil))]
     (r/deliver! resolver-promise 500)
     (is (= 501 (deref *result 100 ::no-value)))))
+
+(deftest chain
+  (let [initial-promise (r/resolve-promise)
+        p (-> initial-promise
+              (r/chain
+                (+ $ 10)
+                (r/resolve-as (inc $))
+                (* $ 50))
+              as-promise)]
+    (is (not (realized? p)))
+
+    (r/deliver! initial-promise 17)
+
+    (is (realized? p))
+
+    (is (= 1400 @p))))
