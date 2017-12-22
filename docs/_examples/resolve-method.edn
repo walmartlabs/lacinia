@@ -1,0 +1,15 @@
+(defn ^:private make-accessor
+  [method-sym]
+  (let [method-name (name method-sym)
+        arg-types (make-array Class 0)
+        args (make-array Object 0)]
+    (fn [value]
+      (let [c (class value)
+            method (.getMethod c method-name arg-types)]
+        (.invoke method value args)))))
+
+(defn resolve-method
+  [method-sym]
+  (let [f (make-accessor method-sym)]
+    (fn [_ _ value]
+      (f value))))

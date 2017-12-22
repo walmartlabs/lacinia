@@ -17,6 +17,7 @@ the keywords with the actual functions.
 
 This step occurs **before** the schema is compiled.
 
+.. _resolver-factory:
 
 Resolver Factories
 ------------------
