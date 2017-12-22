@@ -9,6 +9,10 @@ the schema type.
 
 When the type of a field is an interface or union, it is necessary for the field resolver
 to explicitly tag the value with its object type.
+
+Using tag-with-type
+-------------------
+
 The function ``com.walmartlabs.lacinia.schema/tag-with-type`` exists for this purpose.
 The tag value is a keyword matching an object definition.
 
@@ -24,3 +28,23 @@ Generally, type tagging is just metadata added to a map (or Clojure record type)
 However, Lacinia supports tagging of arbitrary objects that don't support Clojure metadata
 ... but ``tag-with-type`` will return a wrapper type in that case.  When using Java types,
 make sure that ``tag-with-type`` is the last thing a field resolver does.
+
+Using record types
+------------------
+
+As an alternative to ``type-with-tag``, it is possible to associate an object with a Java class; typically
+this is a record type created using ``defrecord``.
+
+The ``:tag`` key of the object definition must be set to the the class name (as a symbol).
+
+.. literalinclude:: /_examples/object-tag.edn
+   :language: clojure
+   :emphasize-lines: 6,14
+
+This only works if the field resolver functions return the corresponding record types, rather than
+ordinary Clojure maps.
+
+.. tip::
+
+   This is a class name, not a namespace Clojure name. That means no slash character,
+   and dashes in the namespace must be converted to underscores.

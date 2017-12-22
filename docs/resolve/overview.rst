@@ -1,14 +1,13 @@
 Overview
 ========
 
-Each query or mutation will have a root field resolver.
-Every field inside the query, mutation, or other object will have
+Each operation (query, mutation, or subscription) will have a root field resolver.
+Every field inside the operation or other object will have
 a field resolver: if an explicit one is not provided, Lacinia creates
 a default one.
 
 As you might guess, the processing of queries into result map data is quite recursive.
-The initial query (or mutation) will invoke a top-level field resolver.
-Here, the resolved value passed to the root field resolver will be nil.
+The initial operation's field resolver is passed nil as the container resolved value.
 
 The root field resolver will return a map [#root-value]_ ; as directed by the client's query, the fields
 of this object will be selected and the top-level object passed to to the field resolvers
@@ -36,7 +35,7 @@ Meanwhile, the selected data from the resolved value is added to the result map.
 
 If the value is a scalar type, it is added as-is.
 
-Otherwise, the value is a structured type, and the query must provide sub-fields.
+Otherwise, the value is a structured type, and the query must provide nested selections.
 
 Field Resolver Arguments
 ------------------------
@@ -60,6 +59,13 @@ The initial application context may even be nil.
 
 Many resolvers can simply ignore the context.
 
+.. warning::
+
+   Lacinia will frequently add its own keys to the context; these will be namespaced keywords.
+   Please do not attempt to make use of these keys unless they are explicitly documented.
+   Undocumented keys are not part of the Lacinia API and are
+   subject to change without notice.
+
 Field Arguments
 ```````````````
 
@@ -78,13 +84,13 @@ operation.
 For scalar types, the field resolver can simply return the selected value.
 
 For structured types, the field resolver returns a resolved value;
-the query *must* contain nested fields which will be passed the resolved value, to make selections
-from the resolved value.
+the query *must* contain nested selections.
+These selections will trigger further fields, whose resolvers will be passed the resolved value.
 
 For example, you might have an ``:lineItem`` query of type ``:LineItem``, and LineItem might include a field,
 ``:product`` of type ``:Product``.
 A query ``{lineItem(id:"12345") { product }}`` is not valid: it is not possible to return a Product directly,
-you **must** select fields within Product:  ``{lineItem(id:"12345") { product { name upc price }}}``.
+you **must** select specific fields within Product:  ``{lineItem(id:"12345") { product { name upc price }}}``.
 
 .. tip::
 
@@ -97,7 +103,7 @@ Resolving Collections
 
 When an operation or field resolves as a collection, things are only slightly different.
 
-The nested fields are applied to **each** resolved value in the collection.
+The nested selections are applied to **each** resolved value in the collection.
 
 Default Field Resolver
 ----------------------
