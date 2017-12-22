@@ -43,8 +43,10 @@ The ``:tag`` key of the object definition must be set to the the class name (as 
 
 This only works if the field resolver functions return the corresponding record types, rather than
 ordinary Clojure maps.
+In the above example, the field resolvers would need to invoke the ``map->Business`` or ``map->Employee`` constructor
+functions as appropriate.
 
 .. tip::
 
-   This is a class name, not a namespace Clojure name. That means no slash character,
-   and dashes in the namespace must be converted to underscores.
+   The ``:tag`` value is a Java class name, not a namespaced Clojure name.
+   That means no slash character, and dashes in the namespace must be converted to underscores.
