@@ -1,5 +1,5 @@
 Explicit Types
---------------
+==============
 
 For structured types, Lacinia needs to know what type of data is returned by the field resolver,
 so that it can, as necessary, process query fragments.
