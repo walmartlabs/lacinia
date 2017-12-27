@@ -1,0 +1,6 @@
+{:enums
+ {:episode
+  {:description "The episodes of the original Star Wars trilogy."
+   :values [{:enum-value :NEWHOPE :description "The first one you saw."}
+            {:enum-value :EMPIRE :description "The good one."}
+            {:enum-value :JEDI :description "The one with the killer teddy bears."}]}}}

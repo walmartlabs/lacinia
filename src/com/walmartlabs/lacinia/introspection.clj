@@ -112,13 +112,14 @@
     (type-name->schema-type schema type-name)))
 
 (defn ^:private resolve-enum-values
-  [context _ value]
+  [_ _ value]
   (let [{:keys [::category ::type-def]} value]
     (when (= :enum category)
       ;; Use the ordered list, not the set, in case order
       ;; has meaning (unlike elsewhere we we sort alphabetically).
       (for [value (get type-def :values)]
         {:name (name value)
+         :description (get-in type-def [:descriptions value])
          :isDeprecated false}))))
 
 (defn ^:private resolve-input-fields
