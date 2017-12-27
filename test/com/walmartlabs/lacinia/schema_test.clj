@@ -160,12 +160,12 @@
                               :resolve identity}}}
     ":invalid-field-name fails spec: :com.walmartlabs.lacinia.schema/graphql-identifier"))
 
-(deftest enum-values-must-be-valid-idfs
+(deftest enum-values-must-be-valid-ids
   (is-compile-exception
     {:enums {:episode {:values [:new-hope :empire :return-of-jedi]}}}
-    "[:keyword :new-hope] fails spec: :com.walmartlabs.lacinia.schema/enum-value at: [:args :schema :enums 1 :values] predicate: graphql-identifier?"))
+    "[:keyword :new-hope] fails spec: :com.walmartlabs.lacinia.schema/enum-value at: [:args :schema :enums 1 :values :bare-value] predicate: graphql-identifier?"))
 
-(deftest requires-resolve-on-operationfv
+(deftest requires-resolve-on-operation
   (is-compile-exception
     {:queries {:hopeless {:type :String}}}
     "predicate: (contains? % :resolve)"))

@@ -3,7 +3,7 @@
             [com.walmartlabs.lacinia :as lacinia]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.test-schema :refer [test-schema]]
-            [com.walmartlabs.test-utils :refer [simplify]]))
+            [com.walmartlabs.test-utils :as utils :refer [simplify]]))
 
 (def compiled-schema (schema/compile test-schema))
 
@@ -125,8 +125,7 @@
                                              :ofType {:kind :SCALAR
                                                       :name "String"
                                                       :ofType nil}}}]}}}
-           (-> (lacinia/execute schema q nil nil)
-               simplify)))))
+           (utils/execute schema q nil nil)))))
 
 (deftest object-introspection-query
   (let [q "{ __type(name: \"droid\") { kind name interfaces { name }}}"]
@@ -1328,4 +1327,21 @@
                                                            :ofType {:kind :SCALAR
                                                                     :name "ID"}}}]
                                           :name "QueryRoot"}}}}
-           (simplify (lacinia/execute schema q nil nil))))))
+           (utils/execute schema q nil nil)))))
+
+(deftest described-enums
+  (let [schema (schema/compile {:enums
+                                {:status
+                                 {:description "Possible operation results."
+                                  :values [{:enum-value :OK :description "No problems."}
+                                           {:enum-value :WARN :description "Completed with some warnings."}
+                                           {:enum-value :FAIL :description "Some or all of the operation failed."}]}}})]
+    (is (= {:data {:__type {:description "Possible operation results."
+                            :enumValues [{:description "No problems."
+                                          :name "OK"}
+                                         {:description "Completed with some warnings."
+                                          :name "WARN"}
+                                         {:description "Some or all of the operation failed."
+                                          :name "FAIL"}]}}}
+           (utils/execute schema
+                          "{ __type(name: \"status\") { description enumValues { name description }}}")))))
