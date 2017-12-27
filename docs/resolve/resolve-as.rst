@@ -7,9 +7,7 @@ A field resolver usually just returns the resolved value, or (for a list type) a
 
    Read about :spec:`errors <Errors>`.
 
-What if you want to add errors?  This is accomplished with a special return value, ResolverResult, which
-contains both a resolved value and an error map, or seq of error maps.
-
+What if you want to add errors?
 Field resolvers should not throw exceptions; instead, if there is a problem generating the resolved value,
 they should use the ``com.walmartlabs.lacinia.resolve/resolve-as`` function to return a ResolverResult value.
 

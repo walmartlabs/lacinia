@@ -16,7 +16,7 @@ Instead of returning a normal value, an asynchronous field resolver
 returns a special kind of :doc:`ResolverResult <resolve-as>`, a
 ``ResolverResultPromise``.
 
-Such a promise is created by ``com.walmartlabs.lacinia/resolve-promise``.
+Such a promise is created by the ``com.walmartlabs.lacinia/resolve-promise`` function.
 
 The field resolver function returns immediately, but will typically perform some work in a background
 thread.
