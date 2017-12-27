@@ -15,7 +15,7 @@ the keywords with the actual functions.
 .. literalinclude:: ../../dev-resources/org/example/schema.clj
    :language: clojure
 
-This step occurs **before** the schema is compiled.
+The ``attach-resolvers`` step occurs **before** the schema is compiled.
 
 .. _resolver-factory:
 

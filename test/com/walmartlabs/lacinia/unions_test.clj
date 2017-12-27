@@ -86,4 +86,27 @@
                             {:id "2000" :family_name "Wu"}]}}
            result))))
 
+(defrecord Business [id name])
+(defrecord Employee [id given_name family_name employer])
+
+(defn resolve-search-types
+  [_ _ _]
+  [(map->Business example-business)
+   (map->Employee example-employee)])
+
+(deftest resolve-via-object-tag
+  (let [schema (-> base-schema
+                   (assoc-in [:objects :business :tag] Business)
+                   (assoc-in [:objects :employee :tag] 'com.walmartlabs.lacinia.unions_test.Employee)
+                   (assoc-in [:queries :search :resolve] resolve-search-types)
+                   compile)
+        q "{ search {
+             ... on searchable {
+                ... on business { id name }
+                ... on employee { id family_name }}}}"
+        result (execute schema q)]
+    (is (= {:data {:search [{:id "1000" :name "General Products"}
+                            {:id "2000" :family_name "Wu"}]}}
+           result))))
+
 

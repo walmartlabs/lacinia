@@ -21,7 +21,6 @@
     [clojure.spec.test.alpha :as stest]
     [com.walmartlabs.lacinia.resolve :as resolve])
   (:import
-    (com.walmartlabs.lacinia.resolve ResolverResultImpl)
     (clojure.lang IObj)))
 
 ;; When using Clojure 1.9 alpha, the dependency on clojure-future-spec can be excluded,
@@ -283,9 +282,13 @@
 (s/def ::fields (s/map-of ::schema-key ::field))
 (s/def ::implements (s/coll-of ::identifier))
 (s/def ::description string?)
+(s/def ::tag (s/or
+               :symbol symbol?
+               :class class?))
 (s/def ::object (s/keys :req-un [::fields]
                         :opt-un [::implements
-                                 ::description]))
+                                 ::description
+                                 ::tag]))
 ;; Here we'd prefer a version of ::fields where :resolve was not defined.
 (s/def ::interface (s/keys :opt-un [::description
                                     ::fields]))
@@ -614,7 +617,9 @@
                          (selector selector-context))))
                    selector)
 
-        selector (if (#{:interface :union} category)
+        union-or-interface? (#{:interface :union} category)
+
+        selector (if union-or-interface?
                    (let [member-types (:members field-type)]
                      (fn select-allowed-types [{:keys [resolved-type]
                                                 :as selector-context}]
@@ -633,21 +638,51 @@
                                                                   :allowed-types member-types})))))
                    selector)
 
+
+        type-map (when union-or-interface?
+                   (let [member-types (:members field-type)
+                         member-objects (map schema member-types)
+                         type-map (reduce (fn [m {:keys [tag type-name]}]
+                                            (if tag
+                                              (assoc m tag type-name)
+                                              m))
+                                          {}
+                                          member-objects)]
+                     (when (seq type-map)
+                       type-map)))
+
         selector (fn select-unwrap-tagged-type [selector-context]
                    (cond-let
+                     ;; Use explicitly tagged value (this usually applies to Java objects
+                     ;; that can't provide meta data).
                      :let [resolved-value (:resolved-value selector-context)]
                      (is-tagged-value? resolved-value)
                      (selector (assoc selector-context
                                       :resolved-value (extract-value resolved-value)
                                       :resolved-type (extract-type-tag resolved-value)))
 
+                     ;; Check for explicit meta-data:
+
                      :let [type-name (-> resolved-value meta ::type-name)]
 
                      (some? type-name)
                      (selector (assoc selector-context :resolved-type type-name))
 
+                     ;; Use, if available, the mapping from tag to object that might be provided
+                     ;; for some objects.
+                     :let [resolved-type (when type-map
+                                           (->> resolved-value
+                                                class
+                                                (get type-map)))]
+
+                     (some? resolved-type)
+                     (selector (assoc selector-context :resolved-type resolved-type))
+
+                     ;; Let a later stage fail if it is a union or interface and there's no explicit
+                     ;; type.
                      :else
                      (selector selector-context)))
+
 
         selector (if (#{:object :input-object} category)
                    (fn select-apply-static-type [selector-context]
@@ -879,7 +914,7 @@
            :values-set values-set)))
 
 (defmethod compile-type :scalar
-  [scalar schema]
+  [scalar _]
   (let [{:keys [parse serialize]} scalar]
     (when-not (and parse serialize)
       (throw (ex-info "Scalars must declare both :parse and :serialize functions."
@@ -888,7 +923,21 @@
 
 (defmethod compile-type :object
   [object schema]
-  (let [implements (->> object :implements (map as-keyword) set)]
+  (let [implements (->> object :implements (map as-keyword) set)
+        tag (:tag object)
+        ;; tag may be a symbol (to be converted to a class) or a class directly
+        ;; Generally, a symbol if read from EDN, a Class if from Clojure source code constant
+        tag-class (when tag
+                    (if (class? tag)
+                      tag
+                      (try
+                        (-> tag name Class/forName)
+                        (catch Throwable t
+                          (throw (ex-info (format "Object %s has tag %s, which can't be converted to a Java class."
+                                                  (-> object :type-name q)
+                                                  (q tag))
+                                          {:object object}
+                                          t))))))]
     (doseq [interface implements
             :let [type (get schema interface)]]
       (when-not type
@@ -904,7 +953,8 @@
                         {:object object
                          :schema-types (type-map schema)}))))
     (-> object
-        (assoc :implements implements)
+        (assoc :implements implements
+               :tag tag-class)
         compile-fields)))
 
 (defmethod compile-type :input-object
