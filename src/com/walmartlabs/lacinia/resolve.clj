@@ -182,50 +182,62 @@
     (or (instance? ResolverResultImpl value)
         (satisfies? ResolverResult value))))
 
+(defn as-resolver-fn
+  "Wraps a [[FieldResolver]] instance as a field resolver function."
+  {:added "0.24.0"}
+  [field-resolver]
+  (fn [context args value]
+    (resolve-value field-resolver context args value)))
+
 (defn wrap-resolver-result
-  "Wraps a resolver function, passing the result through a wrapper function.
+  "Wraps a resolver function or instance, passing the result through a wrapper function.
+
+  The resolver argument may be a resolver function, or an instance of [[FieldResolver]].
 
   The wrapper function is passed four values:  the context, arguments, and value
-  as passed to a resolver function, then the resolved value from the
+  as passed to the resolver, then the resolved value from the
   resolver.
 
   `wrap-resolver-result` understands resolver functions that return either a [[ResolverResult]]
   or a bare value, as well as functions that have decorated a value using [[with-error]] or
   [[with-context]].
+
   The wrapper-fn is passed the underlying value and must return a new value.
   The new value will be re-wrapped as necessary.
 
   The wrapped value may itself be a ResolverResult, and the
   value (either plain, or inside a ResolverResult) may also be decorated
-  with `with-error` or `with-context`."
+  using `with-error` or `with-context`."
   {:added "0.23.0"}
-  [resolver-fn wrapper-fn]
-  ^ResolverResult
-  (fn [context args value]
-    (let [resolved-value (resolver-fn context args value)
-          final-result (resolve-promise)
-          deliver-final-result (fn [commands new-value]
-                                 (deliver! final-result
-                                           (if-not (seq commands)
-                                             new-value
-                                             (reduce #(replace-nested-value %2 %1)
-                                                     new-value
-                                                     commands))))
-          invoke-wrapper (fn invoke-wrapper
-                           ([value]
-                            (invoke-wrapper nil value))
-                           ([commands value]
-                             ;; Wait, did someone just say "monad"?
-                            (if (satisfies? ResolveCommand value)
-                              (recur (cons value commands)
-                                     (nested-value value))
-                              (let [new-value (wrapper-fn context args value value)]
-                                (if (is-resolver-result? new-value)
-                                  (on-deliver! new-value #(deliver-final-result commands %))
-                                  (deliver-final-result commands new-value))))))]
+  [resolver wrapper-fn]
+  (if-not (fn? resolver)
+    (recur (as-resolver-fn resolver) wrapper-fn)
+    ^ResolverResult
+    (fn [context args value]
+      (let [resolved-value (resolver context args value)
+            final-result (resolve-promise)
+            deliver-final-result (fn [commands new-value]
+                                   (deliver! final-result
+                                             (if-not (seq commands)
+                                               new-value
+                                               (reduce #(replace-nested-value %2 %1)
+                                                       new-value
+                                                       commands))))
+            invoke-wrapper (fn invoke-wrapper
+                             ([value]
+                              (invoke-wrapper nil value))
+                             ([commands value]
+                               ;; Wait, did someone just say "monad"?
+                              (if (satisfies? ResolveCommand value)
+                                (recur (cons value commands)
+                                       (nested-value value))
+                                (let [new-value (wrapper-fn context args value value)]
+                                  (if (is-resolver-result? new-value)
+                                    (on-deliver! new-value #(deliver-final-result commands %))
+                                    (deliver-final-result commands new-value))))))]
 
-      (if (is-resolver-result? resolved-value)
-        (on-deliver! resolved-value invoke-wrapper)
-        (invoke-wrapper resolved-value))
+        (if (is-resolver-result? resolved-value)
+          (on-deliver! resolved-value invoke-wrapper)
+          (invoke-wrapper resolved-value))
 
-      final-result)))
+        final-result))))
