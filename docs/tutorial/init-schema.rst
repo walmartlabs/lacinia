@@ -139,6 +139,9 @@ With all that in place, we can launch a REPL and try it out::
       Exit: Control+D or (exit) or (quit)
    Results: Stored in vars *1, *2, *3, an exception in *e
 
+  user=> (start)
+  :started
+  
   user=> (q "{ game_by_id(id: \"foo\") { id name summary }}")
   {:data #ordered/map ([:game_by_id nil])}
 
