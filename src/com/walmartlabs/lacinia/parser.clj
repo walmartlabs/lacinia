@@ -6,7 +6,7 @@
             [com.walmartlabs.lacinia.internal-utils
              :refer [cond-let update? q map-vals filter-vals
                      with-exception-context throw-exception to-message
-                     keepv as-keyword]]
+                     keepv as-keyword *exception-context*]]
             [com.walmartlabs.lacinia.parser.common :refer [antlr-parse parse-failures stringvalue->String]]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.lacinia.constants :as constants]
@@ -34,6 +34,11 @@
 
       :else
       (recur nested))))
+
+(defn ^:private non-null-kind?
+  "Peeks at the kind of the provided def (field, argument, or variable) to see if it is :non-null"
+  [any-def]
+  (-> any-def :type :kind (= :non-null)))
 
 ;; At some point, this will move to the schema when we work out how to do extensible
 ;; directives. A directive effector is invoked during the prepare phase to modify
@@ -291,7 +296,7 @@
 
 (defmethod process-literal-argument :null
   [schema argument-definition arg-value]
-  (when (-> argument-definition :type :kind (= :non-null))
+  (when (non-null-kind? argument-definition)
     (throw-exception "An explicit null value was provided for a non-nullable argument."))
 
   nil)
@@ -325,7 +330,7 @@
 
     (let [object-fields (:fields schema-type)
           default-values (collect-default-values object-fields)
-          required-keys (keys (filter-vals :non-nullable? object-fields))
+          required-keys (keys (filter-vals non-null-kind? object-fields))
           process-object-field (fn [m k v]
                                  (if-let [field (get object-fields k)]
                                    (assoc m k
@@ -473,10 +478,6 @@
   (fn [schema argument-definition [arg-type _]]
     arg-type))
 
-(defn ^:private non-null-kind?
-  "Peeks at the kind of the provided def (field, argument, or variable) to see if it is :non-null"
-  [any-def]
-  (-> any-def :type :kind (= :non-null)))
 
 (defn ^:private construct-literal-argument
   [schema result argument-type arg-value]
@@ -544,7 +545,8 @@
 (defmethod process-dynamic-argument :variable
   [schema argument-definition [_ arg-value]]
   ;; ::variables is stashed into schema by xform-query
-  (let [variable-def (get-in schema [::variables arg-value])]
+  (let [captured-context *exception-context*
+        variable-def (get-in schema [::variables arg-value])]
     (when (nil? variable-def)
       (throw-exception (format "Argument references undeclared variable %s."
                                (q arg-value))
@@ -560,43 +562,44 @@
           var-non-nullable? (non-null-kind? variable-def)]
 
       (fn [variables]
-        (cond-let
-          :let [result (get variables arg-value)]
+        (with-exception-context captured-context
+          (cond-let
+            :let [result (get variables arg-value)]
 
-          ;; So, when a client provides variables, sometimes you get a string
-          ;; when you expect a keyword for an enum. Can't help that, when the alue
-          ;; comes from a variable, there's no mechanism until we reach right here to convert it
-          ;; to a keyword.
+            ;; So, when a client provides variables, sometimes you get a string
+            ;; when you expect a keyword for an enum. Can't help that, when the alue
+            ;; comes from a variable, there's no mechanism until we reach right here to convert it
+            ;; to a keyword.
 
-          (some? result)
-          {:value (substitute-variable schema result (:type argument-definition) arg-value)}
+            (some? result)
+            {:value (substitute-variable schema result (:type argument-definition) arg-value)}
 
-          ;; TODO: This is only triggered if a variable is referenced, omitting a non-nillable
-          ;; variable should be an error, regardless.
-          var-non-nullable?
-          (throw-exception (format "No value was provided for variable %s, which is non-nullable."
-                                   (q arg-value))
-                           {:variable-name arg-value})
+            ;; TODO: This is only triggered if a variable is referenced, omitting a non-nillable
+            ;; variable should be an error, regardless.
+            var-non-nullable?
+            (throw-exception (format "No value was provided for variable %s, which is non-nullable."
+                                     (q arg-value))
+                             {:variable-name arg-value})
 
-          ;; variable has a default value that could be NULL
-          (contains? variable-def :default-value)
-          {:value (:default-value variable-def)}
+            ;; variable has a default value that could be NULL
+            (contains? variable-def :default-value)
+            {:value (:default-value variable-def)}
 
-          ;; argument has a default value that could be NULL
-          (contains? argument-definition :default-value)
-          {:value (:default-value argument-definition)}
+            ;; argument has a default value that could be NULL
+            (contains? argument-definition :default-value)
+            {:value (:default-value argument-definition)}
 
-          ;; variable value is set to NULL
-          (contains? variables arg-value)
-          {:value result}
+            ;; variable value is set to NULL
+            (contains? variables arg-value)
+            {:value result}
 
-          non-nullable?
-          (throw-exception (format "Variable %s is null, but supplies the value for a non-nullable argument."
-                                   (q arg-value))
-                           {:variable-name arg-value})
+            non-nullable?
+            (throw-exception (format "Variable %s is null, but supplies the value for a non-nullable argument."
+                                     (q arg-value))
+                             {:variable-name arg-value})
 
-          :else
-          nil)))))
+            :else
+            nil))))))
 
 (defn ^:private construct-dynamic-arguments-extractor
   [schema argument-definitions arguments]
@@ -615,20 +618,20 @@
                                                          (q arg-name)
                                                          (decapitalize (to-message e)))
                                                  nil
-                                                 e))))))]
-      (let [dynamic-args (reduce-kv (fn [m k v]
-                                      (assoc m k (process-arg k v)))
-                                    nil
-                                    arguments)]
-        ;; This is kind of a juxt buried in a map. Each value is a function that accepts
-        ;; the variables and returns the actual value to use.
-        (fn [variables]
-          (->> (map-vals #(% variables) dynamic-args)
-               ;; keep arguments that have a matching variable provided.
-               ;; :value in value-map might be NULL but it's still a
-               ;; provided value (e.g. may be used to indicate deletion)
-               (filter-vals some?)
-               (map-vals :value)))))))
+                                                 e))))))
+          dynamic-args (reduce-kv (fn [m k v]
+                                    (assoc m k (process-arg k v)))
+                                  nil
+                                  arguments)]
+      ;; This is kind of a juxt buried in a map. Each value is a function that accepts
+      ;; the variables and returns the actual value to use.
+      (fn [variables]
+        (->> (map-vals #(% variables) dynamic-args)
+             ;; keep arguments that have a matching variable provided.
+             ;; :value in value-map might be NULL but it's still a
+             ;; provided value (e.g. may be used to indicate deletion)
+             (filter-vals some?)
+             (map-vals :value))))))
 
 (defn ^:private disj*
   [set ks]
@@ -913,7 +916,8 @@
 
 (declare ^:private coalesce-selections)
 
-(defn ^:private merge-selections [first-selection second-selection]
+(defn ^:private merge-selections
+  [first-selection second-selection]
   (when-not (= (:reportable-arguments first-selection)
                (:reportable-arguments second-selection))
     (let [{:keys [type-name field-name]} (:field-definition first-selection)]
