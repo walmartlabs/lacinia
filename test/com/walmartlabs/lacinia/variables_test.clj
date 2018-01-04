@@ -58,11 +58,10 @@
 
 (deftest int-rejects-non-integer-value
   (is (= {:errors [{:argument :int
-                    :field :root
                     :locations [{:column 21
                                  :line 1}]
                     :message "Invalid Int value."
-                    :query-path []
+                    :query-path [:root]
                     :type-name :Int
                     :value "42.0"}]}
          (query "query ($IntVar: Int) { root (int: $IntVar) { int }}"

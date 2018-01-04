@@ -743,7 +743,7 @@
         field-type (schema/root-type-name field-definition)
         nested-type (get schema field-type)
         query-path' (conj query-path field)]
-    (with-exception-context (assoc context :field field)
+    (with-exception-context (assoc context :query-path query-path')
       (when (nil? nested-type)
         (if (scalar? type)
           (throw-exception "Path de-references through a scalar type.")

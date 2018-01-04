@@ -8,6 +8,14 @@ keyword must match one of the values defined for the enum.
 Previously, Lacinia failed to peform any checks in this case, which could result
 in invalid data present in the result map.
 
+There has been a change to how validation errors are reported; previously
+the error map would contain two keys: `:query-path` and `:field`.
+These have been condensed down to just `:query-path` (the field value is now
+the final term in the query path).
+This change both simplifies things, and make validation time reporting
+more consistent with execution time reporting.
+
+
 ## 0.23.0 -- 5 Dec 2017
 
 Added `com.walmartlabs.lacina.resolve/wrap-resolver-result` which makes it easier

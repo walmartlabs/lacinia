@@ -44,11 +44,10 @@
                               :NEWHOPE}
             :argument :episode
             :enum-type :episode
-            :field :hero
             :locations [{:column 0
                          :line 1}]
             :message "Exception applying arguments to field `hero': For argument `episode', provided argument value `CLONES' is not member of enum type."
-            :query-path []
+            :query-path [:hero]
             :value :CLONES}
            first-error))))
 

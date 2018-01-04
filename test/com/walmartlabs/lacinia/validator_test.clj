@@ -112,8 +112,7 @@
       (is (= {:errors [{:message "Path de-references through a scalar type."
                         :locations [{:column 14
                                      :line 1}]
-                        :field :id
-                        :query-path [:hero :name]}]}
+                        :query-path [:hero :name :id]}]}
              (execute compiled-schema q {} nil))))))
 
 (deftest fragment-names-validations
@@ -217,11 +216,10 @@
            fragment scalarFragment on String {
              id
            }"]
-    (is (= {:errors [{:field :id
-                      :locations [{:column 45
+    (is (= {:errors [{:locations [{:column 45
                                    :line 6}]
                       :message "Path de-references through a scalar type."
-                      :query-path [:scalarFragment/String]}]}
+                      :query-path [:scalarFragment/String :id]}]}
            (execute compiled-schema q {} nil)))))
 
 (deftest no-unused-fragments
@@ -244,14 +242,13 @@
            (execute compiled-schema q {} nil)))))
 
 (deftest query-argument-validations
-    (let [q "{ echoArgs(integer: \"hello world\") { integer } }"]
-      (is (= {:errors [{:argument :integer
-                        :field :echoArgs
+  (let [q "{ echoArgs(integer: \"hello world\") { integer } }"]
+    (is (= {:errors [{:argument :integer
                       :locations [{:column 0
                                    :line 1}]
-                        :message "Exception applying arguments to field `echoArgs': For argument `integer', scalar value is not parsable as type `Int'."
-                        :query-path []
-                        :type-name :Int
+                      :message "Exception applying arguments to field `echoArgs': For argument `integer', scalar value is not parsable as type `Int'."
+                      :query-path [:echoArgs]
+                      :type-name :Int
                       :value "hello world"}]}
              (execute compiled-schema q {} nil))))
 
@@ -261,11 +258,10 @@
                         :defined-arguments [:integer
                                             :integerArray
                                             :inputObject]
-                        :field :echoArgs
                         :locations [{:column 0
                                      :line 1}]
                         :message "Exception applying arguments to field `echoArgs': Unknown argument `undefinedArg'."
-                        :query-path []}]}
+                        :query-path [:echoArgs]}]}
              (execute compiled-schema q {} nil)))))
 
   (testing "invalid deeply nested input-object property"
@@ -275,16 +271,13 @@
                                       string: \"five\",
                                       nestedInputObject: {integerArray: \"hello world\",
                                                           date: \"1983-08-13\"}}) { integer }}"]
-      (is (= {:errors
-              [{:message
-                "Exception applying arguments to field `echoArgs': For argument `inputObject', scalar value is not parsable as type `Int'.",
-                :query-path [],
-                :locations [{:line 1, :column 0}],
-                :field :echoArgs,
-                :argument :inputObject,
-                :value "hello world",
-                :type-name :Int}]}
-
+      (is (= {:errors [{:argument :inputObject
+                        :locations [{:column 0
+                                     :line 1}]
+                        :message "Exception applying arguments to field `echoArgs': For argument `inputObject', scalar value is not parsable as type `Int'."
+                        :query-path [:echoArgs]
+                        :type-name :Int
+                        :value "hello world"}]}
              (execute compiled-schema q {} nil)))))
 
   (testing "valid deeply nested input-object property of type list but of single value"
@@ -311,11 +304,10 @@
   (testing "invalid array element"
     (let [q "{echoArgs(integer: 3, integerArray: [1, 2, \"foo\"]) { integer }}"]
       (is (= {:errors [{:argument :integerArray
-                        :field :echoArgs
                         :locations [{:column 0
                                      :line 1}]
                         :message "Exception applying arguments to field `echoArgs': For argument `integerArray', scalar value is not parsable as type `Int'."
-                        :query-path []
+                        :query-path [:echoArgs]
                         :type-name :Int
                         :value "foo"}]}
              (execute compiled-schema q {} nil)))))
@@ -349,28 +341,25 @@
 
   (testing "Non-nullable arguments"
     (let [q "mutation { addHeroEpisodes(episodes: []) { name appears_in } }"]
-      (is (= {:errors [{:field :addHeroEpisodes
-                        :locations [{:column 9
+      (is (= {:errors [{:locations [{:column 9
                                      :line 1}]
                         :message "Exception applying arguments to field `addHeroEpisodes': Not all non-nullable arguments have supplied values."
                         :missing-arguments [:id]
-                        :query-path []}]}
+                        :query-path [:addHeroEpisodes]}]}
              (execute compiled-schema q nil nil))))
     (let [q "mutation { addHeroEpisodes(id:\"1004\") { name appears_in } }"]
-      (is (= {:errors [{:field :addHeroEpisodes
-                        :locations [{:column 9
+      (is (= {:errors [{:locations [{:column 9
                                      :line 1}]
                         :message "Exception applying arguments to field `addHeroEpisodes': Not all non-nullable arguments have supplied values."
                         :missing-arguments [:episodes]
-                        :query-path []}]}
+                        :query-path [:addHeroEpisodes]}]}
              (execute compiled-schema q nil nil))))
     (let [q "mutation { addHeroEpisodes { name appears_in } }"]
-      (is (= {:errors [{:field :addHeroEpisodes
-                        :locations [{:column 9
+      (is (= {:errors [{:locations [{:column 9
                                      :line 1}]
                         :message "Exception applying arguments to field `addHeroEpisodes': Not all non-nullable arguments have supplied values."
                         :missing-arguments [:episodes :id]
-                        :query-path []}]}
+                        :query-path [:addHeroEpisodes]}]}
              (execute compiled-schema q nil nil))))))
 
 (deftest invalid-type-for-query

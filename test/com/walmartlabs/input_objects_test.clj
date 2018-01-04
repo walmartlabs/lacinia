@@ -16,25 +16,21 @@
            (execute schema "mutation { create_game }")))
 
     (is (= {:errors [{:argument :game_data
-                      :field :create_game
                       :locations [{:column 9
                                    :line 1}]
                       :message "Exception applying arguments to field `create_game': For argument `game_data', no value provided for non-nullable key `id' of input object `game_template'."
                       :missing-key :id
-                      :query-path []
+                      :query-path [:create_game]
                       :required-keys [:id]
                       :schema-type :game_template}]}
            (execute schema "mutation { create_game (game_data: { name: \"Hearts\" }) }")))
 
-    ;; TODO: Missing some needed context from above
-
     (is (= {:errors [{:argument :game_data
-                      :field :create_game
                       :locations [{:column 29
                                    :line 1}]
                       :message "No value provided for non-nullable key `id' of input object `game_template'."
                       :missing-key :id
-                      :query-path []
+                      :query-path [:create_game]
                       :required-keys [:id]
                       :schema-type :game_template}]}
            (execute schema
