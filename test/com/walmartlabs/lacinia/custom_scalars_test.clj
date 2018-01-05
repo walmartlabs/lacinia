@@ -134,9 +134,14 @@
                     {:asOf "2017-04-05"}
                     nil))
         "should return parsed and serialized value")
-    (is (= {:errors [{:message "Scalar value is not parsable as type `Date'.",
-                      :value "abc",
-                      :type-name :Date}]}
+    (is (= {:errors [{:argument :asOf
+                      :field :today
+                      :locations [{:column 20
+                                   :line 1}]
+                      :message "Scalar value is not parsable as type `Date'."
+                      :query-path []
+                      :type-name :Date
+                      :value "abc"}]}
            (execute schema "query ($asOf: Date) {
                               today(asOf: $asOf)
                             }"
@@ -192,7 +197,12 @@
                     {:between []}
                     nil))
         "should return empty list (:between can be an empty list) ")
-    (is (= {:errors [{:message "No value was provided for variable `between', which is non-nullable.",
+    (is (= {:errors [{:argument :between
+                      :field :sundays
+                      :locations [{:column 27
+                                   :line 1}]
+                      :message "No value was provided for variable `between', which is non-nullable."
+                      :query-path []
                       :variable-name :between}]}
            (execute schema "query ($between: [Date!]!) {
                               sundays(between: $between)
@@ -200,7 +210,12 @@
                     {:between nil}
                     nil))
         "should return an error")
-    (is (= {:errors [{:message "Variable `between' contains null members but supplies the value for a list that can't have any null members."
+    (is (= {:errors [{:argument :between
+                      :field :sundays
+                      :locations [{:column 27
+                                   :line 1}]
+                      :message "Variable `between' contains null members but supplies the value for a list that can't have any null members."
+                      :query-path []
                       :variable-name :between}]}
            (execute schema "query ($between: [Date!]!) {
                               sundays(between: $between)
@@ -208,7 +223,12 @@
                     {:between [nil]}
                     nil))
         "should return an error")
-    (is (= {:errors [{:message "Variable `between' contains null members but supplies the value for a list that can't have any null members."
+    (is (= {:errors [{:argument :between
+                      :field :sundays
+                      :locations [{:column 27
+                                   :line 1}]
+                      :message "Variable `between' contains null members but supplies the value for a list that can't have any null members."
+                      :query-path []
                       :variable-name :between}]}
            (execute schema "query ($between: [Date!]!) {
                               sundays(between: $between)
@@ -216,7 +236,12 @@
                     {:between ["2017-03-01" nil]}
                     nil))
         "should return an error")
-    (is (= {:errors [{:message "No value was provided for variable `between', which is non-nullable."
+    (is (= {:errors [{:argument :between
+                      :field :sundays
+                      :locations [{:column 27
+                                   :line 1}]
+                      :message "No value was provided for variable `between', which is non-nullable."
+                      :query-path []
                       :variable-name :between}]}
            (execute schema "query ($between: [Date!]!) {
                               sundays(between: $between)
@@ -240,7 +265,12 @@
                       {:words [[["foo" "bar"]]]}
                       nil))
           "should return nested list")
-      (is (= {:errors [{:message "Variable `words' doesn't contain the correct number of (nested) lists.",
+      (is (= {:errors [{:argument :words
+                        :field :shout
+                        :locations [{:column 33
+                                     :line 1}]
+                        :message "Variable `words' doesn't contain the correct number of (nested) lists."
+                        :query-path []
                         :variable-name :words}]}
              (execute schema "query ($words: [[[CustomType]]]) {
                               shout(words: $words)
@@ -275,7 +305,12 @@
                       {:words [[[nil]]]}
                       nil))
           "should return an error")
-      (is (= {:errors [{:message"Variable `words' doesn't contain the correct number of (nested) lists.",
+      (is (= {:errors [{:argument :words
+                        :field :shout
+                        :locations [{:column 33
+                                     :line 1}]
+                        :message "Variable `words' doesn't contain the correct number of (nested) lists."
+                        :query-path []
                         :variable-name :words}]}
              (execute schema "query ($words: [[[CustomType]]]) {
                               shout(words: $words)
@@ -299,7 +334,12 @@
                                                     :args {:words {:type '(list (list (list (non-null :CustomType))))}}
                                                     :resolve (fn [ctx args v]
                                                                (:words args))}}})]
-      (is (= {:errors [{:message "Variable `words' contains null members but supplies the value for a list that can't have any null members.",
+      (is (= {:errors [{:argument :words
+                        :field :shout
+                        :locations [{:column 34
+                                     :line 1}]
+                        :message "Variable `words' contains null members but supplies the value for a list that can't have any null members."
+                        :query-path []
                         :variable-name :words}]}
              (execute schema "query ($words: [[[CustomType!]]]) {
                               shout(words: $words)
@@ -307,7 +347,12 @@
                       {:words [[[nil]]]}
                       nil))
           "should return an error")
-      (is (= {:errors [{:message"Variable `words' doesn't contain the correct number of (nested) lists.",
+      (is (= {:errors [{:argument :words
+                        :field :shout
+                        :locations [{:column 34
+                                     :line 1}]
+                        :message "Variable `words' doesn't contain the correct number of (nested) lists."
+                        :query-path []
                         :variable-name :words}]}
              (execute schema "query ($words: [[[CustomType!]]]) {
                               shout(words: $words)

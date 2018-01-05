@@ -1,0 +1,11 @@
+{:input-objects
+ {:game_template
+  {:fields {:id {:type (non-null Int)}
+            :name {:type String}}}}
+
+ :mutations
+ {:create_game
+  {:type String
+   :args
+   {:game_data {:type :game_template}}
+   :resolve :mutation/create-game}}}
