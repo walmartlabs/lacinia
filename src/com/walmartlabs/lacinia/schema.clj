@@ -525,8 +525,7 @@
     ;; the less efficient path (the :else clause).
     ;; This also works with reify-ed instances of FieldResolver.
     (satisfies? resolve/FieldResolver resolver)
-    (wrap-resolver-to-ensure-resolver-result (fn [context args value]
-                                               (resolve/resolve-value resolver context args value)))
+    (recur (resolve/as-resolver-fn resolver))
 
     ;; If a resolver reports its type as ResolverResult, then we don't
     ;; need to wrap it. This can really add up for all the default resolvers.
