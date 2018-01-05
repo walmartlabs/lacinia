@@ -1,7 +1,7 @@
 (ns com.walmartlabs.lacinia.resolver-result-test
   (:require
     [clojure.test :refer [deftest is]]
-    [com.walmartlabs.lacinia.resolve :as r])
+    [com.walmartlabs.lacinia.resolve :as r :refer [FieldResolver]])
   (:import (java.util.concurrent Executor)))
 
 (deftest resolve-as-returns-resolver-result
@@ -93,6 +93,13 @@
         wrapped (r/wrap-resolver-result resolver-fn inc-wrapper)
         *result (as-promise (wrapped nil nil nil))]
     (is (= 101 @*result))))
+
+(deftest supports-field-resolvers
+  (let [resolver-fn (reify FieldResolver
+                      (resolve-value [_ _ _ _] 97))
+        wrapped (r/wrap-resolver-result resolver-fn inc-wrapper)
+        *result (as-promise (wrapped nil nil nil))]
+    (is (= 98 @*result))))
 
 (deftest wrapper-invoked-with-value-unpacked-from-resolver-result
   (let [resolver-fn (constantly (r/resolve-as 200))
