@@ -81,3 +81,17 @@
                       :query-path [:current_status]
                       :resolved-value :ok}]}
            result))))
+
+(deftest enum-resolver-must-return-keyword
+  (let [schema (utils/compile-schema "bad-resolver-enum.edn"
+                                     {:query/current-status (constantly "ok")})
+        result (utils/execute schema "{ current_status }")]
+    (is (= {:data {:current_status nil}
+            :errors [{:enum-values #{:bad
+                                     :good}
+                      :locations [{:column 0
+                                   :line 1}]
+                      :message "Field resolver for an enum type must return a keyword."
+                      :query-path [:current_status]
+                      :resolved-value "ok"}]}
+           result))))
