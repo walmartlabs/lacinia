@@ -135,8 +135,7 @@
                                 :Event
                                 1
                                 :parse]
-                           :path [:args
-                                  :schema
+                           :path [:schema
                                   :scalars
                                   1
                                   :parse]}
@@ -163,7 +162,7 @@
 (deftest enum-values-must-be-valid-ids
   (is-compile-exception
     {:enums {:episode {:values [:new-hope :empire :return-of-jedi]}}}
-    "[:keyword :new-hope] fails spec: :com.walmartlabs.lacinia.schema/enum-value at: [:args :schema :enums 1 :values :bare-value] predicate: graphql-identifier?"))
+    "[:keyword :new-hope] fails spec: :com.walmartlabs.lacinia.schema/enum-value at: [:schema :enums 1 :values :bare-value] predicate: graphql-identifier?"))
 
 (deftest requires-resolve-on-operation
   (is-compile-exception
