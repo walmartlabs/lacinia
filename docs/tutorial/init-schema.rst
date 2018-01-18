@@ -30,7 +30,7 @@ and present data, it's not any form of database layer, object relational mapper,
 of that type.
 
 Instead, Lacinia handles the parsing of a client query, and guides
-the execution of that query, ultimately invoking applicatio-specific callback hooks:
+the execution of that query, ultimately invoking application-specific callback hooks:
 :doc:`field resolvers </resolve/index>`.
 Field resolvers are the only source of actual data.
 Ultimately, field resolvers are simple Clojure functions, but those can't, and shouldn't, be
