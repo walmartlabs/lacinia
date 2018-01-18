@@ -1216,11 +1216,10 @@
   ([schema options]
    ;; This is based on clojure.spec's assert, but is always on
    ;; the single branch alt adds :args to the explain path as expected in tests
-   (when-not (s/valid? ::compile-args [schema options])
-     (let [ed (s/explain-data ::compile-args [schema options])]
-       (throw (ex-info
-               (str "Spec assertion failed\n" (with-out-str (s/explain-out ed)))
-               ed))))
+   (when-let [ed (s/explain-data ::compile-args [schema options])]
+     (throw (ex-info
+             (str "Arguments to compile do not conform to spec:\n" (with-out-str (s/explain-out ed)))
+             ed)))
    (let [options' (merge default-compile-opts options)
          introspection-schema (introspection/introspection-schema)]
      (-> schema
