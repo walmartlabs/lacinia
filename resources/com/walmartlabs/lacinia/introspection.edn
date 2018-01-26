@@ -14,14 +14,16 @@
     :description {:type String}
 
     :fields {:type (list :__Field)
-             :args {:includeDeprecated {:type Boolean}}
+             :args {:includeDeprecated {:type Boolean
+                                        :default-value false}}
              :resolve :fields}
     :interfaces {:type (list :__Type)
                  :resolve :interfaces}
     :possibleTypes {:type (list :__Type)
                     :resolve :possible-types}
     :enumValues {:type (list :__EnumValue)
-                 :args {:includeDeprecated {:type Boolean}}
+                 :args {:includeDeprecated {:type Boolean
+                                            :default-value false}}
                  :resolve :enum-values}
     :inputFields {:type (list :__InputValue)
                   :resolve :input-fields}

@@ -108,9 +108,20 @@ Arguments do **not** have resolvers, as they represent explicit data from the cl
 passed to the field.
 
 Arguments may also have a ``:default-value``.
+The default value is supplied to the field resolver when the request does not itself supply
+a value for the argument.
+
+An argument that is not specified in the query, and does not have a default value, will be omitted
+from the argument map passed to the :doc:`field resolver <resolve/index>`.
 
 
 Description
 -----------
 
 A field may include a ``:description`` key; the value is a string exposed through :doc:`introspection`.
+
+Deprecation
+-----------
+
+A field may include a ``:deprecation`` key; this identifies that the field
+is :doc:`deprecated <deprecation>`.

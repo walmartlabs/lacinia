@@ -43,6 +43,7 @@ responding with JSON, it is also exceptionally useful for allowing backend syste
    queries
    mutations
    subscriptions/index
+   deprecation
    directives
    resolve/index
    input-objects

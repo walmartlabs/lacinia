@@ -33,4 +33,7 @@ To provide a description for individual enum values, a different form must be us
    :language: clojure
 
 The ``:description`` key is optional.
-You can mix-and-match the two forms.
+
+You may include the ``:deprecation`` key used to mark a single value as :doc:`deprecated <deprecation>`.
+
+You may mix-and-match the two forms.

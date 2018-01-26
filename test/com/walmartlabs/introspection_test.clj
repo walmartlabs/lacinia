@@ -1345,3 +1345,38 @@
                                           :name "FAIL"}]}}}
            (utils/execute schema
                           "{ __type(name: \"status\") { description enumValues { name description }}}")))))
+
+(deftest deprecated-fields
+  (let [schema (utils/compile-schema "deprecated-fields-schema.edn" {})]
+    (is (= {:data {:__type {:fields [{:deprecationReason nil
+                                      :description nil
+                                      :isDeprecated false
+                                      :name "honorific"}
+                                     {:deprecationReason "Out of fashion."
+                                      :description "Used by poets."
+                                      :isDeprecated true
+                                      :name "nomdeplume"}
+                                     {:deprecationReason nil
+                                      :description "Replaced by honorific."
+                                      :isDeprecated true
+                                      :name "title"}]}}}
+           (utils/execute schema
+                          "{ __type(name: \"user\") {
+                                fields(includeDeprecated: true) {
+                                  name description isDeprecated deprecationReason
+                                }
+                              }
+                           }")))
+    ;; Deprecated are ignored by default:
+
+    (is (= {:data {:__type {:fields [{:deprecationReason nil
+                                      :description nil
+                                      :isDeprecated false
+                                      :name "honorific"}]}}}
+           (utils/execute schema
+                          "{ __type(name: \"user\") {
+                                fields {
+                                  name description isDeprecated deprecationReason
+                                }
+                              }
+                           }")))))
