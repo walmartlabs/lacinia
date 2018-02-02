@@ -8,11 +8,10 @@
     [com.walmartlabs.test-utils :refer [simplify]]
     [com.walmartlabs.test-utils :as utils])
   (:import
-    (clojure.lang ExceptionInfo)))
+    (clojure.lang ExceptionInfo)
+    (java.util Date)))
 
 (def compiled-schema (schema/compile test-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))
-
-
 
 (defn q
   ([query]
@@ -62,7 +61,6 @@
                    :type-name :invalid}}
            (ex-data e)))))
 
-
 (deftest converts-var-value-from-string-to-enum
   (is (= {:data {:hero {:name "Luke Skywalker"}}}
          (q "query ($ep : episode!) { hero (episode: $ep) { name }}"
@@ -71,27 +69,25 @@
 (deftest resolver-must-return-defined-enum
   (let [schema (utils/compile-schema "bad-resolver-enum.edn"
                                      {:query/current-status (constantly :ok)})
-        result (utils/execute schema "{ current_status }")]
-    (is (= {:data {:current_status nil}
-            :errors [{:enum-values #{:bad
-                                     :good}
-                      :locations [{:column 0
-                                   :line 1}]
-                      :message "Field resolver returned an undefined enum value."
-                      :query-path [:current_status]
-                      :resolved-value :ok}]}
-           result))))
+        e (is (thrown-with-msg? ExceptionInfo
+                                #"Field resolver returned an undefined enum value"
+                                (utils/execute schema "{ current_status }")))]
+    (is (= {:enum-values #{:bad
+                           :good}
+            :resolved-value :ok}
+           (ex-data e)))))
 
-(deftest enum-resolver-must-return-keyword
+(deftest enum-resolver-must-return-named-value
+  (let [bad-value (Date.)
+        schema (utils/compile-schema "bad-resolver-enum.edn"
+                                     {:query/current-status (constantly bad-value)})
+        e (is (thrown-with-msg? ExceptionInfo #"Can't convert value to keyword"
+                                (utils/execute schema "{ current_status }")))]
+    (is (= {:value bad-value}
+           (ex-data e)))))
+
+(deftest will-convert-to-keyword
   (let [schema (utils/compile-schema "bad-resolver-enum.edn"
-                                     {:query/current-status (constantly "ok")})
-        result (utils/execute schema "{ current_status }")]
-    (is (= {:data {:current_status nil}
-            :errors [{:enum-values #{:bad
-                                     :good}
-                      :locations [{:column 0
-                                   :line 1}]
-                      :message "Field resolver for an enum type must return a keyword."
-                      :query-path [:current_status]
-                      :resolved-value "ok"}]}
-           result))))
+                                     {:query/current-status (constantly "good")})]
+    (is (= {:data {:current_status :good}})
+        (utils/execute schema "{ current_status }"))))

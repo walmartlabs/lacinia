@@ -1,3 +1,14 @@
+## 0.25.0 -- UNRELEASED
+
+Enum validation has changed: field resolvers may now return
+a keyword, symbol, or string.
+Internally, the value is converted to a keyword before being added
+to the response map.
+
+However, field resolvers that return an invalid value for an enum field
+results in a thrown exception: previously, this was handled as
+a field error.
+
 ## 0.24.0 -- 30 Jan 2018
 
 Added the FieldResolver protocol that allows a Clojure record, such as a

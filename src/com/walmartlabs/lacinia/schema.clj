@@ -607,24 +607,19 @@
                    (let [possible-values (-> field-type :values set)]
                      (fn validate-enum [{:keys [resolved-value]
                                          :as selector-context}]
-                       (cond
+                       (cond-let
                          (nil? resolved-value)
                          (selector selector-context)
 
-                         (not (simple-keyword? resolved-value))
-                         (selector-error selector-context
-                                         (error "Field resolver for an enum type must return a keyword."
-                                                {:resolved-value resolved-value
-                                                 :enum-values possible-values}))
+                         :let [keyword-value (as-keyword resolved-value)]
 
-                         (not (possible-values resolved-value))
-                         (selector-error selector-context
-                                         (error "Field resolver returned an undefined enum value."
-                                                {:resolved-value resolved-value
-                                                 :enum-values possible-values}))
+                         (not (possible-values keyword-value))
+                         (throw (ex-info "Field resolver returned an undefined enum value."
+                                         {:resolved-value resolved-value
+                                          :enum-values possible-values}))
 
                          :else
-                         (selector selector-context))))
+                         (selector (assoc selector-context :resolved-value keyword-value)))))
                    selector)
 
         union-or-interface? (#{:interface :union} category)
