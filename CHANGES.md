@@ -1,3 +1,8 @@
+## 0.25.0 -- UNRELEASED
+
+It is now possible to mark fields (including operations) and enum values
+as deprecated.
+
 ## 0.24.0 -- 30 Jan 2018
 
 Added the FieldResolver protocol that allows a Clojure record, such as a

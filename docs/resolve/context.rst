@@ -2,7 +2,7 @@ Application Context
 ===================
 
 The application context passed to your field resolvers is normally set by the initial call to
-`com.walmartlabs.lacina/execute-query`.
+``com.walmartlabs.lacina/execute-query``.
 Lacinia uses the context for its own book-keeping (the keys it places into the map are namespaced to
 avoid collisions) but otherwise the same map is passed to all field resolvers.
 
@@ -32,3 +32,6 @@ The resolver for the ``product`` field can communicate this "down tree" to the r
    :language: clojure
 
 This new key, ``::search-term``, is only present in the context below ``products`` field.
+
+When using `lacinia-pedestal <https://github.com/walmartlabs/lacinia-pedestal>`_, the default behavior is to capture the Ring request map and supply it
+in the application context under the ``:request`` key.

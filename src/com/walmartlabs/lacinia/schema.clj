@@ -254,6 +254,8 @@
 ;;-------------------------------------------------------------------------------
 ;; ## Validations
 
+(s/def ::deprecated (s/or :basic true?
+                          :detailed string?))
 (s/def ::schema-key (s/and simple-keyword?
                            ::graphql-identifier))
 (s/def ::graphql-identifier #(re-matches graphql-identifier (name %)))
@@ -273,9 +275,11 @@
                        :protocol #(satisfies? resolve/FieldResolver %)))
 (s/def ::field (s/keys :opt-un [::description
                                 ::resolve
-                                ::args]
+                                ::args
+                                ::deprecated]
                        :req-un [::type]))
 (s/def ::operation (s/keys :opt-un [::description
+                                    ::deprecated
                                     ::args]
                            :req-un [::type
                                     ::resolve]))
@@ -303,7 +307,8 @@
                            graphql-identifier?))
 (s/def ::enum-value-def (s/or :bare-value ::enum-value
                               :described (s/keys :req-un [::enum-value]
-                                                 :opt-un [::description])))
+                                                 :opt-un [::description
+                                                          ::deprecated])))
 (s/def ::values (s/and (s/coll-of ::enum-value-def) seq))
 (s/def ::enum (s/keys :opt-un [::description]
                       :req-un [::values]))
@@ -910,8 +915,10 @@
   (let [value-defs (->> enum-def :values (mapv normalize-enum-value-def))
         values (mapv :enum-value value-defs)
         values-set (set values)
-        descriptions (reduce (fn [m {:keys [enum-value description]}]
-                               (assoc m enum-value description))
+        ;; The detail for each value is the map that may includes :enum-value and
+        ;; may include :description and/or :deprecated.
+        details (reduce (fn [m {:keys [enum-value] :as detail}]
+                               (assoc m enum-value detail))
                              {}
                              value-defs)]
     (when-not (= (count values) (count values-set))
@@ -920,7 +927,7 @@
                       {:enum enum-def})))
     (assoc enum-def
            :values values
-           :descriptions descriptions
+           :values-detail details
            :values-set values-set)))
 
 (defmethod compile-type :scalar

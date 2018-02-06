@@ -1,0 +1,10 @@
+{:objects
+ {:user
+  {:fields
+   {:title {:type String
+            :deprecated true
+            :description "Replaced by honorific."}
+    :honorific {:type String}
+    :nomdeplume {:type String
+                 :deprecated "Out of fashion."
+                 :description "Used by poets."}}}}}
