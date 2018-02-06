@@ -9,6 +9,12 @@ However, field resolvers that return an invalid value for an enum field
 results in a thrown exception: previously, this was handled as
 a field error.
 
+It is now possible to mark fields (including operations) and enum values
+as deprecated.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/13?closed=1)
+
+
 ## 0.24.0 -- 30 Jan 2018
 
 Added the FieldResolver protocol that allows a Clojure record, such as a

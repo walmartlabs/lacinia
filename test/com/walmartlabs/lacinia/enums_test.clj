@@ -91,3 +91,38 @@
                                      {:query/current-status (constantly "good")})]
     (is (= {:data {:current_status :good}})
         (utils/execute schema "{ current_status }"))))
+
+(deftest deprecated-enum-values
+  (let [schema (utils/compile-schema "deprecated-enums-schema.edn" {})]
+    (is (= {:data {:__type {:enumValues [{:deprecationReason "Should use happy."
+                                          :description nil
+                                          :isDeprecated true
+                                          :name "GOOD"}
+                                         {:deprecationReason nil
+                                          :description "Desired state."
+                                          :isDeprecated false
+                                          :name "HAPPY"}
+                                         {:deprecationReason nil
+                                          :description nil
+                                          :isDeprecated true
+                                          :name "SAD"}]}}}
+           (utils/execute schema
+                          "{ __type(name: \"mood\") {
+                                enumValues(includeDeprecated: true) {
+                                  name description isDeprecated deprecationReason
+                                }
+                              }
+                           }")))
+    ;; Deprecated are ignored by default:
+
+    (is (= {:data {:__type {:enumValues [{:deprecationReason nil
+                                          :description "Desired state."
+                                          :isDeprecated false
+                                          :name "HAPPY"}]}}}
+           (utils/execute schema
+                          "{ __type(name: \"mood\") {
+                                enumValues {
+                                  name description isDeprecated deprecationReason
+                                }
+                              }
+                           }")))))

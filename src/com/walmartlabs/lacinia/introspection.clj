@@ -5,7 +5,8 @@
     [clojure.java.io :as io]
     [com.walmartlabs.lacinia.util :as util]
     [com.walmartlabs.lacinia.internal-utils :refer [remove-keys is-internal-type-name?]]
-    [com.walmartlabs.lacinia.constants :as constants]))
+    [com.walmartlabs.lacinia.constants :as constants]
+    [clojure.string :as str]))
 
 (def ^:private category->kind
   {:scalar :SCALAR
@@ -39,30 +40,48 @@
       (map #(type-name->schema-type schema %)
            interfaces))))
 
+(defn ^:private is-deprecated?
+  "The :deprecated key can either be a boolean, or a string which is the deprecation reason."
+  [deprecated]
+  (cond
+    (true? deprecated)
+    true
+
+    (string? deprecated)
+    (not (str/blank? deprecated))
+
+    :else
+    false))
+
 (defn ^:private resolve-field
   [field-def]
-  {:name (-> field-def :field-name name)
-   :description (:description field-def)
-   :args (for [arg-def (->> field-def :args vals (sort-by :arg-name))]
-           {:name (-> arg-def :arg-name name)
-            :description (:description arg-def)
-            :defaultValue (:default-value arg-def)
-            ;; This is for resolve-nested-type, but it might actually be
-            ;; a field definition, argument definition, or input value (a field of
-            ;; an input object).
-            ::type-map (:type arg-def)})
-   :isDeprecated false
-   ::type-map (:type field-def)})
+  (let [{:keys [deprecated description args]} field-def]
+    {:name (-> field-def :field-name name)
+     :description description
+     :args (for [arg-def (->> args vals (sort-by :arg-name))]
+             {:name (-> arg-def :arg-name name)
+              :description (:description arg-def)
+              :defaultValue (:default-value arg-def)
+              ;; This is for resolve-nested-type, but it might actually be
+              ;; a field definition, argument definition, or input value (a field of
+              ;; an input object).
+              ::type-map (:type arg-def)})
+     :isDeprecated (is-deprecated? deprecated)
+     :deprecationReason (when (string? deprecated) deprecated)
+     ::type-map (:type field-def)}))
 
 (defn ^:private resolve-fields
-  [_ _ object-or-interface]
-  (let [{:keys [::category ::type-def]} object-or-interface]
+  [_ args object-or-interface]
+  (let [{:keys [::category ::type-def]} object-or-interface
+        {:keys [includeDeprecated]} args]
     (when (#{:object :interface} category)
       (map #(resolve-field %)
            (->> type-def
                 :fields
                 vals
                 (remove #(-> % :field-name is-internal-type-name?))
+                (filter #(or includeDeprecated
+                             (-> % :deprecated is-deprecated? not)))
                 (sort-by :field-name))))))
 
 (defn ^:private resolve-root-schema
@@ -112,15 +131,21 @@
     (type-name->schema-type schema type-name)))
 
 (defn ^:private resolve-enum-values
-  [_ _ value]
-  (let [{:keys [::category ::type-def]} value]
+  [_ args value]
+  (let [{:keys [::category ::type-def]} value
+        {:keys [includeDeprecated]} args]
     (when (= :enum category)
       ;; Use the ordered list, not the set, in case order
       ;; has meaning (unlike elsewhere we we sort alphabetically).
-      (for [value (get type-def :values)]
+      (for [value (get type-def :values)
+            :let [{:keys [description deprecated]} (get-in type-def [:values-detail value])
+                  is-deprecated (is-deprecated? deprecated)]
+            :when (or includeDeprecated
+                      (not is-deprecated))]
         {:name (name value)
-         :description (get-in type-def [:descriptions value])
-         :isDeprecated false}))))
+         :description description
+         :isDeprecated is-deprecated
+         :deprecationReason (when (string? deprecated) deprecated)}))))
 
 (defn ^:private resolve-input-fields
   [context _ value]

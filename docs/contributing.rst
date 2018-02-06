@@ -17,11 +17,17 @@ Process
 Our process is light: once a pull request (PR) comes in, core committers will review the
 the code and provide feedback.
 
+.. sidebar:: CLA
+
+   When submitting a PR, you will need to sign the Contributor License Agreement (CLA) before the
+   PR can be *reviewed or merged*. The CLA is quite straightforward, and simply assigns
+   copyright and patent rights to Walmart for any contributed changes to Lacinia.
+
 After at least two core committers provide the traditional feedback LGTM (looks good to me), we'll merge to master.
 
 It is the submitter's responsibility to keep a PR up to date when it has conflicts with master.
 
-Please do not change the version number in :file:`project.clj`; the core committes will handle version number changes.
+Please do not change the version number in :file:`project.clj`; the core committers will handle version number changes.
 Generally, we advance the version number immediately after a release.
 
 Please close PRs that are not ready to merge, or need other refinements, and re-open when ready.
@@ -46,8 +52,8 @@ Keep as much as possible private; the more public API there is, the more there i
 to support release on release.
 
 Occasionally it is not reasonable to refactor a common implementation function
-out of a public namespaces to a private namespace, in order to share
-thne function between namespaces.
+out of a public namespace to a private namespace, in order to share
+the function between namespaces.
 In that case, add the ``:no-doc`` metadata.
 This will prevent that var from appearing in the generated API documentation,
 and signify that the function is intended to be private (and therefore,
@@ -77,7 +83,7 @@ Documentation
 -------------
 
 Patches that change behavior and invalidate existing documentation will be rejected.
-Such patches should alos update the documentation.
+Such patches should also update the documentation.
 
 Ideally, patches that introduce new functionality will also include documentation changes.
 
