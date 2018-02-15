@@ -7,7 +7,8 @@
     [com.walmartlabs.lacinia.executor :as executor]
     [com.walmartlabs.lacinia.util :as util]
     [com.walmartlabs.test-utils :refer [is-thrown]]
-    [clojure.string :as str]))
+    [clojure.string :as str]
+    [clojure.pprint :as pprint]))
 
 (defmacro is-error?
   [form]
@@ -97,6 +98,22 @@
         (util/attach-resolvers
           schema-generated-lists
           {:schema-generated-resolver schema-generated-resolver}))))
+
+(deftest printing-support
+  (let [compiled-schema (schema/compile {})
+        as-map (into {} compiled-schema)]
+    (is (= "#CompiledSchema<>"
+           (pr-str compiled-schema)))
+
+    (is (= "#CompiledSchema<>"
+           (pprint/write compiled-schema :stream nil)))
+
+    (binding [schema/*verbose-schema-printing* true]
+      (is (= (pr-str as-map)
+             (pr-str compiled-schema)))
+
+      (is (= (pprint/write as-map :stream nil)
+             (pprint/write compiled-schema :stream nil))))))
 
 (deftest custom-scalars
   []
