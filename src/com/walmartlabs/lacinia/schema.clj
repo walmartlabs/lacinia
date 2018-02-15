@@ -33,8 +33,6 @@
 ;;-------------------------------------------------------------------------------
 ;; ## Helpers
 
-(s/check-asserts true)
-
 (def ^:private graphql-identifier #"(?i)_*[a-z][a-zA-Z0-9_]*")
 
 (defrecord ^:private CoercionFailure
@@ -1197,6 +1195,12 @@
 (def ^:private default-compile-opts
   {:default-field-resolver default-field-resolver})
 
+(s/def ::compile-args
+  (s/cat :schema ::schema-object
+         :options (s/? (s/nilable ::compile-options))))
+
+(s/fdef compile :args ::compile-args)
+
 (defn compile
   "Compiles an schema, verifies its correctness, and prepares it for query execution.
   The compiled schema is in an entirely different format than the input schema.
@@ -1217,23 +1221,18 @@
   ([schema]
    (compile schema nil))
   ([schema options]
+   ;; This is based on clojure.spec's assert, but is always on
+   ;; the single branch alt adds :args to the explain path as expected in tests
+   (when-let [ed (s/explain-data ::compile-args [schema options])]
+     (throw (ex-info
+             (str "Arguments to compile do not conform to spec:\n" (with-out-str (s/explain-out ed)))
+             ed)))
    (let [options' (merge default-compile-opts options)
          introspection-schema (introspection/introspection-schema)]
      (-> schema
          (deep-merge introspection-schema)
          (construct-compiled-schema options')
          (vary-meta assoc ::compiled true)))))
-
-(s/fdef compile
-        :args (s/cat :schema ::schema-object
-                     :options (s/? (s/nilable ::compile-options))))
-
-;; Instrumenting compile ensures that a number of important checks occur.
-;; It makes things slower, but that cost is endured once for a production app.
-;; When doing REPL development, it is valuable to have the checks at compile, vs.
-;; difficult to trace exceptions at runtime.
-
-(stest/instrument `compile)
 
 ;; The compiled schema tends to be huge and unreadable. It clutters exception output.
 ;; The following defmethods reduce its output to a stub.
@@ -1256,6 +1255,3 @@
   (if *verbose-schema-printing*
     (pprint/simple-dispatch (into {} schema))
     (pr schema)))
-
-
-
