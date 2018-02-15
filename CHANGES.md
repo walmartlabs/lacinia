@@ -1,4 +1,22 @@
-## 0.24.0 -- UNRELEASED
+## 0.25.0 -- UNRELEASED
+
+Enum validation has changed: field resolvers may now return
+a keyword, symbol, or string.
+Internally, the value is converted to a keyword before being added
+to the response map.
+
+However, field resolvers that return an invalid value for an enum field
+results in a thrown exception: previously, this was handled as
+a field error.
+
+It is now possible to mark fields (including operations) and enum values
+as deprecated.
+
+Compiled schemas now print and pretty-print as `#CompiledSchema<>`.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/13?closed=1)
+
+## 0.24.0 -- 30 Jan 2018
 
 Added the FieldResolver protocol that allows a Clojure record, such as a
 [Component](https://github.com/stuartsierra/component), to act as a field resolver.
@@ -7,6 +25,8 @@ Field resolvers for enum types are now required to return a keyword, and that
 keyword must match one of the values defined for the enum.
 Previously, Lacinia failed to peform any checks in this case, which could result
 in invalid data present in the result map.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/12?closed=1)
 
 ## 0.23.0 -- 5 Dec 2017
 

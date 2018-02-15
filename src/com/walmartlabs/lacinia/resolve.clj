@@ -183,16 +183,18 @@
         (satisfies? ResolverResult value))))
 
 (defn as-resolver-fn
-  "Wraps a [[FieldResolver]] instance as a field resolver function."
+  "Wraps a [[FieldResolver]] instance as a field resolver function.
+
+  If the field-resolver provided is a function, it is returned unchanged."
   {:added "0.24.0"}
   [field-resolver]
-  (fn [context args value]
-    (resolve-value field-resolver context args value)))
+  (if (fn? field-resolver)
+    field-resolver
+    (fn [context args value]
+      (resolve-value field-resolver context args value))))
 
 (defn wrap-resolver-result
-  "Wraps a resolver function or instance, passing the result through a wrapper function.
-
-  The resolver argument may be a resolver function, or an instance of [[FieldResolver]].
+  "Wraps a resolver function or ([[FieldResolver]] instance), passing the result through a wrapper function.
 
   The wrapper function is passed four values:  the context, arguments, and value
   as passed to the resolver, then the resolved value from the
@@ -210,11 +212,10 @@
   using `with-error` or `with-context`."
   {:added "0.23.0"}
   [resolver wrapper-fn]
-  (if-not (fn? resolver)
-    (recur (as-resolver-fn resolver) wrapper-fn)
+  (let [resolver-fn (as-resolver-fn resolver)]
     ^ResolverResult
     (fn [context args value]
-      (let [resolved-value (resolver context args value)
+      (let [resolved-value (resolver-fn context args value)
             final-result (resolve-promise)
             deliver-final-result (fn [commands new-value]
                                    (deliver! final-result

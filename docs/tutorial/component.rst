@@ -108,7 +108,7 @@ The real changes are at the bottom of the namespace.
 There's a new record, SchemaProvider, that implements the Lifecycle
 protocol.
 
-Lifecycle is optional; trival components may not need it.
+Lifecycle is optional; trivial components may not need it.
 In our case, we use the ``start`` method as an opportunity to
 load and compile the Lacinia schema.
 

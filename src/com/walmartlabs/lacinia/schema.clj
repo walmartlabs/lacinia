@@ -19,9 +19,11 @@
     [clojure.string :as str]
     [clojure.set :refer [difference]]
     [clojure.spec.test.alpha :as stest]
-    [com.walmartlabs.lacinia.resolve :as resolve])
+    [com.walmartlabs.lacinia.resolve :as resolve]
+    [clojure.pprint :as pprint])
   (:import
-    (clojure.lang IObj)))
+    (clojure.lang IObj)
+    (java.io Writer)))
 
 ;; When using Clojure 1.9 alpha, the dependency on clojure-future-spec can be excluded,
 ;; and this code will not trigger; any? will come out of clojure.core as normal.
@@ -252,6 +254,8 @@
 ;;-------------------------------------------------------------------------------
 ;; ## Validations
 
+(s/def ::deprecated (s/or :basic true?
+                          :detailed string?))
 (s/def ::schema-key (s/and simple-keyword?
                            ::graphql-identifier))
 (s/def ::graphql-identifier #(re-matches graphql-identifier (name %)))
@@ -271,9 +275,11 @@
                        :protocol #(satisfies? resolve/FieldResolver %)))
 (s/def ::field (s/keys :opt-un [::description
                                 ::resolve
-                                ::args]
+                                ::args
+                                ::deprecated]
                        :req-un [::type]))
 (s/def ::operation (s/keys :opt-un [::description
+                                    ::deprecated
                                     ::args]
                            :req-un [::type
                                     ::resolve]))
@@ -301,7 +307,8 @@
                            graphql-identifier?))
 (s/def ::enum-value-def (s/or :bare-value ::enum-value
                               :described (s/keys :req-un [::enum-value]
-                                                 :opt-un [::description])))
+                                                 :opt-un [::description
+                                                          ::deprecated])))
 (s/def ::values (s/and (s/coll-of ::enum-value-def) seq))
 (s/def ::enum (s/keys :opt-un [::description]
                       :req-un [::values]))
@@ -605,24 +612,19 @@
                    (let [possible-values (-> field-type :values set)]
                      (fn validate-enum [{:keys [resolved-value]
                                          :as selector-context}]
-                       (cond
+                       (cond-let
                          (nil? resolved-value)
                          (selector selector-context)
 
-                         (not (simple-keyword? resolved-value))
-                         (selector-error selector-context
-                                         (error "Field resolver for an enum type must return a keyword."
-                                                {:resolved-value resolved-value
-                                                 :enum-values possible-values}))
+                         :let [keyword-value (as-keyword resolved-value)]
 
-                         (not (possible-values resolved-value))
-                         (selector-error selector-context
-                                         (error "Field resolver returned an undefined enum value."
-                                                {:resolved-value resolved-value
-                                                 :enum-values possible-values}))
+                         (not (possible-values keyword-value))
+                         (throw (ex-info "Field resolver returned an undefined enum value."
+                                         {:resolved-value resolved-value
+                                          :enum-values possible-values}))
 
                          :else
-                         (selector selector-context))))
+                         (selector (assoc selector-context :resolved-value keyword-value)))))
                    selector)
 
         union-or-interface? (#{:interface :union} category)
@@ -908,8 +910,10 @@
   (let [value-defs (->> enum-def :values (mapv normalize-enum-value-def))
         values (mapv :enum-value value-defs)
         values-set (set values)
-        descriptions (reduce (fn [m {:keys [enum-value description]}]
-                               (assoc m enum-value description))
+        ;; The detail for each value is the map that may includes :enum-value and
+        ;; may include :description and/or :deprecated.
+        details (reduce (fn [m {:keys [enum-value] :as detail}]
+                               (assoc m enum-value detail))
                              {}
                              value-defs)]
     (when-not (= (count values) (count values-set))
@@ -918,7 +922,7 @@
                       {:enum enum-def})))
     (assoc enum-def
            :values values
-           :descriptions descriptions
+           :values-detail details
            :values-set values-set)))
 
 (defmethod compile-type :scalar
@@ -1128,6 +1132,8 @@
   (fn [_ _ value]
     (resolve-as value)))
 
+(defrecord CompiledSchema [])
+
 (defn ^:private construct-compiled-schema
   [schema options]
   ;; Note: using merge, not two calls to xfer-types, since want to allow
@@ -1141,10 +1147,10 @@
                                                   %)))]
     (-> {constants/query-root {:category :object
                                :type-name constants/query-root
-                                 :description "Root of all queries."}
+                               :description "Root of all queries."}
          constants/mutation-root {:category :object
                                   :type-name constants/mutation-root
-                                   :description "Root of all mutations."}
+                                  :description "Root of all mutations."}
          constants/subscription-root {:category :object
                                       :type-name constants/subscription-root
                                       :description "Root of all subscriptions."}}
@@ -1163,7 +1169,8 @@
               (map-vals #(compile-type % s) s))
         (prepare-and-validate-interfaces)
         (prepare-and-validate-objects :object options)
-        (prepare-and-validate-objects :input-object options))))
+        (prepare-and-validate-objects :input-object options)
+        map->CompiledSchema)))
 
 (defn default-field-resolver
   "The default for the :default-field-resolver option, this uses the field name as the key into
@@ -1226,3 +1233,25 @@
          (deep-merge introspection-schema)
          (construct-compiled-schema options')
          (vary-meta assoc ::compiled true)))))
+
+;; The compiled schema tends to be huge and unreadable. It clutters exception output.
+;; The following defmethods reduce its output to a stub.
+
+(def ^{:dynamic true
+       :added "0.25.0"} *verbose-schema-printing*
+  "If bound to true, then the compiled schema prints and pretty-prints like an ordinary map,
+  which is sometimes useful during development. When false (the default) the schema
+  output is just a placeholder."
+  false)
+
+(defmethod print-method CompiledSchema
+  [schema ^Writer w]
+  (if *verbose-schema-printing*
+    (print-method (into {} schema) w)
+    (.write w "#CompiledSchema<>")))
+
+(defmethod pprint/simple-dispatch CompiledSchema
+  [schema]
+  (if *verbose-schema-printing*
+    (pprint/simple-dispatch (into {} schema))
+    (pr schema)))

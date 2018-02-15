@@ -1,0 +1,8 @@
+{:enums
+ {:mood
+  {:values [{:enum-value :GOOD
+             :deprecated "Should use happy."}
+            {:enum-value :HAPPY
+             :description "Desired state."}
+            {:enum-value :SAD
+             :deprecated true}]}}}
