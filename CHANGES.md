@@ -1,9 +1,20 @@
 ## 0.25.0 -- UNRELEASED
 
+Enum validation has changed: field resolvers may now return
+a keyword, symbol, or string.
+Internally, the value is converted to a keyword before being added
+to the response map.
+
+However, field resolvers that return an invalid value for an enum field
+results in a thrown exception: previously, this was handled as
+a field error.
+
 It is now possible to mark fields (including operations) and enum values
 as deprecated.
 
 Compiled schemas now print and pretty-print as `#CompiledSchema<>`.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/13?closed=1)
 
 ## 0.24.0 -- 30 Jan 2018
 
