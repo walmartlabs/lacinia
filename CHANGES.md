@@ -12,8 +12,9 @@ a field error.
 It is now possible to mark fields (including operations) and enum values
 as deprecated.
 
-[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/13?closed=1)
+Compiled schemas now print and pretty-print as `#CompiledSchema<>`.
 
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/13?closed=1)
 
 ## 0.24.0 -- 30 Jan 2018
 

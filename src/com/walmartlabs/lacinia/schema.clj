@@ -19,9 +19,11 @@
     [clojure.string :as str]
     [clojure.set :refer [difference]]
     [clojure.spec.test.alpha :as stest]
-    [com.walmartlabs.lacinia.resolve :as resolve])
+    [com.walmartlabs.lacinia.resolve :as resolve]
+    [clojure.pprint :as pprint])
   (:import
-    (clojure.lang IObj)))
+    (clojure.lang IObj)
+    (java.io Writer)))
 
 ;; When using Clojure 1.9 alpha, the dependency on clojure-future-spec can be excluded,
 ;; and this code will not trigger; any? will come out of clojure.core as normal.
@@ -1132,6 +1134,8 @@
   (fn [_ _ value]
     (resolve-as value)))
 
+(defrecord CompiledSchema [])
+
 (defn ^:private construct-compiled-schema
   [schema options]
   ;; Note: using merge, not two calls to xfer-types, since want to allow
@@ -1145,10 +1149,10 @@
                                                   %)))]
     (-> {constants/query-root {:category :object
                                :type-name constants/query-root
-                                 :description "Root of all queries."}
+                               :description "Root of all queries."}
          constants/mutation-root {:category :object
                                   :type-name constants/mutation-root
-                                   :description "Root of all mutations."}
+                                  :description "Root of all mutations."}
          constants/subscription-root {:category :object
                                       :type-name constants/subscription-root
                                       :description "Root of all subscriptions."}}
@@ -1167,7 +1171,8 @@
               (map-vals #(compile-type % s) s))
         (prepare-and-validate-interfaces)
         (prepare-and-validate-objects :object options)
-        (prepare-and-validate-objects :input-object options))))
+        (prepare-and-validate-objects :input-object options)
+        map->CompiledSchema)))
 
 (defn default-field-resolver
   "The default for the :default-field-resolver option, this uses the field name as the key into
@@ -1229,3 +1234,28 @@
 ;; difficult to trace exceptions at runtime.
 
 (stest/instrument `compile)
+
+;; The compiled schema tends to be huge and unreadable. It clutters exception output.
+;; The following defmethods reduce its output to a stub.
+
+(def ^{:dynamic true
+       :added "0.25.0"} *verbose-schema-printing*
+  "If bound to true, then the compiled schema prints and pretty-prints like an ordinary map,
+  which is sometimes useful during development. When false (the default) the schema
+  output is just a placeholder."
+  false)
+
+(defmethod print-method CompiledSchema
+  [schema ^Writer w]
+  (if *verbose-schema-printing*
+    (print-method (into {} schema) w)
+    (.write w "#CompiledSchema<>")))
+
+(defmethod pprint/simple-dispatch CompiledSchema
+  [schema]
+  (if *verbose-schema-printing*
+    (pprint/simple-dispatch (into {} schema))
+    (pr schema)))
+
+
+
