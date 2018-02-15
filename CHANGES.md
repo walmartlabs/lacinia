@@ -1,4 +1,4 @@
-## 0.25.0 -- UNRELEASED
+## 0.25.0 -- 15 Feb 2018
 
 Enum validation has changed: field resolvers may now return
 a keyword, symbol, or string.
