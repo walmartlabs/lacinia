@@ -1231,8 +1231,7 @@
          introspection-schema (introspection/introspection-schema)]
      (-> schema
          (deep-merge introspection-schema)
-         (construct-compiled-schema options')
-         (vary-meta assoc ::compiled true)))))
+         (construct-compiled-schema options')))))
 
 ;; The compiled schema tends to be huge and unreadable. It clutters exception output.
 ;; The following defmethods reduce its output to a stub.

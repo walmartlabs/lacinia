@@ -14,7 +14,8 @@
             [com.walmartlabs.lacinia.resolve :as resolve]
             [flatland.ordered.map :refer [ordered-map]])
   (:import (clj_antlr ParseError)
-           (clojure.lang ExceptionInfo)))
+           (clojure.lang ExceptionInfo)
+           (com.walmartlabs.lacinia.schema CompiledSchema)))
 
 (def ^:private grammar
   (antlr.core/parser (slurp (io/resource "com/walmartlabs/lacinia/Graphql.g4"))))
@@ -1197,7 +1198,7 @@
   ;; one is being selected. With an eye towards fast execution of parsed and cached queries, this may
   ;; not be the right approach.
   ([schema query-string operation-name]
-   (when-not (-> schema meta ::schema/compiled)
+   (when-not (instance? CompiledSchema schema)
      (throw (IllegalStateException. "The provided schema has not been compiled.")))
    (let [antlr-tree
          (try
