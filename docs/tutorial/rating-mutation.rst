@@ -11,16 +11,21 @@ rating, and one where the member is revising a prior rating.
 Along the way, we'll also start to see how to handle errors, which
 tend to be more common when implementing mutations than with queries.
 
-The difference between a query and a mutation in GraphQL is razor thin.
-When the incoming query document contains only a single top level
-operation, as is the case in all the examples so far in this tutorial,
-then there is no difference at all between them.
-
 It is implicit that queries are idempotent (can be repeated getting the same results,
 and don't change server-side state), whereas mutations
 are expected to make changes to server-side state as a side-effect.
 However, that side-effect is essentially invisible to Lacinia, as
 it will occur inside a field resolver function.
+
+The difference between a query and a mutation in GraphQL is razor thin.
+When the incoming query document contains only a single top level
+operation, as is the case in all the examples so far in this tutorial,
+then there is no difference at all between them.
+
+When the query document contains multiple mutations, then the top-level mutations
+execute sequentially; the first completes before the second begins execution.
+For queries, execution order is not in a specified order (though the order of keys and values
+is specified by the client query).
 
 We'll consider the changes here back-to-front, starting with our database
 (which is still just a map inside an Atom).
@@ -61,7 +66,7 @@ Just as with queries, it is necessary to define what value will be
 resolved by the mutation; typically, when a mutation modifies a single
 object, that object is resolved.
 
-Here, resolving a GameRating didn't seam to provide value, and
+Here, resolving a GameRating didn't seem to provide value, and
 we arbitrarily decided to instead resolve the BoardGame ... we could have just as easily
 resolved the Member instead.
 The right option is often revealed based on client requirements.
@@ -147,7 +152,7 @@ Lacinia has enhanced the map identifying the location (within the query document
 (which indicates which operation or nested field was involved), and the arguments passed to
 the field resolver function.
 
-In Lacinia, there's a difference between a resolved error, from using ``resolve-as``, and an overall failure parsing
+In Lacinia, there's a difference between a resolver error, from using ``resolve-as``, and an overall failure parsing
 or executing the query.
 If the ``rating`` argument is omitted from the query, we can see a significant difference::
 

@@ -179,12 +179,12 @@ The user namespace has shrunk; previously
 it was responsible for loading the schema, and creating and starting
 the Pedestal service; this has all shifted to the individual components.
 
-Instead, the user namespace creates an  map, and can use
+Instead, the user namespace creates a system map, and can use
 ``start-system`` and ``stop-system`` on that system map: no direct knowledge of
 loading schemas or starting and stopping Pedestal is present any longer.
 
 The user namespace previously had vars for both the schema and the Pedestal
-system.
+service.
 Now it only has a single var, for the Component system.
 
 Interestingly, as our system grows later, the user namespace will likely
