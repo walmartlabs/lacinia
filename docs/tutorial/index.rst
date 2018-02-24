@@ -15,6 +15,7 @@ Tutorial
    member-ratings
    mutable-database
    rating-mutation
+   database-1
 
    wrap-up
 
