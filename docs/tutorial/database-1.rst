@@ -18,14 +18,15 @@ Dependency Changes
 We're bringing in the very latest versions of lacinia and lacinia-pedestal (something we'll
 likely do almost every chapter).
 
-The main addition is the alaisi/postgres.async, which is used to execute queries and other
+The main addition is the alaisi/postgres.async library, which is used to execute queries and other
 operations against a PostgreSQL database.
 
 lacinia-pedestal and postgres.async disagree on which version of
 org.clojure/core.async [#async]_ to use, so we're pinning the version of core.async to
 the very latest version available.
 
-This is a common situation when different libraries are maintained by different groups on different schedules.
+This kind of dependency version conflict is unfortunately a common occurance when different libraries are maintained by different groups on different schedules.
+Fortunately, in this case, settling on a common version doesn't break either lacinia-pedestal or postgres.async.
 
 Database Initialization
 -----------------------
@@ -38,7 +39,9 @@ First, a file used to start PostgreSQL:
 
 This file is used with the ``docker-compose`` command to set up one or more containers.
 We only define a single container right now.
-The ``image:`` identifies the name of the image, which is hosted at `hub.docker.com <http://hub.docker.com>`_.
+
+The ``image``  key identifies the name of the image to download from `hub.docker.com <http://hub.docker.com>`_.
+
 The port mapping is part of the magic of Docker ... the PostgreSQL server, inside the container,
 will listen to requests on its normal port: 5432, but our code, running on the host operation system,
 can reach the server as port 25432 on ``localhost``.
@@ -68,7 +71,7 @@ The DDL for the tables allows PostgreSQL to assign unique ids for inserted rows,
 the tables' ``created_at`` and ``updated_at`` columns are automatically set on insert or update.
 
 The ``alter table ... restart with ...`` lines ensure that future generated ids do not conflict with
-the initial data in the script.
+the initial data inserted into the database by the script.
 
 Primary Keys
 ------------
@@ -104,10 +107,10 @@ Snake case keywords in Clojure look slightly odd, but are 100% valid.
 There's nothing that prevents you from reading database data and converting the column names to
 kebab case ... but you'll just have to undo that somehow in the GraphQL schema, as kebab case is not valid
 for GraphQL names.
-Much better to have as consistent a representation of the data as possible, spanning the database,
-the GraphQL schema, and the over-the-wire JSON format ... and not buy yourself any extra work that
-has no tangible benefits.
 
+Much better to have as consistent a representation of the data as possible, spanning the database,
+the GraphQL schema, the Clojure data access code, and the over-the-wire JSON format ... and not buy yourself any extra work that
+has no tangible benefits.
 
 Database Connection
 -------------------
@@ -126,19 +129,20 @@ The requires for the ``db`` namespace have changed; we're using the ``postgres.a
 connect to the database, and that entails using some ``core.async`` functions.
 
 The ClojureGameGeekDb record has changed; it now has a ``conn`` (connection) field, and that is
-the connection to the PostgreSQL database.  The ``start`` method now opens
-the connection to the database.
+the connection to the PostgreSQL database.
+The ``start`` method now opens the connection to the database.
 
-For the meantime, we're hardwired the connection to our Docker container.
+For the meantime, we're hardwired the connection details (hostname, username, password, and port) to our Docker container.
 A later chapter will discuss approaches to configuration.
 Also note that we're connecting to port ``25432`` on ``localhost``; Docker will forward that port to the container
 port ``5432``.
 
-We've added a private ``take!`` function; its purpose is to obtain the result of a query
+We've added a private ``take!`` function [#bang]_; its purpose is to obtain the result of a query
 against the database.
 Because we are using the postgres.async library, when we perform a query or other
-database operation, we don't get an immediate response.
-What we get instead is a core.async channel.
+database operation, we don't block the current thread until results are ready.
+
+Instead, the postgres.async functions return a core.async `channel`.
 
 A full discussion of core.async will come later; for the moment, you can think of a channel
 as similar to a promise; the query operation will run asynchronously in another thread,
@@ -151,15 +155,19 @@ A later chapter will discuss how to fully leverage asynchronous queries when usi
 
 A common convention with core.async channels is to convey either an actual result, or an exception
 if something goes wrong.
-In the ``take!`` function, we check if the conveyed value is an exception, and throw it if so.
+That can happen here: if there's a problem executing the query, an exception will be conveyed
+in the channel, instead of the expected sequence of row maps.
 
-That leaves the ``find-game-by-id`` function; the only data access function rewritten to use
+In the ``take!`` function, we check if the conveyed value is an exception, and throw it (in the
+current thread) if so.
+
+That leaves the revised implementation of the ``find-game-by-id`` function; the only data access function rewritten to use
 the database connection.
 It simply constructs and executes the SQL query.
 
 With postgres.async the query is a vector
-consisting of a SQL query string followed by any query variables.
-Each variable is numbered from 1 and represented as ``$n`` in the SQL query string.
+consisting of a SQL query string followed by zero or more query variables.
+Each query variable is numbered from 1 and represented as ``$n`` in the SQL query string.
 
 The ``query!`` function returns a channel, which is passed through ``take!`` to get
 the results.
@@ -223,7 +231,13 @@ It's time to write some tests, then convert the rest of the ``db`` namespace.
 .. [#container] A `Docker <https://www.docker.com/>`_ container is
    the  `Inception <http://www.imdb.com/title/tt1375666/>`_ of computers; a
    container is essentially a
-   light-weight virtual machine that runs inside your computer. Docker images
+   light-weight virtual machine that runs inside your computer.
+
+   To the PostgreSQL server running inside the container, it will appear as if
+   the entire computer is running Linux, just as if Linux and PostgreSQL were installed
+   on a bare-metal computer.
+
+   Docker images
    are smaller and less demanding than full operating system virtual machines. In fact
    frequently you will run several interconnected containers together.
 
@@ -233,5 +247,13 @@ It's time to write some tests, then convert the rest of the ``db`` namespace.
 
 .. [#async] core.async is a very powerful library for performing asynchronous computation
    in Clojure. We'll discuss core.async, and how it relates to Lacinia, in a later chapter.
+
+.. [#bang] The Clojure naming convention is that names of unsafe functions end with a ``!``.
+
+   Unsafe functions either have side effects, or may block the current thread.
+
+   This largely applies to low-level functions, such as ``take!`` or ``<!!``.
+   All of the data access functions, such as ``find-game-by-id`` are also unsafe, but
+   are expected to be so by context, so their names don't end with ``!``.
 
 .. [#emacs] The author uses Cursive, but Emacs and other editors all have similar functionality.
