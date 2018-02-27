@@ -35,12 +35,15 @@ We've added a number of scripts to project.
 
 First, a file used to start PostgreSQL:
 
-.. ex:: database-1 docker-compose.yml
+.. ex:: database-1d docker-compose.yml
 
 This file is used with the ``docker-compose`` command to set up one or more containers.
 We only define a single container right now.
 
 The ``image``  key identifies the name of the image to download from `hub.docker.com <http://hub.docker.com>`_.
+
+The image in question contains PostgreSQL 10.2, already configured with a ``cggdb`` database, a set of tables and database triggers,
+and the same test data as in prior chapters.
 
 The port mapping is part of the magic of Docker ... the PostgreSQL server, inside the container,
 will listen to requests on its normal port: 5432, but our code, running on the host operation system,
@@ -50,28 +53,14 @@ The ``docker-up.sh`` script is used to start the container:
 
 .. ex:: database-1 bin/docker-up.sh
 
-There's also a ``docker-down.sh`` script to shut down the container:
+There's also a ``bin/docker-down.sh`` script to shut down the container, and a ``bin/plsql.sh`` to launch a SQL command
+prompt for the database.
 
-.. ex:: database-1 bin/docker-down.sh
+The DDL for the ``cggdb`` database includes a pair of timestamp columns, ``created_at`` and ``updated_at``, in most tables.
+Defaults and database triggers ensure that these are maintained by PostgreSQL.
 
-Finally, after starting the container, we need to setup the database and initial data.
-
-.. ex:: database-1a bin/setup-db.sh
-
-.. sidebar:: Setup
-
-   `Install Docker <https://www.docker.com/docker-mac>`_ first,
-   then make sure you execute ``bin/docker-up.sh``, and finally ``bin/setup-db.sh`` before running the
-   revised application.
-
-This creates a ``cggdb`` database and a ``cgg_role`` user.
-It also creates a basic set of tables and puts a small amount of initial data in.
-
-The DDL for the tables allows PostgreSQL to assign unique ids for inserted rows, and ensures that
-the tables' ``created_at`` and ``updated_at`` columns are automatically set on insert or update.
-
-The ``alter table ... restart with ...`` lines ensure that future generated ids do not conflict with
-the initial data inserted into the database by the script.
+You can see the details in the file `bin/setup-db.sh <https://raw.githubusercontent.com/walmartlabs/clojure-game-geek/database-1d/bin/setup-db.sh>`_
+(omitted here due to its length).
 
 Primary Keys
 ------------
@@ -95,7 +84,7 @@ is a kind of opaque string) to type ``Int`` (which is a 32 bit, signed integer).
 .. ex:: database-1b resources/cgg-schema.edn
   :emphasize-lines: 5, 34, 53, 66, 73, 84-85
 
-In addition, the ``id`` field on BoardGame, Member, and Publisher has been renamed: to ``game_id``, ``member_id``,
+In addition, the ``id`` field on the BoardGame, Member, and Publisher objects has been renamed: to ``game_id``, ``member_id``,
 and ``publisher_id`` respectfully.
 
 This aligns the field names with the database column names.
