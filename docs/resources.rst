@@ -14,3 +14,5 @@ Other Resources
   `The Power of Lacinia & Hystrix in Production` is available on `You Tube <https://www.youtube.com/watch?v=uL9QavmAInw>`_.
 
 * Blog Post: `The Case for Clojure and GraphQL: Replacing Django <https://cheesecakelabs.com/blog/case-clojure-graphql-replacing-django/>`_.
+
+* Blog Post: `Through the Looking Graph: Experiences adopting GraphQL on a Clojure/script project" <https://juxt.pro/blog/posts/through-the-looking-graph.html>`_.

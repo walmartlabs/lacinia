@@ -12,7 +12,7 @@ will be in the ``clojure-game-geek.db`` namespace.
 Dependency Changes
 ------------------
 
-.. ex:: database-1 project.clj
+.. ex:: database-1e project.clj
    :emphasize-lines: 7, 9-11
 
 We're bringing in the very latest versions of lacinia and lacinia-pedestal (something we'll
