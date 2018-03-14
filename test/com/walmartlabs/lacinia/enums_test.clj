@@ -5,7 +5,6 @@
     [com.walmartlabs.lacinia :refer [execute]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.test-reporting :refer [report]]
-    [com.walmartlabs.test-utils :refer [simplify]]
     [com.walmartlabs.test-utils :as utils])
   (:import
     (clojure.lang ExceptionInfo)
@@ -17,7 +16,7 @@
   ([query]
     (q query nil))
   ([query vars]
-   (simplify (execute compiled-schema query vars nil))))
+   (utils/simplify (execute compiled-schema query vars nil))))
 
 (deftest returns-enums-as-keywords
   (is (= {:data {:hero {:appears_in [:NEWHOPE
@@ -89,8 +88,8 @@
 (deftest will-convert-to-keyword
   (let [schema (utils/compile-schema "bad-resolver-enum.edn"
                                      {:query/current-status (constantly "good")})]
-    (is (= {:data {:current_status :good}})
-        (utils/execute schema "{ current_status }"))))
+    (is (= {:data {:current_status :good}}
+           (utils/execute schema "{ current_status }")))))
 
 (deftest deprecated-enum-values
   (let [schema (utils/compile-schema "deprecated-enums-schema.edn" {})]

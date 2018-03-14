@@ -15,11 +15,9 @@
      :refer [map-vals map-kvs filter-vals deep-merge q
              is-internal-type-name? sequential-or-set? as-keyword
              cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag]]
-    [com.walmartlabs.lacinia.resolve :refer [ResolverResult resolve-as combine-results is-resolver-result?]]
+    [com.walmartlabs.lacinia.resolve :as resolve :refer [ResolverResult resolve-as combine-results is-resolver-result?]]
     [clojure.string :as str]
     [clojure.set :refer [difference]]
-    [clojure.spec.test.alpha :as stest]
-    [com.walmartlabs.lacinia.resolve :as resolve]
     [clojure.pprint :as pprint])
   (:import
     (clojure.lang IObj)
