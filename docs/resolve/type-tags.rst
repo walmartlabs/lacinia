@@ -21,13 +21,11 @@ then each individual resolved value must be tagged with its concrete type.
 It is allowed and expected that different values in the collection will have
 different concrete types.
 
-When a field resolver is invoked, the context value for key ``:com.walmartlabs.lacinia/container-type-name``
-will be the name of the concrete type (a keyword) for the resolved value.
-
 Generally, type tagging is just metadata added to a map (or Clojure record type).
 However, Lacinia supports tagging of arbitrary objects that don't support Clojure metadata
 ... but ``tag-with-type`` will return a wrapper type in that case.  When using Java types,
 make sure that ``tag-with-type`` is the last thing a field resolver does.
+
 
 Using record types
 ------------------
@@ -50,3 +48,13 @@ functions as appropriate.
 
    The ``:tag`` value is a Java class name, not a namespaced Clojure name.
    That means no slash character, and dashes in the namespace must be converted to underscores.
+
+Container type
+--------------
+
+When a field resolver is invoked, the context value for key ``:com.walmartlabs.lacinia/container-type-name``
+will be the name of the concrete type (a keyword) for the resolved value passed into the resolver.
+This will be nil for top-level operations.
+
+When the type of the containing field is a union or interface, this value will be the specific concrete object type
+for the actual resolved value.
