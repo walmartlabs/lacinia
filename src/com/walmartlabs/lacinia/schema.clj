@@ -729,7 +729,8 @@
       (fn select-list [{:keys [resolved-value callback]
                         :as selector-context}]
         (cond
-          (nil? resolved-value)
+          (or (nil? resolved-value)
+              (and (not (seq resolved-value))))
           (callback (assoc selector-context
                            :resolved-value []
                            :resolved-type nil))

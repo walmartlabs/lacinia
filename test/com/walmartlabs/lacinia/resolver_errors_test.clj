@@ -82,7 +82,6 @@
                                    {:fields {:id {:type 'String}
                                              :contents {:type '(list :item)
                                                         :resolve (fn [ctx args v]
-                                                                   (println (:contents v))
                                                                    (resolve-as
                                                                     (:contents v)
                                                                     [{:message "Some error"}]))}}}}
@@ -107,7 +106,7 @@
       (testing "when the sub-selector returns an empty collection"
         (let [q "query foo { container(id:\"empty-container\") { contents { name } } }"]
           (is (= {:data {:container {:contents []}}
-                  :errors [{:locations [{:column 43
+                  :errors [{:locations [{:column 44
                                          :line 1}]
                             :message "Some error"
                             :query-path [:container
