@@ -70,7 +70,7 @@
               :errors
               (sort-by :message)))))
 
-(deftest error-are-propagated
+(deftest errors-are-propagated
   (testing "errors are propagated from sub-selectors even when no data is returned"
     (let [container-data {"empty-container" {:contents []}
                           "full-container" {:contents [{:name "Book"}
