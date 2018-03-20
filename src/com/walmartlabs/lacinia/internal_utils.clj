@@ -120,9 +120,10 @@
   (or (sequential? x) (set? x)))
 
 (defn is-internal-type-name?
-  "Identifies type names that are added by introspection."
+  "Identifies type names that are added by introspection, or a namespaced key used by Lacinia."
   [type-name]
-  (str/starts-with? (name type-name) "__"))
+  (or (namespace type-name)
+      (str/starts-with? (name type-name) "__")))
 
 (def ^:dynamic *exception-context*
   "Map of extra values to be added to the exception data when an exception is created."

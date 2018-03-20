@@ -1,10 +1,6 @@
 (ns ^:no-doc com.walmartlabs.lacinia.constants
   "A handy place to define namespaced constants")
 
-(def query-root
-  "Object in the compiled schema that contains, as fields, all queries."
-  :QueryRoot)
-
 (def mutation-root
   "Object in the compiled schema that contains, as fields, all mutations."
   :MutationRoot)

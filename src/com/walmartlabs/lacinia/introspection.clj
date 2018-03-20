@@ -88,15 +88,16 @@
   [context _ _]
   (let [schema (get context constants/schema-key)
         type-names (remove is-internal-type-name? (keys schema))
-        queries-root (-> (get schema constants/query-root)
+        root (:com.walmartlabs.lacinia.schema/roots schema)
+        queries-root (-> (get schema (:query root))
                          (update :fields #(remove-keys is-internal-type-name? %)))
-        mutations-root (get schema constants/mutation-root)
+        mutations-root (get schema (:mutation root))
         omit-mutations (-> mutations-root :fields empty?)
-        subs-root (get schema constants/subscription-root)
+        subs-root (get schema (:subscription root))
         omit-subs (-> subs-root :fields empty?)
         type-names' (cond-> (set type-names)
-                      omit-mutations (disj constants/mutation-root)
-                      omit-subs (disj constants/subscription-root))
+                      omit-mutations (disj (:mutation root))
+                      omit-subs (disj (:subscription root)))
         not-null-boolean {:kind :non-null
                           :type {:kind :root
                                  :type :Boolean}}]

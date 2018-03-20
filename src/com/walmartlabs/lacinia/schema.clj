@@ -105,6 +105,7 @@
   [schema]
   (->> schema
        vals
+       (filter :type-name)                                    ;; ::schema/root has no :type-name
        (group-by :category)
        (map-vals #(->> (map :type-name %)
                        (remove is-internal-type-name?)
@@ -257,10 +258,13 @@
 (s/def ::schema-key (s/and simple-keyword?
                            ::graphql-identifier))
 (s/def ::graphql-identifier #(re-matches graphql-identifier (name %)))
-(s/def ::identifier (s/and (s/or :keyword simple-keyword?
-                                 :symbol simple-symbol?)
-                           graphql-identifier?))
-(s/def ::type (s/or :base-type ::identifier
+;; For style and/or historical reasons, type names can be a keyword or a symbol.
+;; The convention is that built-in types used a symbol, and application-defined types
+;; use a keyword.
+(s/def ::type-name (s/and (s/or :keyword simple-keyword?
+                                :symbol simple-symbol?)
+                          graphql-identifier?))
+(s/def ::type (s/or :base-type ::type-name
                     :wrapping-type (s/cat :modifier #{'list 'non-null}
                                           :type ::type)))
 (s/def ::arg (s/keys :req-un [::type]
@@ -282,7 +286,7 @@
                            :req-un [::type
                                     ::resolve]))
 (s/def ::fields (s/map-of ::schema-key ::field))
-(s/def ::implements (s/coll-of ::identifier))
+(s/def ::implements (s/coll-of ::type-name))
 (s/def ::description string?)
 (s/def ::tag (s/or
                :symbol symbol?
@@ -295,7 +299,7 @@
 (s/def ::interface (s/keys :opt-un [::description
                                     ::fields]))
 ;; A list of keyword identifying objects that are part of a union.
-(s/def ::members (s/and (s/coll-of ::identifier)
+(s/def ::members (s/and (s/coll-of ::type-name)
                         seq))
 (s/def ::union (s/keys :opt-un [::description]
                        :req-un [::members]))
@@ -348,6 +352,8 @@
 
 (s/def ::subscriptions (s/map-of ::schema-key ::subscription))
 
+(s/def ::roots (s/map-of #{:query :mutation :subscription} ::schema-key))
+
 (s/def ::schema-object
   (s/keys :opt-un [::scalars
                    ::interfaces
@@ -355,6 +361,7 @@
                    ::input-objects
                    ::enums
                    ::unions
+                   ::roots
                    ::queries
                    ::mutations
                    ::subscriptions]))
@@ -1130,6 +1137,28 @@
   (fn [_ _ value]
     (resolve-as value)))
 
+(defn ^:private add-root
+  [compiled-schema object-name default-description fields]
+  (let [merge-into (fn [fields more-fields]
+                     (reduce-kv (fn [m k v]
+                                  (when (contains? m k)
+                                    (throw (format "Name collision compiling schema. Field %s of %s already exists."
+                                                   (q k)
+                                                   (q object-name)))
+                                    {:object-name object-name
+                                     :duplicate-key k
+                                     :existing-keys (-> fields keys set)})
+                                  (assoc m k v))
+                                fields
+                                more-fields))
+        schema' (if (contains? compiled-schema object-name)
+                  compiled-schema
+                  (assoc compiled-schema object-name
+                         {:category :object
+                          :type-name object-name
+                          :description default-description}))]
+    (update-in schema' [object-name :fields] merge-into fields)))
+
 (defrecord CompiledSchema [])
 
 (defn ^:private construct-compiled-schema
@@ -1138,29 +1167,27 @@
   ;; for overrides of the built-in scalars without a name conflict exception.
   (let [merged-scalars (merge default-scalar-transformers
                               (:scalars schema))
+        {:keys [query mutation subscription]
+         :or {query :QueryRoot
+              mutation :MutationRoot
+              subscription :SubscriptionRoot}} (map-vals as-keyword (:roots schema))
         defaulted-subscriptions (->> schema
                                      :subscriptions
                                      (map-vals #(if-not (:resolve %)
                                                   (assoc % :resolve default-subscription-resolver)
                                                   %)))]
-    (-> {constants/query-root {:category :object
-                               :type-name constants/query-root
-                               :description "Root of all queries."}
-         constants/mutation-root {:category :object
-                                  :type-name constants/mutation-root
-                                  :description "Root of all mutations."}
-         constants/subscription-root {:category :object
-                                      :type-name constants/subscription-root
-                                      :description "Root of all subscriptions."}}
+    (-> {::roots {:query query
+                  :mutation mutation
+                  :subscription subscription}}
         (xfer-types merged-scalars :scalar)
         (xfer-types (:enums schema) :enum)
         (xfer-types (:unions schema) :union)
         (xfer-types (:objects schema) :object)
         (xfer-types (:interfaces schema) :interface)
         (xfer-types (:input-objects schema) :input-object)
-        (assoc-in [constants/query-root :fields] (:queries schema))
-        (assoc-in [constants/mutation-root :fields] (:mutations schema))
-        (assoc-in [constants/subscription-root :fields] defaulted-subscriptions)
+        (add-root query "Root of all queries." (:queries schema))
+        (add-root mutation "Root of all mutations." (:mutations schema))
+        (add-root subscription "Root of all subscriptions." defaulted-subscriptions)
         ;; queries, mutations, and subscriptions are fields on special objects; a lot of
         ;; compilation occurs here along with ordinary objects.
         (as-> s

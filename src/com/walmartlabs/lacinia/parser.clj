@@ -1129,10 +1129,10 @@
                (rest var-definitions)))))
 
 
-(def ^:private operation-type->root
-  {:query constants/query-root
-   :mutation constants/mutation-root
-   :subscription constants/subscription-root})
+(defn ^:private operation-type->root
+  [schema operation-type]
+  (let [type-name (get-in schema [::schema/roots operation-type])]
+    (get schema type-name)))
 
 (defn ^:private xform-query
   "Given an output tree of sexps from clj-antlr, traverses and reforms into a
@@ -1149,9 +1149,7 @@
                                   (-> op-element second second keyword))
                              :query))
 
-        root (->> operation-type
-                  operation-type->root
-                  (get schema))
+        root (operation-type->root schema operation-type)
 
         variable-definitions (extract-variable-definitions schema operation)
 
