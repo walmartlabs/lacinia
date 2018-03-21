@@ -220,12 +220,7 @@
                    (select [:unionTypes :typeName :name] union))}})
 
 (defn ^:private attach-operations
-  "Since Lacinia schemas do not support providing simple type names as
-  queries or mutations, but this is how the GraphQL schema language
-  operates, this resolves the queries/mutations from types.
-
-  Note that one downside of this is that there will be extra, unused
-  object types floating around in the Lacinia schema.
+  "Builds the :schema key of the Lacinia schema.
 
   Example schema definition parse tree node:
 
@@ -244,15 +239,11 @@
       (:'subscription' \"subscription\")
       (:typeName (:name \"Subscription\"))))))"
   [schema root]
-  (letfn [(build-operations [def-node-label]
-            (apply merge
-                   (select-map #(xform-operation schema %)
-                               [:schemaDef :operationTypeDef def-node-label]
-                               root)))]
-    (assoc schema
-           :queries (build-operations :queryOperationDef)
-           :mutations (build-operations :mutationOperationDef)
-           :subscriptions (build-operations :subscriptionOperationDef))))
+  (->> (select [:schemaDef :operationTypeDef] root)
+       (map #(vector (-> % first second second keyword)
+                     (-> % first (nth 2) second second keyword)))
+       (into {})
+       (assoc schema :roots)))
 
 (defn ^:private attach-field-fns
   "Attaches a map of either resolvers or subscription streamers"

@@ -85,23 +85,9 @@
                         :Subscription {:fields {:new_character {:args {:episodes {:type '(non-null (list (non-null :episode)))}}
                                                                 :stream new-character
                                                                 :type :CharacterOutput}}}}
-              :queries {:in_episode {:args {:episode {:type :episode
-                                                      :defaultValue :NEWHOPE
-                                                      :description "Episode for which to find characters"}}
-                                     :description "Find all characters for a given episode"
-                                     :resolve in-episode
-                                     :type '(list :CharacterOutput)}
-                        :find_by_names {:args {:names {:type '(non-null (list (non-null String)))}}
-                                        :resolve find-by-names
-                                        :type '(list :CharacterOutput)}}
-              :mutations {:add {:args {:character {:type :Character
-                                                   :defaultValue {:name "Unspecified"
-                                                                  :episodes [:NEWHOPE :EMPIRE :JEDI]}}}
-                                :resolve add
-                                :type 'Boolean}}
-              :subscriptions {:new_character {:args {:episodes {:type '(non-null (list (non-null :episode)))}}
-                                              :stream new-character
-                                              :type :CharacterOutput}} }
+              :roots {:mutation :Mutation
+                      :query :Queries
+                      :subscription :Subscription}}
              parsed-schema)))
     (testing "using parsed schema"
       (let [compiled (schema/compile parsed-schema)]

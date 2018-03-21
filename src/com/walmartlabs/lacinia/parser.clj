@@ -1129,10 +1129,29 @@
                (rest var-definitions)))))
 
 
+;; Ultimately, this needs to be done once and cached, perhaps by the schema compiler itself.
+
 (defn ^:private operation-type->root
   [schema operation-type]
-  (let [type-name (get-in schema [::schema/roots operation-type])]
-    (get schema type-name)))
+  (let [type-name (get-in schema [::schema/roots operation-type])
+        root-def (get schema type-name)]
+    (case (:category root-def)
+
+      :object
+      root-def
+
+      (:union :interface)
+      {:category :object
+       :type-name (keyword (str "__" (name operation-type)))
+       :fields (let [x (->> root-def
+                            :members
+                            (map #(get schema %))
+                            (map :fields)
+                            (reduce merge))]
+                 x)})))
+
+(defn ^:private root-selection
+  [schema x root])
 
 (defn ^:private xform-query
   "Given an output tree of sexps from clj-antlr, traverses and reforms into a
