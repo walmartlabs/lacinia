@@ -378,8 +378,8 @@
                        (schema/compile {:queries {:unknown_type {:type :not_defined
                                                                  :resolve identity}}})))
         data (ex-data e)]
-    (is (= "Field `QueryRoot/unknown_type' references unknown type `not_defined'." (.getMessage e)))
-    (is (= {:field-name :QueryRoot/unknown_type
+    (is (= "Field `__Queries/unknown_type' references unknown type `not_defined'." (.getMessage e)))
+    (is (= {:field-name :__Queries/unknown_type
             :schema-types {:object [:MutationRoot
                                     :QueryRoot
                                     :SubscriptionRoot]
