@@ -1159,10 +1159,10 @@
         merge-into (fn [fields more-fields]
                      (reduce-kv (fn [m k v]
                                   (when (contains? m k)
-                                    (throw (ex-info (format "Name collision compiling schema. %s %s conflicts with one defined in type %s."
+                                    (throw (ex-info (format "Name collision compiling schema. %s %s conflicts with %s."
                                                             (-> root-name name str/capitalize)
-                                                            (q k)
-                                                            (q (get-in fields [k :containing-type-name])))
+                                                            (q (:qualified-field-name v))
+                                                            (q (get-in m [k :qualified-field-name])))
                                                     {:field-name k
                                                      :operation root-name})))
                                   (assoc m k v))
