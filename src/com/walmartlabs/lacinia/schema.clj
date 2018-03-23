@@ -1147,7 +1147,7 @@
           :fields fields}))
 
 (defn ^:private merge-root
-  "Used after the compile-type stage, to merge together the root objects, once possibly provided
+  "Used after the compile-type stage, to merge together the root objects, one possibly provided
   via the input schema :roots map, and the other built from the :queries, :mutations, or :subscriptions
   maps (the 'extra object').
 
