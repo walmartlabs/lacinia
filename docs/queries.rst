@@ -16,7 +16,7 @@ Queries are defined using the ``:queries`` key of the schema.
 .. literalinclude:: _examples/query-def.edn
    :language: clojure
 
-Internally, each query becomes a field of a special object named ``:QueryRoot``.
+Queries may also be defined as fields of the :doc:`root query object <roots>`.
 
 The :doc:`field resolver <resolve/index>` for a query is passed nil
 as the the value (the third parameter).

@@ -46,6 +46,7 @@ responding with JSON, it is also exceptionally useful for allowing backend syste
    resolve/index
    input-objects
    custom-scalars
+   roots
    introspection
    schema/parsing
    samples
