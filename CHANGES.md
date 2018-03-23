@@ -1,3 +1,10 @@
+## 0.26.0 -- UNRELEASED
+
+Lacinia now supports the `:roots` key in the input schema, which makes
+it possible to define query, mutation, or subscription operations
+in terms of the fields of an explicitly named object in the schema.
+This aligns Lacinia better with other implementations of GraphQL.
+
 ## 0.25.0 -- 2 Mar 2018
 
 Enum validation has changed: field resolvers may now return
