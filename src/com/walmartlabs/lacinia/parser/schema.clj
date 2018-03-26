@@ -3,7 +3,6 @@
             [com.walmartlabs.lacinia.parser.common :refer [antlr-parse parse-failures stringvalue->String]]
             [clojure.java.io :as io]
             [clojure.spec.alpha :as s]
-            [clojure.spec.test.alpha :as stest]
             [clojure.string :as str]
             [clj-antlr.core :as antlr.core])
   (:import (clj_antlr ParseError)))
@@ -392,6 +391,10 @@
    :type-name/field-name doc-str
    :type-name.field-name/arg-name doc-str}"
   [schema-string attach]
+  (when-let [ed (s/explain-data ::parse-schema-args [schema-string attach])]
+    (throw (ex-info (str "Arguments to parse-schema do not conform to spec:\n" (with-out-str (s/explain-out ed)))
+                    ed)))
+
   (let [{:keys [resolvers scalars streamers documentation]} attach]
     (remove-vals ;; Remove any empty schema components to avoid clutter
      ;; and optimize for human readability
@@ -421,11 +424,8 @@
 (s/def ::resolvers ::fn-map)
 (s/def ::streamers ::fn-map)
 
-(s/fdef parse-schema
-        :args (s/cat :schema-string string?
-                     :attachments (s/keys :opt-un [::resolvers
-                                                   ::streamers
-                                                   ::scalars
-                                                   ::documentation])))
-
-(stest/instrument `parse-schema)
+(s/def ::parse-schema-args (s/cat :schema-string string?
+                                  :attachments (s/keys :opt-un [::resolvers
+                                                                ::streamers
+                                                                ::scalars
+                                                                ::documentation])))

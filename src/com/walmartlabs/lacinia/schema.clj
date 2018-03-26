@@ -1267,8 +1267,6 @@
   (s/cat :schema ::schema-object
          :options (s/? (s/nilable ::compile-options))))
 
-(s/fdef compile :args ::compile-args)
-
 (defn compile
   "Compiles an schema, verifies its correctness, and prepares it for query execution.
   The compiled schema is in an entirely different format than the input schema.
