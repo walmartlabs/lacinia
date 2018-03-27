@@ -1,5 +1,10 @@
 ## 0.26.0 -- UNRELEASED
 
+New `com.walmartlabs.lacinia.parser/summarize-query` function,
+which is used to summarize a query without distractions such as
+aliases and field arguments. This is used to group similar
+queries together when doing performance analysis.
+
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/14?closed=1)
 
 ## 0.25.0 -- 2 Mar 2018

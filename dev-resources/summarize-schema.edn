@@ -1,0 +1,36 @@
+{:objects
+ {:Toy
+  {:fields {:name {:type String}
+            :packaging {:type :Packaging}
+            :aisle {:type Int}}}
+  :Truck
+  {:fields {:model {:type String}
+            :dealership {:type Dealership}
+            :cost {:type Int}}}
+
+  :Dealership
+  {:fields {:name {:type String}
+            :address {:type String}
+            :city {:type String}
+            :state {:type String}
+            :postal_code {:type String}}}}
+
+ :enums
+ {:Packaging
+  {:values [plastic cardboard mixed]}}
+
+ :unions
+ {:Product {:members [:Toy :Truck]}}
+
+ :queries
+ {:toy_by_name {:type Toy
+                :resolve :placeholder
+                :args {:name {:type String}}}
+
+  :truck_by_model {:type Truck
+                   :resolve :placeholder
+                   :args {:model {:type String}}}
+
+  :product_by_string {:type Product
+                      :resolve :placeholder
+                      :args {:match {:type String}}}}}
