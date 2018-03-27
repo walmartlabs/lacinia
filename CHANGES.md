@@ -1,3 +1,7 @@
+## 0.26.0 -- UNRELEASED
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/14?closed=1)
+
 ## 0.25.0 -- 2 Mar 2018
 
 Enum validation has changed: field resolvers may now return
