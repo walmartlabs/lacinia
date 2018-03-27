@@ -84,19 +84,13 @@
                          :value value})))))
 
 (defn ^:private invoke-resolver-for-field
-  "Resolves the value for a field selection node, by passing the value to the
-  appropriate resolver, and passing it through a chain of value enforcers.
+  "Resolves the value for a field selection node.
 
   Returns a ResolverResult.
-  The final ResolverResult will always contain just a resolved value; errors are handled here,
-  and not passed back in the returned ResolverResult.
 
   Optionally updates the timings inside the execution-context with start/finish/elapsed time
   (in milliseconds). Timing checks only occur when enabled (timings is non-nil)
-  and not for default resolvers.
-
-  Any resolve errors are enhanced with details about the selection and accumulated in
-  the execution context."
+  and not for default resolvers."
   [execution-context field-selection]
   (let [timings (:timings execution-context)
         {:keys [arguments]} field-selection
