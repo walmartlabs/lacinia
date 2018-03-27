@@ -5,6 +5,13 @@ it possible to define query, mutation, or subscription operations
 in terms of the fields of an explicitly named object in the schema.
 This aligns Lacinia better with other implementations of GraphQL.
 
+New `com.walmartlabs.lacinia.parser/summarize-query` function,
+which is used to summarize a query without distractions such as
+aliases and field arguments. This is used to group similar
+queries together when doing performance analysis.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/14?closed=1)
+
 ## 0.25.0 -- 2 Mar 2018
 
 Enum validation has changed: field resolvers may now return

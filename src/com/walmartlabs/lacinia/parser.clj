@@ -718,6 +718,8 @@
           :type {:kind :root
                  :type :String}}
 
+   :field-name :__typename
+
    :resolve (fn [context _ _]
               (-> context
                   :com.walmartlabs.lacinia/container-type-name
@@ -1239,5 +1241,54 @@
   (let [{:keys [operation-type selections]} parsed-query]
     {:type operation-type
      :operations (->> selections
-                      (map (comp :field-name :field-definition))
+                      (map #(get-in % [:field-definition :field-name]))
                       set)}))
+
+(declare ^:private summarize-selection)
+
+(defn ^:private summarize-selections
+  [parsed-query selections]
+  (str "{"
+       (->> selections
+            (mapcat #(summarize-selection parsed-query %))
+            sort
+            (str/join " "))
+       "}"))
+
+(defn ^:private summarize-selection
+  [parsed-query selection]
+  (case (:selection-type selection)
+
+    :field
+    (let [field-name (-> selection :field-definition :field-name name)]
+      [(if (:leaf? selection)
+         field-name
+         (str field-name " " (summarize-selections parsed-query (:selections selection))))])
+
+    :inline-fragment
+    (mapcat #(summarize-selection parsed-query %) (:selections selection))
+
+    :fragment-spread
+    (let [{:keys [fragment-name]} selection
+          fragment-selections (get-in parsed-query [:fragments fragment-name :selections])]
+      (mapcat #(summarize-selection parsed-query %) fragment-selections))
+
+    (throw (ex-info "Sanity check" {:selection selection}))))
+
+(defn summarize-query
+  "Analyzes a parsed query, returning a summary string.
+
+  The summary superficially resembles a GraphQL query, but
+  strips out aliases, directives, and field arguments. In addition, fragments (both inline and named)
+  are collapsed into their containing selections.
+
+  This summary can act as a 'fingerprint' of a related set of queries and is typically used
+  in query performance analysis."
+  {:added "0.26.0"}
+  [parsed-query]
+  (let [{:keys [selections]} parsed-query]
+    (->> parsed-query
+         :selections
+         (summarize-selections parsed-query))))
+
+
