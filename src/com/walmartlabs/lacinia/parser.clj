@@ -1231,40 +1231,32 @@
 
 (defn ^:private summarize-selections
   [parsed-query selections]
-  (mapcat #(summarize-selection parsed-query %) selections))
+  (str "{"
+       (->> selections
+            (mapcat #(summarize-selection parsed-query %))
+            sort
+            (str/join " "))
+       "}"))
 
 (defn ^:private summarize-selection
   [parsed-query selection]
   (case (:selection-type selection)
 
     :field
-    (let [field-name (get-in selection [:field-definition :field-name])]
+    (let [field-name (-> selection :field-definition :field-name name)]
       [(if (:leaf? selection)
-         [field-name]
-         (cons field-name (summarize-selections parsed-query (:selections selection))))])
+         field-name
+         (str field-name " " (summarize-selections parsed-query (:selections selection))))])
 
     :inline-fragment
-    (summarize-selections parsed-query (:selections selection))
+    (mapcat #(summarize-selection parsed-query %) (:selections selection))
 
     :fragment-spread
     (let [{:keys [fragment-name]} selection
           fragment-selections (get-in parsed-query [:fragments fragment-name :selections])]
-      (summarize-selections parsed-query fragment-selections))
+      (mapcat #(summarize-selection parsed-query %) fragment-selections))
 
     (throw (ex-info "Sanity check" {:selection selection}))))
-
-(defn ^:private selections->string
-  [summarized-selections]
-  (str "{"
-       (->> summarized-selections
-            (map (fn [[field-name & sub-selections]]
-                   (let [field-name' (name field-name)]
-                     (if (seq sub-selections)
-                       (str field-name' " " (selections->string sub-selections))
-                       field-name'))))
-            sort
-            (str/join " "))
-       "}"))
 
 (defn summarize-query
   "Analyzes a parsed query, returning a summary string.
@@ -1280,7 +1272,6 @@
   (let [{:keys [selections]} parsed-query]
     (->> parsed-query
          :selections
-         (summarize-selections parsed-query)
-         selections->string)))
+         (summarize-selections parsed-query))))
 
 
