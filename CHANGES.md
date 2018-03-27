@@ -1,3 +1,9 @@
+
+New `com.walmartlabs.lacinia.parser/summarize-query` function,
+which is used to summarize a query without distractions such as
+aliases and field arguments. This is used to group similar
+queries together when doing performance analysis.
+
 ## 0.25.0 -- 2 Mar 2018
 
 Enum validation has changed: field resolvers may now return
