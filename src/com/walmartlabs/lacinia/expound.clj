@@ -1,6 +1,6 @@
 (ns com.walmartlabs.lacinia.expound
   "Adds improved spec messages to Lacinia specs."
-  {:since "0.26.0"}
+  {:added "0.26.0"}
   (:require
     [expound.alpha :refer [defmsg]]
     [com.walmartlabs.lacinia.schema :as schema]))
