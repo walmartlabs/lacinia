@@ -64,6 +64,9 @@ With actual functions in place, the schema can be compiled for execution.
 
 Compilation performs a number of checks, applies defaults, merges in introspection data about the schema,
 and performs a number of other operations to ready the schema for use.
+The structure passed into ``compile`` is quite complex, so it is always validated using
+:doc:`clojure.spec <spec>`.
+
 
 Parsing GraphQL IDL Schemas
 ---------------------------
