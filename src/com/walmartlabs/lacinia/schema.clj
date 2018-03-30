@@ -1273,8 +1273,7 @@
 
   The format of the compiled schema is subject to change without notice.
 
-  This function is always instrumented with Clojure spec: non-conforming
-  input schemas will cause a spec validation exception to be thrown.
+  This function explicitly validates its arguments using clojure.spec.
 
   Compile options:
 
@@ -1283,7 +1282,7 @@
   : A function that accepts a field name (as a keyword) and converts it into the
     default field resolver; this defaults to [[default-field-resolver]].
 
-  Produces a form ready to be used in executing a query."
+  Produces a form ready for use in executing a query."
   ([schema]
    (compile schema nil))
   ([schema options]
