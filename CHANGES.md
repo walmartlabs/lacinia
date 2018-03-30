@@ -5,7 +5,10 @@ it possible to define query, mutation, or subscription operations
 in terms of the fields of an explicitly named object in the schema.
 This aligns Lacinia better with other implementations of GraphQL.
 
-New `com.walmartlabs.lacinia.parser/summarize-query` function,
+Lacinia is now based on Clojure 1.9, though it can also be used with
+Clojure 1.8.
+
+Added the `com.walmartlabs.lacinia.parser/summarize-query` function,
 which is used to summarize a query without distractions such as
 aliases and field arguments. This is used to group similar
 queries together when doing performance analysis.

@@ -4,8 +4,7 @@
             :url "http://www.apache.org/licenses/LICENSE-2.0"}
   :plugins [[lein-codox "0.10.3"]
             [test2junit "1.2.5"]]
-  :dependencies [[org.clojure/clojure "1.8.0"]
-                 [clojure-future-spec "1.9.0-alpha17"]
+  :dependencies [[org.clojure/clojure "1.9.0"]
                  [clj-antlr "0.2.4"]
                  [org.flatland/ordered "1.5.6"
                   :exclusions [org.clojure/tools.macro]]]
