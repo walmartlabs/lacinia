@@ -3,9 +3,7 @@ Lacinia - GraphQL for Clojure
 
 Lacinia is a library for implementing
 Facebook's
-`GraphQL <https://facebook.github.io/react/blog/2015/05/01/graphql-introduction.html>`_
-specification in idiomatic
-`Clojure <http://clojure.org>`_.
+`GraphQL <https://graphql.org/>`_ specification in idiomatic `Clojure <http://clojure.org>`_.
 
 GraphQL is a way for clients to efficiently obtain data from servers.
 
@@ -48,6 +46,7 @@ responding with JSON, it is also exceptionally useful for allowing backend syste
    resolve/index
    input-objects
    custom-scalars
+   roots
    introspection
    schema/parsing
    samples

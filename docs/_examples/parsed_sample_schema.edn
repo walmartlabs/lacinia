@@ -1,6 +1,7 @@
 {:objects
  {:Character {:fields
-              {:name {:type (non-null String) :description "Character name"}
+              {:name {:type (non-null String)
+                      :description "Character name"}
                :episodes {:type (list :episode)}}
               :description "A Star Wars character"}
   :Query {:fields
@@ -25,16 +26,6 @@
  :enums
  {:episode {:values [:NEWHOPE :EMPIRE :JEDI]}}
 
- :queries
- {:find_all_in_episode {:type (list :Character)
-                        :args
-                        {:episode
-                         {:type (non-null :episode)
-                          :description "Episode for which to find characters."}}
-                        :resolve :find-all-in-episode
-                        :description "Find all characters in the given episode"}}
-
- :mutations
- {:add_character {:type Boolean
-                  :args {:character {:type (non-null :CharacterArg)}}
-                  :resolve :add-character}}}
+ :roots
+ {:query :Query
+  :mutation :Mutation}}

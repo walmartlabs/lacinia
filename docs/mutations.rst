@@ -11,7 +11,8 @@ indicates the new state; this value will be recursively resolved and selected, j
 a query.
 
 Mutations are defined in the schema using the top-level ``:mutations`` key.
-Each mutation becomes a field of the special ``:MutationRoot`` object.
+
+Mutations may also be defined as fields of the :doc:`root mutation object <roots>`.
 
 When a single query includes more than one mutation, the mutations *must* execute in the client-specified
 order.

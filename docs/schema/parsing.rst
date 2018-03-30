@@ -55,9 +55,13 @@ Example
    :name: return-value
    :language: clojure
 
-.. note::
-  The GraphQL SDL represents queries, mutations and subscriptions as types,
-  and Lacinia represents them as fields on ``:queries``, ``:mutations``, and
-  ``:subscriptions``. The Lacinia schema will retain the original types under
-  ``:objects``, which may be unused unless other parts of your schema definition
-  reference those types.
+The ``:documentation`` key uses a naming convention on the keys which become paths into the Lacinia input schema.
+``:Character/name`` applies to the ``name`` field of the ``Character`` object.
+``:Query.find_all_in_episode/episode`` applies to the ``episode`` argument, inside the ``find_all_in_episode`` field
+of the ``Query`` object.
+
+As is normal with SDL, the available queries, mutations, and subscriptions (not shown in this example)
+are defined on ordinary schema objects, and the ``schema`` element identifies which objects are used for
+which purposes.
+
+The ``:roots`` map inside the Lacinia schema is equivalent to the ``schema`` element in the SDL.
