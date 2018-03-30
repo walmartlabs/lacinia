@@ -105,6 +105,7 @@
   [schema]
   (->> schema
        vals
+       (filter :type-name)                                    ;; ::schema/root has no :type-name
        (group-by :category)
        (map-vals #(->> (map :type-name %)
                        (remove is-internal-type-name?)
@@ -257,10 +258,13 @@
 (s/def ::schema-key (s/and simple-keyword?
                            ::graphql-identifier))
 (s/def ::graphql-identifier #(re-matches graphql-identifier (name %)))
-(s/def ::identifier (s/and (s/or :keyword simple-keyword?
-                                 :symbol simple-symbol?)
-                           graphql-identifier?))
-(s/def ::type (s/or :base-type ::identifier
+;; For style and/or historical reasons, type names can be a keyword or a symbol.
+;; The convention is that built-in types used a symbol, and application-defined types
+;; use a keyword.
+(s/def ::type-name (s/and (s/or :keyword simple-keyword?
+                                :symbol simple-symbol?)
+                          graphql-identifier?))
+(s/def ::type (s/or :base-type ::type-name
                     :wrapping-type (s/cat :modifier #{'list 'non-null}
                                           :type ::type)))
 (s/def ::arg (s/keys :req-un [::type]
@@ -282,7 +286,7 @@
                            :req-un [::type
                                     ::resolve]))
 (s/def ::fields (s/map-of ::schema-key ::field))
-(s/def ::implements (s/coll-of ::identifier))
+(s/def ::implements (s/coll-of ::type-name))
 (s/def ::description string?)
 (s/def ::tag (s/or
                :symbol symbol?
@@ -295,7 +299,7 @@
 (s/def ::interface (s/keys :opt-un [::description
                                     ::fields]))
 ;; A list of keyword identifying objects that are part of a union.
-(s/def ::members (s/and (s/coll-of ::identifier)
+(s/def ::members (s/and (s/coll-of ::type-name)
                         seq))
 (s/def ::union (s/keys :opt-un [::description]
                        :req-un [::members]))
@@ -348,6 +352,8 @@
 
 (s/def ::subscriptions (s/map-of ::schema-key ::subscription))
 
+(s/def ::roots (s/map-of #{:query :mutation :subscription} ::schema-key))
+
 (s/def ::schema-object
   (s/keys :opt-un [::scalars
                    ::interfaces
@@ -355,6 +361,7 @@
                    ::input-objects
                    ::enums
                    ::unions
+                   ::roots
                    ::queries
                    ::mutations
                    ::subscriptions]))
@@ -1131,6 +1138,70 @@
   (fn [_ _ value]
     (resolve-as value)))
 
+(defn ^:private add-root
+  "Adds a root object for 'extra' operations (e.g., the :queries map in the input schema)."
+  [compiled-schema object-name object-description fields]
+  (assoc compiled-schema object-name
+         {:category :object
+          :type-name object-name
+          :description object-description
+          :fields fields}))
+
+(defn ^:private merge-root
+  "Used after the compile-type stage, to merge together the root objects, one possibly provided
+  via the input schema :roots map, and the other built from the :queries, :mutations, or :subscriptions
+  maps (the 'extra object').
+
+  The object-name is the name provided in the :roots map; it may not exist (normally, this is because
+  it gets a default name such as `QueryRoot`), in which case it is created."
+  [compiled-schema root-name extra-object-name object-name]
+  (let [root-object-def (get compiled-schema object-name)
+        extra-object-def (get compiled-schema extra-object-name)
+        merge-into (fn [fields more-fields]
+                     (reduce-kv (fn [m k v]
+                                  (when (contains? m k)
+                                    (throw (ex-info (format "Name collision compiling schema. %s %s conflicts with %s."
+                                                            (-> root-name name str/capitalize)
+                                                            (q (:qualified-field-name v))
+                                                            (q (get-in m [k :qualified-field-name])))
+                                                    {:field-name k
+                                                     :operation root-name})))
+                                  (assoc m k v))
+                                fields
+                                more-fields))]
+    (cond-let
+
+      (nil? root-object-def)
+      ;; Copy the extra object over as the missing root object.
+      (let [extra-object-def (get compiled-schema extra-object-name)]
+        (assoc compiled-schema object-name
+               (assoc extra-object-def :type-name object-name)))
+
+      :let [category (:category root-object-def)]
+
+      (= :object category)
+      ;; Merge in the extra fields into the actual object
+      (update-in compiled-schema [object-name :fields] merge-into (:fields extra-object-def))
+
+      (= :union category)
+      ;; Lacinia's execution and introspection code is built on the idea of a single root object type for
+      ;; each type of operation. To keep that working, we copy the fields of each member object in
+      ;; the union into the extra object and then designate the extra object the root.
+      (let [reduce* (fn [val f coll] (reduce f val coll))]
+        (-> compiled-schema
+            (update-in [extra-object-name :fields] reduce* (fn [fields member-type-name]
+                                                             (merge-into fields (get-in compiled-schema [member-type-name :fields])))
+                       (:members root-object-def))
+            (assoc-in [::roots root-name] extra-object-name)))
+
+      :else
+      (throw (ex-info (format "Type %s (a %s operation root) must be a union or object, not %s."
+                              (q object-name)
+                              (name root-name)
+                              (name category))
+                      {:type root-name
+                       :category category})))))
+
 (defrecord CompiledSchema [])
 
 (defn ^:private construct-compiled-schema
@@ -1139,33 +1210,32 @@
   ;; for overrides of the built-in scalars without a name conflict exception.
   (let [merged-scalars (merge default-scalar-transformers
                               (:scalars schema))
+        {:keys [query mutation subscription]
+         :or {query :QueryRoot
+              mutation :MutationRoot
+              subscription :SubscriptionRoot}} (map-vals as-keyword (:roots schema))
         defaulted-subscriptions (->> schema
                                      :subscriptions
                                      (map-vals #(if-not (:resolve %)
                                                   (assoc % :resolve default-subscription-resolver)
                                                   %)))]
-    (-> {constants/query-root {:category :object
-                               :type-name constants/query-root
-                               :description "Root of all queries."}
-         constants/mutation-root {:category :object
-                                  :type-name constants/mutation-root
-                                  :description "Root of all mutations."}
-         constants/subscription-root {:category :object
-                                      :type-name constants/subscription-root
-                                      :description "Root of all subscriptions."}}
+    (-> {::roots {:query query
+                  :mutation mutation
+                  :subscription subscription}}
         (xfer-types merged-scalars :scalar)
         (xfer-types (:enums schema) :enum)
         (xfer-types (:unions schema) :union)
         (xfer-types (:objects schema) :object)
         (xfer-types (:interfaces schema) :interface)
         (xfer-types (:input-objects schema) :input-object)
-        (assoc-in [constants/query-root :fields] (:queries schema))
-        (assoc-in [constants/mutation-root :fields] (:mutations schema))
-        (assoc-in [constants/subscription-root :fields] defaulted-subscriptions)
-        ;; queries, mutations, and subscriptions are fields on special objects; a lot of
-        ;; compilation occurs here along with ordinary objects.
+        (add-root :__Queries "Root of all queries." (:queries schema))
+        (add-root :__Mutations "Root of all mutations." (:mutations schema))
+        (add-root :__Subscriptions "Root of all subscriptions." defaulted-subscriptions)
         (as-> s
               (map-vals #(compile-type % s) s))
+        (merge-root :query :__Queries query)
+        (merge-root :mutation :__Mutations mutation)
+        (merge-root :subscription :__Subscriptions subscription)
         (prepare-and-validate-interfaces)
         (prepare-and-validate-objects :object options)
         (prepare-and-validate-objects :input-object options)
@@ -1197,8 +1267,6 @@
 (s/def ::compile-args
   (s/cat :schema ::schema-object
          :options (s/? (s/nilable ::compile-options))))
-
-(s/fdef compile :args ::compile-args)
 
 (defn compile
   "Compiles an schema, verifies its correctness, and prepares it for query execution.

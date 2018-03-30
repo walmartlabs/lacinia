@@ -1,0 +1,19 @@
+{:queries
+ {:version {:type String
+            :resolve :queries/version}}
+
+ :objects
+ {:Barney
+  {:fields
+   {:last_name {:type String
+                :resolve :Barney/last-name}}}
+
+  :Fred
+  {:fields
+   {:family_name {:type String
+                  :resolve :Fred/family-name}}}}
+
+ :unions
+ {:Queries {:members [:Fred :Barney]}}
+
+ :roots {:query :Queries}}

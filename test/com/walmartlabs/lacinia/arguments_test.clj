@@ -9,10 +9,10 @@
   (when-let [e (is (thrown? ExceptionInfo
                             (compile-schema "unknown-argument-type-schema.edn"
                                             {:example identity})))]
-    (is (= "Argument `id' of field `QueryRoot/example' references unknown type `UUID'."
+    (is (= "Argument `id' of field `__Queries/example' references unknown type `UUID'."
            (.getMessage e)))
     (is (= {:arg-name :id
-            :field-name :QueryRoot/example
+            :field-name :__Queries/example
             :schema-types {:object [:MutationRoot
                                     :QueryRoot
                                     :SubscriptionRoot]

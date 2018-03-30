@@ -1,0 +1,10 @@
+{:queries
+ {:fred {:type String
+         :resolve :queries/fred}}
+ :objects
+ {:Barney
+  {:fields
+   {:last_name {:type String
+                :resolve :Barney/last-name}}}}
+
+ :roots {:query :Barney}}
