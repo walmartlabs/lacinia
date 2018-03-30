@@ -269,8 +269,10 @@
 ;; Defining these callbacks in spec has been a challenge. At some point,
 ;; we can expand this to capture a bit more about what a field resolver
 ;; is passed and should return.
-(s/def ::resolve (s/or :function fn?
-                       :protocol #(satisfies? resolve/FieldResolver %)))
+(s/def ::resolve (s/or :function ::resolver-fn
+                       :protocol ::resolver-type))
+(s/def ::resolver-fn fn?)
+(s/def ::resolver-type #(satisfies? resolve/FieldResolver %))
 (s/def ::field (s/keys :opt-un [::description
                                 ::resolve
                                 ::args
