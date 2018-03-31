@@ -10,6 +10,8 @@
                   :exclusions [org.clojure/tools.macro]]]
   :profiles {:dev {:dependencies [[criterium "0.4.4"]
                                   [joda-time "2.9.9"]
+                                  [io.aviso/logging "0.2.0"]
+                                  [io.pedestal/pedestal.log "0.5.3"]
                                   [org.clojure/test.check "0.9.0"]
                                   [org.clojure/data.csv "0.1.4"]
                                   [org.clojure/tools.cli "0.3.5"]
