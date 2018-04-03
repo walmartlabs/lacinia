@@ -38,3 +38,32 @@
 
 (deftest basics5
   (expect "reserved-words" "handles reserved words as field names properly"))
+
+(deftest basics6
+  (expect "args" "basic field arguments support"))
+
+(deftest basic7
+  (expect "literals" "core set of literal values"))
+
+(deftest basic8
+  (expect "arrays" "arrays of simple literals"))
+
+(deftest basic9
+  (expect "enum" "enum literal values"))
+
+(deftest basic10
+  (expect "enum-reserved" "enums as reserved words"))
+
+(deftest x11
+  (expect "object" "structured objects"))
+
+(deftest x12
+  (expect "reserved-args" "argument names can be a reserved word"))
+
+(deftest x13
+  (expect "vars" "variables in query"))
+
+;; TODO
+;; - duplicate arg name for same field
+;; - duplicate property name for same object
+

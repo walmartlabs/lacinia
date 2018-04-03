@@ -1,0 +1,10 @@
+[{:type :query
+  :selections [{:type :field
+                :field-name :orders
+                :args {:sort {:type :enum
+                              :value :descending}}
+                :selections [{:type :field
+                              :field-name :sales_date
+                              :args
+                              {:time_zone {:type :enum
+                                           :value :utc}}}]}]}]

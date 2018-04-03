@@ -1,0 +1,7 @@
+{
+  hello (i: 5
+         f: 3.14
+         s: "clojure"
+         b: false
+         n: null)
+}

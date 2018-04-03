@@ -36,9 +36,16 @@
     (first prod))
   :default ::default)
 
-(defmethod xform ::default
-  [_]
-  :**)
+(defn ^:private arguments-map
+  [argument-prods]
+  (->> argument-prods
+       (mapv as-map)
+       (reduce (fn [m arg]
+                 (assoc! m
+                         (-> arg :name first xform)
+                         (-> arg :value first xform)))
+               (transient {}))
+       persistent!))
 
 (defmethod xform :definition
   [prod]
@@ -46,12 +53,40 @@
 
 (defmethod xform :operationDefinition
   [prod]
-  (let [{:keys [operationType selectionSet]} (as-map prod)
+  (let [{:keys [operationType selectionSet variableDefinitions]} (as-map prod)
         type (if operationType
                (xform (first operationType))
                :query)]
     (cond-> {:type type}
-      selectionSet (assoc :selections (mapv xform selectionSet)))))
+      selectionSet (assoc :selections (mapv xform selectionSet))
+      variableDefinitions (assoc :vars (->> variableDefinitions
+                                            (map rest)      ; strip :variableDefinition
+                                            (reduce (fn [m v]
+                                                      (log/debug :variable v)
+                                                      (assoc! m
+                                                              (-> v first second xform)
+                                                              (-> v second xform)))
+                                                    (transient {}))
+                                            persistent!)))))
+
+(defmethod xform :type
+  [prod]
+  (-> prod second xform))
+
+(defmethod xform :nonNullType
+  [prod]
+  {:type :non-null
+   :of-type (-> prod second xform)})
+
+(defmethod xform :listType
+  [prod]
+  {:type :list
+   :of-type (-> prod second xform)})
+
+(defmethod xform :typeName
+  [prod]
+  {:type :root-type
+   :type-name (-> prod second second xform)})
 
 (defmethod xform :selectionSet
   [prod]
@@ -64,14 +99,16 @@
 
 (defmethod xform :field
   [prod]
-  (let [{:keys [name selectionSet alias]} (as-map prod)]
+  (let [{:keys [name selectionSet alias arguments]} (as-map prod)]
     (cond->
       {:type :field
        :field-name (xform (first name))}
 
       alias (assoc :alias (xform (first alias)))
 
-      selectionSet (assoc :selections (mapv xform selectionSet)))))
+      selectionSet (assoc :selections (mapv xform selectionSet))
+
+      arguments (assoc :args (arguments-map arguments)))))
 
 (defmethod xform :nameid                                    ; Possibly not needed
   [prod]
@@ -99,6 +136,60 @@
 (defmethod xform :'subscription'
   [_]
   :subscription)
+
+(defmethod xform :booleanvalue
+  [prod]
+  {:type :boolean
+   :value (-> prod second (= "true"))})
+
+(defmethod xform :intvalue
+  [prod]
+  {:type :integer
+   :value (-> prod second Integer/parseInt)})               ; TODO: Integer or Long?
+
+(defmethod xform :floatvalue
+  [prod]
+  {:type :float
+   :value (-> prod second Double/parseDouble)})             ; TODO: Float or Double?
+
+(defmethod xform :stringvalue
+  [prod]
+  {:type :string
+   ;; The value from Antlr has quotes around it that need to be stripped off.
+   :value (let [quoted (second prod)]
+            (subs quoted 1 (-> quoted .length dec)))})
+
+(defmethod xform :arrayValue
+  [prod]
+  {:type :array
+   :value (->> prod
+               rest
+               (mapv (comp xform second)))})
+
+(defmethod xform :nullvalue
+  [_]
+  {:type :null})
+
+(defmethod xform :enumValue
+  [prod]
+  {:type :enum
+   :value (-> prod second xform)})
+
+(defmethod xform :objectValue
+  [prod]
+  {:type :object
+   :value (->> prod
+               rest
+               (map rest)                                   ; drop :objectField
+               (reduce (fn [m v]
+                         (assoc! m (-> v first xform) (-> v second second xform)))
+                       (transient {}))
+               persistent!)})
+
+(defmethod xform :variable
+  [prod]
+  {:type :variable
+   :value (-> prod second xform)})
 
 (defn ^:private xform-query
   [antlr-tree]

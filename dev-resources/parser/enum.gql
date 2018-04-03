@@ -1,0 +1,3 @@
+{
+ orders(sort: descending) { sales_date(time_zone: utc) }
+}

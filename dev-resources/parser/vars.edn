@@ -1,0 +1,14 @@
+[{:type :query
+  :vars {:id {:type :non-null
+              :of-type {:type :root-type
+                        :type-name :Int}}
+         :terms {:type :list
+                 :of-type {:type :non-null
+                           :of-type {:type :root-type
+                                     :type-name :String}}}
+         :casesensitive {:type :root-type
+                         :type-name :Boolean}}
+  :selections [{:type :field
+                :field-name :order
+                :args {:order_id {:type :variable
+                                  :value :id}}}]}]
