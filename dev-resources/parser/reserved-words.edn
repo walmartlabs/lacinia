@@ -1,0 +1,10 @@
+[{:type :query
+  :selections [{:type :field
+                :alias :q
+                :field-name :query}
+               {:type :field
+                :alias :m
+                :field-name :mutation}
+               {:type :field
+                :alias :s
+                :field-name :subscription}]}]

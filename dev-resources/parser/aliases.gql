@@ -1,0 +1,7 @@
+{
+  greet: hello {
+    w: world
+    long: longitude
+    lat: latitude
+  }
+}

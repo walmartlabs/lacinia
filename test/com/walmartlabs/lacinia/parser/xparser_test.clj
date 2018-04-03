@@ -11,6 +11,7 @@
   [base-name extension]
   (-> (str "parser/" base-name "." extension)
       io/resource
+      (or (throw (IllegalStateException. (str "Source not found: " base-name "." extension))))
       slurp))
 
 (defmacro expect
@@ -25,3 +26,15 @@
 
 (deftest basics
   (expect "simple" "minimal query"))
+
+(deftest basics2
+  (expect "nested-fields" "nested fields below the root"))
+
+(deftest basics3
+  (expect "aliases" "identifies aliases"))
+
+(deftest basics4
+  (expect "explicit-query" "use of the optional query keyword"))
+
+(deftest basics5
+  (expect "reserved-words" "handles reserved words as field names properly"))

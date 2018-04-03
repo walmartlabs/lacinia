@@ -8,28 +8,50 @@
     [clj-antlr.core :as antlr.core]
     [clojure.java.io :as io]
     [io.pedestal.log :as log]
-    [com.walmartlabs.lacinia.parser.common :refer [antlr-parse]]))
+    [com.walmartlabs.lacinia.parser.common :refer [antlr-parse]]
+    [clojure.pprint :as pprint]))
 
 (def ^:private grammar
   (antlr.core/parser (slurp (io/resource "com/walmartlabs/lacinia/Graphql.g4"))))
 
+(defn ^:private as-map
+  [prod]
+  (->> prod
+       rest
+       (reduce (fn [m sub-prod]
+                 (assoc! m (first sub-prod) (rest sub-prod)))
+               (transient {}))
+       persistent!
+       #_((fn [x]
+            (log/trace :as-map x)
+            x))))
+
 (defmulti ^:private xform
-  "Transform an Antlr production into a result."
+  "Transform an Antlr production into a result.
+
+  Antlr productions are recursive lists; the first element is a type
+  (from the grammar), and the rest of the list are nested productions."
   (fn [prod]
-    (log/trace :event :dispatch :prod prod)
+    (log/trace :dispatch prod)
     (first prod))
   :default ::default)
 
 (defmethod xform ::default
   [_]
-  [])
+  :**)
 
 (defmethod xform :definition
   [prod]
-  (case (-> prod second first)
+  (xform (second prod)))
 
-    :operationDefinition
-    (xform (-> prod second second))))
+(defmethod xform :operationDefinition
+  [prod]
+  (let [{:keys [operationType selectionSet]} (as-map prod)
+        type (if operationType
+               (xform (first operationType))
+               :query)]
+    (cond-> {:type type}
+      selectionSet (assoc :selections (mapv xform selectionSet)))))
 
 (defmethod xform :selectionSet
   [prod]
@@ -42,19 +64,47 @@
 
 (defmethod xform :field
   [prod]
-  {:type :field
-   :field-name (xform (second prod))})
+  (let [{:keys [name selectionSet alias]} (as-map prod)]
+    (cond->
+      {:type :field
+       :field-name (xform (first name))}
 
-(defmethod xform :name
-  [prod]
-  (xform (second prod)))
+      alias (assoc :alias (xform (first alias)))
 
-(defmethod xform :nameid
+      selectionSet (assoc :selections (mapv xform selectionSet)))))
+
+(defmethod xform :nameid                                    ; Possibly not needed
   [prod]
   (-> prod second keyword))
 
+(defmethod xform :name
+  [prod]
+  (case (-> prod second first)
+    :nameid (-> prod second xform)
+
+    :operationType (-> prod second second xform)))
+
+(defmethod xform :operationType
+  [prod]
+  (-> prod second xform))
+
+(defmethod xform :'query'
+  [_]
+  :query)
+
+(defmethod xform :'mutation'
+  [_]
+  :mutation)
+
+(defmethod xform :'subscription'
+  [_]
+  :subscription)
+
 (defn ^:private xform-query
   [antlr-tree]
+  (println "Parsed Antlr Tree:")
+  (pprint/write antlr-tree)
+  (println)
   (let [top-levels (rest antlr-tree)]
     (mapv xform top-levels)))
 

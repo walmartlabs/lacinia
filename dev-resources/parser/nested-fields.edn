@@ -1,0 +1,7 @@
+[{:type :query
+  :selections [{:type :field
+                :field-name :hello
+                :selections [{:type :field
+                              :field-name :world}
+                             {:type :field
+                              :field-name :timestamp}]}]}]
