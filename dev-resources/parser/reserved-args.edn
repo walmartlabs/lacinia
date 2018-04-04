@@ -1,5 +1,6 @@
 [{:type :query
   :selections [{:type :field
                 :field-name :hello
-                :args {:query {:type :string
-                               :value "graphql"}}}]}]
+                :args [{:arg-name :query
+                        :arg-value {:type :string
+                                    :value "graphql"}}]}]}]

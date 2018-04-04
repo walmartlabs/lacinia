@@ -1,7 +1,8 @@
 [{:type :query
-  :vars {:internal {:of-type {:type :root-type
-                              :type-name :Boolean}
-                    :type :non-null}}
+  :vars [{:var-name :internal
+          :var-type {:of-type {:type :root-type
+                               :type-name :Boolean}
+                     :type :non-null}}]
   :selections [{:field-name :order
                 :type :field
                 :selections [{:type :field
@@ -9,7 +10,8 @@
                              {:type :field
                               :field-name :customer_id
                               :directives [{:directive-name :If
-                                            :args {:test {:type :variable
-                                                          :value :internal}}}]}
+                                            :args [{:arg-name :test
+                                                    :arg-value {:type :variable
+                                                                :value :internal}}]}]}
                              {:type :field
                               :field-name :date}]}]}]

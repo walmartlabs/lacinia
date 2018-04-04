@@ -58,7 +58,11 @@
 
   (expect "fragment-directives" "directives on inline and named fragments")
 
-  (expect "operation-directives" "directives on operations"))
+  (expect "operation-directives" "directives on operations")
+
+  (expect "variable-defaults" "default for variables")
+
+  (expect "named-operation" "names for operations"))
 
 (deftest token-location-meta
   ;; Spot check that all the key elements, those that will likely have
@@ -74,9 +78,5 @@
     (is (= {:column 2
             :line 2}
            (-> parsed first :selections first meta)))))
-
-;; TODO
-;; - duplicate arg name for same field
-;; - duplicate property name for same object
 
 

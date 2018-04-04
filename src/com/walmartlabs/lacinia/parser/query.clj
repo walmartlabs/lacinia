@@ -9,7 +9,8 @@
     [clojure.java.io :as io]
     #_[io.pedestal.log :as log]
     #_[clojure.pprint :as pprint]
-    [com.walmartlabs.lacinia.parser.common :refer [antlr-parse]]))
+    [com.walmartlabs.lacinia.parser.common :refer [antlr-parse parse-failures]])
+  (:import (clj_antlr ParseError)))
 
 (def ^:private grammar
   (antlr.core/parser (slurp (io/resource "com/walmartlabs/lacinia/Graphql.g4"))))
@@ -39,16 +40,11 @@
     (first prod))
   :default ::default)
 
-(defn ^:private arguments-map
-  [argument-prods]
-  (->> argument-prods
-       (mapv as-map)
-       (reduce (fn [m arg]
-                 (assoc! m
-                         (-> arg :name first xform)
-                         (-> arg :value first xform)))
-               (transient {}))
-       persistent!))
+(defmethod xform :argument
+  [prod]
+  (let [[_ name value] prod]
+    {:arg-name (xform name)
+     :arg-value (-> value second xform)}))
 
 (defmethod xform :definition
   [prod]
@@ -56,24 +52,27 @@
 
 (defmethod xform :operationDefinition
   [prod]
-  (let [{:keys [operationType selectionSet variableDefinitions directives]} (as-map prod)
+  (let [{:keys [operationType selectionSet variableDefinitions directives]
+         op-name :name} (as-map prod)
         type (if operationType
                (xform (first operationType))
                :query)]
     (cond-> (copy-meta prod {:type type})
 
+      op-name (assoc :name (-> op-name first xform))
+
       selectionSet (assoc :selections (mapv xform selectionSet))
 
       directives (assoc :directives (mapv xform directives))
 
-      variableDefinitions (assoc :vars (->> variableDefinitions
-                                            (map rest)      ; strip :variableDefinition
-                                            (reduce (fn [m v]
-                                                      (assoc! m
-                                                              (-> v first second xform)
-                                                              (-> v second xform)))
-                                                    (transient {}))
-                                            persistent!)))))
+      variableDefinitions (assoc :vars (mapv xform variableDefinitions)))))
+
+(defmethod xform :variableDefinition
+  [prod]
+  (let [[_ var-name var-type var-default] prod]
+    (cond-> {:var-name (-> var-name second xform)
+             :var-type (xform var-type)}
+      var-default (assoc :default (-> var-default second second xform)))))
 
 (defmethod xform :type
   [prod]
@@ -112,7 +111,7 @@
 
       directives (assoc :directives (mapv xform directives))
 
-      arguments (assoc :args (arguments-map arguments)))))
+      arguments (assoc :args (mapv xform arguments)))))
 
 (defmethod xform :nameid                                    ; Possibly not needed
   [prod]
@@ -222,7 +221,7 @@
   [prod]
   (let [[_ directive-name arguments] prod]
     (cond-> {:directive-name (xform directive-name)}
-      arguments (assoc :args (-> arguments rest arguments-map)))))
+      arguments (assoc :args (->> arguments rest (mapv xform))))))
 
 (defn ^:private xform-query
   [antlr-tree]
@@ -235,7 +234,21 @@
 
 
 (defn parse-query
-  "Parses an input document (a string) into the intermediate query structure."
+  "Parses an input document (a string) into the intermediate query structure.
+
+  Returns a vector of root definitions (:type is :fragment-definition,
+  :query, :mutation, or :subscription). Continues from there.
+
+  Currently, the overall structure is best described by the tests.
+
+  Many nodes have meta data of keys :line and :column to describe thier location
+  in the input source (used for error reporting)."
   [input]
-  (xform-query (antlr-parse grammar input)))
+  (xform-query
+    (try
+      (antlr-parse grammar input)
+      (catch ParseError e
+        (let [failures (parse-failures e)]
+          (throw (ex-info "Failed to parse GraphQL query."
+                          {:errors failures})))))))
 

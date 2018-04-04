@@ -1,0 +1,11 @@
+[{:type :query
+  :vars [{:var-name :format
+          :var-type {:type :root-type
+                     :type-name :GreetingFormat}
+          :default {:type :enum
+                    :value :LONG}}]
+  :selections [{:type :field
+                :field-name :hello
+                :args [{:arg-name :format
+                        :arg-value {:type :variable
+                                    :value :format}}]}]}]
