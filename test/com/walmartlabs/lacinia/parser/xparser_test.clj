@@ -60,9 +60,23 @@
 
   (expect "operation-directives" "directives on operations"))
 
+(deftest token-location-meta
+  ;; Spot check that all the key elements, those that will likely have
+  ;; a runtime error associated with them, have line/column metadata.
+  (let [parsed (expect "fragment-directives" "parse worked")]
+    ;; TODO: Column numbers are generally off
+
+    ;; Operation
+    (is (= {:line 1
+            :column 0}
+           (-> parsed first meta)))
+
+    (is (= {:column 2
+            :line 2}
+           (-> parsed first :selections first meta)))))
+
 ;; TODO
 ;; - duplicate arg name for same field
 ;; - duplicate property name for same object
-;; - location metadata carries forward
 
 

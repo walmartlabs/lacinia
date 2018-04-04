@@ -23,6 +23,10 @@
                (transient {}))
        persistent!))
 
+(defn ^:private copy-meta
+  [from to]
+  (with-meta to (meta from)))
+
 (defmulti ^:private xform
   "Transform an Antlr production into a result.
 
@@ -56,7 +60,7 @@
         type (if operationType
                (xform (first operationType))
                :query)]
-    (cond-> {:type type}
+    (cond-> (copy-meta prod {:type type})
 
       selectionSet (assoc :selections (mapv xform selectionSet))
 
@@ -98,8 +102,9 @@
   [prod]
   (let [{:keys [name selectionSet alias arguments directives]} (as-map prod)]
     (cond->
-      {:type :field
-       :field-name (xform (first name))}
+      (copy-meta prod
+                 {:type :field
+                  :field-name (xform (first name))})
 
       alias (assoc :alias (xform (first alias)))
 
