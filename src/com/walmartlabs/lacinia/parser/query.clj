@@ -21,10 +21,7 @@
        (reduce (fn [m sub-prod]
                  (assoc! m (first sub-prod) (rest sub-prod)))
                (transient {}))
-       persistent!
-       #_((fn [x]
-            (log/trace :as-map x)
-            x))))
+       persistent!))
 
 (defmulti ^:private xform
   "Transform an Antlr production into a result.
@@ -53,12 +50,16 @@
 
 (defmethod xform :operationDefinition
   [prod]
-  (let [{:keys [operationType selectionSet variableDefinitions]} (as-map prod)
+  (let [{:keys [operationType selectionSet variableDefinitions directives]} (as-map prod)
         type (if operationType
                (xform (first operationType))
                :query)]
     (cond-> {:type type}
+
       selectionSet (assoc :selections (mapv xform selectionSet))
+
+      directives (assoc :directives (mapv xform directives))
+
       variableDefinitions (assoc :vars (->> variableDefinitions
                                             (map rest)      ; strip :variableDefinition
                                             (reduce (fn [m v]
@@ -94,7 +95,7 @@
 
 (defmethod xform :field
   [prod]
-  (let [{:keys [name selectionSet alias arguments]} (as-map prod)]
+  (let [{:keys [name selectionSet alias arguments directives]} (as-map prod)]
     (cond->
       {:type :field
        :field-name (xform (first name))}
@@ -102,6 +103,8 @@
       alias (assoc :alias (xform (first alias)))
 
       selectionSet (assoc :selections (mapv xform selectionSet))
+
+      directives (assoc :directives (mapv xform directives))
 
       arguments (assoc :args (arguments-map arguments)))))
 
@@ -188,14 +191,19 @@
 
 (defmethod xform :inlineFragment
   [prod]
-  {:type :inline-fragment
-   :on-type (-> prod second second xform)
-   :selections (mapv xform (-> prod (nth 2) rest))})
+  (let [{:keys [typeCondition directives selectionSet]} (as-map prod)]
+    (cond-> {:type :inline-fragment
+             :on-type (-> typeCondition first xform)
+             :selections (mapv xform selectionSet)}
+      directives
+      (assoc :directives (mapv xform directives)))))
 
 (defmethod xform :fragmentSpread
   [prod]
-  {:type :named-fragment
-   :fragment-name (-> prod second second xform)})
+  (let [[_ fragment-name directives] prod]
+    (cond-> {:type :named-fragment
+             :fragment-name (-> fragment-name second xform)}
+      directives (assoc :directives (mapv xform (rest directives))))))
 
 (defmethod xform :fragmentDefinition
   [prod]
@@ -203,6 +211,12 @@
     {:type :fragment-definition
      :on-type (-> fragment-name second xform)
      :selections (->> selection-set rest (mapv xform))}))
+
+(defmethod xform :directive
+  [prod]
+  (let [[_ directive-name arguments] prod]
+    (cond-> {:directive-name (xform directive-name)}
+      arguments (assoc :args (-> arguments rest arguments-map)))))
 
 (defn ^:private xform-query
   [antlr-tree]

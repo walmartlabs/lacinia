@@ -69,8 +69,18 @@
 (deftest x15
   (expect "named-fragment" "named fragment define and use"))
 
+(deftest x16
+  (expect "field-directive" "directives on fields"))
+
+(deftest x17
+  (expect "fragment-directives" "directives on inline and named fragments"))
+
+(deftest x18
+  (expect "operation-directives" "directives on operations"))
+
 ;; TODO
 ;; - duplicate arg name for same field
 ;; - duplicate property name for same object
+;; - location metadata carries forward
 
 

@@ -1,0 +1,18 @@
+[{:type :query
+  :selections [{:type :field
+                :field-name :order
+                :selections [{:type :inline-fragment
+                              :on-type {:type :root-type
+                                        :type-name :InStore}
+                              :directives [{:directive-name :Secure}]
+                              :selections [{:type :field
+                                            :field-name :store_number}]}
+                             {:type :field
+                              :field-name :item_count}
+                             {:type :named-fragment
+                              :fragment-name :OnlineFrag
+                              :directives [{:directive-name :InternalOnly}]}]}]}
+ {:type :fragment-definition
+  :on-type :OnlineFrag
+  :selections [{:field-name :refer_code
+                :type :field}]}]

@@ -1,0 +1,11 @@
+query {
+  order {
+    ... on InStore @Secure { store_number }
+    item_count
+    ... OnlineFrag @InternalOnly
+   }
+}
+
+fragment OnlineFrag on OnlineOrder {
+  refer_code
+}
