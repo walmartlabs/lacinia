@@ -3,6 +3,6 @@
                 :field-name :hello
                 :args [{:arg-name :world
                         :arg-value {:type :boolean
-                                    :value true}}]
+                                    :value "true"}}]
                 :selections [{:type :field
                               :field-name :greeting}]}]}]

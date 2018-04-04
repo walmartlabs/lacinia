@@ -8,7 +8,7 @@
                                             :first_name {:type :string
                                                          :value "Fred"}
                                             :age {:type :integer
-                                                  :value 39}
+                                                  :value "39"}
                                             :sex {:type :enum
                                                   :value :male}
                                             :address {:type :object

@@ -143,17 +143,17 @@
 (defmethod xform :booleanvalue
   [prod]
   {:type :boolean
-   :value (-> prod second (= "true"))})
+   :value (second prod)})
 
 (defmethod xform :intvalue
   [prod]
   {:type :integer
-   :value (-> prod second Integer/parseInt)})               ; TODO: Integer or Long?
+   :value (second prod)})
 
 (defmethod xform :floatvalue
   [prod]
   {:type :float
-   :value (-> prod second Double/parseDouble)})             ; TODO: Float or Double?
+   :value (second prod)})
 
 (defmethod xform :stringvalue
   [prod]

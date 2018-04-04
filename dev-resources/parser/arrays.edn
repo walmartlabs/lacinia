@@ -4,11 +4,11 @@
                 :args [{:arg-name :i
                         :arg-value {:type :array
                                     :value [{:type :integer
-                                             :value 3}
+                                             :value "3"}
                                             {:type :integer
-                                             :value 4}
+                                             :value "4"}
                                             {:type :integer
-                                             :value 5}]}}
+                                             :value "5"}]}}
                        {:arg-name :s
                         :arg-value {:type :array
                                     :value [{:type :string
