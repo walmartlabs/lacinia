@@ -7,9 +7,9 @@
   (:require
     [clj-antlr.core :as antlr.core]
     [clojure.java.io :as io]
-    [io.pedestal.log :as log]
-    [com.walmartlabs.lacinia.parser.common :refer [antlr-parse]]
-    [clojure.pprint :as pprint]))
+    #_[io.pedestal.log :as log]
+    #_[clojure.pprint :as pprint]
+    [com.walmartlabs.lacinia.parser.common :refer [antlr-parse]]))
 
 (def ^:private grammar
   (antlr.core/parser (slurp (io/resource "com/walmartlabs/lacinia/Graphql.g4"))))
@@ -28,7 +28,9 @@
 
   Antlr productions are recursive lists; the first element is a type
   (from the grammar), and the rest of the list are nested productions."
-  (fn [prod]
+  first
+  ;; When debugging/developing, this is incredibly useful:
+  #_(fn [prod]
     (log/trace :dispatch prod)
     (first prod))
   :default ::default)
@@ -63,7 +65,6 @@
       variableDefinitions (assoc :vars (->> variableDefinitions
                                             (map rest)      ; strip :variableDefinition
                                             (reduce (fn [m v]
-                                                      (log/debug :variable v)
                                                       (assoc! m
                                                               (-> v first second xform)
                                                               (-> v second xform)))
@@ -220,9 +221,10 @@
 
 (defn ^:private xform-query
   [antlr-tree]
-  (println "Parsed Antlr Tree:")
-  (pprint/write antlr-tree)
-  (println)
+  #_(do
+      (println "Parsed Antlr Tree:")
+      (pprint/write antlr-tree)
+      (println))
   (let [top-levels (rest antlr-tree)]
     (mapv xform top-levels)))
 

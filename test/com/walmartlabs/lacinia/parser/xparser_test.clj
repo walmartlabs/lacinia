@@ -6,7 +6,6 @@
     [clojure.edn :as edn]
     [clojure.java.io :as io]))
 
-
 (defn content
   [base-name extension]
   (-> (str "parser/" base-name "." extension)
@@ -24,58 +23,41 @@
          ~message)
      actual#))
 
-(deftest basics
-  (expect "simple" "minimal query"))
+(deftest general-parsing
+  (expect "simple" "minimal query")
 
-(deftest basics2
-  (expect "nested-fields" "nested fields below the root"))
+  (expect "nested-fields" "nested fields below the root")
 
-(deftest basics3
-  (expect "aliases" "identifies aliases"))
+  (expect "aliases" "identifies aliases")
 
-(deftest basics4
-  (expect "explicit-query" "use of the optional query keyword"))
+  (expect "explicit-query" "use of the optional query keyword")
 
-(deftest basics5
-  (expect "reserved-words" "handles reserved words as field names properly"))
+  (expect "reserved-words" "handles reserved words as field names properly")
 
-(deftest basics6
-  (expect "args" "basic field arguments support"))
+  (expect "args" "basic field arguments support")
 
-(deftest basic7
-  (expect "literals" "core set of literal values"))
+  (expect "literals" "core set of literal values")
 
-(deftest basic8
-  (expect "arrays" "arrays of simple literals"))
+  (expect "arrays" "arrays of simple literals")
 
-(deftest basic9
-  (expect "enum" "enum literal values"))
+  (expect "enum" "enum literal values")
 
-(deftest basic10
-  (expect "enum-reserved" "enums as reserved words"))
+  (expect "enum-reserved" "enums as reserved words")
 
-(deftest x11
-  (expect "object" "structured objects"))
+  (expect "object" "structured objects")
 
-(deftest x12
-  (expect "reserved-args" "argument names can be a reserved word"))
+  (expect "reserved-args" "argument names can be a reserved word")
 
-(deftest x13
-  (expect "vars" "variables in query"))
+  (expect "vars" "variables in query")
 
-(deftest x14
-  (expect "frag-spread" "inline ... fragment syntax "))
+  (expect "frag-spread" "inline ... fragment syntax ")
 
-(deftest x15
-  (expect "named-fragment" "named fragment define and use"))
+  (expect "named-fragment" "named fragment define and use")
 
-(deftest x16
-  (expect "field-directive" "directives on fields"))
+  (expect "field-directive" "directives on fields")
 
-(deftest x17
-  (expect "fragment-directives" "directives on inline and named fragments"))
+  (expect "fragment-directives" "directives on inline and named fragments")
 
-(deftest x18
   (expect "operation-directives" "directives on operations"))
 
 ;; TODO
