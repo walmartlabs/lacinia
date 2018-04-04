@@ -63,7 +63,14 @@
 (deftest x13
   (expect "vars" "variables in query"))
 
+(deftest x14
+  (expect "frag-spread" "inline ... fragment syntax "))
+
+(deftest x15
+  (expect "named-fragment" "named fragment define and use"))
+
 ;; TODO
 ;; - duplicate arg name for same field
 ;; - duplicate property name for same object
+
 

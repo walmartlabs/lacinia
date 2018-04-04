@@ -1,0 +1,11 @@
+{
+  order {
+    id
+    ... on InStore {
+      store_number
+    }
+    ... on OnlineOrder {
+      refer_code
+    }
+  }
+}

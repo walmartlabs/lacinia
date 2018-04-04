@@ -1,0 +1,17 @@
+[{:type :query
+  :selections [{:type :field
+                :field-name :order
+                :selections [{:type :named-fragment
+                              :fragment-name :InStoreFrag}
+                             {:type :field
+                              :field-name :item_count}
+                             {:type :named-fragment
+                              :fragment-name :OnlineFrag}]}]}
+ {:type :fragment-definition
+  :on-type :InStoreFrag
+  :selections [{:field-name :store_number
+                :type :field}]}
+ {:type :fragment-definition
+  :on-type :OnlineFrag
+  :selections [{:field-name :refer_code
+                :type :field}]}]

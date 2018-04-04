@@ -88,11 +88,6 @@
   {:type :root-type
    :type-name (-> prod second second xform)})
 
-(defmethod xform :selectionSet
-  [prod]
-  {:type :selection-set
-   :selections (mapv xform (rest prod))})
-
 (defmethod xform :selection
   [prod]
   (xform (-> prod second )))
@@ -190,6 +185,24 @@
   [prod]
   {:type :variable
    :value (-> prod second xform)})
+
+(defmethod xform :inlineFragment
+  [prod]
+  {:type :inline-fragment
+   :on-type (-> prod second second xform)
+   :selections (mapv xform (-> prod (nth 2) rest))})
+
+(defmethod xform :fragmentSpread
+  [prod]
+  {:type :named-fragment
+   :fragment-name (-> prod second second xform)})
+
+(defmethod xform :fragmentDefinition
+  [prod]
+  (let [[_ fragment-name type-condition selection-set] prod]
+    {:type :fragment-definition
+     :on-type (-> fragment-name second xform)
+     :selections (->> selection-set rest (mapv xform))}))
 
 (defn ^:private xform-query
   [antlr-tree]
