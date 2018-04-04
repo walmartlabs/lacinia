@@ -1,4 +1,4 @@
-(ns com.walmartlabs.lacinia.parser.query
+(ns ^:no-doc com.walmartlabs.lacinia.parser.query
   "Uses the Antlr grammar to parse a document into the intermediate format.
 
   Note that the intermediate format is designed to be something that can be easily generated from
@@ -10,7 +10,8 @@
     #_[io.pedestal.log :as log]
     #_[clojure.pprint :as pprint]
     [com.walmartlabs.lacinia.parser.common :refer [antlr-parse parse-failures]])
-  (:import (clj_antlr ParseError)))
+  (:import
+    (clj_antlr ParseError)))
 
 (def ^:private grammar
   (antlr.core/parser (slurp (io/resource "com/walmartlabs/lacinia/Graphql.g4"))))
