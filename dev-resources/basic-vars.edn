@@ -1,7 +1,13 @@
-{:data {:default {:name "Darth Vader",
-                  :appears_in ["NEWHOPE" "EMPIRE" "JEDI"],
-                  :friends [{:name "Wilhuff Tarkin"}],
-                  :home_planet "Tatooine"},
-        :hope_hero {:id "2001",
-                    :name "R2-D2",
-                    :friends [{:name "Luke Skywalker"} {:name "Han Solo"} {:name "Leia Organa"}]}}}
+{:data
+ {:default
+  {:name "Darth Vader",
+   :appears_in [:NEWHOPE :EMPIRE :JEDI],
+   :friends [{:name "Wilhuff Tarkin"}],
+   :home_planet "Tatooine"},
+  :hope_hero
+  {:id "2001",
+   :name "R2-D2",
+   :friends
+   [{:name "Luke Skywalker"}
+    {:name "Han Solo"}
+    {:name "Leia Organa"}]}}}
