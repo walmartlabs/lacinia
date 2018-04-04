@@ -55,7 +55,7 @@
   (let [{:keys [operationType selectionSet variableDefinitions directives]
          op-name :name} (as-map prod)
         type (if operationType
-               (xform (first operationType))
+               (-> operationType first xform)
                :query)]
     (cond-> (copy-meta prod {:type type})
 
@@ -183,11 +183,13 @@
   {:type :object
    :value (->> prod
                rest
-               (map rest)                                   ; drop :objectField
-               (reduce (fn [m v]
-                         (assoc! m (-> v first xform) (-> v second second xform)))
-                       (transient {}))
-               persistent!)})
+               (mapv xform))})
+
+(defmethod xform :objectField
+  [prod]
+  (let [[_ arg-name arg-value] prod]
+    {:arg-name (-> arg-name xform)
+     :arg-value (-> arg-value second xform)}))
 
 (defmethod xform :variable
   [prod]
@@ -227,7 +229,7 @@
   [antlr-tree]
   #_(do
       (println "Parsed Antlr Tree:")
-      (pprint/write antlr-tree)
+      (pprint/write antlr-vtree)
       (println))
   (let [top-levels (rest antlr-tree)]
     (mapv xform top-levels)))
