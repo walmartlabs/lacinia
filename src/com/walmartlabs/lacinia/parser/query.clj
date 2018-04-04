@@ -9,7 +9,7 @@
     [clojure.java.io :as io]
     #_[io.pedestal.log :as log]
     #_[clojure.pprint :as pprint]
-    [com.walmartlabs.lacinia.parser.common :refer [antlr-parse parse-failures]])
+    [com.walmartlabs.lacinia.parser.common :refer [antlr-parse parse-failures stringvalue->String]])
   (:import
     (clj_antlr ParseError)))
 
@@ -160,8 +160,7 @@
   [prod]
   {:type :string
    ;; The value from Antlr has quotes around it that need to be stripped off.
-   :value (let [quoted (second prod)]
-            (subs quoted 1 (-> quoted .length dec)))})
+   :value (-> prod second stringvalue->String)})
 
 (defmethod xform :arrayValue
   [prod]
