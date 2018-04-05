@@ -216,7 +216,8 @@
   [prod]
   (let [[_ fragment-name type-condition selection-set] prod]
     {:type :fragment-definition
-     :on-type (-> fragment-name second xform)
+     :fragment-name (-> fragment-name second xform)
+     :on-type (-> type-condition second second xform)
      :selections (->> selection-set rest (mapv xform))}))
 
 (defmethod xform :directive

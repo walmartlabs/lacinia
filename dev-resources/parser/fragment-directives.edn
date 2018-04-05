@@ -13,6 +13,7 @@
                               :fragment-name :OnlineFrag
                               :directives [{:directive-name :InternalOnly}]}]}]}
  {:type :fragment-definition
-  :on-type :OnlineFrag
+  :fragment-name :OnlineFrag
+  :on-type :OnlineOrder
   :selections [{:field-name :refer_code
                 :type :field}]}]

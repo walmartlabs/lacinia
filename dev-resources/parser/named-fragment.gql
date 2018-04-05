@@ -6,7 +6,7 @@ query {
   }
 }
 
-fragment InStoreFrag on Instore {
+fragment InStoreFrag on InStore {
   store_number
 }
 

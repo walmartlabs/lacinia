@@ -8,10 +8,12 @@
                              {:type :named-fragment
                               :fragment-name :OnlineFrag}]}]}
  {:type :fragment-definition
-  :on-type :InStoreFrag
+  :fragment-name :InStoreFrag
+  :on-type :InStore
   :selections [{:field-name :store_number
                 :type :field}]}
  {:type :fragment-definition
-  :on-type :OnlineFrag
+  :fragment-name :OnlineFrag
+  :on-type :OnlineOrder
   :selections [{:field-name :refer_code
                 :type :field}]}]
