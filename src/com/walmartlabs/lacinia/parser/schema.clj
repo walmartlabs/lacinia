@@ -1,4 +1,6 @@
 (ns com.walmartlabs.lacinia.parser.schema
+  "Parse a Schema Definition Language document into a Lacinia input schema."
+  {:added "0.22.0"}
   (:require [com.walmartlabs.lacinia.internal-utils :refer [remove-vals]]
             [com.walmartlabs.lacinia.parser.common :refer [antlr-parse parse-failures stringvalue->String]]
             [clojure.java.io :as io]

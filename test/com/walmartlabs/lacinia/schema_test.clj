@@ -2,6 +2,7 @@
   "Tests schema functions."
   (:require
     [clojure.test :refer [deftest testing is are try-expr do-report]]
+    [com.walmartlabs.test-reporting :refer [reporting]]
     [clojure.spec.alpha :as s]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.executor :as executor]
@@ -20,16 +21,6 @@
 
 
 (deftest schema-shape
-  ;; We should renable this test if we make :fields required again
-  ;; (which would imply that objects no longer inherit fields from interfaces).
-  #_ (testing "schema with missing required keys"
-    (let [s {:objects
-             {:person
-              {:description "I'm an object without fields"}}}]
-      (is-thrown [e (schema/compile s)]
-                 (let [d (ex-data e)]
-                   (is (= (:in (first (:clojure.spec/problems d))) [:objects :person 1]))
-                   (is (= (.getMessage e) "Invalid schema object definition."))))))
   (testing "schema with not required field"
     (let [s {:objects
              {:person
@@ -162,8 +153,9 @@
 (defmacro is-compile-exception
   [schema expected-message]
   `(is-thrown [e# (schema/compile ~schema)]
-     (is (str/includes? (.getMessage e#)
-                        ~expected-message))))
+     (let [msg# (.getMessage e#)]
+       (reporting {:message msg#}
+         (is (str/includes? msg# ~expected-message))))))
 
 (deftest types-must-be-valid-ids
   (is-compile-exception
@@ -179,7 +171,7 @@
 (deftest enum-values-must-be-valid-ids
   (is-compile-exception
     {:enums {:episode {:values [:new-hope :empire :return-of-jedi]}}}
-    "[:keyword :new-hope] fails spec: :com.walmartlabs.lacinia.schema/enum-value at: [:schema :enums 1 :values :bare-value] predicate: graphql-identifier?"))
+    ":new-hope fails spec: :com.walmartlabs.lacinia.schema/graphql-identifier at: [:schema :enums 1 :values :bare-value]"))
 
 (deftest requires-resolve-on-operation
   (is-compile-exception
