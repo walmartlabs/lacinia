@@ -2,8 +2,7 @@
   :selections [{:type :field
                 :field-name :order
                 :selections [{:type :inline-fragment
-                              :on-type {:type :root-type
-                                        :type-name :InStore}
+                              :on-type :InStore
                               :directives [{:directive-name :Secure}]
                               :selections [{:type :field
                                             :field-name :store_number}]}

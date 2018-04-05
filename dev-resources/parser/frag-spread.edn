@@ -4,12 +4,10 @@
                 :selections [{:type :field
                               :field-name :id}
                              {:type :inline-fragment
-                              :on-type {:type :root-type
-                                        :type-name :InStore}
+                              :on-type :InStore
                               :selections [{:field-name :store_number
                                             :type :field}]}
                              {:type :inline-fragment
-                              :on-type {:type :root-type
-                                        :type-name :OnlineOrder}
+                              :on-type :OnlineOrder
                               :selections [{:field-name :refer_code
                                             :type :field}]}]}]}]

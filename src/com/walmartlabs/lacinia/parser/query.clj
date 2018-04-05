@@ -200,7 +200,7 @@
   [prod]
   (let [{:keys [typeCondition directives selectionSet]} (as-map prod)]
     (cond-> {:type :inline-fragment
-             :on-type (-> typeCondition first xform)
+             :on-type (-> typeCondition first second xform)
              :selections (mapv xform selectionSet)}
       directives
       (assoc :directives (mapv xform directives)))))
