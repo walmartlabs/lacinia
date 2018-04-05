@@ -1,24 +1,21 @@
 (ns com.walmartlabs.lacinia.parser
   "Parsing of client querys using the ANTLR grammar."
-  (:require [clj-antlr.core :as antlr.core]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [com.walmartlabs.lacinia.internal-utils
-             :refer [cond-let update? q map-vals filter-vals
-                     with-exception-context throw-exception to-message
-                     keepv as-keyword *exception-context*]]
-            [com.walmartlabs.lacinia.parser.common :refer [antlr-parse parse-failures stringvalue->String]]
-            [com.walmartlabs.lacinia.schema :as schema]
-            [com.walmartlabs.lacinia.constants :as constants]
-            [clojure.spec.alpha :as s]
-            [com.walmartlabs.lacinia.resolve :as resolve]
-            [flatland.ordered.map :refer [ordered-map]])
-  (:import (clj_antlr ParseError)
-           (clojure.lang ExceptionInfo)
-           (com.walmartlabs.lacinia.schema CompiledSchema)))
-
-(def ^:private grammar
-  (antlr.core/parser (slurp (io/resource "com/walmartlabs/lacinia/Graphql.g4"))))
+  (:require
+    [clojure.string :as str]
+    [com.walmartlabs.lacinia.internal-utils
+     :refer [cond-let update? q map-vals filter-vals
+             with-exception-context throw-exception to-message
+             keepv as-keyword *exception-context*]]
+    [com.walmartlabs.lacinia.parser.common :refer [antlr-parse parse-failures stringvalue->String]]
+    [com.walmartlabs.lacinia.schema :as schema]
+    [com.walmartlabs.lacinia.constants :as constants]
+    [clojure.spec.alpha :as s]
+    [com.walmartlabs.lacinia.resolve :as resolve]
+    [com.walmartlabs.lacinia.parser.query :as qp]
+    [flatland.ordered.map :refer [ordered-map]])
+  (:import
+    (clojure.lang ExceptionInfo)
+    (com.walmartlabs.lacinia.schema CompiledSchema)))
 
 (declare ^:private selection)
 
@@ -109,31 +106,29 @@
 
   :variable must be resolved later, once query variables for this particular
   query execution is known."
-  ;;[:<type> <literal-value>]
   [argument-value]
-  (let [[type first-value & _] argument-value]
+  (let [{:keys [type value]} argument-value]
     (case type
-      ;; Because of how parsing works, the string literal includes the enclosing
-      ;; quotes.
-      :stringvalue [:scalar (stringvalue->String first-value)]
-      ;; For these other types, the value is still in string format, and will be
-      ;; conformed a bit later.
-      :intvalue [:scalar first-value]
-      :floatvalue [:scalar first-value]
-      :booleanvalue [:scalar first-value]
-      :nullvalue [:null nil]
-      :enumValue [:enum (-> first-value name-from)]
-      :objectValue [:object (xform-argument-map (next argument-value))]
-      :arrayValue [:array (mapv (comp xform-argument-value second) (next argument-value))]
-      :variable [:variable (-> first-value name-from)])))
+
+      (:string :int :float :boolean) [:scalar value]
+
+      :null [:null nil]
+
+      (:enum :variable) [type value]
+
+      :object [:object (xform-argument-map (next argument-value))]
+
+      :array [:array (mapv xform-argument-value value)])))
 
 (defn ^:private xform-argument-map
+  "Builds a map"
   [nodes]
   (->> nodes
-       (reduce (fn [m [_ name-node [_ v]]]
+       (reduce (fn [m arg]
+                 ;; TODO: Check for duplicate arg names
                  (assoc! m
-                         (name-from name-node)
-                         (xform-argument-value v)))
+                         (:arg-name arg)
+                         (-> arg :arg-value xform-argument-value)))
                (transient {}))
        persistent!))
 
@@ -727,17 +722,30 @@
 
    :selector schema/floor-selector})
 
+(defn ^:private prepare-parsed-field
+  [parsed-field]
+  (let [{:keys [alias field-name selections directives args]} parsed-field
+        arguments (xform-argument-map args)]
+    {:field field-name
+     :alias alias
+     :selections selections
+     :arguments arguments
+     :reportable-arguments (extract-reportable-arguments arguments)
+     :directives nil}))
+
 (defn ^:private convert-field-selection
   "Converts a parsed field selection into a normalized form, ready for validation
   and execution.
 
   Returns a tuple of the type of the field (used when resolving sub-types)
   and a reduced and an enhanced version of the selection map."
-  [schema selection type query-path]
-  (let [defaults (default-node-map selection query-path)
+  [schema parsed-field type query-path]
+  (let [defaults (default-node-map parsed-field query-path)
         context (node-context defaults)
         result (with-exception-context context
-                 (reduce node-reducer defaults (rest (second selection))))
+                 (merge defaults (prepare-parsed-field parsed-field))
+                 #_(reduce node-reducer defaults (rest (second parsed-field))))
+        ;; At this point
         {:keys [field alias arguments reportable-arguments directives]} result
         is-typename-metafield? (= field :__typename)
         field-definition (if is-typename-metafield?
@@ -768,6 +776,8 @@
                                          (to-message e))
                                  nil
                                  e)))]
+        ;; TODO: I think we can go recursive here instead of returning
+        ;; this tuple (call normalize-selections directly).
         [nested-type (assoc result
                             :selection-type :field
                             :directives (convert-directives schema directives)
@@ -782,15 +792,8 @@
                             :field-definition field-definition)]))))
 
 (defn ^:private select-operation
-  "Given a collection of operation definitions and an operation name (which
+  "Given a collection of parsed operation definitions and an operation name (which
   might be nil), retrieve the requested operation definition from the document."
-  ;; operations is a seq of operation definitions, each like:
-  ;; [:operationDefinition
-  ;;   [:operationType ...]
-  ;;   [:name <string>]
-  ;;   [:variableDefinitions ...]
-  ;;   [:directives ...]
-  ;;   [:selectionSet ...]
   [operations operation-name]
   (cond-let
     :let [operation-count (count operations)
@@ -810,12 +813,7 @@
     first-op
 
     :let [operation-k (keyword operation-name)
-          operation (some #(when (= operation-k
-                                    ;; We can only check named documents
-                                    (and (< 2 (count %))
-                                         (-> % (nth 2) name-from)))
-                             %)
-                          operations)]
+          operation (some #(= operation-k (:operation-name %)) operations)]
 
     (not operation)
     (throw-exception "Multiple operations requested but operation-name not found."
@@ -823,15 +821,6 @@
                       :operation-name operation-name})
 
     :else operation))
-
-(defn ^:private descend-to-selection-set
-  "For the top-level of the parse-tree, we need to descend to the first
-  requested selection-set for the operation."
-  [operation]
-  (if (and (sequential? (last operation))
-           (= :selectionSet (first (last operation))))
-    (last operation)
-    (recur (last operation))))
 
 (def ^:private prepare-keys
   "Seq of keys associated with prepare phase operations."
@@ -911,8 +900,8 @@
   consists of the field name or alias, and the arguments."
   [selection]
   (let [{:keys [:selection-type :alias]} selection]
-    (if (= selection-type :field)
-      alias
+    (if (= (:type selection) :field)
+      (or (:alias selection) (:field-name selection))
       ;; TODO: This may be too simplified ... worried about loss of data when merging things together
       ;; at runtime.
       (gensym "fragment-"))))
@@ -946,6 +935,7 @@
   [selections]
   (if (= 1 (count selections))
     selections
+    ;; TODO: We can operate directly from the selections, don't need to build the tuples first.
     (let [selection-keys (mapv to-selection-key selections)
           selection-tuples (mapv vector selection-keys selections)
           reducer (fn [m [selection-key selection]]
@@ -955,7 +945,7 @@
       (->> selection-tuples
            (reduce reducer (ordered-map))
            vals))))
-
+;
 (defn ^:private normalize-selections
   "Starting with a selection (a field or fragment) recursively normalize any nested selections selections,
   and handle marking the node for any necessary prepare phase operations."
@@ -1015,12 +1005,11 @@
           fragment-definitions)))
 
 (defmulti ^:private selection
-  "A recursive function that parses the ANTLR selection structure into the
+  "A recursive function that parses the parsed query tree structure into the
    format used during execution; this involves tracking the current schema type
    (initially, nil) and query path (which is used for error reporting)."
   (fn [_schema sel _type _q-path]
-    ;; e.g. [:selection [:field ...]] --> :field
-    (-> sel second first)))
+    (:type sel)))
 
 (defmethod selection :field
   [schema sel type q-path]
@@ -1075,35 +1064,32 @@
 
 (defn ^:private construct-var-type-map
   [parsed]
-  (let [[type value] parsed]
-    (case type
-      :typeName
-      {:kind :root
-       :type (name-from value)}
+  (case (:type parsed)
 
-      :nonNullType
-      {:kind :non-null
-       :type (construct-var-type-map value)}
+    :root-type
+    {:kind :root
+     :type (:type-name parsed)}
 
-      :listType
-      {:kind :list
-       :type (-> value second construct-var-type-map)}
+    :list
+    {:kind :list
+     :type (-> parsed :of-type construct-var-type-map)}
 
-      (throw-exception "Unable to parse variable type."))))
+    :non-null
+    {:kind :non-null
+     :type (-> parsed :of-type construct-var-type-map)}
+
+    (throw-exception "Unable to parse variable type.")))
 
 (defn ^:private compose-variable-definition
-  "Converts a variable definition into a tuple of variable name, and
+  "Converts a variable definition key/value pair  into a tuple of variable name, and
   schema-type like an argument definition."
-  [schema variable-definition]
-  (let [m (element->map variable-definition)
-        var-name (-> m :variable first name-from)
-        var-def {:type (-> m :type first construct-var-type-map)
-                 :var-name var-name}
+  [schema parsed-var-def]
+  (let [{:keys [var-name var-type]
+         default-value :default} parsed-var-def
+        var-def {:type (construct-var-type-map var-type)}
         ;; Simulate a field definition around the raw type:
         type-name (schema/root-type-name var-def)
-        schema-type (get schema type-name)
-        ;; eg. [:stringvalue "\"fred\""]
-        default-value (-> m :defaultValue first second)]
+        schema-type (get schema type-name)]
     (with-exception-context {:var-name var-name
                              :type-name type-name
                              :schema-types (schema/type-map schema)}
@@ -1125,37 +1111,40 @@
 
 (defn ^:private extract-variable-definitions
   [schema operation]
-  (when-let [var-definitions (find-element operation :variableDefinitions)]
+  (when-let [var-definitions (:vars operation)]
+    ;; TODO: Check for conflicting variable names
     (into {}
           (map #(compose-variable-definition schema %)
-               (rest var-definitions)))))
+               var-definitions))))
 
 (defn ^:private operation-type->root
   [schema operation-type]
   (let [type-name (get-in schema [::schema/roots operation-type])]
     (get schema type-name)))
 
+(defn ^:private categorize-root
+  [root]
+  (if (-> root :type (= :fragment-definition))
+    :fragment-definition
+    :operation-definition))
+
 (defn ^:private xform-query
-  "Given an output tree of sexps from clj-antlr, traverses and reforms into a
+  "Given an the intermediate parsed query, traverses and reforms into a
   form expected by the executor."
-  [schema antlr-tree operation-name]
-  (let [{:keys [fragmentDefinition operationDefinition]}
-        (group-by first (map second (rest antlr-tree)))
+  [schema parse-tree operation-name]
+  (let [{:keys [fragment-definition operation-definition]}
+        (group-by categorize-root parse-tree)
 
         operation
-        (select-operation operationDefinition operation-name)
+        (select-operation operation-definition operation-name)
 
-        operation-type (let [op-element (find-element operation :operationType)]
-                         (or (and op-element
-                                  (-> op-element second second keyword))
-                             :query))
+        operation-type (:type operation)
 
         root (operation-type->root schema operation-type)
 
         variable-definitions (extract-variable-definitions schema operation)
 
-        selections
-        (descend-to-selection-set operation)
+        selections (:selections operation)
 
         ;; Clumsy but necessary way to let lower levels know about variable definitions.
         ;; This will deviate from the spec slightly: all fragments will be transformed
@@ -1167,7 +1156,7 @@
 
         ;; Explicitly defeat some lazy evaluation, to ensure that validation exceptions are thrown
         ;; from within this function call.
-        selections (coalesce-selections (mapv #(selection schema' % root []) (rest selections)))]
+        selections (coalesce-selections (mapv #(selection schema' % root []) selections))]
 
     (when (and (= :subscription operation-type)
                (not= 1 (count selections)))
@@ -1175,7 +1164,7 @@
 
 
     ;; Build the result describing the fragments and selections (for the selected operation).
-    {:fragments (normalize-fragment-definitions schema' nil fragmentDefinition)
+    {:fragments (normalize-fragment-definitions schema' nil fragment-definition)
      :selections selections
      :operation-type operation-type
      constants/schema-key schema}))
@@ -1199,14 +1188,7 @@
   ([schema query-string operation-name]
    (when-not (instance? CompiledSchema schema)
      (throw (IllegalStateException. "The provided schema has not been compiled.")))
-   (let [antlr-tree
-         (try
-           (antlr-parse grammar query-string)
-           (catch ParseError e
-             (let [failures (parse-failures e)]
-               (throw (ex-info "Failed to parse GraphQL query."
-                               {:errors failures})))))]
-     (xform-query schema antlr-tree operation-name))))
+   (xform-query schema (qp/parse-query query-string) operation-name)))
 
 (defn operations
   "Given a previously parsed query, this returns a map of two keys:
