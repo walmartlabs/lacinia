@@ -75,8 +75,13 @@
             :column 0}
            (-> parsed first meta)))
 
+    ;; Field
     (is (= {:column 2
             :line 2}
-           (-> parsed first :selections first meta)))))
+           (-> parsed first :selections first meta)))
 
+    ;; Inline Fragment
+    (is (= {:column 4
+            :line 3}
+           (-> parsed first :selections first :selections first meta)))))
 

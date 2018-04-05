@@ -26,7 +26,7 @@
        persistent!))
 
 (defn ^:private copy-meta
-  [from to]
+  [to from]
   (with-meta to (meta from)))
 
 (defmulti ^:private xform
@@ -58,7 +58,7 @@
         type (if operationType
                (-> operationType first xform)
                :query)]
-    (cond-> (copy-meta prod {:type type})
+    (cond-> (copy-meta {:type type} prod)
 
       op-name (assoc :name (-> op-name first xform))
 
@@ -102,9 +102,9 @@
   [prod]
   (let [{:keys [name selectionSet alias arguments directives]} (as-map prod)]
     (cond->
-      (copy-meta prod
-                 {:type :field
-                  :field-name (xform (first name))})
+      (copy-meta {:type :field
+                  :field-name (xform (first name))}
+                 prod)
 
       alias (assoc :alias (xform (first alias)))
 
@@ -199,11 +199,11 @@
 (defmethod xform :inlineFragment
   [prod]
   (let [{:keys [typeCondition directives selectionSet]} (as-map prod)]
-    (cond-> {:type :inline-fragment
-             :on-type (-> typeCondition first second xform)
-             :selections (mapv xform selectionSet)}
-      directives
-      (assoc :directives (mapv xform directives)))))
+    (-> {:type :inline-fragment
+         :on-type (-> typeCondition first second xform)
+         :selections (mapv xform selectionSet)}
+        (cond-> directives (assoc :directives (mapv xform directives)))
+        (copy-meta prod))))
 
 (defmethod xform :fragmentSpread
   [prod]

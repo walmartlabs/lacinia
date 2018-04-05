@@ -61,6 +61,7 @@
       (with-meta
         sexp
         {:line (.getLine token)
+         ;; This is looking like line counts from 1 but column counts from 0
          :column (.getCharPositionInLine token)}))))
 
 (defn ^:private traverse
