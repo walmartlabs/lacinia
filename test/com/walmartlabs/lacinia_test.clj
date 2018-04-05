@@ -45,8 +45,6 @@
     (is (= (json/write-str (lacinia/execute default-schema q {} nil))
            "{\"data\":{\"hero\":{\"appears_in\":[\"NEWHOPE\",\"EMPIRE\",\"JEDI\"],\"name\":\"R2-D2\",\"id\":\"2001\"}}}"))))
 
-
-
 (deftest mutation-query
   (let [q "mutation ($from : String, $to: String) { changeHeroName(from: $from, to: $to) { name } }"]
     (is (= {:data {:changeHeroName {:name "Solo"}}}
@@ -367,6 +365,153 @@
                           :appears_in [:NEWHOPE :EMPIRE :JEDI]}
                    :leia {:appears_in [:NEWHOPE :EMPIRE :JEDI]}}}
            (execute default-schema q nil nil))))
+  (let [q "query {
+             hero {
+               ...on droid {
+                 best_friend {
+                   name
+                 }
+               }
+               best_friend {
+                 name
+                 forceSide {
+                   name
+                 }
+               }
+             }
+           }"]
+    (is (= {:data {:hero {:best_friend {:name "Luke Skywalker"
+                                        :forceSide {:name "light"}}}}}
+           (execute default-schema q {} nil))))
+  (let [q "query {
+             hero {
+               best_friend {
+                 name
+               }
+               ...on droid {
+                 best_friend {
+                   name
+                   forceSide {
+                     name
+                   }
+                 }
+               }
+             }
+           }"]
+    (is (= {:data {:hero {:best_friend {:name "Luke Skywalker"
+                                        :forceSide {:name "light"}}}}}
+           (execute default-schema q {} nil))))
+  ;; FIXME: test below fails
+  (let [q "query {
+             hero {
+               best_friend {
+                 name
+                 forceSide {
+                   name
+                 }
+               }
+               ...on droid {
+                 best_friend {
+                   name
+                 }
+               }
+             }
+           }"]
+    (is (= {:data {:hero {:best_friend {:name "Luke Skywalker"
+                                        :forceSide {:name "light"}}}}}
+           (execute default-schema q {} nil))))
+  ;; FIXME: test below fails
+  (let [q "query {
+             hero {
+               ...on droid {
+                 best_friend {
+                   name
+                   forceSide {
+                     name
+                   }
+                 }
+               }
+               best_friend {
+                 name
+               }
+             }
+           }"]
+    (is (= {:data {:hero {:best_friend {:name "Luke Skywalker"
+                                        :forceSide {:name "light"}}}}}
+           (execute default-schema q {} nil))))
+  (let [q "query {
+             hero {
+               ...on droid {
+                 best_friend {
+                   name
+                 }
+                 best_friend {
+                   forceSide {
+                     name
+                   }
+                 }
+               }
+               ...on droid {
+                 best_friend {
+                   name
+                 }
+               }
+             }
+           }"]
+    (is (= {:data {:hero {:best_friend {:name "Luke Skywalker"
+                                        :forceSide {:name "light"}}}}}
+           (execute default-schema q {} nil))))
+  (let [q "query {
+             hero {
+               ...DroidWithBestFriendName
+               ...DroidWithBestFriendNameAndForceSide
+             }
+           }
+           fragment DroidWithBestFriendNameAndForceSide on droid {
+             best_friend {
+              name
+             }
+             best_friend {
+               forceSide {
+                 name
+               }
+             }
+           }
+
+           fragment DroidWithBestFriendName on droid {
+             best_friend {
+               name
+             }
+           }"]
+    (is (= {:data {:hero {:best_friend {:name "Luke Skywalker"
+                                        :forceSide {:name "light"}}}}}
+           (execute default-schema q {} nil))))
+  ;; FIXME: test below fails
+  (let [q "query {
+             hero {
+               ...DroidWithBestFriendNameAndForceSide
+               ...DroidWithBestFriendName
+             }
+           }
+           fragment DroidWithBestFriendNameAndForceSide on droid {
+             best_friend {
+              name
+             }
+             best_friend {
+               forceSide {
+                 name
+               }
+             }
+           }
+
+           fragment DroidWithBestFriendName on droid {
+             best_friend {
+               name
+             }
+           }"]
+    (is (= {:data {:hero {:best_friend {:name "Luke Skywalker"
+                                        :forceSide {:name "light"}}}}}
+           (execute default-schema q {} nil))))
   (let [q "query InvalidInlineFragment {
              human(id: \"1001\") {
                ... on foo {
