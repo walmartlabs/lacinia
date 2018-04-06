@@ -17,6 +17,12 @@
     (clojure.lang ExceptionInfo)
     (com.walmartlabs.lacinia.schema CompiledSchema)))
 
+(defn ^:private first-match
+  [pred coll]
+  (->> coll
+       (filter pred)
+       first))
+
 (declare ^:private selection)
 
 (defn ^:private contains-modifier?
@@ -86,7 +92,7 @@
   [node]
   (keyword (name-string-from node)))
 
-(declare ^:private xform-argument-map)
+(declare ^:private xform-argument-map build-map-from-parsed-arguments)
 
 (defn ^:private xform-argument-value
   "Returns a tuple of type and string value.  True scalar values will be passed,
@@ -110,17 +116,17 @@
   (let [{:keys [type value]} argument-value]
     (case type
 
-      (:string :int :float :boolean) [:scalar value]
+      (:string :integer :float :boolean) [:scalar value]
 
       :null [:null nil]
 
       (:enum :variable) [type value]
 
-      :object [:object (xform-argument-map (next argument-value))]
+      :object [:object (build-map-from-parsed-arguments value)]
 
       :array [:array (mapv xform-argument-value value)])))
 
-(defn ^:private xform-argument-map
+(defn ^:private build-map-from-parsed-arguments
   "Builds a map"
   [nodes]
   (->> nodes
@@ -157,7 +163,7 @@
     (assoc acc :alias (-> node second name-from))
 
     :arguments
-    (let [args (xform-argument-map (rest node))]
+    (let [args (build-map-from-parsed-arguments (rest node))]
       (assoc acc
              :arguments args
              :reportable-arguments (extract-reportable-arguments args)))
@@ -725,7 +731,7 @@
 (defn ^:private prepare-parsed-field
   [parsed-field]
   (let [{:keys [alias field-name selections directives args]} parsed-field
-        arguments (xform-argument-map args)]
+        arguments (build-map-from-parsed-arguments args)]
     {:field field-name
      :alias alias
      :selections selections
@@ -796,15 +802,15 @@
   might be nil), retrieve the requested operation definition from the document."
   [operations operation-name]
   (cond-let
-    :let [operation-count (count operations)
+    :let [operation-key (when-not (str/blank? operation-name)
+                          (as-keyword operation-name))
+          operation-count (count operations)
           single-op? (= 1 operation-count)
           first-op (first operations)]
 
     (and single-op?
-         operation-name
-         (or (not (< 2 (count first-op)))
-             (not= operation-name
-                   (-> first-op (nth 2) name-string-from))))
+         operation-key
+         (not= operation-key (:name first-op)))
 
     (throw-exception "Single operation did not provide a matching name."
                      {:op-name operation-name})
@@ -812,13 +818,15 @@
     single-op?
     first-op
 
-    :let [operation-k (keyword operation-name)
-          operation (some #(= operation-k (:operation-name %)) operations)]
+    :let [operation (first-match #(= operation-key (:name %)) operations)]
 
-    (not operation)
-    (throw-exception "Multiple operations requested but operation-name not found."
+    (nil? operation)
+    (throw-exception "Multiple operations provided but no matching name found."
                      {:op-count operation-count
                       :operation-name operation-name})
+
+    ;; TODO: Check the spec, seems like if there are multiple operations, they
+    ;; should all be named with unique names.
 
     :else operation))
 
@@ -987,14 +995,20 @@
 (defn ^:private normalize-fragment-definitions
   "Given a collection of fragment definitions, transform them into a map of the
   form {:<definition-name> {...}}."
-  [schema _type fragment-definitions]
+  [schema fragment-definitions]
   (let [f (fn [def]
             (let [defaults {:location (meta def)}
-                  m (reduce node-reducer defaults (rest def))
-                  type-name (:type m)
+                  {:keys [on-type fragment-name selections directives]} def
+                  m (-> defaults
+                        (assoc :fragment-name fragment-name
+                               :type on-type
+                               :selections selections)
+                        (cond-> directives
+                          (assoc :directives (convert-directives schema directives))))
                   path-elem (keyword (-> m :fragment-name name)
-                                     (name type-name))
-                  fragment-type (get schema type-name)]
+                                     (name on-type))
+                  fragment-type (get schema on-type)]
+              ;; TODO: Verify fragment type exists
               (normalize-selections schema
                                     m
                                     fragment-type
@@ -1016,12 +1030,16 @@
   (let [[nested-type m] (convert-field-selection schema sel type q-path)]
     (normalize-selections schema m nested-type (:query-path m))))
 
-(defmethod selection :inlineFragment
-  [schema sel _type q-path]
-  (let [defaults (default-node-map sel q-path)]
+(defmethod selection :inline-fragment
+  [schema parsed-inline-fragment _type q-path]
+  (let [defaults (default-node-map parsed-inline-fragment q-path)]
     (with-exception-context (node-context defaults)
-      (let [m (reduce node-reducer defaults (rest (second sel)))
-            type-name (:type m)
+      (let [{type-name :on-type
+             :keys [selections directives]} parsed-inline-fragment
+
+            m (merge defaults
+                     {:selections selections})
+            #_(reduce node-reducer defaults (rest (second parsed-inline-fragment)))
             fragment-type (get schema type-name)]
         (if (nil? fragment-type)
           (throw-exception (format "Inline fragment has a type condition on unknown type %s."
@@ -1031,21 +1049,26 @@
                 inline-fragment (-> m
                                     (assoc :selection-type :inline-fragment
                                            :concrete-types concrete-types)
-                                    (update :directives #(convert-directives schema %)))]
+                                    (cond-> directives (assoc :directives (convert-directives schema directives))))]
             (normalize-selections schema
                                   inline-fragment
                                   fragment-type
-                                  (-> m :query-path (conj fragment-path-term)))))))))
+                                  (conj q-path fragment-path-term))))))))
 
-(defmethod selection :fragmentSpread
-  [schema sel _type q-path]
-  (let [defaults (default-node-map sel q-path)
-        m (with-exception-context (node-context defaults)
-            (reduce node-reducer defaults (rest (second sel))))]
-    (-> m
-        (assoc :selection-type :fragment-spread)
-        (update :directives #(convert-directives schema %))
-        mark-node-for-prepare)))
+(defmethod selection :named-fragment
+  [schema parsed-fragment _type q-path]
+  (let [defaults (default-node-map parsed-fragment q-path)
+        {:keys [fragment-name directives]} parsed-fragment
+
+        #_(with-exception-context (node-context defaults)
+            (reduce node-reducer defaults (rest (second parsed-fragment))))]
+    (with-exception-context (node-context defaults)
+      ;; TODO: Verify that fragment name exists?
+      (-> defaults
+          (merge {:selection-type :fragment-spread
+                  :fragment-name fragment-name})
+          (cond-> directives (assoc :directives (convert-directives schema directives)))
+          mark-node-for-prepare))))
 
 (defn ^:private find-element
   [container element-type]
@@ -1123,6 +1146,7 @@
     (get schema type-name)))
 
 (defn ^:private categorize-root
+  "Categorizes a root parsed node, which is either a fragment definition or one of the operation types."
   [root]
   (if (-> root :type (= :fragment-definition))
     :fragment-definition
@@ -1131,9 +1155,9 @@
 (defn ^:private xform-query
   "Given an the intermediate parsed query, traverses and reforms into a
   form expected by the executor."
-  [schema parse-tree operation-name]
+  [schema parsed-roots operation-name]
   (let [{:keys [fragment-definition operation-definition]}
-        (group-by categorize-root parse-tree)
+        (group-by categorize-root parsed-roots)
 
         operation
         (select-operation operation-definition operation-name)
@@ -1164,7 +1188,7 @@
 
 
     ;; Build the result describing the fragments and selections (for the selected operation).
-    {:fragments (normalize-fragment-definitions schema' nil fragment-definition)
+    {:fragments (normalize-fragment-definitions schema' fragment-definition)
      :selections selections
      :operation-type operation-type
      constants/schema-key schema}))
