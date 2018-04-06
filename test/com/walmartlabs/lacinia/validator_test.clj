@@ -14,11 +14,13 @@
   (testing "All leafs are scalar types or enums"
     (let [q "{ hero }"]
       (is (= {:errors [{:message "Field `hero' (of type `character') must have at least one selection.",
-                        :locations [{:line 1, :column 0}]}]}
+                        :locations [{:line 1
+                                     :column 3}]}]}
              (execute compiled-schema q {} nil))))
     (let [q "{ hero { name friends } }"]
       (is (= {:errors [{:message "Field `friends' (of type `character') must have at least one selection.",
-                        :locations [{:line 1, :column 7}]}]}
+                        :locations [{:line 1
+                                     :column 15}]}]}
              (execute compiled-schema q {} nil))))
     (let [q "query NestedQuery {
              hero {
@@ -31,7 +33,8 @@
              }
             }"]
       (is (= {:errors [{:message "Field `friends' (of type `character') must have at least one selection.",
-                        :locations [{:line 4, :column 23}]}]}
+                        :locations [{:column 18
+                                     :line 7}]}]}
              (execute compiled-schema q {} nil))))
     (let [q "query NestedQuery {
              hero {
@@ -46,8 +49,8 @@
              }
             }"]
       (is (= {:errors [{:message "Field `friends' (of type `character') must have at least one selection."
-                        :locations [{:line 7
-                                     :column 25}]}]}
+                        :locations [{:column 28
+                                     :line 8}]}]}
              (execute compiled-schema q {} nil))))
     (let [q "query NestedQuery {
              hero {
@@ -61,12 +64,15 @@
                }
              }
             }"]
-      (is (= {:errors [{:message "Field `forceSide' (of type `force') must have at least one selection.",
-                        :locations [{:line 2, :column 18}]}
-                       {:message "Field `friends' (of type `character') must have at least one selection.",
-                        :locations [{:line 5, :column 23}]}
-                       {:message "Field `forceSide' (of type `force') must have at least one selection.",
-                        :locations [{:line 5, :column 23}]}]}
+      (is (= {:errors [{:locations [{:column 16
+                                     :line 4}]
+                        :message "Field `forceSide' (of type `force') must have at least one selection."}
+                       {:locations [{:column 18
+                                     :line 6}]
+                        :message "Field `friends' (of type `character') must have at least one selection."}
+                       {:locations [{:column 18
+                                     :line 9}]
+                        :message "Field `forceSide' (of type `force') must have at least one selection."}]}
              (execute compiled-schema q {} nil))))
     (let [q "query NestedQuery {
              hero {
@@ -82,12 +88,15 @@
                }
              }
             }"]
-      (is (= {:errors [{:message "Field `forceSide' (of type `force') must have at least one selection.",
-                        :locations [{:line 2, :column 18}]}
-                       {:message "Field `friends' (of type `character') must have at least one selection.",
-                        :locations [{:line 5, :column 23}]}
-                       {:message "Field `members' (of type `character') must have at least one selection.",
-                        :locations [{:line 9, :column 27}]}]}
+      (is (= {:errors [{:locations [{:column 16
+                                     :line 4}]
+                        :message "Field `forceSide' (of type `force') must have at least one selection."}
+                       {:locations [{:column 18
+                                     :line 6}]
+                        :message "Field `friends' (of type `character') must have at least one selection."}
+                       {:locations [{:column 30
+                                     :line 10}]
+                        :message "Field `members' (of type `character') must have at least one selection."}]}
              (execute compiled-schema q {} nil))))
     (let [q "query NestedQuery {
              hero {
@@ -103,14 +112,16 @@
                }
              }
             }"]
-      (is (= {:errors [{:message "Field `forceSide' (of type `force') must have at least one selection."
-                        :locations [{:line 2, :column 18}]}
-                       {:message "Field `friends' (of type `character') must have at least one selection.",
-                        :locations [{:line 5, :column 23}]}]}
+      (is (= {:errors [{:locations [{:column 16
+                                     :line 4}]
+                        :message "Field `forceSide' (of type `force') must have at least one selection."}
+                       {:locations [{:column 18
+                                     :line 6}]
+                        :message "Field `friends' (of type `character') must have at least one selection."}]}
              (execute compiled-schema q {} nil))))
     (let [q "{ hero { name { id } } }"]
       (is (= {:errors [{:message "Path de-references through a scalar type."
-                        :locations [{:column 14
+                        :locations [{:column 17
                                      :line 1}]
                         :field :id
                         :query-path [:hero :name]}]}
@@ -143,7 +154,8 @@
              homePlanet
            }"]
     (is (= {:errors [{:message "Unknown fragment `FooFragment'. Fragment definition is missing."
-                      :locations [{:line 2 :column 37}]}]}
+                      :locations [{:line 3
+                                   :column 19}]}]}
            (execute compiled-schema q {} nil))))
   (let [q "query UseFragment {
              luke: human(id: \"1000\") {
@@ -157,12 +169,15 @@
              name
              homePlanet
            }"]
-    (is (= {:errors [{:message "Unknown fragment `FooFragment'. Fragment definition is missing."
-                      :locations [{:line 2 :column 37}]}
-                     {:message "Unknown fragment `BarFragment'. Fragment definition is missing."
-                      :locations [{:line 5 :column 37}]}
-                     {:message "Fragment `HumanFragment' is never used.",
-                      :locations [{:line 9, :column 11}]}]}
+    (is (= {:errors [{:locations [{:column 19
+                                   :line 3}]
+                      :message "Unknown fragment `FooFragment'. Fragment definition is missing."}
+                     {:locations [{:column 19
+                                   :line 6}]
+                      :message "Unknown fragment `BarFragment'. Fragment definition is missing."}
+                     {:locations [{:column 21
+                                   :line 9}]
+                      :message "Fragment `HumanFragment' is never used."}]}
            (execute compiled-schema q {} nil))))
   (let [q "query withNestedFragments {
              luke: human(id: \"1000\") {
@@ -193,7 +208,7 @@
              ...appearsInFragment
            }"]
     (is (= {:errors [{:message "Unknown fragment `appearsInFragment'. Fragment definition is missing."
-                      :locations [{:line 8 :column 50}]}]}
+                      :locations [{:line 11 :column 17}]}]}
            (execute compiled-schema q {} nil)))))
 
 (deftest fragments-on-composite-types-validation
@@ -204,8 +219,8 @@
                }
              }
            }"]
-    (is (= {:errors [{:locations [{:column 37
-                                   :line 2}]
+    (is (= {:errors [{:locations [{:column 23
+                                   :line 3}]
                       :message "Fragment cannot condition on non-composite type `String'."
                       :query-path [:human]}]}
            (execute compiled-schema q {} nil))))
@@ -218,8 +233,8 @@
              id
            }"]
     (is (= {:errors [{:field :id
-                      :locations [{:column 45
-                                   :line 6}]
+                      :locations [{:column 14
+                                   :line 7}]
                       :message "Path de-references through a scalar type."
                       :query-path [:scalarFragment/String]}]}
            (execute compiled-schema q {} nil)))))
@@ -240,14 +255,15 @@
              appears_in
            }"]
     (is (= {:errors [{:message "Fragment `appearsInFragment' is never used.",
-                      :locations [{:line 12, :column 11}]}]}
+                      :locations [{:line 12
+                                   :column 21}]}]}
            (execute compiled-schema q {} nil)))))
 
 (deftest query-argument-validations
     (let [q "{ echoArgs(integer: \"hello world\") { integer } }"]
       (is (= {:errors [{:argument :integer
                         :field :echoArgs
-                      :locations [{:column 0
+                        :locations [{:column 3
                                    :line 1}]
                         :message "Exception applying arguments to field `echoArgs': For argument `integer', scalar value is not parsable as type `Int'."
                         :query-path []
@@ -262,7 +278,7 @@
                                             :integerArray
                                             :inputObject]
                         :field :echoArgs
-                        :locations [{:column 0
+                        :locations [{:column 3
                                      :line 1}]
                         :message "Exception applying arguments to field `echoArgs': Unknown argument `undefinedArg'."
                         :query-path []}]}
@@ -278,11 +294,12 @@
       (is (= {:errors
               [{:message
                 "Exception applying arguments to field `echoArgs': For argument `inputObject', scalar value is not parsable as type `Int'.",
-                :query-path [],
-                :locations [{:line 1, :column 0}],
-                :field :echoArgs,
-                :argument :inputObject,
-                :value "hello world",
+                :query-path []
+                :locations [{:line 1
+                             :column 3}]
+                :field :echoArgs
+                :argument :inputObject
+                :value "hello world"
                 :type-name :Int}]}
 
              (execute compiled-schema q {} nil)))))
@@ -312,7 +329,7 @@
     (let [q "{echoArgs(integer: 3, integerArray: [1, 2, \"foo\"]) { integer }}"]
       (is (= {:errors [{:argument :integerArray
                         :field :echoArgs
-                        :locations [{:column 0
+                        :locations [{:column 2
                                      :line 1}]
                         :message "Exception applying arguments to field `echoArgs': For argument `integerArray', scalar value is not parsable as type `Int'."
                         :query-path []
@@ -350,7 +367,7 @@
   (testing "Non-nullable arguments"
     (let [q "mutation { addHeroEpisodes(episodes: []) { name appears_in } }"]
       (is (= {:errors [{:field :addHeroEpisodes
-                        :locations [{:column 9
+                        :locations [{:column 12
                                      :line 1}]
                         :message "Exception applying arguments to field `addHeroEpisodes': Not all non-nullable arguments have supplied values."
                         :missing-arguments [:id]
@@ -358,7 +375,7 @@
              (execute compiled-schema q nil nil))))
     (let [q "mutation { addHeroEpisodes(id:\"1004\") { name appears_in } }"]
       (is (= {:errors [{:field :addHeroEpisodes
-                        :locations [{:column 9
+                        :locations [{:column 12
                                      :line 1}]
                         :message "Exception applying arguments to field `addHeroEpisodes': Not all non-nullable arguments have supplied values."
                         :missing-arguments [:episodes]
@@ -366,7 +383,7 @@
              (execute compiled-schema q nil nil))))
     (let [q "mutation { addHeroEpisodes { name appears_in } }"]
       (is (= {:errors [{:field :addHeroEpisodes
-                        :locations [{:column 9
+                        :locations [{:column 12
                                      :line 1}]
                         :message "Exception applying arguments to field `addHeroEpisodes': Not all non-nullable arguments have supplied values."
                         :missing-arguments [:episodes :id]

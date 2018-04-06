@@ -68,20 +68,28 @@
   ;; Spot check that all the key elements, those that will likely have
   ;; a runtime error associated with them, have line/column metadata.
   (let [parsed (expect "fragment-directives" "parse worked")]
-    ;; TODO: Column numbers are generally off
 
     ;; Operation
     (is (= {:line 1
-            :column 0}
+            :column 1}
            (-> parsed first meta)))
 
     ;; Field
-    (is (= {:column 2
+    (is (= {:column 3
             :line 2}
            (-> parsed first :selections first meta)))
 
     ;; Inline Fragment
-    (is (= {:column 4
+    (is (= {:column 12                                      ; the type name
             :line 3}
-           (-> parsed first :selections first :selections first meta)))))
+           (-> parsed first :selections first :selections first meta)))
+
+    ;; Named fragment
+    (is (= {:column 9                                       ; the type name
+            :line 5}
+           (-> parsed first :selections first :selections (nth 2) meta)))
+
+    (is (= {:column 10                                      ; the fragment name
+            :line 9}
+           (-> parsed second meta)))))
 

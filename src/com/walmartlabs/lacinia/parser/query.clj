@@ -198,27 +198,33 @@
 
 (defmethod xform :inlineFragment
   [prod]
-  (let [{:keys [typeCondition directives selectionSet]} (as-map prod)]
+  (let [{:keys [typeCondition directives selectionSet]} (as-map prod)
+        on-type (-> typeCondition first second)]
     (-> {:type :inline-fragment
-         :on-type (-> typeCondition first second xform)
+         :on-type (xform on-type)
          :selections (mapv xform selectionSet)}
         (cond-> directives (assoc :directives (mapv xform directives)))
-        (copy-meta prod))))
+        (copy-meta on-type))))
 
 (defmethod xform :fragmentSpread
   [prod]
-  (let [[_ fragment-name directives] prod]
-    (cond-> {:type :named-fragment
-             :fragment-name (-> fragment-name second xform)}
-      directives (assoc :directives (mapv xform (rest directives))))))
+  (let [[_ fragment-name directives] prod
+        name (second fragment-name)]
+    (-> {:type :named-fragment
+         :fragment-name (xform name)}
+        (cond-> directives (assoc :directives (mapv xform (rest directives))))
+        (copy-meta name))))
 
 (defmethod xform :fragmentDefinition
   [prod]
-  (let [[_ fragment-name type-condition selection-set] prod]
-    {:type :fragment-definition
-     :fragment-name (-> fragment-name second xform)
-     :on-type (-> type-condition second second xform)
-     :selections (->> selection-set rest (mapv xform))}))
+  (let [[_ fragment-name type-condition selection-set] prod
+        name (second fragment-name)]
+    (copy-meta
+      {:type :fragment-definition
+       :fragment-name (xform name)
+       :on-type (-> type-condition second second xform)
+       :selections (->> selection-set rest (mapv xform))}
+      name)))
 
 (defmethod xform :directive
   [prod]

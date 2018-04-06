@@ -36,7 +36,7 @@
 
 (deftest field-with-single-error
   (is (= {:data {:root {:error_field nil}}
-          :errors [{:locations [{:column 7
+          :errors [{:locations [{:column 10
                                  :line 1}]
                     :message "Exception in error_field resolver."
                     :query-path [:root
@@ -45,23 +45,23 @@
                   "{ root { error_field }}"))))
 
 (deftest field-with-multiple-errors
-  (is (= [{:locations [{:column 7
+  (is (= [{:locations [{:column 10
                         :line 1}]
            :message "1"
            :other-key 100
            :query-path [:root
                         :multiple_errors_field]}
-          {:locations [{:column 7
+          {:locations [{:column 10
                         :line 1}]
            :message "2"
            :query-path [:root
                         :multiple_errors_field]}
-          {:locations [{:column 7
+          {:locations [{:column 10
                         :line 1}]
            :message "3"
            :query-path [:root
                         :multiple_errors_field]}
-          {:locations [{:column 7
+          {:locations [{:column 10
                         :line 1}]
            :message "4"
            :query-path [:root
@@ -97,7 +97,7 @@
         (let [q "query foo { container(id:\"full-container\") { contents { name } } }"]
           (is (= {:data {:container {:contents [{:name "Book"}
                                                 {:name "Picture"}]}}
-                  :errors [{:locations [{:column 43
+                  :errors [{:locations [{:column 46
                                          :line 1}]
                             :message "Some error"
                             :query-path [:container
@@ -106,7 +106,7 @@
       (testing "when the sub-selector returns an empty collection"
         (let [q "query foo { container(id:\"empty-container\") { contents { name } } }"]
           (is (= {:data {:container {:contents []}}
-                  :errors [{:locations [{:column 44
+                  :errors [{:locations [{:column 47
                                          :line 1}]
                             :message "Some error"
                             :query-path [:container

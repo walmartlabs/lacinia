@@ -57,7 +57,7 @@
           :errors [{:arguments {:in [["oops"
                                       nil
                                       "fail!"]]}
-                    :locations [{:column 0
+                    :locations [{:column 2
                                  :line 1}]
                     :message "Non-nullable field was null."
                     :query-path [:verse_echo]}]}

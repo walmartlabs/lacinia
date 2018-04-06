@@ -60,9 +60,9 @@
     (let [^Token token (.getStart ^ParserRuleContext t)]
       (with-meta
         sexp
+        ;; Antlr numbers lines from 1, but columns from 0
         {:line (.getLine token)
-         ;; This is looking like line counts from 1 but column counts from 0
-         :column (.getCharPositionInLine token)}))))
+         :column (-> token .getCharPositionInLine inc)}))))
 
 (defn ^:private traverse
   [^ParseTree t ^Parser p]

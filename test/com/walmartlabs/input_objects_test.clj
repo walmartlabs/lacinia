@@ -17,7 +17,7 @@
 
     (is (= {:errors [{:argument :game_data
                       :field :create_game
-                      :locations [{:column 9
+                      :locations [{:column 11
                                    :line 1}]
                       :message "Exception applying arguments to field `create_game': For argument `game_data', no value provided for non-nullable key `id' of input object `game_template'."
                       :missing-key :id
@@ -30,7 +30,7 @@
 
     (is (= {:errors [{:argument :game_data
                       :field :create_game
-                      :locations [{:column 29
+                      :locations [{:column 31
                                    :line 1}]
                       :message "No value provided for non-nullable key `id' of input object `game_template'."
                       :missing-key :id
