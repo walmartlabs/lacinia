@@ -24,9 +24,9 @@
        first))
 
 (defn ^:private assoc?
-  "Associates a key into map only when the value is non-nil."
+  "Associates a key into map only when the value is non-empty seq."
   [m k v]
-  (if (some? v)
+  (if (seq v)
     (assoc m k v)
     m))
 
@@ -134,14 +134,12 @@
       :array [:array (mapv xform-argument-value value)])))
 
 (defn ^:private build-map-from-parsed-arguments
-  "Builds a map"
-  [nodes]
-  (->> nodes
-       (reduce (fn [m arg]
+  "Builds a map from the parsed arguments."
+  [parsed-arguments]
+  (->> parsed-arguments
+       (reduce (fn [m {:keys [arg-name arg-value]}]
                  ;; TODO: Check for duplicate arg names
-                 (assoc! m
-                         (:arg-name arg)
-                         (-> arg :arg-value xform-argument-value)))
+                 (assoc! m arg-name (xform-argument-value arg-value)))
                (transient {}))
        persistent!))
 
@@ -230,22 +228,25 @@
   arguments whose value is entirely static.  The second is dynamic arguments,
   whose value comes from a query variable."
   [arguments]
-  (loop [state nil
-         args arguments]
-    (if (seq args)
-      (let [[k v] (first args)
-            classification (if (is-dynamic? v)
-                             :dynamic
-                             :literal)]
-        (recur (assoc-in state [classification k] v)
-               (next args)))
-      [(:literal state) (:dynamic state)])))
+  (when arguments
+    (loop [state nil
+           args arguments]
+      (if (seq args)
+        (let [[k v] (first args)
+              classification (if (is-dynamic? v)
+                               :dynamic
+                               :literal)]
+          (recur (assoc-in state [classification k] v)
+                 (next args)))
+        [(:literal state) (:dynamic state)]))))
 
 (defn ^:private collect-default-values
   [field-map]                                               ; also works with arguments
-  (->> field-map
-       (map-vals :default-value)
-       (filter-vals some?)))
+  (let [defaults (->> field-map
+                      (map-vals :default-value)
+                      (filter-vals some?))]
+    (when-not (empty? defaults)
+      defaults)))
 
 (defn ^:private use-nested-type
   "Replaces the :type of the def with the nested type; this is used to strip off a
@@ -384,34 +385,37 @@
        (subs s 1)))
 
 (defn ^:private construct-literal-arguments
-  "Converts and validates all literal arguments from their psuedo-Antlr format into
+  "Converts and validates all literal arguments from their parsed format into
   values ready to be used at execution time. Returns a nil, or a map of arguments and
   literal values."
   [schema argument-defs arguments]
-  (let [process-arg (fn [arg-name arg-value]
-                      (with-exception-context {:argument arg-name}
-                        (let [arg-def (get argument-defs arg-name)]
+  (let [default-values (collect-default-values argument-defs)]
+    (if (empty? arguments)
+      default-values
+      (let [process-arg (fn [arg-name arg-value]
+                          (with-exception-context {:argument arg-name}
+                            (let [arg-def (get argument-defs arg-name)]
 
-                          (when-not arg-def
-                            (throw-exception (format "Unknown argument %s."
-                                                     (q arg-name))
-                                             {:defined-arguments (keys argument-defs)}))
-                          (try
-                            (process-literal-argument schema arg-def arg-value)
-                            (catch Exception e
-                              (throw-exception (format "For argument %s, %s"
-                                                       (q arg-name)
-                                                       (decapitalize (to-message e)))
-                                               nil
-                                               e))))))]
-    (let [static-args (reduce-kv (fn [m k v]
-                                   (assoc m k (process-arg k v)))
-                                 nil
-                                 arguments)
-          with-defaults (merge (collect-default-values argument-defs)
-                               static-args)]
-      (when-not (empty? with-defaults)
-        with-defaults))))
+                              (when-not arg-def
+                                (throw-exception (format "Unknown argument %s."
+                                                         (q arg-name))
+                                                 {:defined-arguments (keys argument-defs)}))
+                              (try
+                                (process-literal-argument schema arg-def arg-value)
+                                (catch Exception e
+                                  (throw-exception (format "For argument %s, %s"
+                                                           (q arg-name)
+                                                           (decapitalize (to-message e)))
+                                                   nil
+                                                   e))))))]
+        (let [static-args (reduce-kv (fn [m k v]
+                                       (assoc m k (process-arg k v)))
+                                     nil
+                                     arguments)
+              with-defaults (merge default-values
+                                   static-args)]
+          (when-not (empty? with-defaults)
+            with-defaults))))))
 
 (defn ^:private compatible-types?
   [var-type arg-type var-has-default?]
@@ -686,38 +690,41 @@
   {:query-path (:query-path node-map)
    :locations [(:location node-map)]})
 
-(defn ^:private convert-directives
-  "Passed a container (a field selection, etc.) containing a :directives key,
-  processes each of the directives: validates that the directive exists,
-  and validates the arguments of the directive.
+(defn ^:private convert-parsed-directives
+  "Passed a seq of parsed directive nodes, returns a map of directive name to
+  an executable directive.
 
   Returns an updates container."
-  [schema directives]
-  (let [convert-directive
-        (fn [k directive]
-          (with-exception-context {:directive k}
-            (if-let [directive-def (get builtin-directives k)]
-              (let [[literal-arguments dynamic-arguments-extractor]
-                    (try
-                      (process-arguments schema
-                                         (:args directive-def)
-                                         (:arguments directive))
-                      (catch ExceptionInfo e
-                        (throw-exception (format "Exception applying arguments to directive %s: %s"
-                                                 (q k)
-                                                 (to-message e))
-                                         nil
-                                         e)))]
-                (assoc directive
-                       :arguments literal-arguments
-                       ::arguments-extractor dynamic-arguments-extractor))
-              (throw-exception (format "Unknown directive %s."
-                                       (q k)
-                                       {:unknown-directive k
-                                        :available-directives (-> builtin-directives keys sort)})))))
-        reducer (fn [m k v]
-                  (assoc m k (convert-directive k v)))]
-    (reduce-kv reducer nil directives)))
+  [schema parsed-directives]
+  (let [reducer
+        (fn [m parsed-directive]
+          (let [{directive-name :directive-name
+                 directive-args :args} parsed-directive]
+            (with-exception-context {:directive directive-name}
+              (if-let [directive-def (get builtin-directives directive-name)]
+                (let [[literal-arguments dynamic-arguments-extractor]
+                      (try
+                        (process-arguments schema
+                                           (:args directive-def)
+                                           (-> parsed-directive :args build-map-from-parsed-arguments))
+                        (catch ExceptionInfo e
+                          (throw-exception (format "Exception applying arguments to directive %s: %s"
+                                                   (q directive-name)
+                                                   (to-message e))
+                                           nil
+                                           e)))]
+                  ;; TODO: Check for conflicting names
+                  ;; TODO: Do we need to use a map of directives, or can we change the execute to
+                  ;; use a seq of them?
+                  (assoc m directive-name
+                         (assoc parsed-directive
+                                :arguments literal-arguments
+                                ::arguments-extractor dynamic-arguments-extractor)))
+                (throw-exception (format "Unknown directive %s."
+                                         (q directive-name)
+                                         {:unknown-directive directive-name
+                                          :available-directives (-> builtin-directives keys sort)}))))))]
+    (reduce reducer nil parsed-directives)))
 
 (def ^:private typename-field-definition
   "A psuedo field definition that exists to act as a placeholder when the
@@ -742,11 +749,9 @@
     (-> {:field field-name
          :alias alias
          :selections selections
-         :directives nil}
-        (assoc? :arguments (when (seq arguments)
-                             arguments))
-        (assoc? :reportable-arguments (when (seq arguments)
-                                        (extract-reportable-arguments arguments))))))
+         :directives directives}
+        (assoc? :arguments arguments)
+        (assoc? :reportable-arguments (extract-reportable-arguments arguments)))))
 
 (defn ^:private convert-field-selection
   "Converts a parsed field selection into a normalized form, ready for validation
@@ -758,9 +763,7 @@
   (let [defaults (default-node-map parsed-field query-path)
         context (node-context defaults)
         result (with-exception-context context
-                 (merge defaults (prepare-parsed-field parsed-field))
-                 #_(reduce node-reducer defaults (rest (second parsed-field))))
-        ;; At this point
+                 (merge defaults (prepare-parsed-field parsed-field)))
         {:keys [field alias arguments reportable-arguments directives]} result
         is-typename-metafield? (= field :__typename)
         field-definition (if is-typename-metafield?
@@ -795,7 +798,7 @@
         ;; this tuple (call normalize-selections directly).
         [nested-type (assoc result
                             :selection-type :field
-                            :directives (convert-directives schema directives)
+                            :directives (convert-parsed-directives schema directives)
                             :alias (or alias field)
                             :query-path query-path'
                             :leaf? (scalar? nested-type)
@@ -1013,7 +1016,7 @@
                                :type on-type
                                :selections selections)
                         (cond-> directives
-                          (assoc :directives (convert-directives schema directives))))
+                          (assoc :directives (convert-parsed-directives schema directives))))
                   path-elem (keyword (-> m :fragment-name name)
                                      (name on-type))
                   fragment-type (get schema on-type)]
@@ -1058,7 +1061,7 @@
                 inline-fragment (-> m
                                     (assoc :selection-type :inline-fragment
                                            :concrete-types concrete-types)
-                                    (cond-> directives (assoc :directives (convert-directives schema directives))))]
+                                    (cond-> directives (assoc :directives (convert-parsed-directives schema directives))))]
             (normalize-selections schema
                                   inline-fragment
                                   fragment-type
@@ -1076,7 +1079,7 @@
       (-> defaults
           (merge {:selection-type :fragment-spread
                   :fragment-name fragment-name})
-          (cond-> directives (assoc :directives (convert-directives schema directives)))
+          (cond-> directives (assoc :directives (convert-parsed-directives schema directives)))
           mark-node-for-prepare))))
 
 (defn ^:private find-element
