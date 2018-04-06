@@ -10,7 +10,6 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.walmartlabs.lacinia.introspection :as introspection]
-    [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.internal-utils
      :refer [map-vals map-kvs filter-vals deep-merge q
              is-internal-type-name? sequential-or-set? as-keyword
@@ -243,13 +242,6 @@
   ([message data]
    (merge {:message message} data)))
 
-(defn ^:private graphql-identifier?
-  "Expects a conformed value (turns out to be a Map$Entry such as `[:keyword :foo]`)
-  and validates that the value is a valid GraphQL identifier."
-  [[_ v]]
-  (boolean
-    (re-matches graphql-identifier (name v))))
-
 ;;-------------------------------------------------------------------------------
 ;; ## Validations
 
@@ -261,20 +253,25 @@
 ;; For style and/or historical reasons, type names can be a keyword or a symbol.
 ;; The convention is that built-in types used a symbol, and application-defined types
 ;; use a keyword.
-(s/def ::type-name (s/and (s/or :keyword simple-keyword?
-                                :symbol simple-symbol?)
-                          graphql-identifier?))
+(s/def ::type-name (s/and
+                     (s/nonconforming
+                       (s/or :keyword simple-keyword?
+                             :symbol simple-symbol?))
+                     ::graphql-identifier))
 (s/def ::type (s/or :base-type ::type-name
-                    :wrapping-type (s/cat :modifier #{'list 'non-null}
-                                          :type ::type)))
+                    :wrapped-type ::wrapped-type))
+(s/def ::wrapped-type (s/cat :modifier #{'list 'non-null}
+                             :type ::type))
 (s/def ::arg (s/keys :req-un [::type]
                      :opt-un [::description]))
 (s/def ::args (s/map-of ::schema-key ::arg))
 ;; Defining these callbacks in spec has been a challenge. At some point,
 ;; we can expand this to capture a bit more about what a field resolver
 ;; is passed and should return.
-(s/def ::resolve (s/or :function fn?
-                       :protocol #(satisfies? resolve/FieldResolver %)))
+(s/def ::resolve (s/or :function ::resolver-fn
+                       :protocol ::resolver-type))
+(s/def ::resolver-fn fn?)
+(s/def ::resolver-type #(satisfies? resolve/FieldResolver %))
 (s/def ::field (s/keys :opt-un [::description
                                 ::resolve
                                 ::args
@@ -286,7 +283,8 @@
                            :req-un [::type
                                     ::resolve]))
 (s/def ::fields (s/map-of ::schema-key ::field))
-(s/def ::implements (s/coll-of ::type-name))
+(s/def ::implements (s/and (s/coll-of ::type-name)
+                           seq))
 (s/def ::description string?)
 (s/def ::tag (s/or
                :symbol symbol?
@@ -303,10 +301,11 @@
                         seq))
 (s/def ::union (s/keys :opt-un [::description]
                        :req-un [::members]))
-(s/def ::enum-value (s/and (s/or :string string?
-                                 :keyword simple-keyword?
-                                 :symbol simple-symbol?)
-                           graphql-identifier?))
+(s/def ::enum-value (s/and (s/nonconforming
+                             (s/or :string string?
+                                   :keyword simple-keyword?
+                                   :symbol simple-symbol?))
+                           ::graphql-identifier))
 (s/def ::enum-value-def (s/or :bare-value ::enum-value
                               :described (s/keys :req-un [::enum-value]
                                                  :opt-un [::description
@@ -1274,8 +1273,7 @@
 
   The format of the compiled schema is subject to change without notice.
 
-  This function is always instrumented with Clojure spec: non-conforming
-  input schemas will cause a spec validation exception to be thrown.
+  This function explicitly validates its arguments using clojure.spec.
 
   Compile options:
 
@@ -1284,7 +1282,7 @@
   : A function that accepts a field name (as a keyword) and converts it into the
     default field resolver; this defaults to [[default-field-resolver]].
 
-  Produces a form ready to be used in executing a query."
+  Produces a form ready for use in executing a query."
   ([schema]
    (compile schema nil))
   ([schema options]

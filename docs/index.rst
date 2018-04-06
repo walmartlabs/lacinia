@@ -48,6 +48,7 @@ responding with JSON, it is also exceptionally useful for allowing backend syste
    custom-scalars
    roots
    introspection
+   spec
    schema/parsing
    samples
    clojure

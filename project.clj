@@ -9,7 +9,9 @@
                  [org.flatland/ordered "1.5.6"
                   :exclusions [org.clojure/tools.macro]]]
   :profiles {:dev {:dependencies [[criterium "0.4.4"]
+                                  [expound "0.5.0"]
                                   [joda-time "2.9.9"]
+                                  [com.walmartlabs/test-reporting "0.1.0"]
                                   [io.aviso/logging "0.2.0"]
                                   [io.pedestal/pedestal.log "0.5.3"]
                                   [org.clojure/test.check "0.9.0"]
