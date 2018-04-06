@@ -479,7 +479,7 @@
             :errors [{:message "Non-nullable field was null."
                       :query-path [:human :foo]
                       :locations [{:line 1
-                                   :column 20}]}]}
+                                   :column 27}]}]}
            executed)))
   (testing "field declared as non-nullable resolved to null"
     (let [q "{ hero { foo }}"
@@ -488,7 +488,7 @@
               :errors [{:message "Non-nullable field was null."
                         :query-path [:hero :foo]
                         :locations [{:line 1
-                                     :column 7}]}]}
+                                     :column 9}]}]}
              executed)
           "should null the top level when non-nullable field returns null")))
   (testing "field declared as non-nullable resolved to null"
@@ -498,7 +498,7 @@
               :errors [{:message "Non-nullable field was null."
                         :query-path [:hero :arch_enemy]
                         :locations [{:line 1
-                                     :column 7}]}]}
+                                     :column 9}]}]}
              executed)
           "nulls the first nullable object after a field returns null in a chain of fields that are non-null")))
   (testing "nullable list of nullable objects (friends) with non-nullable selections"
@@ -507,7 +507,7 @@
       (is (= {:data {:hero {:friends [nil nil nil]}}
               :errors [{:message "Non-nullable field was null."
                         :locations [{:line 1
-                                     :column 17}]
+                                     :column 19}]
                         :query-path [:hero :friends :arch_enemy]}]}
              executed)
           "nulls the first nullable object after a non-nullable field returns null")))
@@ -517,7 +517,7 @@
       (is (= {:data {:hero {:friends [{:best_friend nil} {:best_friend nil} {:best_friend nil}]}}
               :errors [{:message "Non-nullable field was null."
                         :locations [{:line 1
-                                     :column 31}]
+                                     :column 33}]
                         :query-path [:hero :friends :best_friend :foo]}]}
              executed)
           "nulls the first nullable object after a non-nullable field returns null")))
@@ -527,7 +527,7 @@
       (is (= {:data {:hero {:family [nil nil nil]}}
               :errors [{:message "Non-nullable field was null."
                         :locations [{:line 1
-                                     :column 16}],
+                                     :column 18}],
                         :query-path [:hero :family :arch_enemy]}]}
              executed)
           "nulls the first nullable object after a non-nullable field returns null")))

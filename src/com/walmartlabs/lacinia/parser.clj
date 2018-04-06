@@ -23,6 +23,13 @@
        (filter pred)
        first))
 
+(defn ^:private assoc?
+  "Associates a key into map only when the value is non-nil."
+  [m k v]
+  (if (some? v)
+    (assoc m k v)
+    m))
+
 (declare ^:private selection)
 
 (defn ^:private contains-modifier?
@@ -732,12 +739,14 @@
   [parsed-field]
   (let [{:keys [alias field-name selections directives args]} parsed-field
         arguments (build-map-from-parsed-arguments args)]
-    {:field field-name
-     :alias alias
-     :selections selections
-     :arguments arguments
-     :reportable-arguments (extract-reportable-arguments arguments)
-     :directives nil}))
+    (-> {:field field-name
+         :alias alias
+         :selections selections
+         :directives nil}
+        (assoc? :arguments (when (seq arguments)
+                             arguments))
+        (assoc? :reportable-arguments (when (seq arguments)
+                                        (extract-reportable-arguments arguments))))))
 
 (defn ^:private convert-field-selection
   "Converts a parsed field selection into a normalized form, ready for validation
