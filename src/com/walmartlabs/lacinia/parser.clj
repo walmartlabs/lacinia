@@ -919,12 +919,13 @@
   "The selection key only applies to fields (not fragments) and
   consists of the field name or alias, and the arguments."
   [selection]
-  (let [{:keys [:selection-type :alias]} selection]
-    (if (= (:type selection) :field)
-      (or (:alias selection) (:field-name selection))
-      ;; TODO: This may be too simplified ... worried about loss of data when merging things together
-      ;; at runtime.
-      (gensym "fragment-"))))
+  (case (:selection-type selection)
+    :field
+    (:alias selection)
+
+    ;; TODO: This may be too simplified ... worried about loss of data when merging things together
+    ;; at runtime.
+    (gensym "fragment-")))
 
 (declare ^:private coalesce-selections)
 
@@ -955,14 +956,12 @@
   [selections]
   (if (= 1 (count selections))
     selections
-    ;; TODO: We can operate directly from the selections, don't need to build the tuples first.
-    (let [selection-keys (mapv to-selection-key selections)
-          selection-tuples (mapv vector selection-keys selections)
-          reducer (fn [m [selection-key selection]]
-                    (if-let [prev-selection (get m selection-key)]
-                      (assoc m selection-key (merge-selections prev-selection selection))
-                      (assoc m selection-key selection)))]
-      (->> selection-tuples
+    (let [reducer (fn [m selection]
+                    (let [selection-key (to-selection-key selection)]
+                      (if-let [prev-selection (get m selection-key)]
+                        (assoc m selection-key (merge-selections prev-selection selection))
+                        (assoc m selection-key selection))))]
+      (->> selections
            (reduce reducer (ordered-map))
            vals))))
 ;
@@ -1048,32 +1047,29 @@
     (with-exception-context (node-context defaults)
       (let [{type-name :on-type
              :keys [selections directives]} parsed-inline-fragment
-
-            m (merge defaults
-                     {:selections selections})
-            #_(reduce node-reducer defaults (rest (second parsed-inline-fragment)))
+            selection (merge defaults
+                             {:selections selections})
             fragment-type (get schema type-name)]
-        (if (nil? fragment-type)
+
+        (when (nil? fragment-type)
           (throw-exception (format "Inline fragment has a type condition on unknown type %s."
-                                   (q type-name)))
-          (let [concrete-types (expand-fragment-type-to-concrete-types fragment-type)
-                fragment-path-term (keyword "..." (name type-name))
-                inline-fragment (-> m
-                                    (assoc :selection-type :inline-fragment
-                                           :concrete-types concrete-types)
-                                    (cond-> directives (assoc :directives (convert-parsed-directives schema directives))))]
-            (normalize-selections schema
-                                  inline-fragment
-                                  fragment-type
-                                  (conj q-path fragment-path-term))))))))
+                                   (q type-name))))
+
+        (let [concrete-types (expand-fragment-type-to-concrete-types fragment-type)
+              fragment-path-term (keyword "..." (name type-name))
+              inline-fragment (-> selection
+                                  (assoc :selection-type :inline-fragment
+                                         :concrete-types concrete-types)
+                                  (cond-> directives (assoc :directives (convert-parsed-directives schema directives))))]
+          (normalize-selections schema
+                                inline-fragment
+                                fragment-type
+                                (conj q-path fragment-path-term)))))))
 
 (defmethod selection :named-fragment
   [schema parsed-fragment _type q-path]
   (let [defaults (default-node-map parsed-fragment q-path)
-        {:keys [fragment-name directives]} parsed-fragment
-
-        #_(with-exception-context (node-context defaults)
-            (reduce node-reducer defaults (rest (second parsed-fragment))))]
+        {:keys [fragment-name directives]} parsed-fragment]
     (with-exception-context (node-context defaults)
       ;; TODO: Verify that fragment name exists?
       (-> defaults

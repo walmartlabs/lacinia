@@ -5,31 +5,6 @@
             [com.walmartlabs.lacinia :refer [execute]]))
 
 ;;-------------------------------------------------------------------------------
-;; ## Validation of directives (TODO)
-
-(defn misplaced-directives
-  [compiled-schema]
-  (let [q "query Foo @include(if: true) {
-             name @onQuery
-             ...Frag @onQuery
-           }
-           mutation Bar @onQuery {
-             someField
-           }"]
-    (execute compiled-schema q {} nil)))
-
-(defn unknown-directives
-  [compiled-schema]
-  (let [q "{query {
-             human(id: \"1000\") {
-               human @unknown(directive: \"value\") {
-                 name
-               }
-             }
-            }"]
-    (execute compiled-schema q {} nil)))
-
-;;-------------------------------------------------------------------------------
 ;; ## Execution of directives
 
 (def compiled-schema (schema/compile test-schema))
