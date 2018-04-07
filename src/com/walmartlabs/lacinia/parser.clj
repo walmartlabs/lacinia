@@ -6,7 +6,6 @@
      :refer [cond-let update? q map-vals filter-vals
              with-exception-context throw-exception to-message
              keepv as-keyword *exception-context*]]
-    [com.walmartlabs.lacinia.parser.common :refer [antlr-parse parse-failures stringvalue->String]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.constants :as constants]
     [clojure.spec.alpha :as s]
@@ -23,8 +22,8 @@
        (filter pred)
        first))
 
-(defn ^:private assoc?
-  "Associates a key into map only when the value is non-empty seq."
+(defn ^:private assoc-seq?
+  "Associates a key into map only when the value is a non-empty seq."
   [m k v]
   (if (seq v)
     (assoc m k v)
@@ -705,8 +704,8 @@
          :alias alias
          :selections selections
          :directives directives}
-        (assoc? :arguments arguments)
-        (assoc? :reportable-arguments (extract-reportable-arguments arguments)))))
+        (assoc-seq? :arguments arguments)
+        (assoc-seq? :reportable-arguments (extract-reportable-arguments arguments)))))
 
 (defn ^:private select-operation
   "Given a collection of parsed operation definitions and an operation name (which
@@ -932,8 +931,8 @@
   "A recursive function that parses the parsed query tree structure into the
    format used during execution; this involves tracking the current schema type
    (initially, nil) and query path (which is used for error reporting)."
-  (fn [_schema sel _type _q-path]
-    (:type sel)))
+  (fn [_schema parsed-selection _type _q-path]
+    (:type parsed-selection)))
 
 (defmethod selection :field
   [schema parsed-field type query-path]
@@ -1038,6 +1037,8 @@
           (rest element)))
 
 (defn ^:private construct-var-type-map
+  "Converts a var-type (in the parsed format) into a similar stucture that
+  matches how the schema identifies types."
   [parsed]
   (case (:type parsed)
 
@@ -1056,8 +1057,8 @@
     (throw-exception "Unable to parse variable type.")))
 
 (defn ^:private compose-variable-definition
-  "Converts a variable definition key/value pair  into a tuple of variable name, and
-  schema-type like an argument definition."
+  "Converts a parsed variable definition into a tuple of variable name, and
+  schema-type (as with an argument definition)."
   [schema parsed-var-def]
   (let [{:keys [var-name var-type]
          default-value :default} parsed-var-def
