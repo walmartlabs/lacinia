@@ -157,44 +157,6 @@
   [arg-map]
   (map-vals extract-reportable-argument-value arg-map))
 
-(defn ^:private node-reducer
-  "A generic reducing fn for building maps out of nodes."
-  [acc [k :as node]]
-  (case k
-    :name
-    (assoc acc :field (name-from node))
-
-    :alias
-    (assoc acc :alias (-> node second name-from))
-
-    :arguments
-    (let [args (build-map-from-parsed-arguments (rest node))]
-      (assoc acc
-             :arguments args
-             :reportable-arguments (extract-reportable-arguments args)))
-
-    :typeCondition
-    ;; Part of inline fragments and fragment definitions
-    (assoc acc :type (-> node second name-from))
-
-    :fragmentName
-    ;; Part of a fragment reference (... ADefinedFragment)
-    (assoc acc :fragment-name (name-from node))
-
-    :directives
-    (->> (rest node)
-         (reduce (fn ([acc [_ name-node v]]
-                       ;; TODO: Spec indicates that directives must be unique by name
-                      (assoc! acc (name-from name-node) (node-reducer {} v))))
-                 (transient {}))
-         persistent!
-         (assoc acc :directives))
-
-    :selectionSet
-    ;; Keep the order of the selections (fields, inline fragments, and fragment spreads) so the
-    ;; output will match the order in the request.
-    (assoc acc :selections (rest node))))
-
 (defn ^:private scalar?
   [type]
   (-> type :category #{:scalar :enum} boolean))
@@ -691,13 +653,9 @@
    :locations [(:location node-map)]})
 
 (defn ^:private convert-parsed-directives
-  "Passed a seq of parsed directive nodes, returns a map of directive name to
-  an executable directive.
-
-  Returns an updates container."
+  "Passed a seq of parsed directive nodes, returns a seq of executable directives."
   [schema parsed-directives]
-  (let [reducer
-        (fn [m parsed-directive]
+  (let [f (fn [parsed-directive]
           (let [{directive-name :directive-name
                  directive-args :args} parsed-directive]
             (with-exception-context {:directive directive-name}
@@ -713,18 +671,15 @@
                                                    (to-message e))
                                            nil
                                            e)))]
-                  ;; TODO: Check for conflicting names
-                  ;; TODO: Do we need to use a map of directives, or can we change the execute to
-                  ;; use a seq of them?
-                  (assoc m directive-name
-                         (assoc parsed-directive
-                                :arguments literal-arguments
-                                ::arguments-extractor dynamic-arguments-extractor)))
+                  (assoc parsed-directive
+                         :effector (:effector directive-def)
+                         :arguments literal-arguments
+                         ::arguments-extractor dynamic-arguments-extractor))
                 (throw-exception (format "Unknown directive %s."
                                          (q directive-name)
                                          {:unknown-directive directive-name
                                           :available-directives (-> builtin-directives keys sort)}))))))]
-    (reduce reducer nil parsed-directives)))
+    (mapv f parsed-directives)))
 
 (def ^:private typename-field-definition
   "A psuedo field definition that exists to act as a placeholder when the
@@ -752,62 +707,6 @@
          :directives directives}
         (assoc? :arguments arguments)
         (assoc? :reportable-arguments (extract-reportable-arguments arguments)))))
-
-(defn ^:private convert-field-selection
-  "Converts a parsed field selection into a normalized form, ready for validation
-  and execution.
-
-  Returns a tuple of the type of the field (used when resolving sub-types)
-  and a reduced and an enhanced version of the selection map."
-  [schema parsed-field type query-path]
-  (let [defaults (default-node-map parsed-field query-path)
-        context (node-context defaults)
-        result (with-exception-context context
-                 (merge defaults (prepare-parsed-field parsed-field)))
-        {:keys [field alias arguments reportable-arguments directives]} result
-        is-typename-metafield? (= field :__typename)
-        field-definition (if is-typename-metafield?
-                           typename-field-definition
-                           (get-in type [:fields field]))
-        field-type (schema/root-type-name field-definition)
-        nested-type (get schema field-type)
-        query-path' (conj query-path field)]
-    (with-exception-context (assoc context :field field)
-      (when (nil? nested-type)
-        (if (scalar? type)
-          (throw-exception "Path de-references through a scalar type.")
-          (let [type-name (:type-name type)]
-            (throw-exception (format "Cannot query field %s on type %s."
-                                     (q field)
-                                     (if type-name
-                                       (q type-name)
-                                       "UNKNOWN"))
-                             {:type type-name}))))
-      (let [[literal-arguments dynamic-arguments-extractor]
-            (try
-              (process-arguments schema
-                                 (:args field-definition)
-                                 arguments)
-              (catch ExceptionInfo e
-                (throw-exception (format "Exception applying arguments to field %s: %s"
-                                         (q field)
-                                         (to-message e))
-                                 nil
-                                 e)))]
-        ;; TODO: I think we can go recursive here instead of returning
-        ;; this tuple (call normalize-selections directly).
-        [nested-type (assoc result
-                            :selection-type :field
-                            :directives (convert-parsed-directives schema directives)
-                            :alias (or alias field)
-                            :query-path query-path'
-                            :leaf? (scalar? nested-type)
-                            :concrete-type? (or is-typename-metafield?
-                                                (-> type :category #{:object :input-object} some?))
-                            :reportable-arguments reportable-arguments
-                            :arguments literal-arguments
-                            ::arguments-extractor dynamic-arguments-extractor
-                            :field-definition field-definition)]))))
 
 (defn ^:private select-operation
   "Given a collection of parsed operation definitions and an operation name (which
@@ -875,11 +774,11 @@
   "Computes final arguments for each directive, and passes the node through each
   directive's effector."
   [node variables]
-  (reduce-kv (fn [node directive-type directive]
-               (let [effector (get-in builtin-directives [directive-type :effector])]
+  (reduce (fn [node directive]
+            (let [effector (:effector directive)]
                  (effector node (compute-arguments directive variables))))
-             node
-             (:directives node)))
+          node
+          (:directives node)))
 
 (defn ^:private apply-dynamic-arguments
   "Computes final arguments for a field from its literal arguments and dynamic arguments."
@@ -1037,9 +936,57 @@
     (:type sel)))
 
 (defmethod selection :field
-  [schema sel type q-path]
-  (let [[nested-type m] (convert-field-selection schema sel type q-path)]
-    (normalize-selections schema m nested-type (:query-path m))))
+  [schema parsed-field type query-path]
+  (let [defaults (default-node-map parsed-field query-path)
+        context (node-context defaults)
+        result (with-exception-context context
+                 (merge defaults (prepare-parsed-field parsed-field)))
+        {:keys [field alias arguments reportable-arguments directives]} result
+        is-typename-metafield? (= field :__typename)
+        field-definition (if is-typename-metafield?
+                           typename-field-definition
+                           (get-in type [:fields field]))
+        field-type (schema/root-type-name field-definition)
+        nested-type (get schema field-type)
+        query-path' (conj query-path field)]
+    (with-exception-context (assoc context :field field)
+      (when (nil? nested-type)
+        (if (scalar? type)
+          (throw-exception "Path de-references through a scalar type.")
+          (let [type-name (:type-name type)]
+            (throw-exception (format "Cannot query field %s on type %s."
+                                     (q field)
+                                     (if type-name
+                                       (q type-name)
+                                       "UNKNOWN"))
+                             {:type type-name}))))
+      (let [[literal-arguments dynamic-arguments-extractor]
+            (try
+              (process-arguments schema
+                                 (:args field-definition)
+                                 arguments)
+              (catch ExceptionInfo e
+                (throw-exception (format "Exception applying arguments to field %s: %s"
+                                         (q field)
+                                         (to-message e))
+                                 nil
+                                 e)))
+            selection (assoc result
+                             :selection-type :field
+                             :directives (convert-parsed-directives schema directives)
+                             :alias (or alias field)
+                             :query-path query-path'
+                             :leaf? (scalar? nested-type)
+                             :concrete-type? (or is-typename-metafield?
+                                                 (-> type :category #{:object :input-object} some?))
+                             :reportable-arguments reportable-arguments
+                             :arguments literal-arguments
+                             ::arguments-extractor dynamic-arguments-extractor
+                             :field-definition field-definition)]
+        ;; query-path' ends with the :field value, so strip it out before
+        ;; doing the recursive work.
+        (binding [*exception-context* (dissoc *exception-context* :field)]
+          (normalize-selections schema selection nested-type query-path'))))))
 
 (defmethod selection :inline-fragment
   [schema parsed-inline-fragment _type q-path]
