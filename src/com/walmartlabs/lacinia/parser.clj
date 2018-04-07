@@ -948,30 +948,30 @@
                            (get-in type [:fields field]))
         field-type (schema/root-type-name field-definition)
         nested-type (get schema field-type)
-        query-path' (conj query-path field)]
-    (with-exception-context (assoc context :field field)
-      (when (nil? nested-type)
-        (if (scalar? type)
-          (throw-exception "Path de-references through a scalar type.")
-          (let [type-name (:type-name type)]
-            (throw-exception (format "Cannot query field %s on type %s."
-                                     (q field)
-                                     (if type-name
-                                       (q type-name)
-                                       "UNKNOWN"))
-                             {:type type-name}))))
-      (let [[literal-arguments dynamic-arguments-extractor]
-            (try
-              (process-arguments schema
-                                 (:args field-definition)
-                                 arguments)
-              (catch ExceptionInfo e
-                (throw-exception (format "Exception applying arguments to field %s: %s"
-                                         (q field)
-                                         (to-message e))
-                                 nil
-                                 e)))
-            selection (assoc result
+        query-path' (conj query-path field)
+        selection (with-exception-context (assoc context :field field)
+                    (when (nil? nested-type)
+                      (if (scalar? type)
+                        (throw-exception "Path de-references through a scalar type.")
+                        (let [type-name (:type-name type)]
+                          (throw-exception (format "Cannot query field %s on type %s."
+                                                   (q field)
+                                                   (if type-name
+                                                     (q type-name)
+                                                     "UNKNOWN"))
+                                           {:type type-name}))))
+                    (let [[literal-arguments dynamic-arguments-extractor]
+                          (try
+                            (process-arguments schema
+                                               (:args field-definition)
+                                               arguments)
+                            (catch ExceptionInfo e
+                              (throw-exception (format "Exception applying arguments to field %s: %s"
+                                                       (q field)
+                                                       (to-message e))
+                                               nil
+                                               e)))]
+                      (assoc result
                              :selection-type :field
                              :directives (convert-parsed-directives schema directives)
                              :alias (or alias field)
@@ -982,11 +982,8 @@
                              :reportable-arguments reportable-arguments
                              :arguments literal-arguments
                              ::arguments-extractor dynamic-arguments-extractor
-                             :field-definition field-definition)]
-        ;; query-path' ends with the :field value, so strip it out before
-        ;; doing the recursive work.
-        (binding [*exception-context* (dissoc *exception-context* :field)]
-          (normalize-selections schema selection nested-type query-path'))))))
+                             :field-definition field-definition)))]
+    (normalize-selections schema selection nested-type query-path')))
 
 (defmethod selection :inline-fragment
   [schema parsed-inline-fragment _type q-path]
