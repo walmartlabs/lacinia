@@ -3,7 +3,7 @@
 
   Note that the intermediate format is designed to be something that can be easily generated from
   Anltr (on the JVM) or with some other parsing library (in-browser, or Node)."
-  {:added "0.27.0 ????????"}
+  {:added "0.26.0"}
   (:require
     [clj-antlr.core :as antlr.core]
     [clojure.java.io :as io]
