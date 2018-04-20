@@ -14,7 +14,10 @@
     (clj_antlr ParseError)))
 
 (def ^:private grammar
-  (antlr.core/parser (slurp (io/resource "com/walmartlabs/lacinia/Graphql.g4"))))
+  (-> "com/walmartlabs/lacinia/Graphql.g4"
+      io/resource
+      slurp
+      antlr.core/parser))
 
 (defn ^:private as-map
   [prod]
@@ -96,7 +99,7 @@
 
 (defmethod xform :selection
   [prod]
-  (xform (-> prod second )))
+  (-> prod second xform))
 
 (defmethod xform :field
   [prod]
