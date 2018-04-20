@@ -1,5 +1,5 @@
 {:data {:default {:name "Darth Vader",
-                  :appears_in ["NEWHOPE" "EMPIRE" "JEDI"],
+                  :appears_in [:NEWHOPE :EMPIRE :JEDI],
                   :friends [{:name "Wilhuff Tarkin"}],
                   :home_planet "Tatooine"},
         :hope_hero {:id "2001",

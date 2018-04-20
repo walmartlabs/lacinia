@@ -1,0 +1,4 @@
+[{:type :query
+  :directives [{:directive-name :Whatever}]
+  :selections [{:type :field
+                :field-name :hello}]}]

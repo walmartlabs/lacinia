@@ -22,8 +22,8 @@
     (clojure.lang IObj)
     (java.io Writer)))
 
-;; When using Clojure 1.9 alpha, the dependency on clojure-future-spec can be excluded,
-;; and this code will not trigger; any? will come out of clojure.core as normal.
+;; When using Clojure 1.8, the dependency on clojure-future-spec must be included,
+;; and this code will trigger
 (when (-> *clojure-version* :minor (< 9))
   (require '[clojure.future :refer [any? simple-keyword? simple-symbol?]]))
 

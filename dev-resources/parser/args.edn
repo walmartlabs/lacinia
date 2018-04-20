@@ -1,0 +1,8 @@
+[{:type :query
+  :selections [{:type :field
+                :field-name :hello
+                :args [{:arg-name :world
+                        :arg-value {:type :boolean
+                                    :value "true"}}]
+                :selections [{:type :field
+                              :field-name :greeting}]}]}]

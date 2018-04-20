@@ -1,0 +1,4 @@
+[{:type :query
+  :name :Friendly
+  :selections [{:type :field
+                :field-name :hello}]}]

@@ -61,8 +61,8 @@
            (execute default-schema q {} nil {:operation-name "heroNameQuery"}))))
 
   (let [q "query heroNameQuery { hero { id name } } query dummyQuery { hero { id } }"]
-    (is (= {:errors [{:message "Multiple operations requested but operation-name not found.",
-                      :op-count 2,
+    (is (= {:errors [{:message "Multiple operations provided but no matching name found."
+                      :op-count 2
                       :operation-name "notAQuery"}]}
            (execute default-schema q {} nil {:operation-name "notAQuery"}))))
 
@@ -222,8 +222,8 @@
            (execute default-schema q {:someId han-id} nil)))
     (is (= {:errors [{:argument :id
                       :field :human
-                      :locations [{:column 41
-                                   :line 1}]
+                      :locations [{:column 14
+                                   :line 2}]
                       :message "No value was provided for variable `someId', which is non-nullable."
                       :query-path []
                       :variable-name :someId}]}
@@ -376,7 +376,8 @@
             }"]
     (is (= {:errors [{:message "Inline fragment has a type condition on unknown type `foo'."
                       :query-path [:human]
-                      :locations [{:line 2 :column 31}]}]}
+                      :locations [{:column 23
+                                   :line 3}]}]}
            (execute default-schema q nil nil)))))
 
 (deftest invalid-query
@@ -394,7 +395,7 @@
             :errors [{:query-path [:droid :accessories]
                       :message "Field resolver returned a single value, expected a collection of values."
                       :locations [{:line 1
-                                   :column 20}]}]}
+                                   :column 23}]}]}
            executed)))
   (let [q "{droid(id: \"2000\") { incept_date }}"
         executed (execute default-schema q nil nil)]
@@ -402,7 +403,7 @@
             :errors [{:query-path [:droid :incept_date]
                       :message "Field resolver returned a collection of values, expected only a single value."
                       :locations [{:line 1
-                                   :column 19}]}]}
+                                   :column 22}]}]}
            executed))))
 
 (deftest int-coercion
@@ -441,7 +442,7 @@
     ;; Values out of range are are dropped with an error:
     (is (nil? (get-in query-result [:data :test :int])))
     ;; TODO: It would be nice to capture some of the details provided in the exception thrown by a failed coercion
-    (is (= [{:locations [{:column 7
+    (is (= [{:locations [{:column 10
                           :line 1}]
              :message "Int value outside of allowed 32 bit integer range."
              :query-path [:test
@@ -467,7 +468,7 @@
         executed (execute default-schema q nil nil)]
     (is (= {:data nil
             :errors [{:arguments {:id "12345678"}
-                      :locations [{:column 0
+                      :locations [{:column 3
                                    :line 1}]
                       :message "Non-nullable field was null."
                       :query-path [:human]}]}
@@ -478,7 +479,7 @@
             :errors [{:message "Non-nullable field was null."
                       :query-path [:human :foo]
                       :locations [{:line 1
-                                   :column 20}]}]}
+                                   :column 28}]}]}
            executed)))
   (testing "field declared as non-nullable resolved to null"
     (let [q "{ hero { foo }}"
@@ -487,7 +488,7 @@
               :errors [{:message "Non-nullable field was null."
                         :query-path [:hero :foo]
                         :locations [{:line 1
-                                     :column 7}]}]}
+                                     :column 10}]}]}
              executed)
           "should null the top level when non-nullable field returns null")))
   (testing "field declared as non-nullable resolved to null"
@@ -497,7 +498,7 @@
               :errors [{:message "Non-nullable field was null."
                         :query-path [:hero :arch_enemy]
                         :locations [{:line 1
-                                     :column 7}]}]}
+                                     :column 10}]}]}
              executed)
           "nulls the first nullable object after a field returns null in a chain of fields that are non-null")))
   (testing "nullable list of nullable objects (friends) with non-nullable selections"
@@ -506,7 +507,7 @@
       (is (= {:data {:hero {:friends [nil nil nil]}}
               :errors [{:message "Non-nullable field was null."
                         :locations [{:line 1
-                                     :column 17}]
+                                     :column 20}]
                         :query-path [:hero :friends :arch_enemy]}]}
              executed)
           "nulls the first nullable object after a non-nullable field returns null")))
@@ -516,7 +517,7 @@
       (is (= {:data {:hero {:friends [{:best_friend nil} {:best_friend nil} {:best_friend nil}]}}
               :errors [{:message "Non-nullable field was null."
                         :locations [{:line 1
-                                     :column 31}]
+                                     :column 34}]
                         :query-path [:hero :friends :best_friend :foo]}]}
              executed)
           "nulls the first nullable object after a non-nullable field returns null")))
@@ -526,7 +527,7 @@
       (is (= {:data {:hero {:family [nil nil nil]}}
               :errors [{:message "Non-nullable field was null."
                         :locations [{:line 1
-                                     :column 16}],
+                                     :column 19}]
                         :query-path [:hero :family :arch_enemy]}]}
              executed)
           "nulls the first nullable object after a non-nullable field returns null")))

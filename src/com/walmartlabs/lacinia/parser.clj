@@ -1,24 +1,33 @@
 (ns com.walmartlabs.lacinia.parser
   "Parsing of client querys using the ANTLR grammar."
-  (:require [clj-antlr.core :as antlr.core]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [com.walmartlabs.lacinia.internal-utils
-             :refer [cond-let update? q map-vals filter-vals
-                     with-exception-context throw-exception to-message
-                     keepv as-keyword *exception-context*]]
-            [com.walmartlabs.lacinia.parser.common :refer [antlr-parse parse-failures stringvalue->String]]
-            [com.walmartlabs.lacinia.schema :as schema]
-            [com.walmartlabs.lacinia.constants :as constants]
-            [clojure.spec.alpha :as s]
-            [com.walmartlabs.lacinia.resolve :as resolve]
-            [flatland.ordered.map :refer [ordered-map]])
-  (:import (clj_antlr ParseError)
-           (clojure.lang ExceptionInfo)
-           (com.walmartlabs.lacinia.schema CompiledSchema)))
+  (:require
+    [clojure.string :as str]
+    [com.walmartlabs.lacinia.internal-utils
+     :refer [cond-let update? q map-vals filter-vals
+             with-exception-context throw-exception to-message
+             keepv as-keyword *exception-context*]]
+    [com.walmartlabs.lacinia.schema :as schema]
+    [com.walmartlabs.lacinia.constants :as constants]
+    [clojure.spec.alpha :as s]
+    [com.walmartlabs.lacinia.resolve :as resolve]
+    [com.walmartlabs.lacinia.parser.query :as qp]
+    [flatland.ordered.map :refer [ordered-map]])
+  (:import
+    (clojure.lang ExceptionInfo)
+    (com.walmartlabs.lacinia.schema CompiledSchema)))
 
-(def ^:private grammar
-  (antlr.core/parser (slurp (io/resource "com/walmartlabs/lacinia/Graphql.g4"))))
+(defn ^:private first-match
+  [pred coll]
+  (->> coll
+       (filter pred)
+       first))
+
+(defn ^:private assoc-seq?
+  "Associates a key into map only when the value is a non-empty seq."
+  [m k v]
+  (if (seq v)
+    (assoc m k v)
+    m))
 
 (declare ^:private selection)
 
@@ -89,7 +98,7 @@
   [node]
   (keyword (name-string-from node)))
 
-(declare ^:private xform-argument-map)
+(declare ^:private xform-argument-map build-map-from-parsed-arguments)
 
 (defn ^:private xform-argument-value
   "Returns a tuple of type and string value.  True scalar values will be passed,
@@ -109,31 +118,27 @@
 
   :variable must be resolved later, once query variables for this particular
   query execution is known."
-  ;;[:<type> <literal-value>]
   [argument-value]
-  (let [[type first-value & _] argument-value]
+  (let [{:keys [type value]} argument-value]
     (case type
-      ;; Because of how parsing works, the string literal includes the enclosing
-      ;; quotes.
-      :stringvalue [:scalar (stringvalue->String first-value)]
-      ;; For these other types, the value is still in string format, and will be
-      ;; conformed a bit later.
-      :intvalue [:scalar first-value]
-      :floatvalue [:scalar first-value]
-      :booleanvalue [:scalar first-value]
-      :nullvalue [:null nil]
-      :enumValue [:enum (-> first-value name-from)]
-      :objectValue [:object (xform-argument-map (next argument-value))]
-      :arrayValue [:array (mapv (comp xform-argument-value second) (next argument-value))]
-      :variable [:variable (-> first-value name-from)])))
 
-(defn ^:private xform-argument-map
-  [nodes]
-  (->> nodes
-       (reduce (fn [m [_ name-node [_ v]]]
-                 (assoc! m
-                         (name-from name-node)
-                         (xform-argument-value v)))
+      (:string :integer :float :boolean) [:scalar value]
+
+      :null [:null nil]
+
+      (:enum :variable) [type value]
+
+      :object [:object (build-map-from-parsed-arguments value)]
+
+      :array [:array (mapv xform-argument-value value)])))
+
+(defn ^:private build-map-from-parsed-arguments
+  "Builds a map from the parsed arguments."
+  [parsed-arguments]
+  (->> parsed-arguments
+       (reduce (fn [m {:keys [arg-name arg-value]}]
+                 ;; TODO: Check for duplicate arg names
+                 (assoc! m arg-name (xform-argument-value arg-value)))
                (transient {}))
        persistent!))
 
@@ -150,44 +155,6 @@
 (defn ^:private extract-reportable-arguments
   [arg-map]
   (map-vals extract-reportable-argument-value arg-map))
-
-(defn ^:private node-reducer
-  "A generic reducing fn for building maps out of nodes."
-  [acc [k :as node]]
-  (case k
-    :name
-    (assoc acc :field (name-from node))
-
-    :alias
-    (assoc acc :alias (-> node second name-from))
-
-    :arguments
-    (let [args (xform-argument-map (rest node))]
-      (assoc acc
-             :arguments args
-             :reportable-arguments (extract-reportable-arguments args)))
-
-    :typeCondition
-    ;; Part of inline fragments and fragment definitions
-    (assoc acc :type (-> node second name-from))
-
-    :fragmentName
-    ;; Part of a fragment reference (... ADefinedFragment)
-    (assoc acc :fragment-name (name-from node))
-
-    :directives
-    (->> (rest node)
-         (reduce (fn ([acc [_ name-node v]]
-                       ;; TODO: Spec indicates that directives must be unique by name
-                      (assoc! acc (name-from name-node) (node-reducer {} v))))
-                 (transient {}))
-         persistent!
-         (assoc acc :directives))
-
-    :selectionSet
-    ;; Keep the order of the selections (fields, inline fragments, and fragment spreads) so the
-    ;; output will match the order in the request.
-    (assoc acc :selections (rest node))))
 
 (defn ^:private scalar?
   [type]
@@ -222,22 +189,25 @@
   arguments whose value is entirely static.  The second is dynamic arguments,
   whose value comes from a query variable."
   [arguments]
-  (loop [state nil
-         args arguments]
-    (if (seq args)
-      (let [[k v] (first args)
-            classification (if (is-dynamic? v)
-                             :dynamic
-                             :literal)]
-        (recur (assoc-in state [classification k] v)
-               (next args)))
-      [(:literal state) (:dynamic state)])))
+  (when arguments
+    (loop [state nil
+           args arguments]
+      (if (seq args)
+        (let [[k v] (first args)
+              classification (if (is-dynamic? v)
+                               :dynamic
+                               :literal)]
+          (recur (assoc-in state [classification k] v)
+                 (next args)))
+        [(:literal state) (:dynamic state)]))))
 
 (defn ^:private collect-default-values
   [field-map]                                               ; also works with arguments
-  (->> field-map
-       (map-vals :default-value)
-       (filter-vals some?)))
+  (let [defaults (->> field-map
+                      (map-vals :default-value)
+                      (filter-vals some?))]
+    (when-not (empty? defaults)
+      defaults)))
 
 (defn ^:private use-nested-type
   "Replaces the :type of the def with the nested type; this is used to strip off a
@@ -376,34 +346,37 @@
        (subs s 1)))
 
 (defn ^:private construct-literal-arguments
-  "Converts and validates all literal arguments from their psuedo-Antlr format into
+  "Converts and validates all literal arguments from their parsed format into
   values ready to be used at execution time. Returns a nil, or a map of arguments and
   literal values."
   [schema argument-defs arguments]
-  (let [process-arg (fn [arg-name arg-value]
-                      (with-exception-context {:argument arg-name}
-                        (let [arg-def (get argument-defs arg-name)]
+  (let [default-values (collect-default-values argument-defs)]
+    (if (empty? arguments)
+      default-values
+      (let [process-arg (fn [arg-name arg-value]
+                          (with-exception-context {:argument arg-name}
+                            (let [arg-def (get argument-defs arg-name)]
 
-                          (when-not arg-def
-                            (throw-exception (format "Unknown argument %s."
-                                                     (q arg-name))
-                                             {:defined-arguments (keys argument-defs)}))
-                          (try
-                            (process-literal-argument schema arg-def arg-value)
-                            (catch Exception e
-                              (throw-exception (format "For argument %s, %s"
-                                                       (q arg-name)
-                                                       (decapitalize (to-message e)))
-                                               nil
-                                               e))))))]
-    (let [static-args (reduce-kv (fn [m k v]
-                                   (assoc m k (process-arg k v)))
-                                 nil
-                                 arguments)
-          with-defaults (merge (collect-default-values argument-defs)
-                               static-args)]
-      (when-not (empty? with-defaults)
-        with-defaults))))
+                              (when-not arg-def
+                                (throw-exception (format "Unknown argument %s."
+                                                         (q arg-name))
+                                                 {:defined-arguments (keys argument-defs)}))
+                              (try
+                                (process-literal-argument schema arg-def arg-value)
+                                (catch Exception e
+                                  (throw-exception (format "For argument %s, %s"
+                                                           (q arg-name)
+                                                           (decapitalize (to-message e)))
+                                                   nil
+                                                   e))))))]
+        (let [static-args (reduce-kv (fn [m k v]
+                                       (assoc m k (process-arg k v)))
+                                     nil
+                                     arguments)
+              with-defaults (merge default-values
+                                   static-args)]
+          (when-not (empty? with-defaults)
+            with-defaults))))))
 
 (defn ^:private compatible-types?
   [var-type arg-type var-has-default?]
@@ -678,38 +651,34 @@
   {:query-path (:query-path node-map)
    :locations [(:location node-map)]})
 
-(defn ^:private convert-directives
-  "Passed a container (a field selection, etc.) containing a :directives key,
-  processes each of the directives: validates that the directive exists,
-  and validates the arguments of the directive.
-
-  Returns an updates container."
-  [schema directives]
-  (let [convert-directive
-        (fn [k directive]
-          (with-exception-context {:directive k}
-            (if-let [directive-def (get builtin-directives k)]
-              (let [[literal-arguments dynamic-arguments-extractor]
-                    (try
-                      (process-arguments schema
-                                         (:args directive-def)
-                                         (:arguments directive))
-                      (catch ExceptionInfo e
-                        (throw-exception (format "Exception applying arguments to directive %s: %s"
-                                                 (q k)
-                                                 (to-message e))
-                                         nil
-                                         e)))]
-                (assoc directive
-                       :arguments literal-arguments
-                       ::arguments-extractor dynamic-arguments-extractor))
-              (throw-exception (format "Unknown directive %s."
-                                       (q k)
-                                       {:unknown-directive k
-                                        :available-directives (-> builtin-directives keys sort)})))))
-        reducer (fn [m k v]
-                  (assoc m k (convert-directive k v)))]
-    (reduce-kv reducer nil directives)))
+(defn ^:private convert-parsed-directives
+  "Passed a seq of parsed directive nodes, returns a seq of executable directives."
+  [schema parsed-directives]
+  (let [f (fn [parsed-directive]
+          (let [{directive-name :directive-name
+                 directive-args :args} parsed-directive]
+            (with-exception-context {:directive directive-name}
+              (if-let [directive-def (get builtin-directives directive-name)]
+                (let [[literal-arguments dynamic-arguments-extractor]
+                      (try
+                        (process-arguments schema
+                                           (:args directive-def)
+                                           (-> parsed-directive :args build-map-from-parsed-arguments))
+                        (catch ExceptionInfo e
+                          (throw-exception (format "Exception applying arguments to directive %s: %s"
+                                                   (q directive-name)
+                                                   (to-message e))
+                                           nil
+                                           e)))]
+                  (assoc parsed-directive
+                         :effector (:effector directive-def)
+                         :arguments literal-arguments
+                         ::arguments-extractor dynamic-arguments-extractor))
+                (throw-exception (format "Unknown directive %s."
+                                         (q directive-name)
+                                         {:unknown-directive directive-name
+                                          :available-directives (-> builtin-directives keys sort)}))))))]
+    (mapv f parsed-directives)))
 
 (def ^:private typename-field-definition
   "A psuedo field definition that exists to act as a placeholder when the
@@ -727,81 +696,31 @@
 
    :selector schema/floor-selector})
 
-(defn ^:private convert-field-selection
-  "Converts a parsed field selection into a normalized form, ready for validation
-  and execution.
-
-  Returns a tuple of the type of the field (used when resolving sub-types)
-  and a reduced and an enhanced version of the selection map."
-  [schema selection type query-path]
-  (let [defaults (default-node-map selection query-path)
-        context (node-context defaults)
-        result (with-exception-context context
-                 (reduce node-reducer defaults (rest (second selection))))
-        {:keys [field alias arguments reportable-arguments directives]} result
-        is-typename-metafield? (= field :__typename)
-        field-definition (if is-typename-metafield?
-                           typename-field-definition
-                           (get-in type [:fields field]))
-        field-type (schema/root-type-name field-definition)
-        nested-type (get schema field-type)
-        query-path' (conj query-path field)]
-    (with-exception-context (assoc context :field field)
-      (when (nil? nested-type)
-        (if (scalar? type)
-          (throw-exception "Path de-references through a scalar type.")
-          (let [type-name (:type-name type)]
-            (throw-exception (format "Cannot query field %s on type %s."
-                                     (q field)
-                                     (if type-name
-                                       (q type-name)
-                                       "UNKNOWN"))
-                             {:type type-name}))))
-      (let [[literal-arguments dynamic-arguments-extractor]
-            (try
-              (process-arguments schema
-                                 (:args field-definition)
-                                 arguments)
-              (catch ExceptionInfo e
-                (throw-exception (format "Exception applying arguments to field %s: %s"
-                                         (q field)
-                                         (to-message e))
-                                 nil
-                                 e)))]
-        [nested-type (assoc result
-                            :selection-type :field
-                            :directives (convert-directives schema directives)
-                            :alias (or alias field)
-                            :query-path query-path'
-                            :leaf? (scalar? nested-type)
-                            :concrete-type? (or is-typename-metafield?
-                                                (-> type :category #{:object :input-object} some?))
-                            :reportable-arguments reportable-arguments
-                            :arguments literal-arguments
-                            ::arguments-extractor dynamic-arguments-extractor
-                            :field-definition field-definition)]))))
+(defn ^:private prepare-parsed-field
+  [parsed-field]
+  (let [{:keys [alias field-name selections directives args]} parsed-field
+        arguments (build-map-from-parsed-arguments args)]
+    (-> {:field field-name
+         :alias alias
+         :selections selections
+         :directives directives}
+        (assoc-seq? :arguments arguments)
+        (assoc-seq? :reportable-arguments (extract-reportable-arguments arguments)))))
 
 (defn ^:private select-operation
-  "Given a collection of operation definitions and an operation name (which
+  "Given a collection of parsed operation definitions and an operation name (which
   might be nil), retrieve the requested operation definition from the document."
-  ;; operations is a seq of operation definitions, each like:
-  ;; [:operationDefinition
-  ;;   [:operationType ...]
-  ;;   [:name <string>]
-  ;;   [:variableDefinitions ...]
-  ;;   [:directives ...]
-  ;;   [:selectionSet ...]
   [operations operation-name]
   (cond-let
-    :let [operation-count (count operations)
+    :let [operation-key (when-not (str/blank? operation-name)
+                          (as-keyword operation-name))
+          operation-count (count operations)
           single-op? (= 1 operation-count)
           first-op (first operations)]
 
     (and single-op?
-         operation-name
-         (or (not (< 2 (count first-op)))
-             (not= operation-name
-                   (-> first-op (nth 2) name-string-from))))
+         operation-key
+         (not= operation-key (:name first-op)))
 
     (throw-exception "Single operation did not provide a matching name."
                      {:op-name operation-name})
@@ -809,29 +728,17 @@
     single-op?
     first-op
 
-    :let [operation-k (keyword operation-name)
-          operation (some #(when (= operation-k
-                                    ;; We can only check named documents
-                                    (and (< 2 (count %))
-                                         (-> % (nth 2) name-from)))
-                             %)
-                          operations)]
+    :let [operation (first-match #(= operation-key (:name %)) operations)]
 
-    (not operation)
-    (throw-exception "Multiple operations requested but operation-name not found."
+    (nil? operation)
+    (throw-exception "Multiple operations provided but no matching name found."
                      {:op-count operation-count
                       :operation-name operation-name})
 
-    :else operation))
+    ;; TODO: Check the spec, seems like if there are multiple operations, they
+    ;; should all be named with unique names.
 
-(defn ^:private descend-to-selection-set
-  "For the top-level of the parse-tree, we need to descend to the first
-  requested selection-set for the operation."
-  [operation]
-  (if (and (sequential? (last operation))
-           (= :selectionSet (first (last operation))))
-    (last operation)
-    (recur (last operation))))
+    :else operation))
 
 (def ^:private prepare-keys
   "Seq of keys associated with prepare phase operations."
@@ -866,11 +773,11 @@
   "Computes final arguments for each directive, and passes the node through each
   directive's effector."
   [node variables]
-  (reduce-kv (fn [node directive-type directive]
-               (let [effector (get-in builtin-directives [directive-type :effector])]
+  (reduce (fn [node directive]
+            (let [effector (:effector directive)]
                  (effector node (compute-arguments directive variables))))
-             node
-             (:directives node)))
+          node
+          (:directives node)))
 
 (defn ^:private apply-dynamic-arguments
   "Computes final arguments for a field from its literal arguments and dynamic arguments."
@@ -910,12 +817,13 @@
   "The selection key only applies to fields (not fragments) and
   consists of the field name or alias, and the arguments."
   [selection]
-  (let [{:keys [:selection-type :alias]} selection]
-    (if (= selection-type :field)
-      alias
-      ;; TODO: This may be too simplified ... worried about loss of data when merging things together
-      ;; at runtime.
-      (gensym "fragment-"))))
+  (case (:selection-type selection)
+    :field
+    (:alias selection)
+
+    ;; TODO: This may be too simplified ... worried about loss of data when merging things together
+    ;; at runtime.
+    (gensym "fragment-")))
 
 (declare ^:private coalesce-selections)
 
@@ -946,16 +854,15 @@
   [selections]
   (if (= 1 (count selections))
     selections
-    (let [selection-keys (mapv to-selection-key selections)
-          selection-tuples (mapv vector selection-keys selections)
-          reducer (fn [m [selection-key selection]]
-                    (if-let [prev-selection (get m selection-key)]
-                      (assoc m selection-key (merge-selections prev-selection selection))
-                      (assoc m selection-key selection)))]
-      (->> selection-tuples
+    (let [reducer (fn [m selection]
+                    (let [selection-key (to-selection-key selection)]
+                      (if-let [prev-selection (get m selection-key)]
+                        (assoc m selection-key (merge-selections prev-selection selection))
+                        (assoc m selection-key selection))))]
+      (->> selections
            (reduce reducer (ordered-map))
            vals))))
-
+;
 (defn ^:private normalize-selections
   "Starting with a selection (a field or fragment) recursively normalize any nested selections selections,
   and handle marking the node for any necessary prepare phase operations."
@@ -997,14 +904,20 @@
 (defn ^:private normalize-fragment-definitions
   "Given a collection of fragment definitions, transform them into a map of the
   form {:<definition-name> {...}}."
-  [schema _type fragment-definitions]
+  [schema fragment-definitions]
   (let [f (fn [def]
             (let [defaults {:location (meta def)}
-                  m (reduce node-reducer defaults (rest def))
-                  type-name (:type m)
+                  {:keys [on-type fragment-name selections directives]} def
+                  m (-> defaults
+                        (assoc :fragment-name fragment-name
+                               :type on-type
+                               :selections selections)
+                        (cond-> directives
+                          (assoc :directives (convert-parsed-directives schema directives))))
                   path-elem (keyword (-> m :fragment-name name)
-                                     (name type-name))
-                  fragment-type (get schema type-name)]
+                                     (name on-type))
+                  fragment-type (get schema on-type)]
+              ;; TODO: Verify fragment type exists
               (normalize-selections schema
                                     m
                                     fragment-type
@@ -1015,48 +928,98 @@
           fragment-definitions)))
 
 (defmulti ^:private selection
-  "A recursive function that parses the ANTLR selection structure into the
+  "A recursive function that parses the parsed query tree structure into the
    format used during execution; this involves tracking the current schema type
    (initially, nil) and query path (which is used for error reporting)."
-  (fn [_schema sel _type _q-path]
-    ;; e.g. [:selection [:field ...]] --> :field
-    (-> sel second first)))
+  (fn [_schema parsed-selection _type _q-path]
+    (:type parsed-selection)))
 
 (defmethod selection :field
-  [schema sel type q-path]
-  (let [[nested-type m] (convert-field-selection schema sel type q-path)]
-    (normalize-selections schema m nested-type (:query-path m))))
+  [schema parsed-field type query-path]
+  (let [defaults (default-node-map parsed-field query-path)
+        context (node-context defaults)
+        result (with-exception-context context
+                 (merge defaults (prepare-parsed-field parsed-field)))
+        {:keys [field alias arguments reportable-arguments directives]} result
+        is-typename-metafield? (= field :__typename)
+        field-definition (if is-typename-metafield?
+                           typename-field-definition
+                           (get-in type [:fields field]))
+        field-type (schema/root-type-name field-definition)
+        nested-type (get schema field-type)
+        query-path' (conj query-path field)
+        selection (with-exception-context (assoc context :field field)
+                    (when (nil? nested-type)
+                      (if (scalar? type)
+                        (throw-exception "Path de-references through a scalar type.")
+                        (let [type-name (:type-name type)]
+                          (throw-exception (format "Cannot query field %s on type %s."
+                                                   (q field)
+                                                   (if type-name
+                                                     (q type-name)
+                                                     "UNKNOWN"))
+                                           {:type type-name}))))
+                    (let [[literal-arguments dynamic-arguments-extractor]
+                          (try
+                            (process-arguments schema
+                                               (:args field-definition)
+                                               arguments)
+                            (catch ExceptionInfo e
+                              (throw-exception (format "Exception applying arguments to field %s: %s"
+                                                       (q field)
+                                                       (to-message e))
+                                               nil
+                                               e)))]
+                      (assoc result
+                             :selection-type :field
+                             :directives (convert-parsed-directives schema directives)
+                             :alias (or alias field)
+                             :query-path query-path'
+                             :leaf? (scalar? nested-type)
+                             :concrete-type? (or is-typename-metafield?
+                                                 (-> type :category #{:object :input-object} some?))
+                             :reportable-arguments reportable-arguments
+                             :arguments literal-arguments
+                             ::arguments-extractor dynamic-arguments-extractor
+                             :field-definition field-definition)))]
+    (normalize-selections schema selection nested-type query-path')))
 
-(defmethod selection :inlineFragment
-  [schema sel _type q-path]
-  (let [defaults (default-node-map sel q-path)]
+(defmethod selection :inline-fragment
+  [schema parsed-inline-fragment _type q-path]
+  (let [defaults (default-node-map parsed-inline-fragment q-path)]
     (with-exception-context (node-context defaults)
-      (let [m (reduce node-reducer defaults (rest (second sel)))
-            type-name (:type m)
+      (let [{type-name :on-type
+             :keys [selections directives]} parsed-inline-fragment
+            selection (merge defaults
+                             {:selections selections})
             fragment-type (get schema type-name)]
-        (if (nil? fragment-type)
-          (throw-exception (format "Inline fragment has a type condition on unknown type %s."
-                                   (q type-name)))
-          (let [concrete-types (expand-fragment-type-to-concrete-types fragment-type)
-                fragment-path-term (keyword "..." (name type-name))
-                inline-fragment (-> m
-                                    (assoc :selection-type :inline-fragment
-                                           :concrete-types concrete-types)
-                                    (update :directives #(convert-directives schema %)))]
-            (normalize-selections schema
-                                  inline-fragment
-                                  fragment-type
-                                  (-> m :query-path (conj fragment-path-term)))))))))
 
-(defmethod selection :fragmentSpread
-  [schema sel _type q-path]
-  (let [defaults (default-node-map sel q-path)
-        m (with-exception-context (node-context defaults)
-            (reduce node-reducer defaults (rest (second sel))))]
-    (-> m
-        (assoc :selection-type :fragment-spread)
-        (update :directives #(convert-directives schema %))
-        mark-node-for-prepare)))
+        (when (nil? fragment-type)
+          (throw-exception (format "Inline fragment has a type condition on unknown type %s."
+                                   (q type-name))))
+
+        (let [concrete-types (expand-fragment-type-to-concrete-types fragment-type)
+              fragment-path-term (keyword "..." (name type-name))
+              inline-fragment (-> selection
+                                  (assoc :selection-type :inline-fragment
+                                         :concrete-types concrete-types)
+                                  (cond-> directives (assoc :directives (convert-parsed-directives schema directives))))]
+          (normalize-selections schema
+                                inline-fragment
+                                fragment-type
+                                (conj q-path fragment-path-term)))))))
+
+(defmethod selection :named-fragment
+  [schema parsed-fragment _type q-path]
+  (let [defaults (default-node-map parsed-fragment q-path)
+        {:keys [fragment-name directives]} parsed-fragment]
+    (with-exception-context (node-context defaults)
+      ;; TODO: Verify that fragment name exists?
+      (-> defaults
+          (merge {:selection-type :fragment-spread
+                  :fragment-name fragment-name})
+          (cond-> directives (assoc :directives (convert-parsed-directives schema directives)))
+          mark-node-for-prepare))))
 
 (defn ^:private find-element
   [container element-type]
@@ -1074,36 +1037,35 @@
           (rest element)))
 
 (defn ^:private construct-var-type-map
+  "Converts a var-type (in the parsed format) into a similar stucture that
+  matches how the schema identifies types."
   [parsed]
-  (let [[type value] parsed]
-    (case type
-      :typeName
-      {:kind :root
-       :type (name-from value)}
+  (case (:type parsed)
 
-      :nonNullType
-      {:kind :non-null
-       :type (construct-var-type-map value)}
+    :root-type
+    {:kind :root
+     :type (:type-name parsed)}
 
-      :listType
-      {:kind :list
-       :type (-> value second construct-var-type-map)}
+    :list
+    {:kind :list
+     :type (-> parsed :of-type construct-var-type-map)}
 
-      (throw-exception "Unable to parse variable type."))))
+    :non-null
+    {:kind :non-null
+     :type (-> parsed :of-type construct-var-type-map)}
+
+    (throw-exception "Unable to parse variable type.")))
 
 (defn ^:private compose-variable-definition
-  "Converts a variable definition into a tuple of variable name, and
-  schema-type like an argument definition."
-  [schema variable-definition]
-  (let [m (element->map variable-definition)
-        var-name (-> m :variable first name-from)
-        var-def {:type (-> m :type first construct-var-type-map)
-                 :var-name var-name}
+  "Converts a parsed variable definition into a tuple of variable name, and
+  schema-type (as with an argument definition)."
+  [schema parsed-var-def]
+  (let [{:keys [var-name var-type]
+         default-value :default} parsed-var-def
+        var-def {:type (construct-var-type-map var-type)}
         ;; Simulate a field definition around the raw type:
         type-name (schema/root-type-name var-def)
-        schema-type (get schema type-name)
-        ;; eg. [:stringvalue "\"fred\""]
-        default-value (-> m :defaultValue first second)]
+        schema-type (get schema type-name)]
     (with-exception-context {:var-name var-name
                              :type-name type-name
                              :schema-types (schema/type-map schema)}
@@ -1125,37 +1087,41 @@
 
 (defn ^:private extract-variable-definitions
   [schema operation]
-  (when-let [var-definitions (find-element operation :variableDefinitions)]
+  (when-let [var-definitions (:vars operation)]
+    ;; TODO: Check for conflicting variable names
     (into {}
           (map #(compose-variable-definition schema %)
-               (rest var-definitions)))))
+               var-definitions))))
 
 (defn ^:private operation-type->root
   [schema operation-type]
   (let [type-name (get-in schema [::schema/roots operation-type])]
     (get schema type-name)))
 
+(defn ^:private categorize-root
+  "Categorizes a root parsed node, which is either a fragment definition or one of the operation types."
+  [root]
+  (if (-> root :type (= :fragment-definition))
+    :fragment-definition
+    :operation-definition))
+
 (defn ^:private xform-query
-  "Given an output tree of sexps from clj-antlr, traverses and reforms into a
+  "Given an the intermediate parsed query, traverses and reforms into a
   form expected by the executor."
-  [schema antlr-tree operation-name]
-  (let [{:keys [fragmentDefinition operationDefinition]}
-        (group-by first (map second (rest antlr-tree)))
+  [schema parsed-roots operation-name]
+  (let [{:keys [fragment-definition operation-definition]}
+        (group-by categorize-root parsed-roots)
 
         operation
-        (select-operation operationDefinition operation-name)
+        (select-operation operation-definition operation-name)
 
-        operation-type (let [op-element (find-element operation :operationType)]
-                         (or (and op-element
-                                  (-> op-element second second keyword))
-                             :query))
+        operation-type (:type operation)
 
         root (operation-type->root schema operation-type)
 
         variable-definitions (extract-variable-definitions schema operation)
 
-        selections
-        (descend-to-selection-set operation)
+        selections (:selections operation)
 
         ;; Clumsy but necessary way to let lower levels know about variable definitions.
         ;; This will deviate from the spec slightly: all fragments will be transformed
@@ -1167,7 +1133,7 @@
 
         ;; Explicitly defeat some lazy evaluation, to ensure that validation exceptions are thrown
         ;; from within this function call.
-        selections (coalesce-selections (mapv #(selection schema' % root []) (rest selections)))]
+        selections (coalesce-selections (mapv #(selection schema' % root []) selections))]
 
     (when (and (= :subscription operation-type)
                (not= 1 (count selections)))
@@ -1175,7 +1141,7 @@
 
 
     ;; Build the result describing the fragments and selections (for the selected operation).
-    {:fragments (normalize-fragment-definitions schema' nil fragmentDefinition)
+    {:fragments (normalize-fragment-definitions schema' fragment-definition)
      :selections selections
      :operation-type operation-type
      constants/schema-key schema}))
@@ -1199,14 +1165,7 @@
   ([schema query-string operation-name]
    (when-not (instance? CompiledSchema schema)
      (throw (IllegalStateException. "The provided schema has not been compiled.")))
-   (let [antlr-tree
-         (try
-           (antlr-parse grammar query-string)
-           (catch ParseError e
-             (let [failures (parse-failures e)]
-               (throw (ex-info "Failed to parse GraphQL query."
-                               {:errors failures})))))]
-     (xform-query schema antlr-tree operation-name))))
+   (xform-query schema (qp/parse-query query-string) operation-name)))
 
 (defn operations
   "Given a previously parsed query, this returns a map of two keys:

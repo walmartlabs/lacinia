@@ -1,0 +1,8 @@
+query($internal: Boolean!) {
+  order
+  {
+    id
+    customer_id @If(test: $internal)
+    date
+  }
+}

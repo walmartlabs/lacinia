@@ -1,0 +1,15 @@
+query {
+  order {
+    ... InStoreFrag
+    item_count
+    ... OnlineFrag
+  }
+}
+
+fragment InStoreFrag on InStore {
+  store_number
+}
+
+fragment OnlineFrag on OnlineOrder {
+  refer_code
+}

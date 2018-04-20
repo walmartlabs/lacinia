@@ -9,8 +9,8 @@
             [clj-antlr.core :as antlr.core])
   (:import (clj_antlr ParseError)))
 
-;; When using Clojure 1.9 alpha, the dependency on clojure-future-spec can be excluded,
-;; and this code will not trigger
+;; When using Clojure 1.8, the dependency on clojure-future-spec must be included,
+;; and this code will trigger
 (when (-> *clojure-version* :minor (< 9))
   (require '[clojure.future :refer [simple-keyword?]]))
 

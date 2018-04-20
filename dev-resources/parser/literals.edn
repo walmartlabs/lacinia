@@ -1,0 +1,17 @@
+[{:type :query
+  :selections [{:type :field
+                :field-name :hello
+                :args [{:arg-name :i
+                        :arg-value {:type :integer
+                                    :value "5"}}
+                       {:arg-name :f
+                        :arg-value {:type :float
+                                    :value "3.14"}}
+                       {:arg-name :s
+                        :arg-value {:type :string
+                                    :value "clojure"}}
+                       {:arg-name :b
+                        :arg-value {:type :boolean
+                                    :value "false"}}
+                       {:arg-name :n
+                        :arg-value {:type :null}}]}]}]

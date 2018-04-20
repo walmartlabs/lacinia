@@ -1,0 +1,39 @@
+[{:type :mutation
+  :selections [{:type :field
+                :field-name :new_person
+                :args [{:arg-name :data
+                        :arg-value {:type :object
+                                    :value [{:arg-name :last_name
+                                             :arg-value {:type :string
+                                                         :value "Phelps"}}
+                                            {:arg-name :first_name
+                                             :arg-value {:type :string
+                                                         :value "Fred"}}
+                                            {:arg-name :age
+                                             :arg-value {:type :integer
+                                                         :value "39"}}
+                                            {:arg-name :sex
+                                             :arg-value {:type :enum
+                                                         :value :male}}
+                                            {:arg-name :address
+                                             :arg-value {:type :object
+                                                         :value [{:arg-name :street
+                                                                  :arg-value {:type :string
+                                                                              :value "Hamburger Lane"}}
+                                                                 {:arg-name :city
+                                                                  :arg-value {:type :string
+                                                                              :value "Wilsonville"}}
+                                                                 {:arg-name :state
+                                                                  :arg-value {:type :string
+                                                                              :value "GE"}}
+                                                                 {:arg-name :zip
+                                                                  :arg-value {:type :string
+                                                                              :value "87267"}}]}}
+                                            {:arg-name :notes
+                                             :arg-value {:type :array
+                                                         :value [{:type :string
+                                                                  :value "one"}
+                                                                 {:type :string
+                                                                  :value "two"}
+                                                                 {:type :string
+                                                                  :value "three"}]}}]}}]}]}]

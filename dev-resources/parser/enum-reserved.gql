@@ -1,0 +1,3 @@
+{
+  introspect(types: [query, mutation, subscription, other])
+}

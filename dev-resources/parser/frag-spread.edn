@@ -1,0 +1,13 @@
+[{:type :query
+  :selections [{:type :field
+                :field-name :order
+                :selections [{:type :field
+                              :field-name :id}
+                             {:type :inline-fragment
+                              :on-type :InStore
+                              :selections [{:field-name :store_number
+                                            :type :field}]}
+                             {:type :inline-fragment
+                              :on-type :OnlineOrder
+                              :selections [{:field-name :refer_code
+                                            :type :field}]}]}]}]

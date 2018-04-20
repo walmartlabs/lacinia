@@ -13,6 +13,11 @@ which is used to summarize a query without distractions such as
 aliases and field arguments. This is used to group similar
 queries together when doing performance analysis.
 
+Query parsing logic has been rewritten entirely, for performance
+and maintenance reasons.
+As a side-effect, location information for query errors
+is more accurate.
+
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/14?closed=1)
 
 ## 0.25.0 -- 2 Mar 2018

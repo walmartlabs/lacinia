@@ -1,0 +1,13 @@
+[{:type :query
+  :selections [{:type :field
+                :field-name :hello
+                :alias :greet
+                :selections [{:type :field
+                              :field-name :world
+                              :alias :w}
+                             {:type :field
+                              :field-name :longitude
+                              :alias :long}
+                             {:type :field
+                              :field-name :latitude
+                              :alias :lat}]}]}]

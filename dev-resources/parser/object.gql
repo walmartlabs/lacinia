@@ -1,0 +1,13 @@
+mutation {
+  new_person(data: {last_name: "Phelps"
+                    first_name: "Fred"
+                    age: 39
+                    sex: male
+                    address: {
+                      street: "Hamburger Lane"
+                      city: "Wilsonville"
+                      state: "GE"
+                      zip: "87267"
+                    }
+                    notes: ["one" "two" "three"]})}
+

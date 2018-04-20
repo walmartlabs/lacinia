@@ -1,0 +1,13 @@
+[{:type :query
+  :selections [{:type :field
+                :field-name :introspect
+                :args [{:arg-name :types
+                        :arg-value {:type :array
+                                    :value [{:type :enum
+                                             :value :query}
+                                            {:type :enum
+                                             :value :mutation}
+                                            {:type :enum
+                                             :value :subscription}
+                                            {:type :enum
+                                             :value :other}]}}]}]}]
