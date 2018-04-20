@@ -1,4 +1,4 @@
-## 0.26.0 -- UNRELEASED
+## 0.26.0 -- 20 Apr 2018
 
 Lacinia now supports the `:roots` key in the input schema, which makes
 it possible to define query, mutation, or subscription operations
