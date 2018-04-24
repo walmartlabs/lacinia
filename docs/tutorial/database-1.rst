@@ -7,7 +7,8 @@ We'll be running `PostgreSQL <https://www.postgresql.org/>`_ in a
 Docker container. [#container]_
 
 We're definitely going to be taking two steps backward before taking further steps forward, but the majority of the changes
-will be in the ``clojure-game-geek.db`` namespace.
+will be in the ``clojure-game-geek.db`` namespace; the majority of the application, including the
+field resolvers, will be unaffected.
 
 Dependency Changes
 ------------------
@@ -84,8 +85,7 @@ is a kind of opaque string) to type ``Int`` (which is a 32 bit, signed integer).
   :emphasize-lines: 5, 34, 53, 66, 73, 84-85
 
 In addition, the ``id`` field on the BoardGame, Member, and Publisher objects has been renamed: to ``game_id``, ``member_id``,
-and ``publisher_id`` respectfully.
-
+and ``publisher_id``, respectfully.
 This aligns the field names with the database column names.
 
 As Clojure developers, we generally follow the `kebab case` convention of using dashes in names.
@@ -103,8 +103,8 @@ has no tangible benefits.
 Database Connection
 -------------------
 
-In prior chapters, the ``:db`` component was just a wrapper around an Atom; starting now, we're going to
-update it to be a connection to the PostgreSQL database running in the Docker container.
+In prior chapters, the ``:db`` component was just a wrapper around an Atom; starting here, we're going to
+update it to be a wrapper around a connection to the PostgreSQL database running in the Docker container.
 
 Our goal in this chapter is to update just one basic query to use the database,
 the query that retrieves a game by its unique id.
@@ -114,7 +114,7 @@ We'll make just the changes necessary for that one query before moving on.
    :emphasize-lines: 5-6, 8-23, 29-42
 
 The requires for the ``db`` namespace have changed; we're using the ``postgres.async`` namespace to
-connect to the database, and that entails using some ``core.async`` functions.
+connect to the database, and that entails using some ``clojure.core.async`` functions.
 
 The ClojureGameGeekDb record has changed; it now has a ``conn`` (connection) field, and that is
 the connection to the PostgreSQL database.

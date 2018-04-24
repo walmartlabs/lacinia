@@ -11,7 +11,7 @@ Schema EDN File
 Our initial schema is just for the BoardGame entity, and a single operation to retrieve
 a game by its id:
 
-.. ex:: init-schema resources/cgg-schema.edn
+.. ex:: initial-schema-a resources/cgg-schema.edn
 
 .. sidebar:: Details
 
