@@ -669,8 +669,7 @@
   "Passed a seq of parsed directive nodes, returns a seq of executable directives."
   [schema parsed-directives]
   (let [f (fn [parsed-directive]
-          (let [{directive-name :directive-name
-                 directive-args :args} parsed-directive]
+          (let [{directive-name :directive-name} parsed-directive]
             (with-exception-context {:directive directive-name}
               (if-let [directive-def (get builtin-directives directive-name)]
                 (let [[literal-arguments dynamic-arguments-extractor]
@@ -1239,9 +1238,8 @@
   in query performance analysis."
   {:added "0.26.0"}
   [parsed-query]
-  (let [{:keys [selections]} parsed-query]
-    (->> parsed-query
-         :selections
-         (summarize-selections parsed-query))))
+  (->> parsed-query
+       :selections
+       (summarize-selections parsed-query)))
 
 

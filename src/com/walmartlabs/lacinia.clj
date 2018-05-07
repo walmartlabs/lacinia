@@ -30,7 +30,7 @@
   "Prepares a query, by applying query variables to it, resulting in a prepared
   query which is then executed.
 
-  Returns a [[ResolverResult]] that will deliver the result map.."
+  Returns a [[ResolverResult]] that will deliver the result map."
   {:added "0.16.0"}
   [parsed-query variables context]
   {:pre [(map? parsed-query)
