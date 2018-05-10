@@ -13,7 +13,14 @@
 ; limitations under the License.
 
 (ns com.walmartlabs.lacinia.resolve
-  "Complex results for field resolver functions."
+  "Complex results for field resolver functions.
+
+  Resolver functions may return a value directly, or may wrap a value with
+  a modifier ([[with-error]] or [[with-context]]).
+
+  A value or wrapped value may be returned asynchronously using a [[ResolverResultPromise]].
+
+  The [[FieldResolver]] protocol allows a Clojure record to act as a field resolver function."
   (:import (java.util.concurrent Executor)))
 
 (def ^{:dynamic true
@@ -43,7 +50,7 @@
     "Returns a new instance of the same command, but wrapped around a different nested value."))
 
 (defn with-error
-  "Decorates a value with an error map (or seq of error maps)."
+  "Wraps a value, modifiying it to include an error map (or seq of error maps)."
   {:added "0.19.0"}
   [value error]
   (reify
@@ -58,7 +65,7 @@
       (with-error new-value error))))
 
 (defn with-context
-  "Decorates a value so that when nested fields (at any depth) are executed, the provided values will be in the context.
+  "Wraps a value so that when nested fields (at any depth) are executed, the provided values will be in the context.
 
    The provided context-map is merged onto the application context."
   {:added "0.19.0"}
@@ -103,7 +110,7 @@
     The callback is invoked in the current thread, unless [[*thread-pool*]] is non-nil, in which case
     the callback is invoked in a pooled thread.
 
-    The two arguments version is simply a convienience around [[with-error]].
+    The two arguments version is simply a convienience around the [[with-error]] modifier.
 
     Returns `this`."))
 
@@ -122,6 +129,8 @@
 
   This is an immediately realized ResolverResult.
 
+  Use [[resolve-promise]] and [[deliver!]] for an asynchronous result.
+
   When [[on-deliver!]] is invoked, the provided callback is immediately invoked (in the same thread)."
   ([resolved-value]
    (->ResolverResultImpl resolved-value))
@@ -129,7 +138,7 @@
    (->ResolverResultImpl (with-error resolved-value resolver-errors))))
 
 (defn resolve-promise
-  "Returns a ResolverResultPromise.
+  "Returns a [[ResolverResultPromise]].
 
    A value must be resolved and ultimately provided via [[deliver!]]."
   []
@@ -187,7 +196,7 @@
 
 
 (defn is-resolver-result?
-  "Is the provided value actually a ResolverResult?"
+  "Is the provided value actually a [[ResolverResult]]?"
   {:added "0.23.0"}
   [value]
   (when value
@@ -215,11 +224,11 @@
   resolver.
 
   `wrap-resolver-result` understands resolver functions that return either a [[ResolverResult]]
-  or a bare value, as well as functions that have decorated a value using [[with-error]] or
-  [[with-context]].
+  or a bare value, as well as functions that wrapped with the [[with-error]] or
+  [[with-context]] modifier.
 
   The wrapper-fn is passed the underlying value and must return a new value.
-  The new value will be re-wrapped as necessary.
+  The new value will be re-wrapped with modifiers as necessary.
 
   The wrapped value may itself be a ResolverResult, and the
   value (either plain, or inside a ResolverResult) may also be decorated
