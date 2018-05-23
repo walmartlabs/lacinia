@@ -1,0 +1,10 @@
+{
+  interface Matrix
+  {
+    eject(the_one: Boolean!) : Human
+  }
+
+  type Human {
+    name : String!
+  }
+}

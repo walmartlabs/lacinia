@@ -60,6 +60,12 @@ The ``:documentation`` key uses a naming convention on the keys which become pat
 ``:Query/find_all_in_episode.episode`` applies to the ``episode`` argument, inside the ``find_all_in_episode`` field
 of the ``Query`` object.
 
+The same key structure can be used to document input objects and interfaces.
+
+Unions may be documented, but do not contain fields.
+
+Enums may be documented, as well as Enum values (e.g., ``:Episode/JEDI``).
+
 As is normal with SDL, the available queries, mutations, and subscriptions (not shown in this example)
 are defined on ordinary schema objects, and the ``schema`` element identifies which objects are used for
 which purposes.

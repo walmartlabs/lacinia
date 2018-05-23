@@ -4,6 +4,9 @@ A change to how GraphQL schema documentation is attached.
 Previously, arguments were refered to as `:MyType.my_field/arg_name`
 but with this release, we've change it to `:MyType/my_field.arg_name`.
 
+It is now possible, when parsing a schema from SDL, to document interfaces, enums, and unions.
+Previously, only objects and input objects could be documented.
+
 ## 0.26.0 -- 20 Apr 2018
 
 Lacinia now supports the `:roots` key in the input schema, which makes
