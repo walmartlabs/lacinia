@@ -31,7 +31,7 @@ to attach to the schema:
                            :serialize serialize-spec}}
    :documentation {:type-name doc-str
                    :type-name/field-name doc-str
-                   :type-name.field-name/arg-name doc-str}}
+                   :type-name/field-name.arg-name doc-str}}
 
 Example
 -------
@@ -48,7 +48,7 @@ Example
                  :documentation {:Character "A Star Wars character"
                                  :Character/name "Character name"
                                  :Query/find_all_in_episode "Find all characters in the given episode"
-                                 :Query.find_all_in_episode/episode "Episode for which to find characters."}})
+                                 :Query/find_all_in_episode.episode "Episode for which to find characters."}})
 
 .. literalinclude:: /_examples/parsed_sample_schema.edn
    :caption: *Return value of parse-schema*
@@ -57,7 +57,7 @@ Example
 
 The ``:documentation`` key uses a naming convention on the keys which become paths into the Lacinia input schema.
 ``:Character/name`` applies to the ``name`` field of the ``Character`` object.
-``:Query.find_all_in_episode/episode`` applies to the ``episode`` argument, inside the ``find_all_in_episode`` field
+``:Query/find_all_in_episode.episode`` applies to the ``episode`` argument, inside the ``find_all_in_episode`` field
 of the ``Query`` object.
 
 As is normal with SDL, the available queries, mutations, and subscriptions (not shown in this example)
