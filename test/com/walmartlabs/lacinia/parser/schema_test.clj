@@ -65,7 +65,7 @@
                                                             :Character/name "Character name"
                                                             :Character/birthDate "Date of Birth"
                                                             :Query/in_episode "Find all characters for a given episode"
-                                                            :Query.in_episode/episode "Episode for which to find characters"}})]
+                                                            :Query/in_episode.episode "Episode for which to find characters"}})]
     (testing "parsing"
       (is (= {:enums {:episode {:values [:NEWHOPE :EMPIRE :JEDI]}}
               :scalars {:Date {:parse date-parse :serialize date-parse}}

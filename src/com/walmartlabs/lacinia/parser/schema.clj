@@ -15,7 +15,7 @@
 (ns com.walmartlabs.lacinia.parser.schema
   "Parse a Schema Definition Language document into a Lacinia input schema."
   {:added "0.22.0"}
-  (:require [com.walmartlabs.lacinia.internal-utils :refer [remove-vals]]
+  (:require [com.walmartlabs.lacinia.internal-utils :refer [remove-vals cond-let]]
             [com.walmartlabs.lacinia.parser.common :refer [antlr-parse parse-failures stringvalue->String]]
             [clojure.java.io :as io]
             [clojure.spec.alpha :as s]
@@ -294,17 +294,21 @@
   `location` should be one of:
    - `:type`
    - `:type/field`
-   - `:type.field/arg`"
+   - `:type/field.arg`"
   [location]
-  (if (simple-keyword? location)
+  (cond-let
+    (simple-keyword? location)
     ;; type description
     [location :description]
-    (let [[type-s field-s] (str/split (namespace location) #"\.")]
-      (if field-s
-        ;; argument description
-        [(keyword type-s) :fields (keyword field-s) :args (keyword (name location)) :description]
-        ;; field description
-        [(keyword type-s) :fields (keyword (name location)) :description]))))
+
+    :let [type-name (-> location namespace keyword)
+          [field-name arg-name] (-> location name (str/split #"\." 2))]
+
+    (str/blank? arg-name)
+    [type-name :fields (keyword field-name) :description]
+
+    :else
+    [type-name :fields (keyword field-name) :args (keyword arg-name) :description]))
 
 (defn ^:private attach-documentation
   [schema documentation]
