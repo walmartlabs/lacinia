@@ -1,0 +1,8 @@
+{
+  type Human { name : String }
+
+  type Agent { id : Int
+               alias : String }
+
+  union Combatant  = Human | Agent
+}

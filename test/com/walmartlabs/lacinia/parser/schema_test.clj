@@ -56,18 +56,26 @@
 
 (def ^:private streamer-map {:Subscription {:new_character new-character}})
 
+(defn ^:private parse-schema [path options]
+  (-> path
+      resource
+      slurp
+      (parser/parse-schema options)))
+
 (deftest schema-parsing
-  (let [parsed-schema (parser/parse-schema (slurp (resource "sample_schema.sdl"))
-                                           {:resolvers resolver-map
-                                            :scalars scalar-map
-                                            :streamers streamer-map
-                                            :documentation {:Character "A character"
-                                                            :Character/name "Character name"
-                                                            :Character/birthDate "Date of Birth"
-                                                            :Query/in_episode "Find all characters for a given episode"
-                                                            :Query.in_episode/episode "Episode for which to find characters"}})]
+  (let [parsed-schema (parse-schema "sample_schema.sdl"
+                                    {:resolvers resolver-map
+                                     :scalars scalar-map
+                                     :streamers streamer-map
+                                     :documentation {:Character "A character"
+                                                     :Character/name "Character name"
+                                                     :Character/birthDate "Date of Birth"
+                                                     :Query/in_episode "Find all characters for a given episode"
+                                                     :Query/in_episode.episode "Episode for which to find characters"}})]
     (testing "parsing"
-      (is (= {:enums {:episode {:values [:NEWHOPE :EMPIRE :JEDI]}}
+      (is (= {:enums {:episode {:values [{:enum-value :NEWHOPE}
+                                         {:enum-value :EMPIRE}
+                                         {:enum-value :JEDI}]}}
               :scalars {:Date {:parse date-parse :serialize date-parse}}
               :interfaces {:Human {:fields {:name {:type 'String}
                                             :birthDate {:type :Date}}}}
@@ -113,20 +121,97 @@
         (is (= {:data {:add false}}
                (execute compiled "mutation { add(character: {name: \"Darth Vader\"}) }" nil {})))))))
 
+(deftest can-identify-unknown-doc
+  (when-let [e (is (thrown-with-msg? ExceptionInfo
+                                     #"Error attaching documentation: type not found"
+                                     (parse-schema "interfaces.sdl" {:documentation {:Agent "Virtual killers."}})))]
+    (is (= {:type-name :Agent}
+           (ex-data e)))))
+
+(deftest can-attach-doc-to-interfaces
+  (is (= '{:interfaces
+           {:Matrix
+            {:description "A virtual construct."
+             :fields
+             {:eject {:args {:the_one {:description "If true, then Neo is ejected."
+                                       :type (non-null Boolean)}}
+                      :description "Eject a Human into Zen."
+                      :type :Human}}}}
+           :objects
+           {:Human
+            {:description "Power source."
+             :fields
+             {:name {:description "Unimportant."
+                     :type (non-null String)}}}}}
+         (parse-schema "interfaces.sdl"
+                       {:documentation
+                        {:Matrix "A virtual construct."
+                         :Matrix/eject "Eject a Human into Zen."
+                         :Matrix/eject.the_one "If true, then Neo is ejected."
+                         :Human "Power source."
+                         :Human/name "Unimportant."}}))))
+
+(deftest can-attach-doc-to-unions
+  (is (= '{:objects {:Agent {:fields {:alias {:type String}
+                                      :id {:type Int}}}
+                     :Human {:fields {:name {:type String}}}}
+           :unions {:Combatant {:description "Being in the Matrix."
+                                :members [:Human
+                                          :Agent]}}}
+         (parse-schema "unions.sdl"
+                       {:documentation
+                        {:Combatant "Being in the Matrix."}}))))
+
+(deftest can-not-attach-doc-to-union-member
+  (when-let [e (is (thrown-with-msg? ExceptionInfo
+                                     #"Error attaching documentation: union members may not be documented"
+                                     (parse-schema "unions.sdl" {:documentation {:Combatant/Human "Energy Source."}})))]
+    (is (= {:type-name :Combatant}
+           (ex-data e)))))
+
+(deftest can-attach-doc-to-enums
+  (is (= {:enums {:Location {:description "Where a scene takes place."
+                             :values [{:description "The virtual world."
+                                       :enum-value :MATRIX}
+                                      {:description "The apparently real world outside the Matrix."
+                                       :enum-value :ZION}
+                                      {:description "Where the 'bots hang out."
+                                       :enum-value :MACHINE_CITY}]}}}
+         (parse-schema "enums.sdl" {:documentation
+                                    {:Location "Where a scene takes place."
+                                     :Location/MATRIX "The virtual world."
+                                     :Location/ZION "The apparently real world outside the Matrix."
+                                     :Location/MACHINE_CITY "Where the 'bots hang out."}}))))
+
+(deftest can-not-attach-doc-to-enum-value-args
+  (when-let [e (is (thrown-with-msg? ExceptionInfo
+                                     #"Error attaching documentation: enum values do not have fields"
+                                     (parse-schema "enums.sdl" {:documentation {:Location/MATRIX.highway "Dangerous."}})))]
+    (is (= {:type-name :Location}
+           (ex-data e)))))
+
+(deftest enum-value-must-exist
+  (when-let [e (is (thrown-with-msg? ExceptionInfo
+                                     #"Error attaching documentation: enum value not found"
+                                     (parse-schema "enums.sdl" {:documentation {:Location/FLOOR_13 "Similar."}})))]
+    (is (= {:type-name :Location
+            :enum-value :FLOOR_13}
+           (ex-data e)))))
+
 (deftest schema-validation
   (let [exception (is (thrown-with-msg? ExceptionInfo
                                         #"Error parsing schema"
-                                        (parser/parse-schema (slurp (resource "bad_schema.sdl")) {})))]
+                                        (parse-schema "bad_schema.sdl" {})))]
     (is (= '#{{:error "Duplicate type names"
                :duplicate-types ({:name "Character" :location {:line 11 :column 13}}
-                                 {:name "Character" :location {:line 22 :column 9}}
-                                 {:name "Query" :location {:line 28 :column 8}}
-                                 {:name "Query" :location {:line 32 :column 8}}
-                                 {:name "Queries" :location {:line 37 :column 9}}
-                                 {:name "Queries" :location {:line 39 :column 8}})}
+                                  {:name "Character" :location {:line 22 :column 9}}
+                                  {:name "Query" :location {:line 28 :column 8}}
+                                  {:name "Query" :location {:line 32 :column 8}}
+                                  {:name "Queries" :location {:line 37 :column 9}}
+                                  {:name "Queries" :location {:line 39 :column 8}})}
               {:error "Duplicate fields defined on type"
                :duplicate-fields ({:name "find_by_names" :location {:line 33 :column 5}}
-                                  {:name "find_by_names" :location {:line 34 :column 5}})
+                                   {:name "find_by_names" :location {:line 34 :column 5}})
                :type "Query"}
               {:error "Duplicate arguments defined on field"
                :duplicate-arguments ("episode")

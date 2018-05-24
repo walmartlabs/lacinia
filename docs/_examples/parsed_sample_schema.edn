@@ -24,7 +24,9 @@
                   :episodes {:type (non-null (list :episode))}}}}
 
  :enums
- {:episode {:values [:NEWHOPE :EMPIRE :JEDI]}}
+ {:episode {:values [{:enum-value :NEWHOPE}
+                     {:enum-value :EMPIRE}
+                     {:enum-value :JEDI}]}}
 
  :roots
  {:query :Query

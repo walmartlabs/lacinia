@@ -1,3 +1,12 @@
+## 0.27.0 -- UNRELEASED
+
+A change to how GraphQL schema documentation is attached.
+Previously, arguments were refered to as `:MyType.my_field/arg_name`
+but with this release, we've change it to `:MyType/my_field.arg_name`.
+
+It is now possible, when parsing a schema from SDL, to document interfaces, enums, and unions.
+Previously, only objects and input objects could be documented.
+
 ## 0.26.0 -- 20 Apr 2018
 
 Lacinia now supports the `:roots` key in the input schema, which makes
@@ -45,7 +54,7 @@ Added the FieldResolver protocol that allows a Clojure record, such as a
 
 Field resolvers for enum types are now required to return a keyword, and that
 keyword must match one of the values defined for the enum.
-Previously, Lacinia failed to peform any checks in this case, which could result
+Previously, Lacinia failed to perform any checks in this case, which could result
 in invalid data present in the result map.
 
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/12?closed=1)
