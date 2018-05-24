@@ -77,3 +77,24 @@
              {:parse int
               :serialize double}}}
            (util/attach-scalar-transformers schema transformers)))))
+
+(deftest attach-descriptions
+  ;; This tests a couple of cases that aren't covered by the
+  ;; parser.schema-test namespace.
+
+  (let [schema {:queries
+                {:hello
+                 {:type :String
+                  :args
+                  {:name {:type :String}}}}}
+        documentation {:queries/hello "HELLO"
+                       :queries/hello.name "HELLO.NAME"}]
+
+    (is (= {:queries
+            {:hello
+             {:type :String
+              :description "HELLO"
+              :args
+              {:name {:type :String
+                      :description "HELLO.NAME"}}}}}
+           (util/attach-descriptions schema documentation)))))

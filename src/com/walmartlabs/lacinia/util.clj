@@ -16,7 +16,7 @@
   "Useful utility functions."
   (:require
     [com.walmartlabs.lacinia.internal-utils
-     :refer [to-message map-vals cond-let update?]]))
+     :refer [to-message map-vals cond-let update? documentation-schema-path]]))
 
 (defn ^:private attach-callbacks
   [field-container callbacks-map callback-kw error-name]
@@ -107,3 +107,34 @@
    (merge {:message (to-message t)}
           (ex-data t)
           more-data)))
+
+(defn attach-descriptions
+  "Attaches documentation to a schema, a `:description` keys on various elements
+  within the schema.
+
+  The documentation map keys are keywords with a particular structure,
+  and the values are formatted Markdown strings.
+
+  The keys are one of the following forms:
+
+  - `:Type`
+  - `:Type/name`
+  - `:Type/name.argument`
+
+  A simple `Type` will document an object, input object, interface, union, or enum.
+
+  The second form is used to document a field of an object, input object, or interface, or
+  to document a specific value of an enum (e.g., `:Episode/NEW_HOPE`).
+
+  The final form is used to document an argument to a field (it does not make sense for enums).
+
+  Additionally, the `Type` can be `queries`, `mutations`, or `subscriptions`, in which case
+  the `name` will be the name of the operation (e.g., `:queries/episode`).
+
+  See [[parse-docs]]."
+  {:added "0.27.0"}
+  [schema documentation]
+  (reduce-kv (fn [schema' location description]
+               (assoc-in schema' (documentation-schema-path schema location) description))
+             schema
+             documentation))
