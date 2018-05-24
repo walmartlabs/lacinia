@@ -7,6 +7,11 @@ but with this release, we've change it to `:MyType/my_field.arg_name`.
 It is now possible, when parsing a schema from SDL, to document interfaces, enums, and unions.
 Previously, only objects and input objects could be documented.
 
+It is now possible to combine external documentation, from a Markdown file,
+into an EDN schema.
+See `com.walmartlabs.lacinia.parser.docs/parse-docs` and
+`com.walmartlabs.lacinia.util/attach-descriptions`.
+
 ## 0.26.0 -- 20 Apr 2018
 
 Lacinia now supports the `:roots` key in the input schema, which makes
