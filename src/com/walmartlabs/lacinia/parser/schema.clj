@@ -17,7 +17,7 @@
   {:added "0.22.0"}
   (:require [com.walmartlabs.lacinia.internal-utils :refer [remove-vals]]
             [com.walmartlabs.lacinia.parser.common :refer [antlr-parse parse-failures stringvalue->String]]
-            [com.walmartlabs.lacinia.util :refer [attach-descriptions]]
+            [com.walmartlabs.lacinia.util :refer [inject-descriptions]]
             [clojure.java.io :as io]
             [clojure.spec.alpha :as s]
             [clj-antlr.core :as antlr.core])
@@ -344,7 +344,7 @@
         (attach-field-fns :resolve resolvers)
         (attach-field-fns :stream streamers)
         (attach-scalars scalars)
-        (attach-descriptions documentation)
+        (inject-descriptions documentation)
         (attach-operations root))))
 
 (defn parse-schema

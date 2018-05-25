@@ -33,7 +33,7 @@
   "Parses an input document.  Returns a map who keys are the keyword versions of headers, and whose values
   are the (trimmed) content immediately beneath that header.
 
-  The result is a documentation map that can be provided to [[attach-descriptions]]."
+  The result is a documentation map that can be provided to [[inject-descriptions]]."
   [input]
   (loop [lines (str/split-lines input)
          result {}

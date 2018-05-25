@@ -78,7 +78,7 @@
               :serialize double}}}
            (util/attach-scalar-transformers schema transformers)))))
 
-(deftest attach-descriptions
+(deftest inject-descriptions
   ;; This tests a couple of cases that aren't covered by the
   ;; parser.schema-test namespace.
 
@@ -97,4 +97,4 @@
               :args
               {:name {:type :String
                       :description "HELLO.NAME"}}}}}
-           (util/attach-descriptions schema documentation)))))
+           (util/inject-descriptions schema documentation)))))

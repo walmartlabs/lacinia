@@ -10,7 +10,7 @@ Previously, only objects and input objects could be documented.
 It is now possible to combine external documentation, from a Markdown file,
 into an EDN schema.
 See `com.walmartlabs.lacinia.parser.docs/parse-docs` and
-`com.walmartlabs.lacinia.util/attach-descriptions`.
+`com.walmartlabs.lacinia.util/inject-descriptions`.
 
 ## 0.26.0 -- 20 Apr 2018
 

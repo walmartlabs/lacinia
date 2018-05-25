@@ -108,8 +108,8 @@
           (ex-data t)
           more-data)))
 
-(defn attach-descriptions
-  "Attaches documentation to a schema, a `:description` keys on various elements
+(defn inject-descriptions
+  "Injects documentation into a schema, as `:description` keys on various elements
   within the schema.
 
   The documentation map keys are keywords with a particular structure,
