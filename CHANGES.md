@@ -8,7 +8,7 @@ It is now possible, when parsing a schema from SDL, to document interfaces, enum
 Previously, only objects and input objects could be documented.
 
 New function `com.walmartlabs.lacinia.util/inject-resolvers` is an alternate way
-to attack resolvers to a schema.
+to attach resolvers to a schema.
 
 ## 0.26.0 -- 20 Apr 2018
 
