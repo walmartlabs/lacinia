@@ -224,8 +224,8 @@ Although this library is used in production at Walmart, it is
 still considered alpha software - subject to change.
 We expect to stabilize it in the near future.
 
-To use this library with Clojure 1.9, specify an exclusion like:
-`[com.walmartlabs/lacinia "x.x.x" :exclusions [clojure-future-spec]]`.
+To use this library with Clojure 1.8, you must include 
+a dependency on [clojure-future-spec](https://github.com/tonsky/clojure-future-spec).
 
 More details are [in the manual](http://lacinia.readthedocs.io/en/latest/clojure.html).
 
