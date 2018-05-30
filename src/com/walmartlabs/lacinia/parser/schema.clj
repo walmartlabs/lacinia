@@ -15,11 +15,11 @@
 (ns com.walmartlabs.lacinia.parser.schema
   "Parse a Schema Definition Language document into a Lacinia input schema."
   {:added "0.22.0"}
-  (:require [com.walmartlabs.lacinia.internal-utils :refer [remove-vals cond-let]]
+  (:require [com.walmartlabs.lacinia.internal-utils :refer [remove-vals]]
             [com.walmartlabs.lacinia.parser.common :refer [antlr-parse parse-failures stringvalue->String]]
+            [com.walmartlabs.lacinia.util :refer [inject-descriptions]]
             [clojure.java.io :as io]
             [clojure.spec.alpha :as s]
-            [clojure.string :as str]
             [clj-antlr.core :as antlr.core])
   (:import (clj_antlr ParseError)))
 
@@ -278,88 +278,6 @@
   (cond-> schema
     scalars (assoc :scalars scalars)))
 
-(defn ^:private type-root
-  "Looks up the given type keyword in schema to determine if it is an
-  input or output object, and returns the corresponding root key into
-  the schema."
-  [schema type-name]
-  (let [f (fn [k]
-            (when (-> schema (get k) (contains? type-name))
-              k))]
-    (or
-      (some f [:objects :input-objects :interfaces :enums :unions])
-      (throw (ex-info "Error attaching documentation: type not found" {:type-name type-name})))))
-
-(defn ^:private index-of
-  "Index of a value in a vector, or nil if not found."
-  [v value]
-  (->> v
-       (keep-indexed #(when (= %2 value)
-                        %1))
-       first))
-
-(defn ^:private documentation-schema-path
-  "Returns a sequence of keys representing the path where the
-  documentation string should be attached in the nested associative schema
-  structure.
-
-  `location` should be one of:
-   - `:type`
-   - `:type/field`
-   - `:type/field.arg`
-
-   The type may identify an object, input object, interface, enum, or union.
-
-   union's do not have fields, an exception is thrown if a field of an enum is documented.
-
-   enum's have values, not fields.
-   It is allowed to document individual enum values, but enum values do not have arguments
-   (an exception will be thrown)."
-  [schema location]
-  (cond-let
-    :let [simple? (simple-keyword? location)
-          type-name (if simple?
-                      location
-                      (-> location namespace keyword))
-          [field-name arg-name] (when-not simple?
-                                  (-> location name (str/split #"\." 2)))
-          root (type-root schema type-name)]
-
-    simple?
-    [root type-name :description]
-
-    (= :unions root)
-    (throw (ex-info "Error attaching documentation: union members may not be documented"
-                    {:type-name type-name}))
-
-    :let [field-name' (keyword field-name)]
-
-    (= :enums root)
-    (if-not (str/blank? arg-name)
-      (throw (ex-info "Error attaching documentation: enum values do not have fields"
-                      {:type-name type-name}))
-      ;; The field-name is actually the enum value, in this context
-      (if-let [ix (index-of (get-in schema [root type-name :values])
-                            {:enum-value field-name'})]
-        [root type-name :values ix :description]
-        (throw (ex-info "Error attaching documentation: enum value not found"
-                        {:type-name type-name
-                         :enum-value field-name'}))))
-
-    (str/blank? arg-name)
-    [root type-name :fields field-name' :description]
-
-    :else
-    [root type-name :fields field-name' :args (keyword arg-name) :description]))
-
-(defn ^:private attach-documentation
-  [schema documentation]
-  (reduce-kv (fn [schema' location documentation]
-               (let [ks (documentation-schema-path schema location)]
-                 (assoc-in schema' ks documentation)))
-             schema
-             documentation))
-
 (defn ^:private duplicates
   "Returns duplicates in coll, retaining original element meta"
   [coll]
@@ -426,7 +344,7 @@
         (attach-field-fns :resolve resolvers)
         (attach-field-fns :stream streamers)
         (attach-scalars scalars)
-        (attach-documentation documentation)
+        (inject-descriptions documentation)
         (attach-operations root))))
 
 (defn parse-schema
@@ -477,7 +395,6 @@
 (s/def ::scalar-def (s/keys :req-un [::parse ::serialize]))
 (s/def ::description string?)
 (s/def ::fields (s/map-of simple-keyword? ::description))
-(s/def ::documentation-def (s/keys :opt-un [::description ::fields]))
 
 (s/def ::documentation (s/map-of keyword? string?))
 (s/def ::scalars (s/map-of simple-keyword? ::scalar-def))

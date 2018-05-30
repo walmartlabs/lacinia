@@ -16,7 +16,8 @@
   "Useful utility functions."
   (:require
     [com.walmartlabs.lacinia.internal-utils
-     :refer [to-message map-vals cond-let update?]]))
+     :refer [to-message map-vals cond-let update? documentation-schema-path
+             resolver-path]]))
 
 (defn ^:private attach-callbacks
   [field-container callbacks-map callback-kw error-name]
@@ -108,21 +109,36 @@
           (ex-data t)
           more-data)))
 
+(defn inject-descriptions
+  "Injects documentation into a schema, as `:description` keys on various elements
+  within the schema.
 
-(def ^:private operation-names #{:queries :mutation :subscriptions})
+  The documentation map keys are keywords with a particular structure,
+  and the values are formatted Markdown strings.
 
-(defn ^:private resolver-path
-  [schema k]
-  (let [container-name (-> k namespace keyword)
-        field-name (-> k name keyword)
-        path (if (operation-names container-name)
-               [container-name field-name]
-               [:objects container-name :fields field-name])]
-    (when-not (get-in schema path)
-      (throw (ex-info "inject resolvers error: not found"
-                      {:key k})))
+  The keys are one of the following forms:
 
-    (conj path :resolve)))
+  - `:Type`
+  - `:Type/name`
+  - `:Type/name.argument`
+
+  A simple `Type` will document an object, input object, interface, union, or enum.
+
+  The second form is used to document a field of an object, input object, or interface, or
+  to document a specific value of an enum (e.g., `:Episode/NEW_HOPE`).
+
+  The final form is used to document an argument to a field (it does not make sense for enums).
+
+  Additionally, the `Type` can be `queries`, `mutations`, or `subscriptions`, in which case
+  the `name` will be the name of the operation (e.g., `:queries/episode`).
+
+  See [[parse-docs]]."
+  {:added "0.27.0"}
+  [schema documentation]
+  (reduce-kv (fn [schema' location description]
+               (assoc-in schema' (documentation-schema-path schema location) description))
+             schema
+             documentation))
 
 (defn inject-resolvers
   "Adds resolvers to the schema.  The resolvers map is a map of keywords to

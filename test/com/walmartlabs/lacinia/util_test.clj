@@ -101,3 +101,24 @@
                             ))]
     (is (= {:key :NotFound/my_field}
            (ex-data e)))))
+
+(deftest inject-descriptions
+  ;; This tests a couple of cases that aren't covered by the
+  ;; parser.schema-test namespace.
+
+  (let [schema {:queries
+                {:hello
+                 {:type :String
+                  :args
+                  {:name {:type :String}}}}}
+        documentation {:queries/hello "HELLO"
+                       :queries/hello.name "HELLO.NAME"}]
+
+    (is (= {:queries
+            {:hello
+             {:type :String
+              :description "HELLO"
+              :args
+              {:name {:type :String
+                      :description "HELLO.NAME"}}}}}
+           (util/inject-descriptions schema documentation)))))

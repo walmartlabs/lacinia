@@ -192,3 +192,100 @@
   {:added "0.17.0"}
   [^TaggedValue v]
   (.tag v))
+
+(def ^:private operation-containers #{:queries :mutations :subscriptions})
+
+(defn resolver-path
+  "Given a key, such as :queries/user_by_id or :User/full_name, return the
+  path from the root of the schema to (and including) the :resolve key."
+  [schema k]
+  (let [container-name (-> k namespace keyword)
+        field-name (-> k name keyword)
+        path (if (operation-containers container-name)
+               [container-name field-name]
+               [:objects container-name :fields field-name])]
+    (when-not (get-in schema path)
+      (throw (ex-info "inject resolvers error: not found"
+                      {:key k})))
+
+    (conj path :resolve)))
+
+(defn ^:private type-root
+  "Looks up the given type keyword in schema and returns the corresponding root key into
+  the schema."
+  [schema type-name]
+  (if (operation-containers type-name)
+    type-name
+    (let [f (fn [k]
+              (when (-> schema (get k) (contains? type-name))
+                k))]
+      (or
+        (some f [:objects :input-objects :interfaces :enums :unions])
+        (throw (ex-info "Error attaching documentation: type not found" {:type-name type-name}))))))
+
+(defn ^:private index-of
+  "Index of a value in a vector, or nil if not found."
+  [v value]
+  (->> v
+       (keep-indexed #(when (= %2 value)
+                        %1))
+       first))
+
+(defn documentation-schema-path
+  "Returns a sequence of keys representing the path where the
+  documentation string should be attached in the nested associative schema
+  structure.
+
+  `location` should be one of:
+   - `:type`
+   - `:type/field`
+   - `:type/field.arg`
+
+   The type may identify an object, input object, interface, enum, or union.
+
+   union's do not have fields, an exception is thrown if a field of an enum is documented.
+
+   enum's have values, not fields.
+   It is allowed to document individual enum values, but enum values do not have arguments
+   (an exception will be thrown)."
+  [schema location]
+  (cond-let
+    :let [simple? (simple-keyword? location)
+          type-name (if simple?
+                      location
+                      (-> location namespace keyword))
+          [field-name arg-name] (when-not simple?
+                                  (-> location name (str/split #"\." 2)))
+          root (type-root schema type-name)]
+
+    simple?
+    [root type-name :description]
+
+    (= :unions root)
+    (throw (ex-info "Error attaching documentation: union members may not be documented"
+                    {:type-name type-name}))
+
+    :let [field-name' (keyword field-name)]
+
+    (= :enums root)
+    (if-not (str/blank? arg-name)
+      (throw (ex-info "Error attaching documentation: enum values do not have fields"
+                      {:type-name type-name}))
+      ;; The field-name is actually the enum value, in this context
+      (if-let [ix (index-of (get-in schema [root type-name :values])
+                            {:enum-value field-name'})]
+        [root type-name :values ix :description]
+        (throw (ex-info "Error attaching documentation: enum value not found"
+                        {:type-name type-name
+                         :enum-value field-name'}))))
+
+    :let [base (if (operation-containers root)
+                 [root field-name']
+                 [root type-name :fields field-name'])]
+
+    (str/blank? arg-name)
+    (conj base :description)
+
+    :else
+    (conj base :args (keyword arg-name) :description)))
+
