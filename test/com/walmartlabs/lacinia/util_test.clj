@@ -15,7 +15,8 @@
 (ns com.walmartlabs.lacinia.util-test
   "Utility functions tests."
   (:require [clojure.test :refer [deftest is]]
-            [com.walmartlabs.lacinia.util :as util]))
+            [com.walmartlabs.lacinia.util :as util])
+  (:import (clojure.lang ExceptionInfo)))
 
 (deftest attach-resolvers
   (let [schema {:objects
@@ -77,3 +78,26 @@
              {:parse int
               :serialize double}}}
            (util/attach-scalar-transformers schema transformers)))))
+
+(deftest inject-resolvers
+  (let [schema {:objects
+                {:Person {:fields
+                          {:pay_grade {:type :String}}}}
+                :queries
+                {:get_person {}}}]
+    (is (= {:objects
+            {:Person
+             {:fields {:pay_grade {:type :String
+                                   :resolve :pay-grade}}}}
+            :queries
+            {:get_person {:resolve :get-person}}}
+           (util/inject-resolvers schema
+                                  {:Person/pay_grade :pay-grade
+                                   :queries/get_person :get-person})))))
+
+(deftest inject-resolver-not-found
+  (when-let [e (is (thrown? ExceptionInfo #"inject resolvers error: not found"
+                            (util/inject-resolvers {} {:NotFound/my_field :whatever})
+                            ))]
+    (is (= {:key :NotFound/my_field}
+           (ex-data e)))))

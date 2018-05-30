@@ -107,3 +107,39 @@
    (merge {:message (to-message t)}
           (ex-data t)
           more-data)))
+
+
+(def ^:private operation-names #{:queries :mutation :subscriptions})
+
+(defn ^:private resolver-path
+  [schema k]
+  (let [container-name (-> k namespace keyword)
+        field-name (-> k name keyword)
+        path (if (operation-names container-name)
+               [container-name field-name]
+               [:objects container-name :fields field-name])]
+    (when-not (get-in schema path)
+      (throw (ex-info "inject resolvers error: not found"
+                      {:key k})))
+
+    (conj path :resolve)))
+
+(defn inject-resolvers
+  "Adds resolvers to the schema.  The resolvers map is a map of keywords to
+  field resolvers (as functions, or [[FieldResolver]] instances).
+
+  The key identifies where the resolver should be added, in the form `:Type/field`.
+
+  Alternately, the key may be of the format `:queries/name` (or `:mutations/name` or
+  `subscriptions/name`).
+
+  Throws an exception if the target of the resolver can't be found.
+
+  In many cases, this is a full replacement for [[attach-resolvers]], but the two functions
+  can also be used in conjunction with each other."
+  {:added "0.27.0"}
+  [schema resolvers]
+  (reduce-kv (fn [schema' k resolver]
+               (assoc-in schema' (resolver-path schema' k) resolver))
+             schema
+             resolvers))

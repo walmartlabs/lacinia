@@ -7,6 +7,9 @@ but with this release, we've change it to `:MyType/my_field.arg_name`.
 It is now possible, when parsing a schema from SDL, to document interfaces, enums, and unions.
 Previously, only objects and input objects could be documented.
 
+New function `com.walmartlabs.lacinia.util/inject-resolvers` is an alternate way
+to attach resolvers to a schema.
+
 ## 0.26.0 -- 20 Apr 2018
 
 Lacinia now supports the `:roots` key in the input schema, which makes
