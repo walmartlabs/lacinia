@@ -7,6 +7,9 @@ but with this release, we've change it to `:MyType/my_field.arg_name`.
 It is now possible, when parsing a schema from SDL, to document interfaces, enums, and unions.
 Previously, only objects and input objects could be documented.
 
+New function `com.walmartlabs.lacinia.util/inject-resolvers` is an alternate way
+to attach resolvers to a schema.
+
 It is now possible to combine external documentation, from a Markdown file,
 into an EDN schema.
 See `com.walmartlabs.lacinia.parser.docs/parse-docs` and
