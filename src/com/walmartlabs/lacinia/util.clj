@@ -16,7 +16,8 @@
   "Useful utility functions."
   (:require
     [com.walmartlabs.lacinia.internal-utils
-     :refer [to-message map-vals cond-let update? documentation-schema-path]]))
+     :refer [to-message map-vals cond-let update? documentation-schema-path
+             resolver-path]]))
 
 (defn ^:private attach-callbacks
   [field-container callbacks-map callback-kw error-name]
@@ -138,22 +139,6 @@
                (assoc-in schema' (documentation-schema-path schema location) description))
              schema
              documentation))
-
-
-(def ^:private operation-names #{:queries :mutation :subscriptions})
-
-(defn ^:private resolver-path
-  [schema k]
-  (let [container-name (-> k namespace keyword)
-        field-name (-> k name keyword)
-        path (if (operation-names container-name)
-               [container-name field-name]
-               [:objects container-name :fields field-name])]
-    (when-not (get-in schema path)
-      (throw (ex-info "inject resolvers error: not found"
-                      {:key k})))
-
-    (conj path :resolve)))
 
 (defn inject-resolvers
   "Adds resolvers to the schema.  The resolvers map is a map of keywords to

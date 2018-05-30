@@ -195,6 +195,21 @@
 
 (def ^:private operation-containers #{:queries :mutations :subscriptions})
 
+(defn resolver-path
+  "Given a key, such as :queries/user_by_id or :User/full_name, return the
+  path from the root of the schema to (and including) the :resolve key."
+  [schema k]
+  (let [container-name (-> k namespace keyword)
+        field-name (-> k name keyword)
+        path (if (operation-containers container-name)
+               [container-name field-name]
+               [:objects container-name :fields field-name])]
+    (when-not (get-in schema path)
+      (throw (ex-info "inject resolvers error: not found"
+                      {:key k})))
+
+    (conj path :resolve)))
+
 (defn ^:private type-root
   "Looks up the given type keyword in schema and returns the corresponding root key into
   the schema."
