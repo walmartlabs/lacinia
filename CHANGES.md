@@ -20,7 +20,7 @@ See `com.walmartlabs.lacinia.parser.docs/parse-docs` and
 Lacinia now supports the `:roots` key in the input schema, which makes
 it possible to define query, mutation, or subscription operations
 in terms of the fields of an explicitly named object in the schema.
-This aligns Lacinia better withu other implementations of GraphQL.
+This aligns Lacinia better with other implementations of GraphQL.
 
 Lacinia is now based on Clojure 1.9, though it can also be used with
 Clojure 1.8.
