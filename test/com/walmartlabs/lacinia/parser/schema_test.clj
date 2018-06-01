@@ -185,7 +185,7 @@
 
 (deftest can-not-attach-doc-to-enum-value-args
   (when-let [e (is (thrown-with-msg? ExceptionInfo
-                                     #"Error attaching documentation: enum values do not have fields"
+                                     #"Error attaching documentation: enum values do not contain fields"
                                      (parse-schema "enums.sdl" {:documentation {:Location/MATRIX.highway "Dangerous."}})))]
     (is (= {:type-name :Location}
            (ex-data e)))))

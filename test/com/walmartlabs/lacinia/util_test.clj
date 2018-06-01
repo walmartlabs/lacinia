@@ -122,3 +122,9 @@
               {:name {:type :String
                       :description "HELLO.NAME"}}}}}
            (util/inject-descriptions schema documentation)))))
+
+(deftest can-inject-scalar-description
+  (let [schema {:scalars {:Long {}}}
+        documentation {:Long "64 bit value"}]
+    (is (= {:scalars {:Long {:description "64 bit value"}}}
+           (util/inject-descriptions schema documentation)))))

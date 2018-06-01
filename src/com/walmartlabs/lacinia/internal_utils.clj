@@ -220,7 +220,7 @@
               (when (-> schema (get k) (contains? type-name))
                 k))]
       (or
-        (some f [:objects :input-objects :interfaces :enums :unions])
+        (some f [:objects :input-objects :interfaces :enums :unions :scalars])
         (throw (ex-info "Error attaching documentation: type not found" {:type-name type-name}))))))
 
 (defn ^:private index-of
@@ -241,13 +241,15 @@
    - `:type/field`
    - `:type/field.arg`
 
-   The type may identify an object, input object, interface, enum, or union.
+   The type may identify an object, input object, interface, enum, scalar, or union.
 
    union's do not have fields, an exception is thrown if a field of an enum is documented.
 
    enum's have values, not fields.
    It is allowed to document individual enum values, but enum values do not have arguments
-   (an exception will be thrown)."
+   (an exception will be thrown).
+
+   Scalars do not contain anything."
   [schema location]
   (cond-let
     :let [simple? (simple-keyword? location)
@@ -265,11 +267,15 @@
     (throw (ex-info "Error attaching documentation: union members may not be documented"
                     {:type-name type-name}))
 
+    (= :scalars root)
+    (throw (ex-info "Error attaching documentation: scalars do not contain fields"
+                    {:type-name type-name}))
+
     :let [field-name' (keyword field-name)]
 
     (= :enums root)
     (if-not (str/blank? arg-name)
-      (throw (ex-info "Error attaching documentation: enum values do not have fields"
+      (throw (ex-info "Error attaching documentation: enum values do not contain fields"
                       {:type-name type-name}))
       ;; The field-name is actually the enum value, in this context
       (if-let [ix (index-of (get-in schema [root type-name :values])
