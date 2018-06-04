@@ -4,7 +4,8 @@ A change to how GraphQL schema documentation is attached.
 Previously, arguments were refered to as `:MyType.my_field/arg_name`
 but with this release, we've change it to `:MyType/my_field.arg_name`.
 
-It is now possible, when parsing a schema from SDL, to document interfaces, enums, and unions.
+It is now possible, when parsing a schema from SDL, to document interfaces, enums, and 
+scalars, and unions.
 Previously, only objects and input objects could be documented.
 
 New function `com.walmartlabs.lacinia.util/inject-resolvers` is an alternate way
