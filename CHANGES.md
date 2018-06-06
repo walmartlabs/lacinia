@@ -1,4 +1,4 @@
-## 0.27.0 -- UNRELEASED
+## 0.27.0 -- 6 Jun 2018
 
 A change to how GraphQL schema documentation is attached.
 Previously, arguments were refered to as `:MyType.my_field/arg_name`
@@ -15,6 +15,8 @@ It is now possible to combine external documentation, from a Markdown file,
 into an EDN schema.
 See `com.walmartlabs.lacinia.parser.docs/parse-docs` and
 `com.walmartlabs.lacinia.util/inject-descriptions`.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/15?closed=1)
 
 ## 0.26.0 -- 20 Apr 2018
 
