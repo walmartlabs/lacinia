@@ -142,40 +142,43 @@
 
    A value must be resolved and ultimately provided via [[deliver!]]."
   []
-  (let [*result (promise)
-        *callback (promise)]
+  (let [callback-and-result (atom {})]
     (reify
       ResolverResult
 
-      ;; We could do a bit more locking to avoid a couple of race-condition edge cases, but this is mostly to sanity
-      ;; check bad application code that simply gets the contract wrong.
       (on-deliver! [this callback]
-        (cond
-          ;; If the value arrives before the callback, invoke the callback immediately.
-          (realized? *result)
-          (callback @*result)
+        (loop []
+          (let [cr @callback-and-result]
+            (cond
+             ;; If the value arrives before the callback, invoke the callback immediately.
+             (contains? cr :result)
+             (callback (:result cr))
 
-          (realized? *callback)
-          (throw (IllegalStateException. "ResolverResultPromise callback may only be set once."))
+             (contains? cr :callback)
+             (throw (IllegalStateException. "ResolverResultPromise callback may only be set once."))
 
-          :else
-          (deliver *callback callback))
+             (compare-and-set! callback-and-result cr (assoc cr :callback callback))
+             true
+
+             :else
+             (recur))))
 
         this)
 
       ResolverResultPromise
 
       (deliver! [this resolved-value]
-        (when (realized? *result)
-          (throw (IllegalStateException. "May only realize a ResolverResultPromise once.")))
+        (loop []
+          (let [cr @callback-and-result]
+            (when (contains? cr :result)
+              (throw (IllegalStateException. "May only realize a ResolverResultPromise once.")))
 
-        (deliver *result resolved-value)
-
-        (when (realized? *callback)
-          (let [callback @*callback]
-            (if-some [^Executor executor *callback-executor*]
-              (.execute executor (bound-fn [] (callback resolved-value)))
-              (callback resolved-value))))
+            (if (compare-and-set! callback-and-result cr (assoc cr :result resolved-value))
+              (when-let [callback (:callback cr)]
+                (if-some [^Executor executor *callback-executor*]
+                  (.execute executor (bound-fn [] (callback resolved-value)))
+                  (callback resolved-value)))
+              (recur))))
 
         this)
 
