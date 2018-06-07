@@ -20,14 +20,8 @@
     com.walmartlabs.lacinia.expound
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.parser.schema :as ps]
-    [expound.alpha :as expound]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]))
-
-(use-fixtures :once
-  (fn [f]
-    (binding [s/*explain-out* expound/printer]
-      (f))))
 
 (defmacro expect
   [spec value & substrings]

@@ -7,10 +7,4 @@
     [clojure.spec.alpha :as s]
     [expound.alpha :as expound]))
 
-(comment
-
-  ;; Currently, this breaks a couple of tests, so it should only be
-  ;; invoked for development.
-  (alter-var-root #'s/*explain-out* (constantly expound/printer))
-
-  )
+(alter-var-root #'s/*explain-out* (constantly expound/printer))
