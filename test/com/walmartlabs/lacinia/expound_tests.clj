@@ -40,7 +40,11 @@
 (deftest uses-messages
   (expect ::schema/resolve {}
           "fn?"
-          "implement the com.walmartlabs.lacina.resolve/FieldResolver protocol"))
+          "implement the com.walmartlabs.lacinia.resolve/FieldResolver protocol"))
+
+(deftest correctly-reports-incorrect-type-modifier
+  (expect ::schema/field {:type '(something :String)}
+          "type wrappers should be either (list type) or (non-null type)"))
 
 (deftest can-report-enum-value
   (expect ::schema/enum-value 123 "string?" "simple-symbol?" "simple-keyword?")
@@ -49,7 +53,3 @@
 (deftest sdl-function-map
   (expect ::ps/fn-map {:foo :bar :gnip {:q 'gnop}}
           "fn?" "simple-keyword?"))
-
-(comment
-  (binding [s/*explain-out* expound/printer]
-    (s/explain ::ps/fn-map {:foo :bar :gnip {:q 'gnop}})))
