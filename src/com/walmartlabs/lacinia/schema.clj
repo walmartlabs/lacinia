@@ -274,8 +274,10 @@
                      ::graphql-identifier))
 (s/def ::type (s/or :base-type ::type-name
                     :wrapped-type ::wrapped-type))
-(s/def ::wrapped-type (s/cat :modifier #{'list 'non-null}
+(s/def ::wrapped-type (s/cat :modifier ::wrapped-type-modifier
                              :type ::type))
+;; Use of a function here, rather than just the set, is due to https://github.com/bhb/expound/issues/101
+(s/def ::wrapped-type-modifier #(contains? #{'list 'non-null} %))
 (s/def ::arg (s/keys :req-un [::type]
                      :opt-un [::description]))
 (s/def ::args (s/map-of ::schema-key ::arg))

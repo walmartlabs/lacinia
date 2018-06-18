@@ -174,20 +174,20 @@
 (deftest types-must-be-valid-ids
   (is-compile-exception
     {:objects {:not-valid-id {:fields {:id {:type :String}}}}}
-    ":not-valid-id fails spec: :com.walmartlabs.lacinia.schema/graphql-identifier"))
+    "must be a valid GraphQL identifier"))
 
 (deftest field-names-must-be-valid-ids
   (is-compile-exception
     {:queries {:invalid-field-name {:type :String
                               :resolve identity}}}
-    ":invalid-field-name fails spec: :com.walmartlabs.lacinia.schema/graphql-identifier"))
+    "must be a valid GraphQL identifier"))
 
 (deftest enum-values-must-be-valid-ids
   (is-compile-exception
     {:enums {:episode {:values [:new-hope :empire :return-of-jedi]}}}
-    ":new-hope fails spec: :com.walmartlabs.lacinia.schema/graphql-identifier at: [:schema :enums 1 :values :bare-value]"))
+    "must be a valid GraphQL identifier"))
 
 (deftest requires-resolve-on-operation
   (is-compile-exception
     {:queries {:hopeless {:type :String}}}
-    "predicate: (contains? % :resolve)"))
+    "should contain key: :resolve"))

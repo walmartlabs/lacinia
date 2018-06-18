@@ -1,3 +1,8 @@
+## 0.28.0 -- UNRELEASED
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/16?closed=1)
+
+
 ## 0.27.0 -- 6 Jun 2018
 
 A change to how GraphQL schema documentation is attached.
