@@ -1,7 +1,8 @@
-## 0.28.0 -- UNRELEASED
+## 0.28.0 -- 21 Jun 2018
+
+Removed a potential race condition related to asynchronous field resolvers.
 
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/16?closed=1)
-
 
 ## 0.27.0 -- 6 Jun 2018
 
