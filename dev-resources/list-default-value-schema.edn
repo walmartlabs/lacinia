@@ -1,0 +1,7 @@
+{:queries
+ {:search
+  {:type String
+   :resolve :placeholder
+   :args
+   {:terms {:type (list String)
+            :default-value ["columbia" "river" "gorge"]}}}}}

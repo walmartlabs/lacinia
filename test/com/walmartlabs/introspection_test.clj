@@ -614,7 +614,7 @@
                                        :type {:kind :SCALAR
                                               :name "String"
                                               :ofType nil}}
-                                      {:defaultValue "Rey"
+                                      {:defaultValue "\"Rey\""
                                        :description nil
                                        :name "to"
                                        :type {:kind :SCALAR
@@ -634,7 +634,7 @@
                      :possibleTypes []}
                     {:description "Root of all queries."
                      :enumValues []
-                     :fields [{:args [{:defaultValue "2001"
+                     :fields [{:args [{:defaultValue "\"2001\""
                                        :description nil
                                        :name "id"
                                        :type {:kind :SCALAR
@@ -689,7 +689,7 @@
                                       :ofType {:kind :INTERFACE
                                                :name "character"
                                                :ofType nil}}}
-                              {:args [{:defaultValue "1001"
+                              {:args [{:defaultValue "\"1001\""
                                        :description nil
                                        :name "id"
                                        :type {:kind :SCALAR
@@ -1394,3 +1394,78 @@
                                 }
                               }
                            }")))))
+
+(def ^:private fields-and-args-query "{
+                             __type(name: \"QueryRoot\") {
+                              fields {
+                                name
+                                args { name defaultValue }
+                              }
+                            }
+                          }")
+
+(deftest non-string-default-value
+  (let [schema (utils/compile-schema "non-string-default-value-schema.edn"
+                                     {:placeholder identity})]
+
+    (is (= {:data
+            {:__type
+             {:fields
+              [{:args [{:name "checked"
+                        :defaultValue "true"}
+                       {:name "count"
+                        :defaultValue "10"}
+                       {:name "has_no_default"
+                        :defaultValue nil}
+                       {:name "mood"
+                        :defaultValue "happy"}
+                       {:name "target"
+                        :defaultValue "3.2"}
+                       {:name "title"
+                        :defaultValue "\"columbia\""}]
+                :name "search"}]}}}
+           (utils/execute schema fields-and-args-query)))))
+
+(deftest list-default-value
+  (let [schema (utils/compile-schema "list-default-value-schema.edn"
+                                     {:placeholder identity})]
+
+    (is (= {:data
+            {:__type
+             {:fields
+              [{:args [{:name "terms"
+                        :defaultValue "[\"columbia\",\"river\",\"gorge\"]"}]
+                :name "search"}]}}}
+           (utils/execute schema fields-and-args-query)))))
+
+(deftest input-object-default-value
+  (let [schema (utils/compile-schema "input-object-default-value-schema.edn"
+                                     {:placeholder identity})]
+
+    (is (= {:data
+            {:__type
+             {:fields
+              [{:args [{:defaultValue "{\"checked\":false,\"count\":20,\"target\":3.14,\"title\":\"gorge\"}"
+                        :name "filter"}]
+                :name "search"}]}}}
+           (utils/execute schema fields-and-args-query)))
+
+    ;; And check that individual defaults on an InputObject are exposed
+    (is (= {:data
+            {:__type
+             {:inputFields
+              [{:name "checked"
+                :defaultValue "true"}
+               {:name "count"
+                :defaultValue "10"}
+               {:name "has_no_default"
+                :defaultValue nil}
+               {:name "mood"
+                :defaultValue "happy"}
+               {:name "target"
+                :defaultValue "3.2"}
+               {:name "title"
+                :defaultValue "\"columbia\""}]}}}
+           (utils/execute schema "{
+             __type(name: \"Filter\") { inputFields { name defaultValue } }
+           }")))))

@@ -1,0 +1,19 @@
+{:enums
+ {:mood {:values [:happy :sad]}}
+
+ :queries
+ {:search
+  {:type String
+   :resolve :placeholder
+   :args
+   {:title {:type String
+            :default-value "columbia"}
+    :checked {:type (non-null Boolean)
+              :default-value true}
+    :count {:type Int
+            :default-value 10}
+    :mood {:type :mood
+           :default-value :happy}
+    :has_no_default {:type String}
+    :target {:type Float
+             :default-value 3.2}}}}}
