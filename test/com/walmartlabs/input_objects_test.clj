@@ -15,8 +15,7 @@
 (ns com.walmartlabs.input-objects-test
   (:require
     [clojure.test :refer [deftest is]]
-    [com.walmartlabs.test-utils :refer [compile-schema execute]]
-    ))
+    [com.walmartlabs.test-utils :refer [compile-schema execute]]))
 
 (deftest null-checks-within-nullable-field
   (let [schema (compile-schema "nested-non-nullable-fields-schema.edn"
@@ -55,3 +54,35 @@
                     "mutation($g : game_template) { create_game(game_data: $g) }"
                     {:g {:name "Backgammon"}}
                     nil)))))
+
+(deftest correct-error-for-unknown-field-in-input-object
+(deftest correct-error-for-unknown-field-in-input-object
+  (let [schema (compile-schema "input-object-schema.edn"
+                               {:queries/search (fn [_ args _]
+                                                  [(pr-str args)])})]
+    (is (= {:data {:search ["{:filter {:terms [\"lego\"], :max_count 5}}"]}}
+           (execute schema
+                    "{ search(filter: {terms: \"lego\", max_count: 5}) }")))
+
+    (is (= {:errors [{:argument :filter
+                      :field :search
+                      :locations [{:column 3
+                                   :line 1}]
+                      :message "Exception applying arguments to field `search': For argument `filter', input object contained unexpected key `term'."
+                      :query-path []
+                      :schema-type :Filter}]}
+           (execute schema
+                    "{ search(filter: {term: \"lego\", max_count: 5}) }")))
+
+    (is (= {:errors [{:field-name :term
+                      :input-object-fields [:max_count
+                                            :terms]
+                      :input-object-type :Filter
+                      :message "Field not defined for input object."}]}
+           (execute schema
+                    "query($f : Filter) {
+                      search(filter: $f)
+                    }"
+                    {:f {:term "lego"
+                         :max_count 5}}
+                    nil)))1))

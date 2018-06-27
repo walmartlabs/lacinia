@@ -1,0 +1,12 @@
+{:input-objects
+ {:Filter
+  {:fields
+   {:terms {:type (list String)}
+    :max_count {:type Int}}}}
+
+ :queries
+ {:search
+  {:type (list String)
+   :args
+   {:filter {:type :Filter}}
+   :resolve :queries/search}}}
