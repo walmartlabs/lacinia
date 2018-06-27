@@ -56,7 +56,6 @@
                     nil)))))
 
 (deftest correct-error-for-unknown-field-in-input-object
-(deftest correct-error-for-unknown-field-in-input-object
   (let [schema (compile-schema "input-object-schema.edn"
                                {:queries/search (fn [_ args _]
                                                   [(pr-str args)])})]
