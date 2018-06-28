@@ -413,6 +413,15 @@
            var-has-default?)
       (recur var-type a-type var-has-default?)
 
+      ;; This is the special case where a single value variable may be promoted
+      ;; for assignment to a list argument.
+
+      (and (= a-kind :list)
+           (not= v-kind :list))
+      ;; Check if the type of the list argument is compatible, by stripping the :list qualifier
+      ;; from the argument type.
+      (recur var-type a-type var-has-default?)
+
       ;; At this point we've stripped off non-null on the arg or var side.  We should
       ;; be at a meeting point, either both :list or both :root.
       (not= a-kind v-kind)
@@ -420,7 +429,6 @@
 
       ;; Then :list, strip that off to see if the element type of the list is compatible.
       ;; The default, if any, applied to the list, not the values inside the list.
-      ;; TODO: This feels suspect, handling of list types is probably more complex than this.
       (not= :root a-kind)
       (recur v-type a-type false)
 
@@ -465,7 +473,6 @@
    and returns the extracted variable value."
   (fn [schema argument-definition [arg-type _]]
     arg-type))
-
 
 (defn ^:private construct-literal-argument
   [schema result argument-type arg-value]
@@ -518,10 +525,10 @@
                          (let [v (get result k)
                                field-type (get object-fields k)]
                            (when-not (contains? object-fields k)
-                             (throw (ex-info "Field not defined for input object."
-                                             {:field-name k
-                                              :input-object-type nested-type
-                                              :input-object-fields (-> object-fields keys sort vec)})))
+                             (throw-exception "Field not defined for input object."
+                                              {:field-name k
+                                               :input-object-type nested-type
+                                               :input-object-fields (-> object-fields keys sort vec)}))
                            (assoc acc k (construct-literal-argument schema v field-type arg-value))))
                        {}
                        (keys result)))]
@@ -536,9 +543,10 @@
   (process-literal-argument schema {:type argument-type} (construct-literal-argument schema result argument-type arg-value)))
 
 (defmethod process-dynamic-argument :variable
-  [schema argument-definition [_ arg-value]]
+  [schema argument-definition arg]
   ;; ::variables is stashed into schema by xform-query
-  (let [captured-context *exception-context*
+  (let [[_ arg-value] arg
+        captured-context *exception-context*
         variable-def (get-in schema [::variables arg-value])]
     (when (nil? variable-def)
       (throw-exception (format "Argument references undeclared variable %s."
@@ -560,7 +568,7 @@
             :let [result (get variables arg-value)]
 
             ;; So, when a client provides variables, sometimes you get a string
-            ;; when you expect a keyword for an enum. Can't help that, when the alue
+            ;; when you expect a keyword for an enum. Can't help that, when the value
             ;; comes from a variable, there's no mechanism until we reach right here to convert it
             ;; to a keyword.
 
@@ -593,6 +601,16 @@
 
             :else
             nil))))))
+
+(declare ^:private process-arguments)
+
+(defmethod process-dynamic-argument :object
+  [schema argument-definition arg]
+  (let [object-fields (->> argument-definition :type :type (get schema) :fields)
+        [literal-values dynamic-extractor] (process-arguments schema object-fields (second arg))]
+    (fn [arguments]
+      {:value (merge literal-values
+                     (dynamic-extractor arguments))})))
 
 (defn ^:private construct-dynamic-arguments-extractor
   [schema argument-definitions arguments]
