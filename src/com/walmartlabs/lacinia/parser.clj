@@ -17,7 +17,7 @@
   (:require
     [clojure.string :as str]
     [com.walmartlabs.lacinia.internal-utils
-     :refer [cond-let update? q map-vals filter-vals
+     :refer [cond-let update? q map-vals filter-vals remove-vals
              with-exception-context throw-exception to-message
              keepv as-keyword *exception-context*]]
     [com.walmartlabs.lacinia.schema :as schema]
@@ -573,7 +573,7 @@
             ;; to a keyword.
 
             (some? result)
-            {:value (substitute-variable schema result (:type argument-definition) arg-value)}
+            (substitute-variable schema result (:type argument-definition) arg-value)
 
             ;; TODO: This is only triggered if a variable is referenced, omitting a non-nillable
             ;; variable should be an error, regardless.
@@ -584,15 +584,15 @@
 
             ;; variable has a default value that could be NULL
             (contains? variable-def :default-value)
-            {:value (:default-value variable-def)}
+            (:default-value variable-def)
 
             ;; argument has a default value that could be NULL
             (contains? argument-definition :default-value)
-            {:value (:default-value argument-definition)}
+            (:default-value argument-definition)
 
             ;; variable value is set to NULL
             (contains? variables arg-value)
-            {:value result}
+            result
 
             non-nullable?
             (throw-exception (format "Variable %s is null, but supplies the value for a non-nullable argument."
@@ -600,7 +600,7 @@
                              {:variable-name arg-value})
 
             :else
-            nil))))))
+            ::omit-argument))))))
 
 (declare ^:private process-arguments)
 
@@ -609,8 +609,8 @@
   (let [object-fields (->> argument-definition :type :type (get schema) :fields)
         [literal-values dynamic-extractor] (process-arguments schema object-fields (second arg))]
     (fn [arguments]
-      {:value (merge literal-values
-                     (dynamic-extractor arguments))})))
+      (merge literal-values
+             (dynamic-extractor arguments)))))
 
 (defn ^:private construct-dynamic-arguments-extractor
   [schema argument-definitions arguments]
@@ -638,11 +638,11 @@
       ;; the variables and returns the actual value to use.
       (fn [variables]
         (->> (map-vals #(% variables) dynamic-args)
-             ;; keep arguments that have a matching variable provided.
-             ;; :value in value-map might be NULL but it's still a
-             ;; provided value (e.g. may be used to indicate deletion)
-             (filter-vals some?)
-             (map-vals :value))))))
+             ;; Some arguments may have a null value, or a null default value.
+             ;; However, if the argument is not specified at all, and has no default value
+             ;; then the ::omit-argument value is provided, and that marks an argument to
+             ;; be removed entirely.
+             (remove-vals #(= % ::omit-argument)))))))
 
 (defn ^:private disj*
   [set ks]
