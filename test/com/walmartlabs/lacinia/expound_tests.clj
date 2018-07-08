@@ -32,8 +32,8 @@
          (is (str/includes? explain# s#))))))
 
 (deftest uses-messages
-  (expect ::schema/resolve {}
-          "fn?"
+  (expect ::schema/resolve nil
+          "ifn?"
           "implement the com.walmartlabs.lacinia.resolve/FieldResolver protocol"))
 
 (deftest correctly-reports-incorrect-type-modifier
