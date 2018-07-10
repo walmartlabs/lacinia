@@ -1,3 +1,5 @@
+## 0.29.0 -- UNRELEASED
+
 ## 0.28.0 -- 21 Jun 2018
 
 Removed a potential race condition related to asynchronous field resolvers.

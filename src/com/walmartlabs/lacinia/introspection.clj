@@ -18,9 +18,11 @@
     [clojure.edn :as edn]
     [clojure.java.io :as io]
     [com.walmartlabs.lacinia.util :as util]
-    [com.walmartlabs.lacinia.internal-utils :refer [remove-keys is-internal-type-name?]]
+    [com.walmartlabs.lacinia.internal-utils :refer [remove-keys is-internal-type-name? cond-let]]
     [com.walmartlabs.lacinia.constants :as constants]
-    [clojure.string :as str]))
+    [clojure.string :as str]
+    [clojure.data.json :as json]
+    [clojure.spec.alpha :as s]))
 
 (def ^:private category->kind
   {:scalar :SCALAR
@@ -75,7 +77,7 @@
      :args (for [arg-def (->> args vals (sort-by :arg-name))]
              {:name (-> arg-def :arg-name name)
               :description (:description arg-def)
-              :defaultValue (:default-value arg-def)
+              ::default-value (:default-value arg-def)
               ;; This is for resolve-nested-type, but it might actually be
               ;; a field definition, argument definition, or input value (a field of
               ;; an input object).
@@ -170,7 +172,7 @@
       (for [field-def (->> type-def :fields vals (sort-by :field-name))]
         {:name (-> field-def :field-name name)
          :description (:description field-def)
-         :defaultValue (:default-value field-def)
+         ::default-value (:default-value field-def)
          ::type-map (:type field-def)}))))
 
 (defn ^:private resolve-possible-types
@@ -205,6 +207,75 @@
   (when (::type-map value)
     (resolve-nested-type context nil value)))
 
+(defmulti emit-default-value
+  (fn [schema type-map value]
+    (cond-let
+      (nil? value)
+      ::null
+
+      :let [kind (:kind type-map)]
+
+      (= :root kind)
+      (get-in schema [(:type type-map) :category])
+
+      :else
+      kind)))
+
+(defmethod emit-default-value ::null
+  [_ _ _]
+  nil)
+
+(defmethod emit-default-value :non-null
+  [schema type-map value]
+  (emit-default-value schema (:type type-map) value))
+
+(defmethod emit-default-value :scalar
+  [schema type-map value]
+  (let [type-name (:type type-map)
+        scalar-def (get schema type-name)
+        serialized (-> scalar-def :serialize (s/conform value))]
+    (if (string? serialized)
+      (json/write-str serialized)
+      (str serialized))))
+
+(defmethod emit-default-value :enum
+  [_ _ value]
+  (name value))
+
+(defmethod emit-default-value :list
+  [schema type-map value]
+  (let [nested (:type type-map)]
+    (str "["
+         (->> value
+              (map #(emit-default-value schema nested %))
+              (str/join ","))
+         "]")))
+
+(defmethod emit-default-value :input-object
+  [schema type-map value]
+  (let [type-def (get schema (:type type-map))
+        kvs (keep (fn [field-def]
+                    (let [field-name (:field-name field-def)
+                          field-value (emit-default-value schema
+                                                          (:type field-def)
+                                                          (get value field-name))]
+                      (when field-value
+                        (str \"
+                             (name field-name)
+                             "\":"
+                             field-value))))
+                  (->> type-def :fields vals (sort-by :field-name)))]
+    (str "{"
+         (str/join "," kvs)
+         "}")))
+
+
+(defn ^:private default-value
+  [context _ input-value]
+  (emit-default-value (get context constants/schema-key)
+                      (::type-map input-value)
+                      (::default-value input-value)))
+
 (defn introspection-schema
   "Builds an returns the introspection schema, which can be merged into the user schema."
   []
@@ -220,4 +291,5 @@
                               :nested-type resolve-nested-type
                               :interfaces resolve-interfaces
                               :of-type resolve-of-type
-                              :possible-types resolve-possible-types})))
+                              :possible-types resolve-possible-types
+                              :default-value default-value})))

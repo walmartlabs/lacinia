@@ -46,7 +46,8 @@
     :description {:type String}
     :type {:type (non-null :__Type)
            :resolve :nested-type}
-    :defaultValue {:type String}}}
+    :defaultValue {:type String
+                   :resolve :default-value}}}
 
   :__EnumValue
   {:fields
