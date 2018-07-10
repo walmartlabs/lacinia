@@ -286,7 +286,7 @@
 ;; is passed and should return.
 (s/def ::resolve (s/or :function ::resolver-fn
                        :protocol ::resolver-type))
-(s/def ::resolver-fn fn?)
+(s/def ::resolver-fn ifn?)
 (s/def ::resolver-type #(satisfies? resolve/FieldResolver %))
 (s/def ::field (s/keys :opt-un [::description
                                 ::resolve
@@ -354,7 +354,7 @@
 (s/def ::arguments (s/nilable (s/map-of ::schema-key any?)))
 
 ;; Same issue as with ::resolve.
-(s/def ::stream fn?)
+(s/def ::stream ifn?)
 
 (s/def ::queries (s/map-of ::schema-key ::operation))
 (s/def ::mutations (s/map-of ::schema-key ::operation))
@@ -383,7 +383,7 @@
 
 ;; Again, this can be fleshed out once we have a handle on defining specs for
 ;; functions:
-(s/def ::default-field-resolver fn?)
+(s/def ::default-field-resolver ifn?)
 
 (s/def ::compile-options (s/keys :opt-un [::default-field-resolver]))
 
