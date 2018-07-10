@@ -61,7 +61,7 @@
                                {:queries/search (fn [_ args _]
                                                   [(pr-str args)])})]
     ;; First we make it easy, don't try to make it promote a single value to a list:
-    #_(is (= {:data {:search ["{:filter {:max_count 5, :terms [\"lego\"]}}"]}}
+    (is (= {:data {:search ["{:filter {:max_count 5, :terms [\"lego\"]}}"]}}
            (execute schema
                     "query($t: [String]) { search(filter: {terms: $t, max_count: 5}) }"
                     {:t ["lego"]}
