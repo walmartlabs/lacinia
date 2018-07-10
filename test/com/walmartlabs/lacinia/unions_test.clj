@@ -59,6 +59,7 @@
 (defn resolve-search+
   [_ _ _]
   [(tag-with-type example-business :business)
+   nil
    (tag-with-type example-employee :employee)])
 
 (defn execute [compiled-schema q]
@@ -97,6 +98,7 @@
                 ... on employee { id family_name }}}}"
         result (execute schema q)]
     (is (= {:data {:search [{:id "1000" :name "General Products"}
+                            nil
                             {:id "2000" :family_name "Wu"}]}}
            result))))
 
@@ -106,6 +108,8 @@
 (defn resolve-search-types
   [_ _ _]
   [(map->Business example-business)
+   ;; nil is allowed as the type is not explicitly non-null
+   nil
    (map->Employee example-employee)])
 
 (deftest resolve-via-object-tag
@@ -120,6 +124,7 @@
                 ... on employee { id family_name }}}}"
         result (execute schema q)]
     (is (= {:data {:search [{:id "1000" :name "General Products"}
+                            nil
                             {:id "2000" :family_name "Wu"}]}}
            result))))
 

@@ -651,11 +651,12 @@
 
         selector (if union-or-interface?
                    (let [member-types (:members field-type)]
-                     (fn select-allowed-types [{:keys [resolved-type]
+                     (fn select-allowed-types [{:keys [resolved-type resolved-value]
                                                 :as selector-context}]
                        (cond
 
-                         (contains? member-types resolved-type)
+                         (or (nil? resolved-value)
+                             (contains? member-types resolved-type))
                          (selector selector-context)
 
                          (nil? resolved-type)
