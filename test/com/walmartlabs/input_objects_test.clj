@@ -55,6 +55,25 @@
                     {:g {:name "Backgammon"}}
                     nil)))))
 
+
+(deftest allows-for-variables-inside-nested-objects
+  (let [schema (compile-schema "input-object-schema.edn"
+                               {:queries/search (fn [_ args _]
+                                                  [(pr-str args)])})]
+    ;; First we make it easy, don't try to make it promote a single value to a list:
+    (is (= {:data {:search ["{:filter {:max_count 5, :terms [\"lego\"]}}"]}}
+           (execute schema
+                    "query($t: [String]) { search(filter: {terms: $t, max_count: 5}) }"
+                    {:t ["lego"]}
+                    nil)))
+
+    ;; Here we're testing promotion of a single value to a list of that value
+    (is (= {:data {:search ["{:filter {:max_count 5, :terms [\"lego\"]}}"]}}
+           (execute schema
+                    "query($t: String) { search(filter: {terms: $t, max_count: 5}) }"
+                    {:t "lego"}
+                    nil)))))
+
 (deftest correct-error-for-unknown-field-in-input-object
   (let [schema (compile-schema "input-object-schema.edn"
                                {:queries/search (fn [_ args _]
@@ -73,15 +92,20 @@
            (execute schema
                     "{ search(filter: {term: \"lego\", max_count: 5}) }")))
 
-    (is (= {:errors [{:field-name :term
+    (is (= {:errors [{:argument :filter
+                      :field :search
+                      :field-name :term
                       :input-object-fields [:max_count
                                             :terms]
                       :input-object-type :Filter
-                      :message "Field not defined for input object."}]}
+                      :locations [{:column 23
+                                   :line 2}]
+                      :message "Field not defined for input object."
+                      :query-path []}]}
            (execute schema
                     "query($f : Filter) {
                       search(filter: $f)
                     }"
                     {:f {:term "lego"
                          :max_count 5}}
-                    nil)))1))
+                    nil)))))

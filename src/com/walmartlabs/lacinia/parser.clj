@@ -17,7 +17,7 @@
   (:require
     [clojure.string :as str]
     [com.walmartlabs.lacinia.internal-utils
-     :refer [cond-let update? q map-vals filter-vals
+     :refer [cond-let update? q map-vals filter-vals remove-vals
              with-exception-context throw-exception to-message
              keepv as-keyword *exception-context*]]
     [com.walmartlabs.lacinia.schema :as schema]
@@ -413,6 +413,15 @@
            var-has-default?)
       (recur var-type a-type var-has-default?)
 
+      ;; This is the special case where a single value variable may be promoted
+      ;; for assignment to a list argument.
+
+      (and (= a-kind :list)
+           (not= v-kind :list))
+      ;; Check if the type of the list argument is compatible, by stripping the :list qualifier
+      ;; from the argument type.
+      (recur var-type a-type var-has-default?)
+
       ;; At this point we've stripped off non-null on the arg or var side.  We should
       ;; be at a meeting point, either both :list or both :root.
       (not= a-kind v-kind)
@@ -420,7 +429,6 @@
 
       ;; Then :list, strip that off to see if the element type of the list is compatible.
       ;; The default, if any, applied to the list, not the values inside the list.
-      ;; TODO: This feels suspect, handling of list types is probably more complex than this.
       (not= :root a-kind)
       (recur v-type a-type false)
 
@@ -465,7 +473,6 @@
    and returns the extracted variable value."
   (fn [schema argument-definition [arg-type _]]
     arg-type))
-
 
 (defn ^:private construct-literal-argument
   [schema result argument-type arg-value]
@@ -518,10 +525,10 @@
                          (let [v (get result k)
                                field-type (get object-fields k)]
                            (when-not (contains? object-fields k)
-                             (throw (ex-info "Field not defined for input object."
-                                             {:field-name k
-                                              :input-object-type nested-type
-                                              :input-object-fields (-> object-fields keys sort vec)})))
+                             (throw-exception "Field not defined for input object."
+                                              {:field-name k
+                                               :input-object-type nested-type
+                                               :input-object-fields (-> object-fields keys sort vec)}))
                            (assoc acc k (construct-literal-argument schema v field-type arg-value))))
                        {}
                        (keys result)))]
@@ -536,9 +543,10 @@
   (process-literal-argument schema {:type argument-type} (construct-literal-argument schema result argument-type arg-value)))
 
 (defmethod process-dynamic-argument :variable
-  [schema argument-definition [_ arg-value]]
+  [schema argument-definition arg]
   ;; ::variables is stashed into schema by xform-query
-  (let [captured-context *exception-context*
+  (let [[_ arg-value] arg
+        captured-context *exception-context*
         variable-def (get-in schema [::variables arg-value])]
     (when (nil? variable-def)
       (throw-exception (format "Argument references undeclared variable %s."
@@ -560,12 +568,12 @@
             :let [result (get variables arg-value)]
 
             ;; So, when a client provides variables, sometimes you get a string
-            ;; when you expect a keyword for an enum. Can't help that, when the alue
+            ;; when you expect a keyword for an enum. Can't help that, when the value
             ;; comes from a variable, there's no mechanism until we reach right here to convert it
             ;; to a keyword.
 
             (some? result)
-            {:value (substitute-variable schema result (:type argument-definition) arg-value)}
+            (substitute-variable schema result (:type argument-definition) arg-value)
 
             ;; TODO: This is only triggered if a variable is referenced, omitting a non-nillable
             ;; variable should be an error, regardless.
@@ -576,15 +584,15 @@
 
             ;; variable has a default value that could be NULL
             (contains? variable-def :default-value)
-            {:value (:default-value variable-def)}
+            (:default-value variable-def)
 
             ;; argument has a default value that could be NULL
             (contains? argument-definition :default-value)
-            {:value (:default-value argument-definition)}
+            (:default-value argument-definition)
 
             ;; variable value is set to NULL
             (contains? variables arg-value)
-            {:value result}
+            result
 
             non-nullable?
             (throw-exception (format "Variable %s is null, but supplies the value for a non-nullable argument."
@@ -592,7 +600,17 @@
                              {:variable-name arg-value})
 
             :else
-            nil))))))
+            ::omit-argument))))))
+
+(declare ^:private process-arguments)
+
+(defmethod process-dynamic-argument :object
+  [schema argument-definition arg]
+  (let [object-fields (->> argument-definition :type :type (get schema) :fields)
+        [literal-values dynamic-extractor] (process-arguments schema object-fields (second arg))]
+    (fn [arguments]
+      (merge literal-values
+             (dynamic-extractor arguments)))))
 
 (defn ^:private construct-dynamic-arguments-extractor
   [schema argument-definitions arguments]
@@ -620,11 +638,11 @@
       ;; the variables and returns the actual value to use.
       (fn [variables]
         (->> (map-vals #(% variables) dynamic-args)
-             ;; keep arguments that have a matching variable provided.
-             ;; :value in value-map might be NULL but it's still a
-             ;; provided value (e.g. may be used to indicate deletion)
-             (filter-vals some?)
-             (map-vals :value))))))
+             ;; Some arguments may have a null value, or a null default value.
+             ;; However, if the argument is not specified at all, and has no default value
+             ;; then the ::omit-argument value is provided, and that marks an argument to
+             ;; be removed entirely.
+             (remove-vals #(= % ::omit-argument)))))))
 
 (defn ^:private disj*
   [set ks]
