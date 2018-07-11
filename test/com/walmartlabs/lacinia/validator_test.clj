@@ -16,8 +16,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [com.walmartlabs.lacinia :refer [execute]]
             [com.walmartlabs.lacinia.schema :as schema]
-            [com.walmartlabs.test-schema :refer [test-schema]])
-  (:import (clojure.lang ExceptionInfo)))
+            [com.walmartlabs.test-schema :refer [test-schema]]))
 
 ;;-------------------------------------------------------------------------------
 ;; ## Tests

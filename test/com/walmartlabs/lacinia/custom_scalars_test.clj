@@ -113,10 +113,9 @@
                   :errors [{:locations [{:column 12
                                          :line 1}]
                             :message "Invalid value for a scalar type."
-                            :query-path [:events
-                                         :lookup]
-                            :type :Event
-                            :value "1"}]}
+                            :path [:events :lookup]
+                            :extensions {:type :Event
+                                         :value "1"}}]}
                  (execute schema q2 nil nil))
               "should return error message"))))))
 
@@ -312,8 +311,8 @@
               :errors [{:message "Non-nullable field was null.",
                         :locations [{:column 31
                                      :line 2}]
-                        :query-path [:shout]
-                        :arguments {:words '$words}}]}
+                        :path [:shout]
+                        :extensions {:arguments {:words '$words}}}]}
              (execute schema "query ($words: [[[CustomType]]]) {
                               shout(words: $words)
                             }"
@@ -477,11 +476,11 @@
 
 
       (is (= {:data {:test nil}
-              :errors [{:arguments {:in "5"}
-                        :locations [{:column 3
+              :errors [{:locations [{:column 3
                                      :line 1}]
                         :message "5 is too big."
-                        :query-path [:test]}]}
+                        :path [:test]
+                        :extensions {:arguments {:in "5"}}}]}
              (execute schema
                       "{ test (in:5) }"
                       nil

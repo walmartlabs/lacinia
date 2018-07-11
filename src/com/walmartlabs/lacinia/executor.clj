@@ -27,9 +27,9 @@
     (com.walmartlabs.lacinia.resolve ResolveCommand)))
 
 (defn ^:private ex-info-map
-  [field-selection]
+  [field-selection execution-context]
   (remove-vals nil? {:locations [(:location field-selection)]
-                     :query-path (:query-path field-selection)
+                     :path (:path execution-context)
                      :arguments (:reportable-arguments field-selection)}))
 
 (defn ^:private assert-and-wrap-error
@@ -55,14 +55,28 @@
                          "each containing, at minimum, a :message key and a string value.")
                     {:error error-map-or-maps}))))
 
+(defn ^:private structured-error-map
+  "Converts an error map and extra data about location, path, etc. into the
+  correct format:  top level keys :message, :path, and :location, and anything else
+  under a :extensions key."
+  [error-map extra-data]
+  (let [{:keys [message]} error-map
+        {:keys [locations path]} extra-data
+        extensions (merge (dissoc error-map :message)
+                          (dissoc extra-data :locations :path))]
+    (cond-> {:message message
+             :locations locations
+             :path path}
+      (seq extensions) (assoc :extensions extensions))))
+
 (defn ^:private enhance-errors
   "From an error map, or a collection of error maps, add additional data to
   each error, including location and arguments.  Returns a seq of error maps."
-  [field-selection error-or-errors]
+  [field-selection execution-context error-or-errors]
   (let [errors-seq (assert-and-wrap-error error-or-errors)]
     (when errors-seq
-      (let [enhanced-data (ex-info-map field-selection)]
-        (map #(merge % enhanced-data) errors-seq)))))
+      (let [extra-data (ex-info-map field-selection execution-context)]
+        (map #(structured-error-map % extra-data) errors-seq)))))
 
 (defn ^:private field-selection-resolver
   "Returns the field resolver for the provided field selection.
@@ -154,7 +168,8 @@
   ;; error-maps during execution.
   ;; timings is usually nil, or may be an Atom containing an empty map, which
   ;; accumulates timing data during execution.
-  [context resolved-value resolved-type errors timings])
+  ;; path is used when reporting errors
+  [context resolved-value resolved-type errors timings path])
 
 (defn ^:private null-to-nil
   [v]
@@ -331,80 +346,83 @@
 
   Accumulates errors in the execution context as a side-effect."
   [execution-context selection]
-  (let
-    [is-fragment? (-> selection :selection-type (not= :field))
-     sub-selections (:selections selection)
-     ;; The selector pipeline validates the resolved value and handles things like iterating over
-     ;; seqs before (repeatedly) invoking the callback, at which point, it is possible to
-     ;; perform a recursive selection on the nested fields of the origin field.
-     selector-callback
-     (fn selector-callback [{:keys [errors resolved-value resolved-type execution-context]}]
-       ;; Any errors from the resolver (via with-errors) or anywhere along the
-       ;; selection pipeline are enhanced and added to the execution context.
-       (when errors
-         (->> errors
-              (mapcat #(enhance-errors selection %))
-              (swap! (:errors execution-context) into)))
+  (let [is-fragment? (-> selection :selection-type (not= :field))
+        ;; When starting to execute a field, add the
+        execution-context' (if is-fragment?
+                             execution-context
+                             (update execution-context :path conj (:alias selection)))
+        sub-selections (:selections selection)
+        ;; The selector pipeline validates the resolved value and handles things like iterating over
+        ;; seqs before (repeatedly) invoking the callback, at which point, it is possible to
+        ;; perform a recursive selection on the nested fields of the origin field.
+        selector-callback
+        (fn selector-callback [{:keys [errors resolved-value resolved-type execution-context]}]
+          ;; Any errors from the resolver (via with-errors) or anywhere along the
+          ;; selection pipeline are enhanced and added to the execution context.
+          (when errors
+            (->> errors
+                 (mapcat #(enhance-errors selection execution-context' %))
+                 (swap! (:errors execution-context) into)))
 
-       (if (and (some? resolved-value)
-                resolved-type
-                (seq sub-selections))
-         (execute-nested-selections
-           (assoc execution-context
-                  :resolved-value resolved-value
-                  :resolved-type resolved-type)
-           sub-selections)
-         (resolve/resolve-as resolved-value)))
-     ;; In a concrete type, we know the selector from the field definition
-     ;; (a field definition on a concrete object type).  Otherwise, we need
-     ;; to use the type of the parent node's resolved value, just
-     ;; as we do to get a resolver.
-     resolved-type (:resolved-type execution-context)
-     selector (if is-fragment?
-                schema/floor-selector
-                (or (-> selection :field-definition :selector)
-                    (let [field-name (:field selection)]
-                      (-> execution-context
-                          :context
-                          (get constants/schema-key)
-                          (get resolved-type)
-                          :fields
-                          (get field-name)
-                          :selector
-                          (or (throw (ex-info "Sanity check: no selector."
-                                              {:type-name resolved-type
-                                               :selection selection})))))))
+          (if (and (some? resolved-value)
+                   resolved-type
+                   (seq sub-selections))
+            (execute-nested-selections
+              (assoc execution-context
+                     :resolved-value resolved-value
+                     :resolved-type resolved-type)
+              sub-selections)
+            (resolve/resolve-as resolved-value)))
+        ;; In a concrete type, we know the selector from the field definition
+        ;; (a field definition on a concrete object type).  Otherwise, we need
+        ;; to use the type of the parent node's resolved value, just
+        ;; as we do to get a resolver.
+        resolved-type (:resolved-type execution-context')
+        selector (if is-fragment?
+                   schema/floor-selector
+                   (or (-> selection :field-definition :selector)
+                       (let [field-name (:field selection)]
+                         (-> execution-context'
+                             :context
+                             (get constants/schema-key)
+                             (get resolved-type)
+                             :fields
+                             (get field-name)
+                             :selector
+                             (or (throw (ex-info "Sanity check: no selector."
+                                                 {:type-name resolved-type
+                                                  :selection selection})))))))
 
-     process-resolved-value (fn [resolved-value]
-                              (loop [resolved-value resolved-value
-                                     selector-context (->SelectorContext execution-context
-                                                                         selector-callback
-                                                                         nil
-                                                                         nil)]
-                                ;; Using satisfies? is a huge performance hit. ResolveCommand is not
-                                ;; intended as a general extension point, so we don't need to worry about
-                                ;; it being extended to existing types.
-                                (if (instance? ResolveCommand resolved-value)
-                                  (recur (resolve/nested-value resolved-value)
-                                         (resolve/apply-command resolved-value selector-context))
-                                  ;; Finally to a real value, not a wrapper.  The commands may have
-                                  ;; modified the :errors or :execution-context keys, and the pipeline
-                                  ;; will do the rest. Errors will be dealt with in the callback.
-                                  (-> selector-context
-                                      (assoc :callback selector-callback
-                                             :resolved-value resolved-value)
-                                      selector))))
+        process-resolved-value (fn [resolved-value]
+                                 (loop [resolved-value resolved-value
+                                        selector-context (->SelectorContext execution-context'
+                                                                            selector-callback
+                                                                            nil
+                                                                            nil)]
+                                   ;; Using satisfies? is a huge performance hit. ResolveCommand is not
+                                   ;; intended as a general extension point, so we don't need to worry about
+                                   ;; it being extended to existing types.
+                                   (if (instance? ResolveCommand resolved-value)
+                                     (recur (resolve/nested-value resolved-value)
+                                            (resolve/apply-command resolved-value selector-context))
+                                     ;; Finally to a real value, not a wrapper.  The commands may have
+                                     ;; modified the :errors or :execution-context keys, and the pipeline
+                                     ;; will do the rest. Errors will be dealt with in the callback.
+                                     (-> selector-context
+                                         (assoc :callback selector-callback
+                                                :resolved-value resolved-value)
+                                         selector))))
 
-     direct-fn (-> selection :field-definition :direct-fn)]
+        direct-fn (-> selection :field-definition :direct-fn)]
 
     ;; For fragments, we start with a single value and it passes right through to
     ;; sub-selections, without changing value or type.
     (cond
 
       is-fragment?
-      (selector (->SelectorContext execution-context
+      (selector (->SelectorContext execution-context'
                                    selector-callback
-                                   (:resolved-value execution-context)
+                                   (:resolved-value execution-context')
                                    resolved-type))
 
       ;; Optimization: for simple fields there may be direct function.
@@ -413,7 +431,7 @@
       ;; the selector, which returns a ResolverResult. Thus we've peeled back at least one layer
       ;; of ResolveResultPromise.
       direct-fn
-      (-> execution-context
+      (-> execution-context'
           :resolved-value
           direct-fn
           process-resolved-value)
@@ -426,7 +444,7 @@
 
       :else
       (let [final-result (resolve/resolve-promise)]
-        (resolve/on-deliver! (invoke-resolver-for-field execution-context selection)
+        (resolve/on-deliver! (invoke-resolver-for-field execution-context' selection)
                              (fn receive-resolved-value-from-field [resolved-value]
                                (resolve/on-deliver! (process-resolved-value resolved-value)
                                                     (fn deliver-selection-for-field [resolved-value]
@@ -456,6 +474,7 @@
         execution-context (map->ExecutionContext {:context context'
                                                   :errors errors
                                                   :timings timings
+                                                  :path []
                                                   :resolved-value (::resolved-value context)})
         operation-result (if (= :mutation operation-type)
                            (execute-nested-selections-sync execution-context enabled-selections)

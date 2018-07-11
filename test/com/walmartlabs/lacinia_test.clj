@@ -406,7 +406,7 @@
   (let [q "{ droid(id: \"2001\") { accessories }}"
         executed (execute default-schema q nil nil)]
     (is (= {:data {:droid {:accessories nil}}
-            :errors [{:query-path [:droid :accessories]
+            :errors [{:path [:droid :accessories]
                       :message "Field resolver returned a single value, expected a collection of values."
                       :locations [{:line 1
                                    :column 23}]}]}
@@ -414,7 +414,7 @@
   (let [q "{droid(id: \"2000\") { incept_date }}"
         executed (execute default-schema q nil nil)]
     (is (= {:data {:droid {:incept_date nil}}
-            :errors [{:query-path [:droid :incept_date]
+            :errors [{:path [:droid :incept_date]
                       :message "Field resolver returned a collection of values, expected only a single value."
                       :locations [{:line 1
                                    :column 22}]}]}
@@ -459,10 +459,9 @@
     (is (= [{:locations [{:column 10
                           :line 1}]
              :message "Int value outside of allowed 32 bit integer range."
-             :query-path [:test
-                          :int]
-             ;; This is the pr-str of the value:
-             :value "1000000000000000000000000000000000000000000000000000000000000N"}]
+             :path [:test :int]
+             :extensions {;; This is the pr-str of the value:
+                          :value "1000000000000000000000000000000000000000000000000000000000000N"}}]
            (:errors query-result)))
     (is (= java.lang.Double
            (class (get-in query-result [:data :test :float]))))
@@ -481,17 +480,17 @@
   (let [q "{ human(id: \"12345678\") { name }}"
         executed (execute default-schema q nil nil)]
     (is (= {:data nil
-            :errors [{:arguments {:id "12345678"}
+            :errors [{:extensions {:arguments {:id "12345678"}}
                       :locations [{:column 3
                                    :line 1}]
                       :message "Non-nullable field was null."
-                      :query-path [:human]}]}
+                      :path [:human]}]}
            executed)))
   (let [q "{ human(id: \"1000\") { name foo }}"
         executed (execute default-schema q nil nil)]
     (is (= {:data {:human {:name "Luke Skywalker" :foo nil}}
             :errors [{:message "Non-nullable field was null."
-                      :query-path [:human :foo]
+                      :path [:human :foo]
                       :locations [{:line 1
                                    :column 28}]}]}
            executed)))
@@ -500,7 +499,7 @@
           executed (execute default-schema q nil nil)]
       (is (= {:data nil
               :errors [{:message "Non-nullable field was null."
-                        :query-path [:hero :foo]
+                        :path [:hero :foo]
                         :locations [{:line 1
                                      :column 10}]}]}
              executed)
@@ -510,7 +509,7 @@
           executed (execute default-schema q nil nil)]
       (is (= {:data nil
               :errors [{:message "Non-nullable field was null."
-                        :query-path [:hero :arch_enemy]
+                        :path [:hero :arch_enemy]
                         :locations [{:line 1
                                      :column 10}]}]}
              executed)
@@ -522,7 +521,7 @@
               :errors [{:message "Non-nullable field was null."
                         :locations [{:line 1
                                      :column 20}]
-                        :query-path [:hero :friends :arch_enemy]}]}
+                        :path [:hero :friends :arch_enemy]}]}
              executed)
           "nulls the first nullable object after a non-nullable field returns null")))
   (testing "nullable list of nullable objects (friends) with nullable selections containing non-nullable field"
@@ -532,7 +531,7 @@
               :errors [{:message "Non-nullable field was null."
                         :locations [{:line 1
                                      :column 34}]
-                        :query-path [:hero :friends :best_friend :foo]}]}
+                        :path [:hero :friends :best_friend :foo]}]}
              executed)
           "nulls the first nullable object after a non-nullable field returns null")))
   (testing "non-nullable list of nullable objects (family) with non-nullable selections"
@@ -542,44 +541,9 @@
               :errors [{:message "Non-nullable field was null."
                         :locations [{:line 1
                                      :column 19}]
-                        :query-path [:hero :family :arch_enemy]}]}
+                        :path [:hero :family :arch_enemy]}]}
              executed)
-          "nulls the first nullable object after a non-nullable field returns null")))
-
-  ;; TODO tests below fail because of types not being expanded correctly
-  ;; look: schema/expand-types-in-field
-  ;; they're not marked as multiple? and/or non-nullable? but they should be
-
-  #_(testing "nullable list of non-nullable objects (enemies) with non-nullable selection"
-      (let [q "{ hero { enemies { arch_enemy { foo } }}}"
-            executed (execute default-schema q nil nil)]
-        (is (= {:data {:hero {:enemies []}}
-                :errors [{:message "Non-nullable field was null.",
-                          :locations [{:line 1, :column 20}],
-                          :query-path [:hero :enemies :arch_enemy :foo]}
-                         {:message "Non-nullable field was null.",
-                          :locations [{:line 1, :column 20}],
-                          :query-path [:hero :enemies :arch_enemy :foo]}
-                         {:message "Non-nullable field was null.",
-                          :locations [{:line 1, :column 20}],
-                          :query-path [:hero :enemies :arch_enemy :foo]}]}
-               executed)
-            "nulls the first nullable object after a non-nullable field returns null")))
-  #_(testing "non-nullable list of non-nullable objects (droids) with non-nullable selections"
-      (let [q "{ hero { droids { arch_enemy { foo } } } }"
-            executed (execute default-schema q nil nil)]
-        (is (= {:data {:hero nil}
-                :errors [{:message "Non-nullable field was null.",
-                          :locations [{:line 1, :column 20}],
-                          :query-path [:hero :enemies :bar]}
-                         {:message "Non-nullable field was null.",
-                          :locations [{:line 1, :column 20}],
-                          :query-path [:hero :enemies :bar]}
-                         {:message "Non-nullable field was null.",
-                          :locations [{:line 1, :column 20}],
-                          :query-path [:hero :enemies :bar]}]}
-               executed)
-            "nulls everything"))))
+          "nulls the first nullable object after a non-nullable field returns null"))))
 
 (deftest default-value-test
   (testing "Should use the default-value"

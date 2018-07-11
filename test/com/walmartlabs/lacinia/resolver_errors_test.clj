@@ -53,8 +53,7 @@
           :errors [{:locations [{:column 10
                                  :line 1}]
                     :message "Exception in error_field resolver."
-                    :query-path [:root
-                                 :error_field]}]}
+                    :path [:root :error_field]}]}
          (execute default-schema
                   "{ root { error_field }}"))))
 
@@ -62,24 +61,20 @@
   (is (= [{:locations [{:column 10
                         :line 1}]
            :message "1"
-           :other-key 100
-           :query-path [:root
-                        :multiple_errors_field]}
+           :path [:root :multiple_errors_field]
+           :extensions {:other-key 100}}
           {:locations [{:column 10
                         :line 1}]
            :message "2"
-           :query-path [:root
-                        :multiple_errors_field]}
+           :path [:root :multiple_errors_field]}
           {:locations [{:column 10
                         :line 1}]
            :message "3"
-           :query-path [:root
-                        :multiple_errors_field]}
+           :path [:root :multiple_errors_field]}
           {:locations [{:column 10
                         :line 1}]
            :message "4"
-           :query-path [:root
-                        :multiple_errors_field]}]
+           :path [:root :multiple_errors_field]}]
          (->> (execute default-schema "{ root { multiple_errors_field }}")
               :errors
               (sort-by :message)))))
@@ -114,8 +109,7 @@
                   :errors [{:locations [{:column 46
                                          :line 1}]
                             :message "Some error"
-                            :query-path [:container
-                                         :contents]}]}
+                            :path [:container :contents]}]}
                  (execute-query q)))))
       (testing "when the sub-selector returns an empty collection"
         (let [q "query foo { container(id:\"empty-container\") { contents { name } } }"]
@@ -123,6 +117,5 @@
                   :errors [{:locations [{:column 47
                                          :line 1}]
                             :message "Some error"
-                            :query-path [:container
-                                         :contents]}]}
+                            :path [:container :contents]}]}
                  (execute-query q))))))))
