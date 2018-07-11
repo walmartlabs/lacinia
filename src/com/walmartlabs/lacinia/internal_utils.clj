@@ -19,6 +19,9 @@
     [clojure.string :as str])
   (:import (clojure.lang Named)))
 
+(when (-> *clojure-version* :minor (< 9))
+  (require '[clojure.future :refer [simple-keyword? boolean?]]))
+
 (defmacro cond-let
   "A version of `cond` that allows for `:let` terms. There is hope that someday, perhaps
   after Rich Hickey retires, this will make it into clojure.core."
