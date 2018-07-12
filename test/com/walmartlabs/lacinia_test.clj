@@ -75,9 +75,9 @@
            (execute default-schema q {} nil {:operation-name "heroNameQuery"}))))
 
   (let [q "query heroNameQuery { hero { id name } } query dummyQuery { hero { id } }"]
-    (is (= {:errors [{:message "Multiple operations provided but no matching name found."
-                      :op-count 2
-                      :operation-name "notAQuery"}]}
+    (is (= {:errors [{:extensions {:op-count 2
+                                   :operation-name "notAQuery"}
+                      :message "Multiple operations provided but no matching name found."}]}
            (execute default-schema q {} nil {:operation-name "notAQuery"}))))
 
   (let [q "mutation changeHeroNameMutation ($from : String, $to: String) { changeHeroName(from: $from, to: $to) { name } }
@@ -234,13 +234,12 @@
            (execute default-schema q {:someId luke-id} nil)))
     (is (= {:data {:human {:name "Han Solo"}}}
            (execute default-schema q {:someId han-id} nil)))
-    (is (= {:errors [{:argument :id
-                      :field :human
+    (is (= {:errors [{:extensions {:argument :id
+                                   :variable-name :someId
+                                   :field :human}
                       :locations [{:column 14
                                    :line 2}]
-                      :message "No value was provided for variable `someId', which is non-nullable."
-                      :query-path []
-                      :variable-name :someId}]}
+                      :message "No value was provided for variable `someId', which is non-nullable."}]}
            (execute default-schema q {} nil)))))
 
 (deftest nested-variable-query
@@ -389,7 +388,6 @@
              }
             }"]
     (is (= {:errors [{:message "Inline fragment has a type condition on unknown type `foo'."
-                      :query-path [:human]
                       :locations [{:column 23
                                    :line 3}]}]}
            (execute default-schema q nil nil)))))

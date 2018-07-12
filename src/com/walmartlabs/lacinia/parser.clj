@@ -80,38 +80,6 @@
                            (cond-> node
                              (-> arguments :if false?) (assoc :disabled? true)))}}))
 
-(defn ^:private name-string-from
-  "Converts a Parser node into a string. The node looks like
-  this:
-
-  [:name
-    [:nameid \"foo\"]]
-
-  OR
-
-  [:name
-    [:operationType [:'query' \"query\"]]]"
-  [node]
-  (let [inner (second node)
-        inner-type (first inner)]
-    (if (= :nameid inner-type)
-      (second inner)
-      (-> inner second second))))
-
-(defn ^:private name-from
-  "Converts a Parser node into a keyword. The node looks like
-  this:
-
-  [:name
-    [:nameid \"foo\"]]
-
-  OR
-
-  [:name
-    [:operationType [:'query' \"query\"]]]"
-  [node]
-  (keyword (name-string-from node)))
-
 (declare ^:private xform-argument-map build-map-from-parsed-arguments)
 
 (defn ^:private xform-argument-value
@@ -679,14 +647,12 @@
 (defn ^:private default-node-map
   "Returns a map with the query path to the node and the location in the
   document."
-  [selection query-path]
-  {:query-path query-path
-   :location (meta selection)})
+  [selection]
+  {:location (meta selection)})
 
 (defn ^:private node-context
   [node-map]
-  {:query-path (:query-path node-map)
-   :locations [(:location node-map)]})
+  {:locations [(:location node-map)]})
 
 (defn ^:private convert-parsed-directives
   "Passed a seq of parsed directive nodes, returns a seq of executable directives."
@@ -902,12 +868,12 @@
 (defn ^:private normalize-selections
   "Starting with a selection (a field or fragment) recursively normalize any nested selections selections,
   and handle marking the node for any necessary prepare phase operations."
-  [schema m type query-path]
+  [schema m type]
   (let [sub-selections (:selections m)]
     (mark-node-for-prepare
       (if (seq sub-selections)
         (assoc m :selections (->> sub-selections
-                                  (mapv #(selection schema % type query-path))
+                                  (mapv #(selection schema % type))
                                   coalesce-selections))
         m))))
 
@@ -950,14 +916,11 @@
                                :selections selections)
                         (cond-> directives
                           (assoc :directives (convert-parsed-directives schema directives))))
-                  path-elem (keyword (-> m :fragment-name name)
-                                     (name on-type))
                   fragment-type (get schema on-type)]
               ;; TODO: Verify fragment type exists
               (normalize-selections schema
                                     m
-                                    fragment-type
-                                    [path-elem])))]
+                                    fragment-type)))]
     (into {} (comp (map f)
                    (map (juxt :fragment-name
                               #(finalize-fragment-def schema %))))
@@ -966,13 +929,13 @@
 (defmulti ^:private selection
   "A recursive function that parses the parsed query tree structure into the
    format used during execution; this involves tracking the current schema type
-   (initially, nil) and query path (which is used for error reporting)."
-  (fn [_schema parsed-selection _type _q-path]
+   (initially, nil)."
+  (fn [_schema parsed-selection _type]
     (:type parsed-selection)))
 
 (defmethod selection :field
-  [schema parsed-field type query-path]
-  (let [defaults (default-node-map parsed-field query-path)
+  [schema parsed-field type]
+  (let [defaults (default-node-map parsed-field)
         context (node-context defaults)
         result (with-exception-context context
                  (merge defaults (prepare-parsed-field parsed-field)))
@@ -983,7 +946,6 @@
                            (get-in type [:fields field]))
         field-type (schema/root-type-name field-definition)
         nested-type (get schema field-type)
-        query-path' (conj query-path field)
         selection (with-exception-context (assoc context :field field)
                     (when (nil? nested-type)
                       (if (scalar? type)
@@ -1010,7 +972,6 @@
                              :selection-type :field
                              :directives (convert-parsed-directives schema directives)
                              :alias (or alias field)
-                             :query-path query-path'
                              :leaf? (scalar? nested-type)
                              :concrete-type? (or is-typename-metafield?
                                                  (-> type :category #{:object :input-object} some?))
@@ -1018,11 +979,11 @@
                              :arguments literal-arguments
                              ::arguments-extractor dynamic-arguments-extractor
                              :field-definition field-definition)))]
-    (normalize-selections schema selection nested-type query-path')))
+    (normalize-selections schema selection nested-type)))
 
 (defmethod selection :inline-fragment
-  [schema parsed-inline-fragment _type q-path]
-  (let [defaults (default-node-map parsed-inline-fragment q-path)]
+  [schema parsed-inline-fragment _type]
+  (let [defaults (default-node-map parsed-inline-fragment)]
     (with-exception-context (node-context defaults)
       (let [{type-name :on-type
              :keys [selections directives]} parsed-inline-fragment
@@ -1035,19 +996,17 @@
                                    (q type-name))))
 
         (let [concrete-types (expand-fragment-type-to-concrete-types fragment-type)
-              fragment-path-term (keyword "..." (name type-name))
               inline-fragment (-> selection
                                   (assoc :selection-type :inline-fragment
                                          :concrete-types concrete-types)
                                   (cond-> directives (assoc :directives (convert-parsed-directives schema directives))))]
           (normalize-selections schema
                                 inline-fragment
-                                fragment-type
-                                (conj q-path fragment-path-term)))))))
+                                fragment-type))))))
 
 (defmethod selection :named-fragment
-  [schema parsed-fragment _type q-path]
-  (let [defaults (default-node-map parsed-fragment q-path)
+  [schema parsed-fragment _type]
+  (let [defaults (default-node-map parsed-fragment)
         {:keys [fragment-name directives]} parsed-fragment]
     (with-exception-context (node-context defaults)
       ;; TODO: Verify that fragment name exists?
@@ -1169,7 +1128,7 @@
 
         ;; Explicitly defeat some lazy evaluation, to ensure that validation exceptions are thrown
         ;; from within this function call.
-        selections (coalesce-selections (mapv #(selection schema' % root []) selections))]
+        selections (coalesce-selections (mapv #(selection schema' % root) selections))]
 
     (when (and (= :subscription operation-type)
                (not= 1 (count selections)))

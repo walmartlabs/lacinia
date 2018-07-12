@@ -155,7 +155,7 @@
                                  ;; resolved multiple times because it is inside a nested value, or resolved multiple
                                  ;; times because of multiple top-level operations.
                                  (swap! timings
-                                        update-in (conj (:query-path field-selection) :execution/timings)
+                                        update-in (conj (:path execution-context) :execution/timings)
                                         (fnil conj []) timing))
                                (resolve/deliver! final-result resolved-value)))
         final-result))))

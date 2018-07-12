@@ -82,9 +82,8 @@
     (is (= 1 (-> c1 ::graphql/selection :selections count)))
 
     (is (= {:field :name
-            :alias :name
-            :query-path [:human :name]}
-           (-> c1 ::graphql/selection :selections first (select-keys [:field :alias :query-path]))))))
+            :alias :name}
+           (-> c1 ::graphql/selection :selections first (select-keys [:field :alias]))))))
 
 (deftest passes-nested-selections-to-resolve
   (let [q "query { human(id: \"1000\") { buddies: friends { name }}}"
@@ -112,9 +111,8 @@
            (:selection c2)))
 
     (is (= {:field :friends
-            :alias :buddies
-            :query-path [:human :friends]}
-           (-> c2 ::graphql/selection (select-keys [:field :alias :query-path]))))))
+            :alias :buddies}
+           (-> c2 ::graphql/selection (select-keys [:field :alias]))))))
 
 (deftest checks-that-bare-values-are-wrapped-as-a-tuple
   (let [return-value "What, me worry?"

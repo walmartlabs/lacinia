@@ -85,6 +85,21 @@
     (is (= {:data {:query {:mutation true}}}
            result))))
 
+(deftest document-parse-error
+  (let [schema (schema/compile {})
+        e (is (thrown? Throwable
+                       (parser/parse-query schema "query [hero]")))]
+    (when e
+      (is (= "Failed to parse GraphQL query." (.getMessage e)))
+      ;; TODO: See if we can get a proper column number here!
+      (is (= {:errors [{:locations [{:column nil
+                                     :line 1}]
+                        :message "extraneous input '[' expecting {'query', 'mutation', 'subscription', '(', '{', '@', NameId}"}
+                       {:locations [{:column nil
+                                     :line 1}]
+                        :message "mismatched input ']' expecting {'(', '{', '@'}"}]}
+             (ex-data e))))))
+
 (deftest requires-compiled-schema
   (is (thrown-with-msg? IllegalStateException
                         #"The provided schema has not been compiled"

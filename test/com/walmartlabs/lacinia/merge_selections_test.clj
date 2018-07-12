@@ -101,11 +101,11 @@ query ($who : String) {
 }" {:who "1000"}))))
 
 (deftest conflicting-arguments-are-identified
-  (is (= {:errors [{:arguments nil
-                    :field-name :human
-                    :incompatible-arguments {:id "1000"}
-                    :message "Different selections of field `human' of type `QueryRoot' have incompatible arguments. Use alias names if this is intentional."
-                    :object-name :QueryRoot}]}
+  (is (= {:errors [{:extensions {:arguments nil
+                                 :field-name :human
+                                 :incompatible-arguments {:id "1000"}
+                                 :object-name :QueryRoot}
+                    :message "Different selections of field `human' of type `QueryRoot' have incompatible arguments. Use alias names if this is intentional."}]}
          (q "
 {
   human {
