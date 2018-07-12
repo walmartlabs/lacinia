@@ -110,7 +110,7 @@ query ($who : String) {
 {
   human {
     name
-
+1
     friends {
       name
     }

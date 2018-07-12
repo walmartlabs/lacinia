@@ -329,3 +329,10 @@
 
       :else
       (run-benchmarks options))))
+
+(comment
+
+  (test-benchmarks)
+
+  )
+
