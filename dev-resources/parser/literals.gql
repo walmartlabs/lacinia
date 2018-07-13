@@ -2,6 +2,12 @@
   hello (i: 5
          f: 3.14
          s: "clojure"
+         bs: """
+    This is a block string indented
+    four characters.
+
+    Characters such as \t are not expanded.
+    """
          b: false
          n: null)
 }
