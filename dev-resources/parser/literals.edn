@@ -13,7 +13,7 @@
 
                        {:arg-name :bs
                         :arg-value {:type :string
-                                    :value "This is a block string indented\nfour characters.\n\nCharacters such as \\t are not expanded."}}
+                                    :value "This is a block string indented\nfour characters.\n\n  This line is indented an extra two.\n\nCharacters such as \\t are not expanded."}}
                        {:arg-name :b
                         :arg-value {:type :boolean
                                     :value "false"}}
