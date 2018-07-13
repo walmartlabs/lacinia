@@ -53,6 +53,7 @@ responding with JSON, it is also exceptionally useful for allowing backend syste
    samples
    clojure
    resources
+   ADRs <adrs/index>
 
    contributing
 
