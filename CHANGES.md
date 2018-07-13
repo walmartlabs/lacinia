@@ -1,5 +1,7 @@
 ## 0.29.0 -- UNRELEASED
 
+Lacinia now supports block strings (via `"""`) in query documents.
+
 ## 0.28.0 -- 21 Jun 2018
 
 Removed a potential race condition related to asynchronous field resolvers.
