@@ -1,6 +1,7 @@
 ## 0.29.0 -- UNRELEASED
 
-Lacinia now supports block strings (via `"""`) in query documents.
+Lacinia now supports block strings (via `"""`) in query and schema documents.
+However, we have not yet implemented using block strings as documentation in schemas.
 
 ## 0.28.0 -- 21 Jun 2018
 

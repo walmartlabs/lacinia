@@ -1,0 +1,14 @@
+{
+  type Query {
+   with_default(arg: String = """
+     line 1
+
+     line 3
+       indented line 4
+     line 5
+     """) : String
+  }
+}
+
+
+
