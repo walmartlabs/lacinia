@@ -16,7 +16,7 @@
   "Useful utility functions."
   (:require
     [com.walmartlabs.lacinia.internal-utils
-     :refer [to-message map-vals cond-let update? documentation-schema-path
+     :refer [to-message map-vals cond-let update? apply-description
              resolver-path]]))
 
 (defn ^:private attach-callbacks
@@ -136,7 +136,7 @@
   {:added "0.27.0"}
   [schema documentation]
   (reduce-kv (fn [schema' location description]
-               (assoc-in schema' (documentation-schema-path schema location) description))
+               (apply-description schema' location description))
              schema
              documentation))
 

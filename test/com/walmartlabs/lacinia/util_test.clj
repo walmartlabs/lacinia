@@ -128,3 +128,23 @@
         documentation {:Long "64 bit value"}]
     (is (= {:scalars {:Long {:description "64 bit value"}}}
            (util/inject-descriptions schema documentation)))))
+
+(deftest can-inject-enum-descriptions
+  (let [schema {:enums
+                ;; Test when the value is a string, keyword, symbol, or a map containing the
+                ;; enum value.
+                {:Status {:values [:info "warn" "error"
+                                   {:enum-value 'fatal
+                                    :deprecated "just use error"}]}}}
+        schema' (util/inject-descriptions schema {:Status/info "useful information"
+                                                  :Status/warn "just ignore"
+                                                  :Status/fatal "blew up real good"})]
+    (is (= {:Status {:values [{:enum-value :info
+                               :description "useful information"}
+                              {:enum-value "warn"
+                               :description "just ignore"}
+                              "error"
+                              {:enum-value 'fatal
+                               :deprecated "just use error"
+                               :description "blew up real good"}]}}
+           (:enums schema')))))

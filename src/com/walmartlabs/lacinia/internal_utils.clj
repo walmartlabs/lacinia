@@ -224,17 +224,29 @@
         (throw (ex-info "Error attaching documentation: type not found" {:type-name type-name}))))))
 
 (defn ^:private index-of
-  "Index of a value in a vector, or nil if not found."
-  [v value]
-  (->> v
-       (keep-indexed #(when (= %2 value)
+  "Returns index of first value in collection that satifies the predicate, or nil if not found."
+  [pred coll]
+  (->> coll
+       (keep-indexed #(when (pred %2)
                         %1))
        first))
 
-(defn documentation-schema-path
-  "Returns a sequence of keys representing the path where the
-  documentation string should be attached in the nested associative schema
-  structure.
+(defn ^:private enum-matcher
+  [^String enum-value]
+  (fn [enum-def]
+    (if (map? enum-def)
+      (= enum-value (-> enum-def :enum-value name))
+      (= enum-value (name enum-def)))))
+
+(defn ^:private apply-enum-description
+  [enum-def description]
+  (if (map? enum-def)
+    (assoc enum-def :description description)
+    {:enum-value enum-def
+     :description description}))
+
+(defn apply-description
+  "Adds a description to an element of the schema.
 
   `location` should be one of:
    - `:type`
@@ -249,8 +261,10 @@
    It is allowed to document individual enum values, but enum values do not have arguments
    (an exception will be thrown).
 
-   Scalars do not contain anything."
-  [schema location]
+   Scalars do not contain anything.
+
+   Returns an updated schema."
+  [schema location description]
   (cond-let
     :let [simple? (simple-keyword? location)
           type-name (if simple?
@@ -261,7 +275,7 @@
           root (type-root schema type-name)]
 
     simple?
-    [root type-name :description]
+    (assoc-in schema [root type-name :description] description)
 
     (= :unions root)
     (throw (ex-info "Error attaching documentation: union members may not be documented"
@@ -278,9 +292,9 @@
       (throw (ex-info "Error attaching documentation: enum values do not contain fields"
                       {:type-name type-name}))
       ;; The field-name is actually the enum value, in this context
-      (if-let [ix (index-of (get-in schema [root type-name :values])
-                            {:enum-value field-name'})]
-        [root type-name :values ix :description]
+      (if-let [ix (index-of (enum-matcher field-name)
+                            (get-in schema [root type-name :values]))]
+        (update-in schema [root type-name :values ix] apply-enum-description description)
         (throw (ex-info "Error attaching documentation: enum value not found"
                         {:type-name type-name
                          :enum-value field-name'}))))
@@ -290,8 +304,8 @@
                  [root type-name :fields field-name'])]
 
     (str/blank? arg-name)
-    (conj base :description)
+    (assoc-in schema (conj base :description) description)
 
     :else
-    (conj base :args (keyword arg-name) :description)))
+    (assoc-in schema (conj base :args (keyword arg-name) :description) description)))
 
