@@ -1,7 +1,15 @@
 ## 0.29.0 -- UNRELEASED
 
+Changes have started to bring Lacinia into compliance with
+the [June 2018 version of the GraphQL specification](https://github.com/facebook/graphql/releases/tag/June2018).
+
 Lacinia now supports block strings (via `"""`) in query and schema documents.
 However, we have not yet implemented using block strings as documentation in schemas.
+
+The error maps inside the `:error` key are now structured according to the spec;
+the top level keys are `:message`, `:locations`, and `:path`, and
+`:extensions` (which contains any other keys in the error map supplied
+by the field resolver).
 
 ## 0.28.0 -- 21 Jun 2018
 

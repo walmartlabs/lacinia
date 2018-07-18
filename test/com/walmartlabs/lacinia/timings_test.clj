@@ -18,6 +18,7 @@
     [clojure.test :refer [deftest is]]
     [clojure.java.io :as io]
     [clojure.edn :as edn]
+    [com.walmartlabs.test-reporting :refer [reporting]]
     [com.walmartlabs.lacinia.util :as util]
     [com.walmartlabs.lacinia.resolve :as resolve]
     [com.walmartlabs.test-utils :refer [simplify]]
@@ -88,10 +89,10 @@
   (let [result (q "{ hare: root(delay: 5) { slow { simple }}
                      tortoise: root(delay: 50) { slow { simple }}
                    }"
-                  enable-timing)
-        elapsed-times (->> (get-in result [:extensions :timing :root :slow :execution/timings])
-                           (mapv :elapsed))]
-    (is (= 2 (count elapsed-times)))
-    (is (<= 5 (elapsed-times 0)))
-    (is (<= 50 (elapsed-times 1)))))
+                  enable-timing)]
+    (reporting result
+      (let [elapsed-times (->> (get-in result [:extensions :timing :hare :slow :execution/timings])
+                               (mapv :elapsed))]
+        (is (= 1 (count elapsed-times)))
+        (is (<= 5 (elapsed-times 0)))))))
 

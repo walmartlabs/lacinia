@@ -68,13 +68,13 @@
   (is (= {:data {:verse_echo [["oops"
                                nil
                                "fail!"]]}
-          :errors [{:arguments {:in [["oops"
-                                      nil
-                                      "fail!"]]}
-                    :locations [{:column 2
+          :errors [{:locations [{:column 2
                                  :line 1}]
                     :message "Non-nullable field was null."
-                    :query-path [:verse_echo]}]}
+                    :path [:verse_echo]
+                    :extensions {:arguments {:in [["oops"
+                                                   nil
+                                                   "fail!"]]}}}]}
          (execute "{verse_echo (in:
          [[\"oops\", null, \"fail!\"  ]]
          )}"))))

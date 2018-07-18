@@ -651,11 +651,12 @@
 
         selector (if union-or-interface?
                    (let [member-types (:members field-type)]
-                     (fn select-allowed-types [{:keys [resolved-type]
+                     (fn select-allowed-types [{:keys [resolved-type resolved-value]
                                                 :as selector-context}]
                        (cond
 
-                         (contains? member-types resolved-type)
+                         (or (nil? resolved-value)
+                             (contains? member-types resolved-type))
                          (selector selector-context)
 
                          (nil? resolved-type)
@@ -766,8 +767,12 @@
           ;; the value. So we need to combine those together into a new ResolverResult.
           (reduce #(combine-results conj %1 %2)
                   (resolve-as [])
-                  (mapv #(next-selector (assoc selector-context :resolved-value %))
-                        resolved-value)))))
+                  (map-indexed
+                    (fn [i v]
+                      (next-selector (-> selector-context
+                                         (assoc :resolved-value v)
+                                         (update :path conj i))))
+                    resolved-value)))))
 
     :non-null
     (let [next-selector (assemble-selector schema object-type field (:type type))]

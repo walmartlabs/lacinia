@@ -144,8 +144,8 @@
   [^ParseError e]
   (let [errors (deref e)]
     (map (fn [{:keys [line column message]}]
-           {:location {:line line
-                       :column column}
-            :parse-error message})
+           {:locations [{:line line
+                         :column column}]
+            :message message})
          errors)))
 

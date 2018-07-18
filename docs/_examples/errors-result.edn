@@ -1,0 +1,5 @@
+{:data {:hero {:friends [nil nil nil]}}
+ :errors [{:message "Non-nullable field was null."
+           :locations [{:line 1
+                        :column 20}]
+           :path [:hero :friends :arch_enemy]}]}
