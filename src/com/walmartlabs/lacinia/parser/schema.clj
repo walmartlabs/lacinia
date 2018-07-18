@@ -15,15 +15,13 @@
 (ns com.walmartlabs.lacinia.parser.schema
   "Parse a Schema Definition Language document into a Lacinia input schema."
   {:added "0.22.0"}
-  (:require [com.walmartlabs.lacinia.internal-utils :refer [remove-vals]]
-            [com.walmartlabs.lacinia.parser.common :refer [antlr-parse parse-failures
-                                                           blockstringvalue->String
-                                                           stringvalue->String]]
-            [com.walmartlabs.lacinia.util :refer [inject-descriptions]]
-            [clojure.java.io :as io]
-            [clojure.spec.alpha :as s]
-            [clj-antlr.core :as antlr.core])
-  (:import (clj_antlr ParseError)))
+  (:require
+    [com.walmartlabs.lacinia.internal-utils :refer [remove-vals]]
+    [com.walmartlabs.lacinia.parser.common :as common]
+    [com.walmartlabs.lacinia.util :refer [inject-descriptions]]
+    [clojure.spec.alpha :as s])
+  (:import
+    (clj_antlr ParseError)))
 
 ;; When using Clojure 1.8, the dependency on clojure-future-spec must be included,
 ;; and this code will trigger
@@ -31,7 +29,7 @@
   (require '[clojure.future :refer [simple-keyword?]]))
 
 (def ^:private grammar
-  (antlr.core/parser (slurp (io/resource "com/walmartlabs/lacinia/schema.g4"))))
+  (common/compile-grammar "com/walmartlabs/lacinia/schema.g4"))
 
 (defn ^:private rest-or-true
   "Return (rest coll), or true if coll only contains a single element."
@@ -116,8 +114,8 @@
       :enumValue (keyword (second value))
       :arrayValue (mapv (comp xform-default-value second) (rest arg-value))
       :objectValue (apply merge (select-map xform-map-value [:objectField] [(rest arg-value)]))
-      :stringvalue (stringvalue->String value)
-      :blockstringvalue (blockstringvalue->String value)
+      :stringvalue (common/stringvalue->String value)
+      :blockstringvalue (common/blockstringvalue->String value)
       value)))
 
 (defn ^:private xform-map-value
@@ -199,7 +197,7 @@
    {:values (vec (map #(hash-map :enum-value (-> % first keyword))
                       (select [:scalarName :name] enum)))}})
 
-(defn ^:private xform-operation
+#_ (defn ^:private xform-operation
   "Transforms an operation parse tree node by inlining the operation types."
   [schema operation]
   (let [operation-type (keyword (select1 [:typeName :name] operation))]
@@ -381,9 +379,9 @@
      ;; and optimize for human readability
      #(or (nil? %) (= {} %))
      (xform-schema (try
-                     (antlr-parse grammar schema-string)
+                     (common/antlr-parse grammar schema-string)
                      (catch ParseError e
-                       (let [failures (parse-failures e)]
+                       (let [failures (common/parse-failures e)]
                          (throw (ex-info "Failed to parse GraphQL schema."
                                          {:errors failures})))))
                    resolvers

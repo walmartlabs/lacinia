@@ -19,22 +19,14 @@
   Anltr (on the JVM) or with some other parsing library (in-browser, or Node)."
   {:added "0.26.0"}
   (:require
-    [clj-antlr.core :as antlr.core]
-    [clojure.java.io :as io]
     #_[io.pedestal.log :as log]
     #_[clojure.pprint :as pprint]
-    [com.walmartlabs.lacinia.parser.common :refer [antlr-parse
-                                                   parse-failures
-                                                   blockstringvalue->String
-                                                   stringvalue->String]])
+    [com.walmartlabs.lacinia.parser.common :as common])
   (:import
     (clj_antlr ParseError)))
 
 (def ^:private grammar
-  (-> "com/walmartlabs/lacinia/Graphql.g4"
-      io/resource
-      slurp
-      antlr.core/parser))
+  (common/compile-grammar "com/walmartlabs/lacinia/Graphql.g4"))
 
 (defn ^:private as-map
   [prod]
@@ -180,12 +172,12 @@
   [prod]
   {:type :string
    ;; The value from Antlr has quotes around it that need to be stripped off.
-   :value (-> prod second stringvalue->String)})
+   :value (-> prod second common/stringvalue->String)})
 
 (defmethod xform :blockstringvalue
   [prod]
   {:type :string
-   :value (-> prod second blockstringvalue->String)})
+   :value (-> prod second common/blockstringvalue->String)})
 
 (defmethod xform :arrayValue
   [prod]
@@ -280,9 +272,9 @@
   [input]
   (xform-query
     (try
-      (antlr-parse grammar input)
+      (common/antlr-parse grammar input)
       (catch ParseError e
-        (let [failures (parse-failures e)]
+        (let [failures (common/parse-failures e)]
           (throw (ex-info "Failed to parse GraphQL query."
                           {:errors failures})))))))
 
