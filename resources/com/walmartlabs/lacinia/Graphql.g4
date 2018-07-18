@@ -92,6 +92,7 @@ value
     : IntValue
     | FloatValue
     | StringValue
+    | BlockStringValue
     | BooleanValue
     | NullValue
     | enumValue
@@ -194,6 +195,10 @@ StringValue
     : DoubleQuote (~(["\\\n\r\u2028\u2029])|EscapedChar)* DoubleQuote
     ;
 
+BlockStringValue
+    : TripleQuote (.)*? TripleQuote
+    ;
+
 fragment EscapedChar
     :  '\\' (["\\/bfnrt] | Unicode)
     ;
@@ -205,6 +210,10 @@ fragment Unicode
 fragment DoubleQuote
    : '"'
    ;
+
+fragment TripleQuote
+  : '"""'
+  ;
 
 fragment Hex
    : [0-9a-fA-F]

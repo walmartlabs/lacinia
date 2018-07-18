@@ -48,6 +48,43 @@
       (str/replace #"\\([\\\"\/bfnrt])" #(unescape-ascii (second %)))
       (str/replace #"\\u([A-Fa-f0-9]{4})" #(unescape-unicode (second %)))))
 
+(defn ^:private indent-of
+  [s]
+  (if (= s "")
+    0
+    (let [[_ ^String indents] (re-find #"^(\s*?)\S" s)]
+      (if (some? indents)
+        (.length indents)
+        ;; This shouldn't happen because we trim everything, so each line is either blank
+        ;; or has at least one non-space character.
+        0))))
+
+(defn ^:private remove-common-indent
+  [s]
+  (let [lines (->> s
+                   str/trim
+                   str/split-lines
+                   (mapv str/trimr))
+        indents (->> lines
+                     (map indent-of)
+                     (remove zero?))]
+    (if (empty? indents)
+      (str/join "\n" lines)
+      (let [common-indent (reduce min indents)
+            trimmed-lines (into [(first lines)]
+                                (map (fn [^String l]
+                                       (if (< common-indent (.length l))
+                                         (subs l common-indent)
+                                         l))
+                                     (rest lines)))]
+        (str/join "\n" trimmed-lines)))))
+
+(defn blockstringvalue->String
+  "Transform an ANTLR multi-line block string value into a Clojure string."
+  [^String s]
+  ;; As supplied by ANTLR, the leading and trailing """ sequences are in place.
+  (remove-common-indent (subs s 3 (- (.length s) 3))))
+
 (def ^:private ignored-terminals
   "Textual fragments which are to be immediately discarded as they have no
   relevance to a formed parse tree."

@@ -229,3 +229,13 @@
     (is (= {:data {:me {:id "101"
                         :ip "127.0.0.1"}}}
            result))))
+
+(deftest block-strings
+  (let [schema (-> "blockquote.sdl"
+                   resource
+                   slurp
+                   (parser/parse-schema {}))
+        input-arg (get-in schema [:objects :Query :fields :with_default :args :arg])]
+    (is (some? input-arg))
+    (is (= "line 1\n\nline 3\n  indented line 4\nline 5"
+           (:defaultValue input-arg)))))

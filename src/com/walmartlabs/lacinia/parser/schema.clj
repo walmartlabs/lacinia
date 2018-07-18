@@ -16,7 +16,9 @@
   "Parse a Schema Definition Language document into a Lacinia input schema."
   {:added "0.22.0"}
   (:require [com.walmartlabs.lacinia.internal-utils :refer [remove-vals]]
-            [com.walmartlabs.lacinia.parser.common :refer [antlr-parse parse-failures stringvalue->String]]
+            [com.walmartlabs.lacinia.parser.common :refer [antlr-parse parse-failures
+                                                           blockstringvalue->String
+                                                           stringvalue->String]]
             [com.walmartlabs.lacinia.util :refer [inject-descriptions]]
             [clojure.java.io :as io]
             [clojure.spec.alpha :as s]
@@ -115,6 +117,7 @@
       :arrayValue (mapv (comp xform-default-value second) (rest arg-value))
       :objectValue (apply merge (select-map xform-map-value [:objectField] [(rest arg-value)]))
       :stringvalue (stringvalue->String value)
+      :blockstringvalue (blockstringvalue->String value)
       value)))
 
 (defn ^:private xform-map-value
