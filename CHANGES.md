@@ -21,7 +21,7 @@ Removed a potential race condition related to asynchronous field resolvers.
 
 A change to how GraphQL schema documentation is attached.
 Previously, arguments were refered to as `:MyType.my_field/arg_name`
-but with this release, we've change it to `:MyType/my_field.arg_name`.
+but with this release, we've changed it to `:MyType/my_field.arg_name`.
 
 It is now possible, when parsing a schema from SDL, to document interfaces, enums, 
 scalars, and unions.
