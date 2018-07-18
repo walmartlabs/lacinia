@@ -328,5 +328,5 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 def setup(app):
   app.add_stylesheet("css/custom.css")
 
-extlinks = {'spec': ('https://facebook.github.io/graphql/#sec-%s', ''),
+extlinks = {'spec': ('http://facebook.github.io/graphql/June2018/#sec-%s', ''),
             'clojure' : ('https://clojure.org/%s', '')}

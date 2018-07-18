@@ -45,7 +45,7 @@
        [{:name "id",
          :description nil,
          :type {:kind :SCALAR, :name "String", :ofType nil},
-         :defaultValue "2001"}],
+         :defaultValue "\"2001\""}],
        :type {:kind :OBJECT, :name "droid", :ofType nil},
        :isDeprecated false,
        :deprecationReason nil}
@@ -68,7 +68,7 @@
        [{:name "id",
          :description nil,
          :type {:kind :SCALAR, :name "String", :ofType nil},
-         :defaultValue "1001"}],
+         :defaultValue "\"1001\""}],
        :type
        {:kind :NON_NULL,
         :name nil,

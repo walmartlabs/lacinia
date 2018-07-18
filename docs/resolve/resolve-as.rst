@@ -11,6 +11,10 @@ What if you want to add errors?
 Field resolvers should not throw exceptions; instead, if there is a problem generating the resolved value,
 they should use the ``com.walmartlabs.lacinia.resolve/resolve-as`` function to return a ResolverResult value.
 
+When using ``resolve-as``, you may pass the error map as the second parameter (which is optional).
+You may pass a single map, or a seq of error maps.
+This first parameter is the resolved value, which may be ``nil``.
+
 .. sidebar:: Why not just throw an exception?
 
     Exceptions are a terrible way to deal with control flow issues, even in the
@@ -22,17 +26,29 @@ they should use the ``com.walmartlabs.lacinia.resolve/resolve-as`` function to r
 Errors will be exposed as the top-level ``:errors`` key of the execution result.
 
 Error maps must contain at a minimum a ``:message`` key with a value of type String.
+
 You may specify other keys and values as you wish, but these values will be part of the ultimate
 result map, so they should be both concise and safe for the transport medium.
 Generally, this means not to include values that can't be converted into JSON values.
 
-Lacinia will add additional keys to the error map, to identify the query selection active when the
-field resolver was invoked.
-This includes location data related to the input query document.
+In the result map, error maps are transformed; they contain the ``:message`` key, as well
+as ``:locations``, ``:path``, and (sometimes) ``:extensions``.
 
-When using ``resolve-as``, you may pass the error map as the second parameter (which is optional).
-You may pass a single map, or a seq of error maps.
-This first parameter is the resolved value, which may be ``nil``.
+.. literalinclude:: /_examples/errors-result.edn
+   :language: clojure
+
+The ``:locations`` key identifies where in the query document, as a line and column address,
+the error occured.
+It's value is an array (normally, a single value) of location maps; each location map
+has ``:line`` and ``:column`` keys.
+
+The ``:path`` associates the error with a location in the result data; this is seq of the names of fields
+(or aliases for fields).
+Some elements of the path may be numeric indices into sequences, for fields of type list.
+These indices are zero based.
+
+Any additional keys in the error map are collected into the ``:extensions`` key (which is only present
+when the error map has such keys).
 
 The order in which errors appear in the ``:errors`` key of the result map is not specified;
 however, Lacinia does remove duplicate errors.

@@ -115,7 +115,7 @@
                   {:name "Uranus", :moons []}]},
  :errors [{:message "This base has been destroyed.",
            :locations [{:line 1, :column 39}],
-           :query-path [:planets :moons :bases :name]}
+           :path [:planets :moons :bases :name]}
           {:message "Europa is forbidden. Attempt no landing there.",
            :locations [{:line 1, :column 39}],
-           :query-path [:planets :moons :bases :name]}]}
+           :path [:planets :moons :bases :name]}]}

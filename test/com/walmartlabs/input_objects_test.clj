@@ -28,28 +28,26 @@
     (is (= {:data {:create_game "nil"}}
            (execute schema "mutation { create_game }")))
 
-    (is (= {:errors [{:argument :game_data
-                      :field :create_game
+    (is (= {:errors [{:extensions {:argument :game_data
+                                   :field :create_game
+                                   :missing-key :id
+                                   :required-keys [:id]
+                                   :schema-type :game_template}
                       :locations [{:column 12
                                    :line 1}]
-                      :message "Exception applying arguments to field `create_game': For argument `game_data', no value provided for non-nullable key `id' of input object `game_template'."
-                      :missing-key :id
-                      :query-path []
-                      :required-keys [:id]
-                      :schema-type :game_template}]}
+                      :message "Exception applying arguments to field `create_game': For argument `game_data', no value provided for non-nullable key `id' of input object `game_template'."}]}
            (execute schema "mutation { create_game (game_data: { name: \"Hearts\" }) }")))
 
     ;; TODO: Missing some needed context from above
 
-    (is (= {:errors [{:argument :game_data
-                      :field :create_game
+    (is (= {:errors [{:extensions {:argument :game_data
+                                   :field :create_game
+                                   :missing-key :id
+                                   :required-keys [:id]
+                                   :schema-type :game_template}
                       :locations [{:column 32
                                    :line 1}]
-                      :message "No value provided for non-nullable key `id' of input object `game_template'."
-                      :missing-key :id
-                      :query-path []
-                      :required-keys [:id]
-                      :schema-type :game_template}]}
+                      :message "No value provided for non-nullable key `id' of input object `game_template'."}]}
            (execute schema
                     "mutation($g : game_template) { create_game(game_data: $g) }"
                     {:g {:name "Backgammon"}}
@@ -82,26 +80,24 @@
            (execute schema
                     "{ search(filter: {terms: \"lego\", max_count: 5}) }")))
 
-    (is (= {:errors [{:argument :filter
-                      :field :search
+    (is (= {:errors [{:extensions {:argument :filter
+                                   :field :search
+                                   :schema-type :Filter}
                       :locations [{:column 3
                                    :line 1}]
-                      :message "Exception applying arguments to field `search': For argument `filter', input object contained unexpected key `term'."
-                      :query-path []
-                      :schema-type :Filter}]}
+                      :message "Exception applying arguments to field `search': For argument `filter', input object contained unexpected key `term'."}]}
            (execute schema
                     "{ search(filter: {term: \"lego\", max_count: 5}) }")))
 
-    (is (= {:errors [{:argument :filter
-                      :field :search
-                      :field-name :term
-                      :input-object-fields [:max_count
-                                            :terms]
-                      :input-object-type :Filter
+    (is (= {:errors [{:extensions {:argument :filter
+                                   :field :search
+                                   :field-name :term
+                                   :input-object-fields [:max_count
+                                                         :terms]
+                                   :input-object-type :Filter}
                       :locations [{:column 23
                                    :line 2}]
-                      :message "Field not defined for input object."
-                      :query-path []}]}
+                      :message "Field not defined for input object."}]}
            (execute schema
                     "query($f : Filter) {
                       search(filter: $f)

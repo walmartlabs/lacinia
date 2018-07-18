@@ -767,8 +767,12 @@
           ;; the value. So we need to combine those together into a new ResolverResult.
           (reduce #(combine-results conj %1 %2)
                   (resolve-as [])
-                  (mapv #(next-selector (assoc selector-context :resolved-value %))
-                        resolved-value)))))
+                  (map-indexed
+                    (fn [i v]
+                      (next-selector (-> selector-context
+                                         (assoc :resolved-value v)
+                                         (update :path conj i))))
+                    resolved-value)))))
 
     :non-null
     (let [next-selector (assemble-selector schema object-type field (:type type))]

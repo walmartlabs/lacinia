@@ -105,9 +105,12 @@
   ([^Throwable t]
    (as-error-map t nil))
   ([^Throwable t more-data]
-   (merge {:message (to-message t)}
-          (ex-data t)
-          more-data)))
+   (let [extension-data (merge (ex-data t) more-data)
+         locations (:locations extension-data)
+         remaining-data (dissoc extension-data :locations)]
+     (cond-> {:message (to-message t)}
+       locations (assoc :locations locations)
+       (seq remaining-data) (assoc :extensions remaining-data)))))
 
 (defn inject-descriptions
   "Injects documentation into a schema, as `:description` keys on various elements

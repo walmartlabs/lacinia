@@ -51,18 +51,17 @@
         first-error (first errors)]
     (is (-> result (contains? :data) not))
     (is (= 1 (count errors)))
-    (is (= {:allowed-values #{:EMPIRE
-                              :JEDI
-                              :NEWHOPE}
-            :argument :episode
-            :enum-type :episode
-            :field :hero
-            ;; TODO: This is the location of 'hero', should be location of 'episode' or 'CLONES'.
+    (is (= {:extensions {:allowed-values #{:EMPIRE
+                                           :JEDI
+                                           :NEWHOPE}
+                         :argument :episode
+                         :enum-type :episode
+                         :value :CLONES
+                         ;; TODO: This is the location of 'hero', should be location of 'episode' or 'CLONES'.
+                         :field :hero}
             :locations [{:column 3
                          :line 1}]
-            :message "Exception applying arguments to field `hero': For argument `episode', provided argument value `CLONES' is not member of enum type."
-            :query-path []
-            :value :CLONES}
+            :message "Exception applying arguments to field `hero': For argument `episode', provided argument value `CLONES' is not member of enum type."}
            first-error))))
 
 (deftest enum-values-must-be-unique
