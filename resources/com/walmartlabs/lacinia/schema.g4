@@ -27,19 +27,24 @@ subscriptionOperationDef
   ;
 
 typeDef
-  : 'type' typeName implementationDef? '{' fieldDef+ '}'
+  : 'type' typeName implementationDef? fieldDefs
   ;
+
+fieldDefs
+  : '{' fieldDef+ '}'
+  ;
+
 
 implementationDef
   : 'implements' typeName+
   ;
 
 inputTypeDef
-  : 'input' typeName '{' fieldDef+ '}'
+  : 'input' typeName fieldDefs
   ;
 
 interfaceDef
-  : 'interface' typeName '{' fieldDef+ '}'
+  : 'interface' typeName fieldDefs
   ;
 
 scalarDef
@@ -98,6 +103,11 @@ defaultValue
   : '=' value
   ;
 
+BooleanValue
+    : 'true'
+    | 'false'
+    ;
+
 Name
   : [_A-Za-z][_0-9A-Za-z]*
   ;
@@ -128,11 +138,6 @@ objectValue
 
 objectField
     : Name ':' value
-    ;
-
-BooleanValue
-    : 'true'
-    | 'false'
     ;
 
 NullValue

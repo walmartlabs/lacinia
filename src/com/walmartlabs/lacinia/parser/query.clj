@@ -28,19 +28,6 @@
 (def ^:private grammar
   (common/compile-grammar "com/walmartlabs/lacinia/Graphql.g4"))
 
-(defn ^:private as-map
-  [prod]
-  (->> prod
-       rest
-       (reduce (fn [m sub-prod]
-                 (assoc! m (first sub-prod) (rest sub-prod)))
-               (transient {}))
-       persistent!))
-
-(defn ^:private copy-meta
-  [to from]
-  (with-meta to (meta from)))
-
 (defmulti ^:private xform
   "Transform an Antlr production into a result.
 
@@ -66,11 +53,11 @@
 (defmethod xform :operationDefinition
   [prod]
   (let [{:keys [operationType selectionSet variableDefinitions directives]
-         op-name :name} (as-map prod)
+         op-name :name} (common/as-map prod)
         type (if operationType
                (-> operationType first xform)
                :query)]
-    (cond-> (copy-meta {:type type} prod)
+    (cond-> (common/copy-meta {:type type} prod)
 
       op-name (assoc :name (-> op-name first xform))
 
@@ -112,11 +99,11 @@
 
 (defmethod xform :field
   [prod]
-  (let [{:keys [name selectionSet alias arguments directives]} (as-map prod)]
+  (let [{:keys [name selectionSet alias arguments directives]} (common/as-map prod)]
     (cond->
-      (copy-meta {:type :field
+      (common/copy-meta {:type :field
                   :field-name (xform (first name))}
-                 prod)
+                        prod)
 
       alias (assoc :alias (xform (first alias)))
 
@@ -215,13 +202,13 @@
 
 (defmethod xform :inlineFragment
   [prod]
-  (let [{:keys [typeCondition directives selectionSet]} (as-map prod)
+  (let [{:keys [typeCondition directives selectionSet]} (common/as-map prod)
         on-type (-> typeCondition first second)]
     (-> {:type :inline-fragment
          :on-type (xform on-type)
          :selections (mapv xform selectionSet)}
         (cond-> directives (assoc :directives (mapv xform directives)))
-        (copy-meta on-type))))
+        (common/copy-meta on-type))))
 
 (defmethod xform :fragmentSpread
   [prod]
@@ -230,13 +217,13 @@
     (-> {:type :named-fragment
          :fragment-name (xform name)}
         (cond-> directives (assoc :directives (mapv xform (rest directives))))
-        (copy-meta name))))
+        (common/copy-meta name))))
 
 (defmethod xform :fragmentDefinition
   [prod]
   (let [[_ fragment-name type-condition selection-set] prod
         name (second fragment-name)]
-    (copy-meta
+    (common/copy-meta
       {:type :fragment-definition
        :fragment-name (xform name)
        :on-type (-> type-condition second second xform)

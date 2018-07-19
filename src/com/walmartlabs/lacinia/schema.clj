@@ -279,7 +279,9 @@
 ;; Use of a function here, rather than just the set, is due to https://github.com/bhb/expound/issues/101
 (s/def ::wrapped-type-modifier #(contains? #{'list 'non-null} %))
 (s/def ::arg (s/keys :req-un [::type]
-                     :opt-un [::description]))
+                     :opt-un [::description
+                              ::default-value]))
+(s/def ::default-value any?)
 (s/def ::args (s/map-of ::schema-key ::arg))
 ;; Defining these callbacks in spec has been a challenge. At some point,
 ;; we can expand this to capture a bit more about what a field resolver

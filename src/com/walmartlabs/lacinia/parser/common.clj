@@ -23,6 +23,17 @@
            (org.antlr.v4.runtime Parser ParserRuleContext Token)
            (clj_antlr ParseError)))
 
+(defn as-map
+  "Converts a normal Antlr production into a map."
+  [prod]
+  (->> prod
+       rest
+       (reduce (fn [m sub-prod]
+                 (assoc! m (first sub-prod) (rest sub-prod)))
+               (transient {}))
+       persistent!))
+
+
 (defn ^:private unescape-ascii
   [^String escaped-sequence]
   (case escaped-sequence
@@ -79,6 +90,12 @@
                                          l))
                                      (rest lines)))]
         (str/join "\n" trimmed-lines)))))
+
+(defn copy-meta
+  "Copys meta data from an object to a new object; with Antlr, meta data
+  is location data."
+  [to from]
+  (with-meta to (meta from)))
 
 (defn blockstringvalue->String
   "Transform an ANTLR multi-line block string value into a Clojure string."

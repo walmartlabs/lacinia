@@ -1,0 +1,10 @@
+{
+  type Tree { height: Int }
+
+  type Leaf { id: ID }
+
+  type Tree { left: Node, right: Node }
+
+  union Node = Leaf | Tree
+
+}
