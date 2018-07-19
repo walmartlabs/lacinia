@@ -84,7 +84,7 @@
   (cond-> schema
     scalars (assoc :scalars scalars)))
 
-;; This is very similar to the code for parsing a query, and included a bit of duplication.
+;; This is very similar to the code for parsing a query, and includes a bit of duplication.
 ;; Perhaps at some point we can merge it all into a single, unified grammar.
 
 (defmulti ^:private xform
