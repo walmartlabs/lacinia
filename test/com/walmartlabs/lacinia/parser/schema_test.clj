@@ -76,7 +76,10 @@
       (is (= {:enums {:episode {:values [{:enum-value :NEWHOPE}
                                          {:enum-value :EMPIRE}
                                          {:enum-value :JEDI}]}}
-              :scalars {:Date {:parse date-parse :serialize date-parse}}
+              ;; Demonstrate that the scalar in the SDL (with a description) has the :parse and :serialize merged onto it:
+              :scalars {:Date {:parse date-parse
+                               :serialize date-parse
+                               :description "Date in standard ISO format"}}
               :interfaces {:Human {:fields {:name {:type 'String}
                                             :birthDate {:type :Date}}}}
               :unions {:Queries {:members [:Query :OtherQuery]}}

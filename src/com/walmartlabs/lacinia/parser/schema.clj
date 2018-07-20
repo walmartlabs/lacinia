@@ -81,8 +81,14 @@
 
 (defn ^:private attach-scalars
   [schema scalars]
-  (cond-> schema
-    scalars (assoc :scalars scalars)))
+  (if (seq scalars)
+    (update schema :scalars
+            (fn [s]
+              (reduce-kv (fn [s' scalar-name scalar-value]
+                           (update s' scalar-name merge scalar-value))
+                         s
+                         scalars)))
+    schema))
 
 ;; This is very similar to the code for parsing a query, and includes a bit of duplication.
 ;; Perhaps at some point we can merge it all into a single, unified grammar.
@@ -352,40 +358,41 @@
   {:scalar-name {:parse parse-spec
                  :serialize serialize-spec}}
 
+  A scalar map may also include a :description.
+
+  The provided scalar maps are merged into the scalars parsed from the document.
+
   `:streamers` is expected to be a map of:
   {:type-name {:subscription-field-name stream-fn}}
 
   `:documentation` is expected to be a map of:
   {:type-name doc-str
    :type-name/field-name doc-str
-   :type-name.field-name/arg-name doc-str}"
+   :type-name/field-name.arg-name doc-str}"
   [schema-string attach]
   (when-let [ed (s/explain-data ::parse-schema-args [schema-string attach])]
     (throw (ex-info (str "Arguments to parse-schema do not conform to spec:\n" (with-out-str (s/explain-out ed)))
                     ed)))
 
   (let [{:keys [resolvers scalars streamers documentation]} attach]
-    (remove-vals                                            ;; Remove any empty schema components to avoid clutter
-      ;; and optimize for human readability
-      #(or (nil? %) (= {} %))
-      (xform-schema (try
-                      (common/antlr-parse grammar schema-string)
-                      (catch ParseError e
-                        (let [failures (common/parse-failures e)]
-                          (throw (ex-info "Failed to parse GraphQL schema."
-                                          {:errors failures})))))
-                    resolvers
-                    scalars
-                    streamers
-                    documentation))))
+    (xform-schema (try
+                    (common/antlr-parse grammar schema-string)
+                    (catch ParseError e
+                      (let [failures (common/parse-failures e)]
+                        (throw (ex-info "Failed to parse GraphQL schema."
+                                        {:errors failures})))))
+                  resolvers
+                  scalars
+                  streamers
+                  documentation)))
 
 (s/def ::field-fn (s/map-of simple-keyword? (s/or :function fn? :keyword simple-keyword?)))
 (s/def ::fn-map (s/map-of simple-keyword? ::field-fn))
 (s/def ::parse s/spec?)
 (s/def ::serialize s/spec?)
-(s/def ::scalar-def (s/keys :req-un [::parse ::serialize]))
+(s/def ::scalar-def (s/keys :req-un [::parse ::serialize]
+                            :opt-un [::description]))
 (s/def ::description string?)
-(s/def ::fields (s/map-of simple-keyword? ::description))
 
 (s/def ::documentation (s/map-of keyword? string?))
 (s/def ::scalars (s/map-of simple-keyword? ::scalar-def))
