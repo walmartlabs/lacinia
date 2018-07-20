@@ -91,7 +91,7 @@
                                                    :episodes {:type '(list :episode)}}
                                           :implements [:Human]}
                         :Query {:fields {:in_episode {:args {:episode {:type :episode
-                                                                       :defaultValue :NEWHOPE
+                                                                       :default-value :NEWHOPE
                                                                        :description "Episode for which to find characters"}}
                                                       :resolve in-episode
                                                       :description "Find all characters for a given episode"
@@ -100,8 +100,8 @@
                                                               :resolve find-by-names
                                                               :type '(list :CharacterOutput)}}}
                         :Mutation {:fields {:add {:args {:character {:type :Character
-                                                                     :defaultValue {:name "Unspecified"
-                                                                                    :episodes [:NEWHOPE :EMPIRE :JEDI]}}}
+                                                                     :default-value {:name "Unspecified"
+                                                                                     :episodes [:NEWHOPE :EMPIRE :JEDI]}}}
                                                   :resolve add
                                                   :type 'Boolean}}}
                         :Subscription {:fields {:new_character {:args {:episodes {:type '(non-null (list (non-null :episode)))}}
@@ -199,24 +199,27 @@
            (ex-data e)))))
 
 (deftest schema-validation
-  (let [exception (is (thrown-with-msg? ExceptionInfo
-                                        #"Error parsing schema"
-                                        (parse-schema "bad_schema.sdl" {})))]
-    (is (= '#{{:error "Duplicate type names"
-               :duplicate-types ({:name "Character" :location {:line 11 :column 13}}
-                                  {:name "Character" :location {:line 22 :column 9}}
-                                  {:name "Query" :location {:line 28 :column 8}}
-                                  {:name "Query" :location {:line 32 :column 8}}
-                                  {:name "Queries" :location {:line 37 :column 9}}
-                                  {:name "Queries" :location {:line 39 :column 8}})}
-              {:error "Duplicate fields defined on type"
-               :duplicate-fields ({:name "find_by_names" :location {:line 33 :column 5}}
-                                   {:name "find_by_names" :location {:line 34 :column 5}})
-               :type "Query"}
-              {:error "Duplicate arguments defined on field"
-               :duplicate-arguments ("episode")
-               :field {:name "in_episode" :location {:line 29 :column 5}}}}
-           (set (:errors (ex-data exception)))))))
+  (when-let [e (is (thrown? ExceptionInfo
+                            (parse-schema "bad_schema.sdl" {})))]
+    (is (= "Conflicting field argument: `episode'."
+           (.getMessage e)))
+    (is (= {:key :episode
+            :locations [{:column 16
+                         :line 29}
+                        {:column 44
+                         :line 29}]}
+           (ex-data e))))
+
+  ;; This is a stand-in for any of the root things that can have a key conflict
+  (when-let [e (is (thrown? ExceptionInfo
+                            (parse-schema "duplicate-type.sdl" {})))]
+    (is (= "Conflicting objects: `Tree'." (.getMessage e)))
+    (is (= {:key :Tree
+            :locations [{:column 3
+                         :line 2}
+                        {:column 3
+                         :line 6}]}
+           (ex-data e)))))
 
 (deftest supports-multiple-inheritance
   (let [schema (-> "mult-inheritance.sdl"
@@ -238,4 +241,4 @@
         input-arg (get-in schema [:objects :Query :fields :with_default :args :arg])]
     (is (some? input-arg))
     (is (= "line 1\n\nline 3\n  indented line 4\nline 5"
-           (:defaultValue input-arg)))))
+           (:default-value input-arg)))))

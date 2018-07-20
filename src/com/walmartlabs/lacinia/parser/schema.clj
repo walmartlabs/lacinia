@@ -15,15 +15,14 @@
 (ns com.walmartlabs.lacinia.parser.schema
   "Parse a Schema Definition Language document into a Lacinia input schema."
   {:added "0.22.0"}
-  (:require [com.walmartlabs.lacinia.internal-utils :refer [remove-vals]]
-            [com.walmartlabs.lacinia.parser.common :refer [antlr-parse parse-failures
-                                                           blockstringvalue->String
-                                                           stringvalue->String]]
-            [com.walmartlabs.lacinia.util :refer [inject-descriptions]]
-            [clojure.java.io :as io]
-            [clojure.spec.alpha :as s]
-            [clj-antlr.core :as antlr.core])
-  (:import (clj_antlr ParseError)))
+  (:require
+    #_[io.pedestal.log :as log]
+    [com.walmartlabs.lacinia.internal-utils :refer [remove-vals keepv q]]
+    [com.walmartlabs.lacinia.parser.common :as common]
+    [com.walmartlabs.lacinia.util :refer [inject-descriptions]]
+    [clojure.spec.alpha :as s])
+  (:import
+    (clj_antlr ParseError)))
 
 ;; When using Clojure 1.8, the dependency on clojure-future-spec must be included,
 ;; and this code will trigger
@@ -31,238 +30,42 @@
   (require '[clojure.future :refer [simple-keyword?]]))
 
 (def ^:private grammar
-  (antlr.core/parser (slurp (io/resource "com/walmartlabs/lacinia/schema.g4"))))
+  (common/compile-grammar "com/walmartlabs/lacinia/schema.g4"))
 
-(defn ^:private rest-or-true
-  "Return (rest coll), or true if coll only contains a single element."
-  [coll]
-  (or (seq (rest coll))
-      [true]))
+(defn ^:private tag
+  "Returns a map of the nested productions in a production.
+  Nested productions are elements after the first; the key is the
+  first element in each nested production.
 
-(defn ^:private select
-  "Selects nodes from the ANTLR parse tree given a path, which is a
-  vector of alternatively node keyword labels, sets of node keyword
-  labels or predicate functions that accept a node as a
-  parameter. Always accepts and returns a sequence of nodes."
-  [path nodes]
-  (let [[p & rst] path]
-    (cond->> (seq (mapcat
-                   (fn [node]
-                     (map rest-or-true
-                          (filter (cond
-                                    (keyword? p) #(= (first %) p)
-                                    (set? p) #(p (first %))
-                                    (fn? p) p)
-                                  node)))
-                   nodes))
-      (seq rst) (recur rst))))
+  Note that this should only be used in cases where none of the productions repeat."
+  [prod]
+  (reduce (fn [m p]
+            (assoc m (first p) p))
+          {}
+          (rest prod)))
 
-(defn ^:private select-map
-  "Maps over selected nodes, providing a sequence of nodes as a
-  shortcut to facilitate using selectors within f."
-  [f path nodes]
-  (map (comp f vector) (select path nodes)))
+(defn ^:private assoc-check
+  [m content k v]
+  (when (contains? m k)
+    (let [locations (keepv meta [(get m k)
+                                 v])]
+      (throw (ex-info (format "Conflicting %s: %s."
+                              content
+                              (q k))
+                      (cond-> {:key k}
+                        (seq locations) (assoc :locations locations))))))
+  (assoc m k v))
 
-(defn ^:private select1
-  "Selects a terminal scalar value. Should only be used when path
-  resolves to a single scalar."
-  [path nodes]
-  (ffirst (select path nodes)))
+(defn ^:private checked-map
+  "Given a seq of key/value tuples, assembles a map, checking that keys do not conflict
+  (throwing an exception if they do).
 
-(defn ^:private xform-type-name
-  [typename]
-  (if (#{"Boolean" "String" "Int" "Float" "ID"} typename)
-    (symbol typename)
-    (keyword typename)))
-
-(defn ^:private xform-typespec
-  "Transforms a type specification parse tree node.
-
-  Example node:
-  ((:typeName (:name \"Character\")))
-  or
-  ((:listType (:typeSpec (:typeName (:name \"episode\")))))"
-  [typespec]
-  (cond
-    ;; list
-    (select1 [:listType] typespec) (cond->> (list 'list (xform-typespec (select [:listType :typeSpec] typespec)))
-                                     (select1 [:required] typespec) (list 'non-null))
-    ;; scalar
-    :else (cond->> (xform-type-name (select1 [:typeName :name] typespec))
-            (select1 [:required] typespec) (list 'non-null))))
-
-(declare ^:private xform-map-value)
-
-(defn ^:private xform-default-value
-  "Transforms a default argument value parse tree node.
-
-  Example node:
-  ((:value
-   (:objectValue
-    (:objectField
-     (:name \"name\")
-     (:value (:stringvalue \"Unspecified\")))
-    (:objectField
-     (:name \"episodes\")
-     (:value
-      (:arrayValue
-       (:value (:enumValue (:name \"NEWHOPE\")))
-       (:value (:enumValue (:name \"EMPIRE\")))
-       (:value (:enumValue (:name \"JEDI\")))))))))"
-  [arg-value]
-  (let [[type value & _] arg-value]
-    (case type
-      :nullvalue nil
-      :enumValue (keyword (second value))
-      :arrayValue (mapv (comp xform-default-value second) (rest arg-value))
-      :objectValue (apply merge (select-map xform-map-value [:objectField] [(rest arg-value)]))
-      :stringvalue (stringvalue->String value)
-      :blockstringvalue (blockstringvalue->String value)
-      value)))
-
-(defn ^:private xform-map-value
-  "Transforms a map value parse tree node.
-
-  Example node:
-  ((:name \"name\")
-   (:value (:stringvalue \"Unspecified\")))"
-  [object-field]
-  {(keyword (select1 [:name] object-field))
-   (some-> (select1 [:value] object-field)
-           (xform-default-value))})
-
-(defn ^:private xform-field-arg
-  "Transforms an argument parse tree node.
-
-  Example node:
-  ((:name \"episode\")
-   (:typeSpec (:typeName (:name \"episode\")))
-   (:defaultValue (:value (:enumValue (:name \"NEWHOPE\")))))"
-  [arg]
-  {(keyword (select1 [:name] arg))
-   (let [field-arg {:type (xform-typespec (select [:typeSpec] arg))}]
-     (if-let [default-value (some-> (select1 [:defaultValue :value] arg)
-                                    (xform-default-value))]
-       (assoc field-arg :defaultValue default-value)
-       field-arg))})
-
-(defn ^:private xform-field
-  "Transforms a field parse tree node.
-
-  Example node:
-  ((:fieldName (:name \"name\"))
-   (:typeSpec (:typeName (:name \"String\"))))"
-  [field]
-  {(keyword (select1 [:fieldName :name] field))
-   (cond-> {:type (xform-typespec (select [:typeSpec] field))}
-     (select [:fieldArgs] field) (assoc :args
-                                        (apply merge
-                                               (select-map xform-field-arg [:fieldArgs :argument] field))))})
-
-(defn ^:private xform-type
-  "Transforms a type definition parse tree node.
-
-  Example node:
-  ((:'type' \"type\")
-   (:typeName (:name \"CharacterOutput\"))
-   (:implementationDef
-    (:'implements' \"implements\")
-    (:typeName (:name \"Human\"))
-    (:typeName (:name \"Jedi\"))
-   (:fieldDef
-    (:fieldName (:name \"name\"))
-    (:typeSpec (:typeName (:name \"String\"))))
-   (:fieldDef
-    (:fieldName (:name \"birthDate\"))
-    (:typeSpec (:typeName (:name \"Date\")))))"
-  [type]
-  {(keyword (select1 [:typeName :name] type))
-   (let [[_ _ maybe-impl-def] (first type)
-         implemented-types (when (= :implementationDef (first maybe-impl-def))
-                             (->> maybe-impl-def
-                                  (drop 2)                  ; :implementationDef and :implements pair
-                                  (map (comp keyword second second))))]
-     (cond-> {:fields (apply merge (select-map xform-field [:fieldDef] type))}
-       implemented-types (assoc :implements implemented-types)))})
-
-(defn ^:private xform-enum
-  "Transforms an enum parse tree node.
-
-  Example node:
-  ((:'enum' \"enum\")
-   (:typeName (:name \"episode\"))
-   (:scalarName (:name \"NEWHOPE\"))
-   (:scalarName (:name \"EMPIRE\"))
-   (:scalarName (:name \"JEDI\")))"
-  [enum]
-  {(keyword (select1 [:typeName :name] enum))
-   {:values (vec (map #(hash-map :enum-value (-> % first keyword))
-                      (select [:scalarName :name] enum)))}})
-
-(defn ^:private xform-operation
-  "Transforms an operation parse tree node by inlining the operation types."
-  [schema operation]
-  (let [operation-type (keyword (select1 [:typeName :name] operation))]
-    (or (:fields (get-in schema [:objects operation-type]))
-        ;; Since Lacinia schemas do not support specifying a
-        ;; union type as an operation directly but the
-        ;; GraphQL schema language does, then we need to
-        ;; resolve the union here.
-        (some->> (get-in schema [:unions operation-type :members])
-                 (map #(get-in schema [:objects % :fields]))
-                 (apply merge))
-        (throw (ex-info "Operation type not found" {:operation operation-type})))))
-
-(defn ^:private xform-scalar
-  "Transforms a scalar parse tree node.
-
-  Example node:
-  ((:'scalar' \"scalar\") (:typeName (:name \"Date\")))"
-  [scalar]
-  {(keyword (select1 [:typeName :name] scalar))
-   {:parse nil
-    :serialize nil}})
-
-(defn ^:private xform-union
-  "Transforms a union parse tree node.
-
-  Example node:
-  ((:'union' \"union\")
-   (:typeName (:name \"Queries\"))
-   (:unionTypes
-    (:typeName (:name \"Query\"))
-    (:'|' \"|\")
-    (:typeName (:name \"OtherQuery\"))))"
-  [union]
-  {(keyword (select1 [:typeName :name] union))
-   {:members (mapv (comp keyword first)
-                   (select [:unionTypes :typeName :name] union))}})
-
-(defn ^:private attach-operations
-  "Builds the :schema key of the Lacinia schema.
-
-  Example schema definition parse tree node:
-
-  ((:schemaDef
-    (:'schema' \"schema\")
-    (:operationTypeDef
-     (:queryOperationDef
-      (:'query' \"query\")
-      (:typeName (:name \"Queries\"))))
-    (:operationTypeDef
-     (:mutationOperationDef
-      (:'mutation' \"mutation\")
-      (:typeName (:name \"Mutation\"))))
-    (:operationTypeDef
-     (:subscriptionOperationDef
-      (:'subscription' \"subscription\")
-      (:typeName (:name \"Subscription\"))))))"
-  [schema root]
-  (->> (select [:schemaDef :operationTypeDef] root)
-       (map #(vector (-> % first second second keyword)
-                     (-> % first (nth 2) second second keyword)))
-       (into {})
-       (assoc schema :roots)))
+  content describes what is being built, and is used for exception messages."
+  [content kvs]
+  (reduce (fn [m [k v]]
+            (assoc-check m content k v))
+          {}
+          kvs))
 
 (defn ^:private attach-field-fns
   "Attaches a map of either resolvers or subscription streamers"
@@ -281,74 +84,225 @@
   (cond-> schema
     scalars (assoc :scalars scalars)))
 
-(defn ^:private duplicates
-  "Returns duplicates in coll, retaining original element meta"
-  [coll]
-  (let [coll-freq (frequencies coll)]
-    (->> (remove (fn [el] (= (get coll-freq el) 1)) coll)
-         (seq))))
+;; This is very similar to the code for parsing a query, and includes a bit of duplication.
+;; Perhaps at some point we can merge it all into a single, unified grammar.
 
-(defn ^:private validate!
-  "Validates the schema parse tree against errors that will be hidden
-  by the transformation to the Lacinia schema."
-  [root]
-  (when-let [errors (->> (concat
-                          ;; Find duplicate types
-                          (when-let [duplicate-types (->> root
-                                                          (select [#{:typeDef :enumDef :scalarDef :unionDef :interfaceDef :inputTypeDef} :typeName])
-                                                          (map first)
-                                                          (duplicates))]
-                            [{:error "Duplicate type names" :duplicate-types (map (fn [type-name-node]
-                                                                                    {:name (second type-name-node)
-                                                                                     :location (meta type-name-node)})
-                                                                                  duplicate-types)}])
-                          ;; find duplicate fields within each type
-                          (select-map (fn [nodes]
-                                        (when-let [duplicate-fields (->> nodes
-                                                                         (select [:fieldDef :fieldName])
-                                                                         (map first)
-                                                                         (duplicates))]
-                                          {:error "Duplicate fields defined on type"
-                                           :duplicate-fields (map (fn [field-name-node]
-                                                                    {:name (second field-name-node)
-                                                                     :location (meta field-name-node)})
-                                                                  duplicate-fields)
-                                           :type (select1 [:typeName :name] nodes)}))
-                                      [#{:typeDef :inputTypeDef :interfaceDef}]
-                                      root)
-                          ;; find duplicate arguments within each field
-                          (select-map (fn [nodes]
-                                        (when-let [duplicate-args (->> nodes
-                                                                       (select [:fieldArgs :argument :name])
-                                                                       (map first)
-                                                                       (duplicates))]
-                                          {:error "Duplicate arguments defined on field"
-                                           :duplicate-arguments (distinct duplicate-args)
-                                           :field (let [field-name-node (select1 [:fieldName] nodes)]
-                                                    {:name (second field-name-node)
-                                                     :location (meta field-name-node)})}))
-                                      [#{:typeDef :interfaceDef} :fieldDef]
-                                      root))
-                         (remove nil?)
-                         (seq))]
-    (throw (ex-info "Error parsing schema" {:errors errors}))))
+(defmulti ^:private xform
+  "Transform an Antlr production into a result.
+
+  Antlr productions are recursive lists; the first element is a type
+  (from the grammar), and the rest of the list are nested productions.
+
+  Meta data on the production is the location (line, column) of the production."
+  first
+  ;; When debugging/developing, this is incredibly useful:
+  #_(fn [prod]
+      (log/trace :dispatch prod)
+      (first prod))
+  :default ::default)
+
+(defn ^:private xform-second
+  [prod]
+  (-> prod second xform))
+
+
+(defmethod xform :schemaDef
+  [prod]
+  [[:roots] (checked-map "schema entry" (map xform (drop 2 prod)))])
+
+(defmethod xform :operationTypeDef
+  [prod]
+  (xform (second prod)))
+
+(defmethod xform :queryOperationDef
+  [prod]
+  (let [[_ _ type-prod] prod]
+    [:query (xform type-prod)]))
+
+(defmethod xform :mutationOperationDef
+  [prod]
+  (let [[_ _ type-prod] prod]
+    [:mutation (xform type-prod)]))
+
+(defmethod xform :subscriptionOperationDef
+  [prod]
+  (let [[_ _ type-prod] prod]
+    [:subscription (xform type-prod)]))
+
+(defmethod xform :typeName
+  [prod]
+  (let [name-k (xform-second prod)]
+    ;; By convention, these type names for built-in types are represented as
+    ;; symbols, not keywords.
+    (if (#{:Boolean :String :Int :Float :ID} name-k)
+      (-> name-k name symbol)
+      name-k)))
+
+(defmethod xform :name
+  [prod]
+  (-> prod second keyword))
+
+(defmethod xform :typeDef
+  [prod]
+  (let [{:keys [typeName implementationDef fieldDefs]} (tag prod)]
+    [[:objects (xform typeName)]
+     (cond-> (common/copy-meta {:fields (xform fieldDefs)} typeName)
+       implementationDef (assoc :implements (xform implementationDef)))]))
+
+(defmethod xform :fieldDefs
+  [prod]
+  (checked-map "field" (map xform (rest prod))))
+
+(defmethod xform :fieldDef
+  [prod]
+  (let [{:keys [fieldName typeSpec fieldArgs]} (tag prod)]
+    [(xform fieldName)
+     (cond-> (common/copy-meta {:type (xform typeSpec)} fieldName)
+       fieldArgs (assoc :args (xform fieldArgs)))]))
+
+(defmethod xform :fieldArgs
+  [prod]
+  (checked-map "field argument" (map xform (rest prod))))
+
+(defmethod xform :argument
+  [prod]
+  (let [{:keys [name typeSpec defaultValue]} (tag prod)]
+    [(xform name)
+     (cond-> (common/copy-meta {:type (xform typeSpec)} name)
+       defaultValue (assoc :default-value (xform-second defaultValue)))]))
+
+(defmethod xform :value
+  [prod]
+  (xform-second prod))
+
+(defmethod xform :enumValue
+  [prod]
+  (xform-second prod))
+
+(defmethod xform :booleanvalue
+  [prod]
+  (Boolean/valueOf ^String (second prod)))
+
+(defmethod xform :intvalue
+  [prod]
+  (Integer/parseInt ^String (second prod)))
+
+(defmethod xform :floatvalue
+  [prod]
+  (Float/parseFloat ^String (second prod)))
+
+(defmethod xform :fieldName
+  [prod]
+  (xform-second prod))
+
+(defmethod xform :implementationDef
+  [prod]
+  (let [types (drop 2 prod)]
+    (mapv xform types)))
+
+(defmethod xform :typeSpec
+  [prod]
+  (let [[_ type required] prod
+        base-type (-> type xform)]
+    (if (some? required)
+      (list 'non-null base-type)
+      base-type)))
+
+(defmethod xform :listType
+  [prod]
+  (list 'list (xform-second prod)))
+
+(defmethod xform :interfaceDef
+  [prod]
+  (let [[_ _ type fieldDefs] prod]
+    [[:interfaces (xform type)]
+     (common/copy-meta {:fields (xform fieldDefs)} type)]))
+
+(defmethod xform :unionDef
+  [prod]
+  (let [[_ _ type unionTypes] prod]
+    [[:unions (xform type)]
+     (common/copy-meta {:members (xform unionTypes)} type)]))
+
+(defmethod xform :unionTypes
+  [prod]
+  (->> prod
+       rest
+       (filter #(-> % first (= :typeName)))
+       (mapv xform)))
+
+(defmethod xform :enumDef
+  [prod]
+  (let [[_ _ type & enumValues] prod]
+    [[:enums (xform type)]
+     {:values (mapv (fn [prod]
+                      (common/copy-meta {:enum-value (xform prod)} prod))
+                    enumValues)}]))
+
+(defmethod xform :scalarName
+  [prod]
+  (xform-second prod))
+
+(defmethod xform :inputTypeDef
+  [prod]
+  (let [{:keys [typeName fieldDefs]} (tag prod)]
+    [[:input-objects (xform typeName)]
+     (common/copy-meta {:fields (xform fieldDefs)} typeName)]))
+
+(defmethod xform :scalarDef
+  [prod]
+  (let [[_ _ typeName] prod]
+    [[:scalars (xform typeName)]
+     (common/copy-meta {} typeName)]))
+
+(defmethod xform :objectValue
+  [prod]
+  (-> (map xform (rest prod))
+      (as-> % (checked-map "object key" %))
+      (common/copy-meta prod)))
+
+(defmethod xform :objectField
+  [prod]
+  (let [[_ name value] prod]
+    [(xform name)
+     (xform value)]))
+
+(defmethod xform :stringvalue
+  [prod]
+  (-> prod second common/stringvalue->String))
+
+(defmethod xform :blockstringvalue
+  [prod]
+  (-> prod second common/blockstringvalue->String))
+
+(defmethod xform :arrayValue
+  [prod]
+  (common/copy-meta (mapv xform (rest prod)) prod))
 
 (defn ^:private xform-schema
   "Given an ANTLR parse tree, returns a Lacinia schema."
   [antlr-tree resolvers scalars streamers documentation]
-  (let [root (select [:graphqlSchema] [[antlr-tree]])]
-    (validate! root)
-    (-> {:objects (apply merge (select-map xform-type [:typeDef] root))
-         :input-objects (apply merge (select-map xform-type [:inputTypeDef] root))
-         :enums (apply merge (select-map xform-enum [:enumDef] root))
-         :scalars (apply merge (select-map xform-scalar [:scalarDef] root))
-         :unions (apply merge (select-map xform-union [:unionDef] root))
-         :interfaces (apply merge (select-map xform-type [:interfaceDef] root))}
+  (let [schema (->> antlr-tree
+                    rest
+                    (map xform)
+                    (reduce (fn [schema [path value]]
+                              (let [path' (butlast path)
+                                    k (last path)]
+                                ;; Generally, the path is two values (a category such
+                                ;; as :objects, and a key within), but there's also
+                                ;; [:root] (for the schema production).
+                                (if-not (seq path')
+                                  (assoc schema k value)
+                                  (update-in schema path'
+                                             assoc-check
+                                             (-> path' last name) k value))))
+                            {}))]
+    (-> schema
         (attach-field-fns :resolve resolvers)
         (attach-field-fns :stream streamers)
+        ;; TODO: This should inject stuff into the scalar, not replace it, right?
         (attach-scalars scalars)
-        (inject-descriptions documentation)
-        (attach-operations root))))
+        (inject-descriptions documentation))))
 
 (defn parse-schema
   "Given a GraphQL schema string, parses it and returns a Lacinia EDN
@@ -377,19 +331,19 @@
                     ed)))
 
   (let [{:keys [resolvers scalars streamers documentation]} attach]
-    (remove-vals ;; Remove any empty schema components to avoid clutter
-     ;; and optimize for human readability
-     #(or (nil? %) (= {} %))
-     (xform-schema (try
-                     (antlr-parse grammar schema-string)
-                     (catch ParseError e
-                       (let [failures (parse-failures e)]
-                         (throw (ex-info "Failed to parse GraphQL schema."
-                                         {:errors failures})))))
-                   resolvers
-                   scalars
-                   streamers
-                   documentation))))
+    (remove-vals                                            ;; Remove any empty schema components to avoid clutter
+      ;; and optimize for human readability
+      #(or (nil? %) (= {} %))
+      (xform-schema (try
+                      (common/antlr-parse grammar schema-string)
+                      (catch ParseError e
+                        (let [failures (common/parse-failures e)]
+                          (throw (ex-info "Failed to parse GraphQL schema."
+                                          {:errors failures})))))
+                    resolvers
+                    scalars
+                    streamers
+                    documentation))))
 
 (s/def ::field-fn (s/map-of simple-keyword? (s/or :function fn? :keyword simple-keyword?)))
 (s/def ::fn-map (s/map-of simple-keyword? ::field-fn))

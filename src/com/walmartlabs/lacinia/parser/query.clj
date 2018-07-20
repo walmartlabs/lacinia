@@ -19,35 +19,14 @@
   Anltr (on the JVM) or with some other parsing library (in-browser, or Node)."
   {:added "0.26.0"}
   (:require
-    [clj-antlr.core :as antlr.core]
-    [clojure.java.io :as io]
     #_[io.pedestal.log :as log]
     #_[clojure.pprint :as pprint]
-    [com.walmartlabs.lacinia.parser.common :refer [antlr-parse
-                                                   parse-failures
-                                                   blockstringvalue->String
-                                                   stringvalue->String]])
+    [com.walmartlabs.lacinia.parser.common :as common])
   (:import
     (clj_antlr ParseError)))
 
 (def ^:private grammar
-  (-> "com/walmartlabs/lacinia/Graphql.g4"
-      io/resource
-      slurp
-      antlr.core/parser))
-
-(defn ^:private as-map
-  [prod]
-  (->> prod
-       rest
-       (reduce (fn [m sub-prod]
-                 (assoc! m (first sub-prod) (rest sub-prod)))
-               (transient {}))
-       persistent!))
-
-(defn ^:private copy-meta
-  [to from]
-  (with-meta to (meta from)))
+  (common/compile-grammar "com/walmartlabs/lacinia/Graphql.g4"))
 
 (defmulti ^:private xform
   "Transform an Antlr production into a result.
@@ -74,11 +53,11 @@
 (defmethod xform :operationDefinition
   [prod]
   (let [{:keys [operationType selectionSet variableDefinitions directives]
-         op-name :name} (as-map prod)
+         op-name :name} (common/as-map prod)
         type (if operationType
                (-> operationType first xform)
                :query)]
-    (cond-> (copy-meta {:type type} prod)
+    (cond-> (common/copy-meta {:type type} prod)
 
       op-name (assoc :name (-> op-name first xform))
 
@@ -120,11 +99,11 @@
 
 (defmethod xform :field
   [prod]
-  (let [{:keys [name selectionSet alias arguments directives]} (as-map prod)]
+  (let [{:keys [name selectionSet alias arguments directives]} (common/as-map prod)]
     (cond->
-      (copy-meta {:type :field
+      (common/copy-meta {:type :field
                   :field-name (xform (first name))}
-                 prod)
+                        prod)
 
       alias (assoc :alias (xform (first alias)))
 
@@ -180,12 +159,12 @@
   [prod]
   {:type :string
    ;; The value from Antlr has quotes around it that need to be stripped off.
-   :value (-> prod second stringvalue->String)})
+   :value (-> prod second common/stringvalue->String)})
 
 (defmethod xform :blockstringvalue
   [prod]
   {:type :string
-   :value (-> prod second blockstringvalue->String)})
+   :value (-> prod second common/blockstringvalue->String)})
 
 (defmethod xform :arrayValue
   [prod]
@@ -223,13 +202,13 @@
 
 (defmethod xform :inlineFragment
   [prod]
-  (let [{:keys [typeCondition directives selectionSet]} (as-map prod)
+  (let [{:keys [typeCondition directives selectionSet]} (common/as-map prod)
         on-type (-> typeCondition first second)]
     (-> {:type :inline-fragment
          :on-type (xform on-type)
          :selections (mapv xform selectionSet)}
         (cond-> directives (assoc :directives (mapv xform directives)))
-        (copy-meta on-type))))
+        (common/copy-meta on-type))))
 
 (defmethod xform :fragmentSpread
   [prod]
@@ -238,13 +217,13 @@
     (-> {:type :named-fragment
          :fragment-name (xform name)}
         (cond-> directives (assoc :directives (mapv xform (rest directives))))
-        (copy-meta name))))
+        (common/copy-meta name))))
 
 (defmethod xform :fragmentDefinition
   [prod]
   (let [[_ fragment-name type-condition selection-set] prod
         name (second fragment-name)]
-    (copy-meta
+    (common/copy-meta
       {:type :fragment-definition
        :fragment-name (xform name)
        :on-type (-> type-condition second second xform)
@@ -280,9 +259,9 @@
   [input]
   (xform-query
     (try
-      (antlr-parse grammar input)
+      (common/antlr-parse grammar input)
       (catch ParseError e
-        (let [failures (parse-failures e)]
+        (let [failures (common/parse-failures e)]
           (throw (ex-info "Failed to parse GraphQL query."
                           {:errors failures})))))))
 

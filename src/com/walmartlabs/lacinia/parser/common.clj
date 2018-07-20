@@ -16,11 +16,23 @@
   (:require [clj-antlr.proto :as antlr.proto]
             [clj-antlr.common :as antlr.common]
             [clojure.string :as str]
-            [com.walmartlabs.lacinia.internal-utils
-             :refer [keepv]])
+            [com.walmartlabs.lacinia.internal-utils :refer [keepv]]
+            [clojure.java.io :as io]
+            [clj-antlr.core :as antlr.core])
   (:import (org.antlr.v4.runtime.tree ParseTree TerminalNode)
            (org.antlr.v4.runtime Parser ParserRuleContext Token)
            (clj_antlr ParseError)))
+
+(defn as-map
+  "Converts a normal Antlr production into a map."
+  [prod]
+  (->> prod
+       rest
+       (reduce (fn [m sub-prod]
+                 (assoc! m (first sub-prod) (rest sub-prod)))
+               (transient {}))
+       persistent!))
+
 
 (defn ^:private unescape-ascii
   [^String escaped-sequence]
@@ -79,6 +91,12 @@
                                      (rest lines)))]
         (str/join "\n" trimmed-lines)))))
 
+(defn copy-meta
+  "Copys meta data from an object to a new object; with Antlr, meta data
+  is location data."
+  [to from]
+  (with-meta to (meta from)))
+
 (defn blockstringvalue->String
   "Transform an ANTLR multi-line block string value into a Clojure string."
   [^String s]
@@ -136,8 +154,8 @@
               (.getText t))))))
 
 (defn antlr-parse
-  [grammar schema-string]
-  (let [{:keys [tree parser]} (antlr.proto/parse grammar nil schema-string)]
+  [grammar input-document]
+  (let [{:keys [tree parser]} (antlr.proto/parse grammar nil input-document)]
     (traverse tree parser)))
 
 (defn parse-failures
@@ -149,3 +167,9 @@
             :message message})
          errors)))
 
+(defn compile-grammar
+  [path]
+  (-> path
+      io/resource
+      slurp
+      antlr.core/parser))

@@ -11,6 +11,8 @@ the top level keys are `:message`, `:locations`, and `:path`, and
 `:extensions` (which contains any other keys in the error map supplied
 by the field resolver).
 
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/17?closed=1)
+
 ## 0.28.0 -- 21 Jun 2018
 
 Removed a potential race condition related to asynchronous field resolvers.
@@ -21,7 +23,7 @@ Removed a potential race condition related to asynchronous field resolvers.
 
 A change to how GraphQL schema documentation is attached.
 Previously, arguments were refered to as `:MyType.my_field/arg_name`
-but with this release, we've change it to `:MyType/my_field.arg_name`.
+but with this release, we've changed it to `:MyType/my_field.arg_name`.
 
 It is now possible, when parsing a schema from SDL, to document interfaces, enums, 
 scalars, and unions.
