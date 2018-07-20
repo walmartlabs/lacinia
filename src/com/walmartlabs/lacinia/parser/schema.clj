@@ -106,6 +106,11 @@
   (-> prod second xform))
 
 
+(defn ^:private apply-description
+  [parsed descripion-prod]
+  (cond-> parsed
+    descripion-prod (assoc :description (xform descripion-prod))))
+
 (defmethod xform :schemaDef
   [prod]
   [[:roots] (checked-map "schema entry" (map xform (drop 2 prod)))])
@@ -142,12 +147,18 @@
   [prod]
   (-> prod second keyword))
 
+(defmethod xform :description
+  [prod]
+  (xform-second prod))
+
 (defmethod xform :typeDef
   [prod]
-  (let [{:keys [typeName implementationDef fieldDefs]} (tag prod)]
+  (let [{:keys [typeName implementationDef fieldDefs description]} (tag prod)]
     [[:objects (xform typeName)]
-     (cond-> (common/copy-meta {:fields (xform fieldDefs)} typeName)
-       implementationDef (assoc :implements (xform implementationDef)))]))
+     (-> {:fields (xform fieldDefs)}
+         (common/copy-meta typeName)
+         (apply-description description)
+         (cond-> implementationDef (assoc :implements (xform implementationDef))))]))
 
 (defmethod xform :fieldDefs
   [prod]
@@ -155,10 +166,12 @@
 
 (defmethod xform :fieldDef
   [prod]
-  (let [{:keys [fieldName typeSpec fieldArgs]} (tag prod)]
+  (let [{:keys [fieldName typeSpec fieldArgs description]} (tag prod)]
     [(xform fieldName)
-     (cond-> (common/copy-meta {:type (xform typeSpec)} fieldName)
-       fieldArgs (assoc :args (xform fieldArgs)))]))
+     (-> {:type (xform typeSpec)}
+         (common/copy-meta fieldName)
+         (apply-description description)
+         (cond-> fieldArgs (assoc :args (xform fieldArgs))))]))
 
 (defmethod xform :fieldArgs
   [prod]
@@ -166,10 +179,12 @@
 
 (defmethod xform :argument
   [prod]
-  (let [{:keys [name typeSpec defaultValue]} (tag prod)]
+  (let [{:keys [name typeSpec defaultValue description]} (tag prod)]
     [(xform name)
-     (cond-> (common/copy-meta {:type (xform typeSpec)} name)
-       defaultValue (assoc :default-value (xform-second defaultValue)))]))
+     (-> {:type (xform typeSpec)}
+         (common/copy-meta name)
+         (apply-description description)
+         (cond-> defaultValue (assoc :default-value (xform-second defaultValue))))]))
 
 (defmethod xform :value
   [prod]
@@ -214,15 +229,19 @@
 
 (defmethod xform :interfaceDef
   [prod]
-  (let [[_ _ type fieldDefs] prod]
-    [[:interfaces (xform type)]
-     (common/copy-meta {:fields (xform fieldDefs)} type)]))
+  (let [{:keys [typeName fieldDefs description]} (tag prod)]
+    [[:interfaces (xform typeName)]
+     (-> {:fields (xform fieldDefs)}
+         (common/copy-meta typeName)
+         (apply-description description))]))
 
 (defmethod xform :unionDef
   [prod]
-  (let [[_ _ type unionTypes] prod]
-    [[:unions (xform type)]
-     (common/copy-meta {:members (xform unionTypes)} type)]))
+  (let [{:keys [description typeName unionTypes]} (tag prod)]
+    [[:unions (xform typeName)]
+     (-> {:members (xform unionTypes)}
+         (common/copy-meta typeName)
+         (apply-description description))]))
 
 (defmethod xform :unionTypes
   [prod]
@@ -233,11 +252,22 @@
 
 (defmethod xform :enumDef
   [prod]
-  (let [[_ _ type & enumValues] prod]
-    [[:enums (xform type)]
-     {:values (mapv (fn [prod]
-                      (common/copy-meta {:enum-value (xform prod)} prod))
-                    enumValues)}]))
+  (let [{:keys [description typeName enumValueDefs]} (tag prod)]
+    [[:enums (xform typeName)]
+     (-> {:values (xform enumValueDefs)}
+         (common/copy-meta typeName)
+         (apply-description description))]))
+
+(defmethod xform :enumValueDefs
+  [prod]
+  (mapv xform (rest prod)))
+
+(defmethod xform :enumValueDef
+  [prod]
+  (let [{:keys [description scalarName]} (tag prod)]
+    (-> {:enum-value (xform scalarName)}
+        (common/copy-meta scalarName)
+        (apply-description description))))
 
 (defmethod xform :scalarName
   [prod]
@@ -245,19 +275,23 @@
 
 (defmethod xform :inputTypeDef
   [prod]
-  (let [{:keys [typeName fieldDefs]} (tag prod)]
+  (let [{:keys [typeName fieldDefs description]} (tag prod)]
     [[:input-objects (xform typeName)]
-     (common/copy-meta {:fields (xform fieldDefs)} typeName)]))
+     (-> {:fields (xform fieldDefs)}
+         (common/copy-meta typeName)
+         (apply-description description))]))
 
 (defmethod xform :scalarDef
   [prod]
-  (let [[_ _ typeName] prod]
+  (let [{:keys [typeName description]} (tag prod)]
     [[:scalars (xform typeName)]
-     (common/copy-meta {} typeName)]))
+     (-> {}
+         (common/copy-meta typeName)
+         (apply-description description))]))
 
 (defmethod xform :objectValue
   [prod]
-  (-> (map xform (rest prod))
+  (-> (mapv xform (rest prod))
       (as-> % (checked-map "object key" %))
       (common/copy-meta prod)))
 

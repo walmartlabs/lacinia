@@ -1,20 +1,13 @@
 GraphQL SDL Parsing
 ===================
 
-.. important::
-   The GraphQL Schema Definition Language is not yet a formal specification
-   and is still under development. As such, this part of Lacinia will continue
-   to evolve to keep up with new developments, and it's possible that breaking
-   changes will occur.
+.. sidebar:: GraphQL Spec
 
-.. sidebar:: GraphQL SDL
-
-  See the `RFC PR <https://github.com/facebook/graphql/pull/90>`_ for details
-  on the GraphQL Schema Definition Language.
+   Read about :spec:`the Schema Definition Language <Schema>`.
 
 As noted in the :doc:`overview <../overview>`, Lacinia schemas are represented as
 Clojure data. However, Lacinia also contains a facility to transform schemas
-written in the GraphQL Interface Definition Language into the form usable by Lacinia.
+written in the GraphQL Schema Definition Language into the form usable by Lacinia.
 This is exposed by the function ``com.walmartlabs.lacinia.parser.schema/parse-schema``.
 
 The Lacinia schema definition includes things which are not available in the SDL, such as
@@ -60,6 +53,14 @@ The ``:documentation`` key uses a naming convention on the keys which become pat
 ``:Query/find_all_in_episode.episode`` applies to the ``episode`` argument, inside the ``find_all_in_episode`` field
 of the ``Query`` object.
 
+.. tip::
+
+   Attaching documentation this way is less necessary since release 0.29.0, which added support for
+   embedded :spec:`schema documentation <Descriptions>`.
+
+   Alternately, the documentation map can be parsed from a Markdown file using
+   ``com.walmartlabs.lacinia.parser.docs/parse-docs``.
+
 The same key structure can be used to document input objects and interfaces.
 
 Unions may be documented, but do not contain fields.
@@ -71,3 +72,7 @@ are defined on ordinary schema objects, and the ``schema`` element identifies wh
 which purposes.
 
 The ``:roots`` map inside the Lacinia schema is equivalent to the ``schema`` element in the SDL.
+
+.. warning::
+
+   :spec:`Schema extensions <Schema-Extension>` are defined in the GraphQL specification, but not yet implemented.

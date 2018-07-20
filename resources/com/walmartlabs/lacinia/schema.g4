@@ -4,6 +4,11 @@ graphqlSchema
   : '{' (schemaDef|typeDef|inputTypeDef|unionDef|enumDef|interfaceDef|scalarDef)* '}'
   ;
 
+description
+  : StringValue
+  | BlockStringValue
+  ;
+
 schemaDef
   : 'schema' '{' operationTypeDef+ '}'
   ;
@@ -27,7 +32,7 @@ subscriptionOperationDef
   ;
 
 typeDef
-  : 'type' typeName implementationDef? fieldDefs
+  : description? 'type' typeName implementationDef? fieldDefs
   ;
 
 fieldDefs
@@ -40,19 +45,19 @@ implementationDef
   ;
 
 inputTypeDef
-  : 'input' typeName fieldDefs
+  : description? 'input' typeName fieldDefs
   ;
 
 interfaceDef
-  : 'interface' typeName fieldDefs
+  : description? 'interface' typeName fieldDefs
   ;
 
 scalarDef
-  : 'scalar' typeName
+  : description? 'scalar' typeName
   ;
 
 unionDef
-  : 'union' typeName '=' unionTypes
+  : description? 'union' typeName '=' unionTypes
   ;
 
 unionTypes
@@ -60,7 +65,15 @@ unionTypes
   ;
 
 enumDef
-  : 'enum' typeName '{' scalarName+ '}'
+  : description? 'enum' typeName enumValueDefs
+  ;
+
+enumValueDefs
+  : '{' enumValueDef+ '}'
+  ;
+
+enumValueDef
+  : description? scalarName
   ;
 
 scalarName
@@ -68,7 +81,7 @@ scalarName
   ;
 
 fieldDef
-  : fieldName fieldArgs? ':' typeSpec
+  : description? fieldName fieldArgs? ':' typeSpec
   ;
 
 fieldArgs
@@ -80,7 +93,7 @@ fieldName
   ;
 
 argument
-  : Name ':' typeSpec defaultValue?
+  : description? Name ':' typeSpec defaultValue?
   ;
 
 typeSpec
