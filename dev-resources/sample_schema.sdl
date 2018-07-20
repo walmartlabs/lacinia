@@ -6,6 +6,7 @@
     JEDI
   }
 
+  "Date in standard ISO format"
   scalar Date
 
   interface Human {

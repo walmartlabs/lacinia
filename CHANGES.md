@@ -14,6 +14,11 @@ the top level keys are `:message`, `:locations`, and `:path`, and
 `:extensions` (which contains any other keys in the error map supplied
 by the field resolver).
 
+The behavior of the `:scalars` option to `com.walmartlabs.lacina.parser.schema/parse-schema`
+has changed slightly; the values provided are now merged with any scalar
+data defined in the schema document.
+Previously, the supplied value *overwrote* what was parsed.
+
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/17?closed=1)
 
 ## 0.28.0 -- 21 Jun 2018
