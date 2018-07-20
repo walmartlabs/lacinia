@@ -242,3 +242,38 @@
     (is (some? input-arg))
     (is (= "line 1\n\nline 3\n  indented line 4\nline 5"
            (:default-value input-arg)))))
+
+(deftest embedded-docs
+  (let [schema (-> "documented-schema.sdl"
+                   resource
+                   slurp
+                   (parser/parse-schema {}))]
+    (is (= {:enums {:FileNodeType {:description "File node type."
+                                   :values [{:description "A standard file-system file."
+                                             :enum-value :FILE}
+                                            {:description "A directory that may contain other files and directories."
+                                             :enum-value :DIR}
+                                            {:description "A special file, such as a device."
+                                             :enum-value :SPECIAL}]}}
+            :interfaces {:Named {:description "Things that have a name."
+                                 :fields {:name {:description "The unique name for the Named thing."
+                                                 :type 'String}}}}
+            :objects {:Directory {:description "Directory type."
+                                  :fields {:contents {:args {:match {:description "Wildcard used for matching."
+                                                                     :type 'String}}
+                                                      :type '(list :DirectoryListing)}
+                                           :name {:type 'String}
+                                           :permissions {:type :Permissions}}
+                                  :implements [:Named]}
+                      :DirectoryListing {:fields {:name {:type 'String}
+                                                  :node_type {:type :FileNodeType}}
+                                         :implements [:Named]}
+                      :File {:fields {:name {:type 'String}}
+                             :implements [:Named]}
+                      :Query {:fields {:file {:args {:path {:type 'String}}
+                                              :type :FileSystemEntry}}}}
+            :scalars {:Permissions {:description "String that identifies permissions on a file or directory."}}
+            :unions {:FileSystemEntry {:description "Stuff that can appear on the file system"
+                                       :members [:File
+                                                 :Directory]}}}
+           schema))))

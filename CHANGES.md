@@ -4,9 +4,12 @@ Changes have started to bring Lacinia into compliance with
 the [June 2018 version of the GraphQL specification](https://github.com/facebook/graphql/releases/tag/June2018).
 
 Lacinia now supports block strings (via `"""`) in query and schema documents.
-However, we have not yet implemented using block strings as documentation in schemas.
 
-The error maps inside the `:error` key are now structured according to the spec;
+In addition, descriptions are now supported inside schema documents;
+a string (or block string) before an element in the schema becomes the
+documentation for that element.
+
+The error maps inside the `:error` key are now structured according to the June 2018 spec;
 the top level keys are `:message`, `:locations`, and `:path`, and
 `:extensions` (which contains any other keys in the error map supplied
 by the field resolver).
@@ -25,9 +28,10 @@ A change to how GraphQL schema documentation is attached.
 Previously, arguments were refered to as `:MyType.my_field/arg_name`
 but with this release, we've changed it to `:MyType/my_field.arg_name`.
 
-It is now possible, when parsing a schema from SDL, to document interfaces, enums, 
-scalars, and unions.
-Previously, only objects and input objects could be documented.
+It is now possible, when parsing a schema from SDL via
+`com.walmartlabs.lacinia.parser.schema/parse-schema`, to
+attach descriptions to interfaces, enums, scalars, and unions.
+Previously, only objects and input objects could have descriptions attached.
 
 New function `com.walmartlabs.lacinia.util/inject-resolvers` is an alternate way
 to attach resolvers to a schema.

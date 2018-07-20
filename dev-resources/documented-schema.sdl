@@ -1,0 +1,60 @@
+{
+  """
+  Things that have a name.
+  """
+  interface Named {
+    "The unique name for the Named thing."
+    name: String
+  }
+
+  """
+  File node type.
+  """
+  enum FileNodeType {
+    "A standard file-system file."
+    FILE
+
+    "A directory that may contain other files and directories."
+    DIR
+
+    "A special file, such as a device."
+    SPECIAL
+  }
+
+  type DirectoryListing implements Named {
+    name: String
+    node_type: FileNodeType
+  }
+
+  """
+  String that identifies permissions on a file or directory.
+  """
+  scalar Permissions
+
+  """
+  Directory type.
+  """
+  type Directory implements Named {
+    name : String
+    permissions: Permissions
+    contents(
+      """
+      Wildcard used for matching.
+      """
+      match : String) : [DirectoryListing]
+  }
+
+  type File implements Named {
+    name : String
+  }
+
+  "Stuff that can appear on the file system"
+  union FileSystemEntry = File | Directory
+
+  type Query {
+    file(path : String) :  FileSystemEntry
+  }
+
+}
+
+
