@@ -191,6 +191,36 @@
                                    :line 9}]
                       :message "Fragment `HumanFragment' is never used."}]}
            (execute compiled-schema q {} nil))))
+  (let [q "query UseFragment {
+             luke: human(id: \"1000\") {
+               ...HumanFragment
+             }
+           }
+           fragment HumanFragment on human {
+             name
+           }
+           fragment HumanFragment on human {
+             homePlanet
+           }"]
+    (is (= {:errors [{:locations [{:column 21 :line 6}, {:column 21 :line 9}]
+                      :message "There can be only one fragment named \"HumanFragment\"."}
+                      ]}
+           (execute compiled-schema q {} nil))))
+  (let [q "query UseFragment {
+             luke: human(id: \"1000\") {
+               name
+             }
+           }
+           fragment UnusedDuplicateFragment on human {
+             name
+           }
+           fragment UnusedDuplicateFragment on human {
+             homePlanet
+           }"]
+    (is (= {:errors [{:locations [{:column 21 :line 6}, {:column 21 :line 9}]
+                      :message "There can be only one fragment named \"UnusedDuplicateFragment\"."}
+                      ]}
+           (execute compiled-schema q {} nil))))
   (let [q "query withNestedFragments {
              luke: human(id: \"1000\") {
                friends {
