@@ -92,7 +92,7 @@ Compilation reorganizes the schema, computes various defaults, perform verificat
 and does a number of other necessary steps.
 
 We're using a namespaced keyword for the resolver in the schema, and in the
-``resolve-map`` function; this is a good habit to get into early, before your
+``resolver-map`` function; this is a good habit to get into early, before your
 schema gets very large.
 
 The field resolver in this case is a placeholder; it ignores all the arguments
