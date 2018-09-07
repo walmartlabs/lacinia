@@ -28,6 +28,9 @@
                 (nil? reference)
                 field
 
+                (fn? reference)
+                field
+
                 :let [factory? (not (keyword? reference))
                       callback-source (get callbacks-map
                                            (if factory?
