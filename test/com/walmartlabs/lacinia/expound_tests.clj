@@ -17,6 +17,7 @@
   (:require
     [clojure.test :refer [deftest is use-fixtures]]
     [com.walmartlabs.test-reporting :refer [reporting]]
+    com.walmartlabs.lacinia.expound
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.parser.schema :as ps]
     [clojure.spec.alpha :as s]
