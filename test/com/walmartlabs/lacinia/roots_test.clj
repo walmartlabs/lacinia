@@ -15,7 +15,6 @@
 (ns com.walmartlabs.lacinia.roots-test
   "Tests related to specifying  operation root object names."
   (:require
-    com.walmartlabs.lacinia.parser
     [clojure.test :refer [deftest is]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.test-utils :refer [execute compile-schema]]))
