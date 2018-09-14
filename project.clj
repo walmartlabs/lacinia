@@ -6,6 +6,7 @@
             [test2junit "1.2.5"]]
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [clj-antlr "0.2.4"]
+                 [org.clojure/data.json "0.2.6"]
                  [org.flatland/ordered "1.5.6"
                   :exclusions [org.clojure/tools.macro]]]
   :profiles {:dev {:dependencies [[criterium "0.4.4"]
@@ -16,8 +17,7 @@
                                   [io.pedestal/pedestal.log "0.5.4"]
                                   [org.clojure/test.check "0.9.0"]
                                   [org.clojure/data.csv "0.1.4"]
-                                  [org.clojure/tools.cli "0.3.7"]
-                                  [org.clojure/data.json "0.2.6"]]}}
+                                  [org.clojure/tools.cli "0.3.7"]]}}
   :aliases {"benchmarks" ["run" "-m" "perf"]}
   :jvm-opts ["-Xmx1g"]
   :test2junit-output-dir ~(or (System/getenv "CIRCLE_TEST_REPORTS") "target/test2junit")
