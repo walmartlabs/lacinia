@@ -1,4 +1,4 @@
-## 0.29.0 -- UNRELEASED
+## 0.29.0 -- 14 Sep 2018
 
 Changes have started to bring Lacinia into compliance with
 the [June 2018 version of the GraphQL specification](https://github.com/facebook/graphql/releases/tag/June2018).
@@ -10,7 +10,7 @@ a string (or block string) before an element in the schema becomes the
 documentation for that element.
 
 The error maps inside the `:error` key are now structured according to the June 2018 spec;
-the top level keys are `:message`, `:locations`, and `:path`, and
+the top level keys are `:message`, `:locations`, `:path`, and
 `:extensions` (which contains any other keys in the error map supplied
 by the field resolver).
 
