@@ -18,11 +18,15 @@
             [com.walmartlabs.lacinia.util :as util])
   (:import (clojure.lang ExceptionInfo)))
 
+(defn resolve-id
+  [_ _ _])
+
 (deftest attach-resolvers
   (let [schema {:objects
                 {:person
                  {:fields
-                  {:id {:type 'Int}
+                  {:id {:type 'Int
+                        :resolve resolve-id}
                    :name {:type 'String
                           :resolve :person-name}
                    :total-credit {:type 'Int
@@ -39,7 +43,8 @@
         resolved-schema {:objects
                          {:person
                           {:fields
-                           {:id {:type 'Int}
+                           {:id {:type 'Int
+                                 :resolve resolve-id}
                             :name {:type 'String
                                    :resolve str}
                             :total-credit {:type 'Int

@@ -80,7 +80,7 @@
                            (cond-> node
                              (-> arguments :if false?) (assoc :disabled? true)))}}))
 
-(declare ^:private xform-argument-map build-map-from-parsed-arguments)
+(declare ^:private build-map-from-parsed-arguments)
 
 (defn ^:private xform-argument-value
   "Returns a tuple of type and string value.  True scalar values will be passed,
@@ -1015,21 +1015,6 @@
                   :fragment-name fragment-name})
           (cond-> directives (assoc :directives (convert-parsed-directives schema directives)))
           mark-node-for-prepare))))
-
-(defn ^:private find-element
-  [container element-type]
-  (->> container
-       next
-       (filter #(= (first %) element-type))
-       first))
-
-(defn ^:private element->map
-  "Maps a parsed element to a map."
-  [element]
-  (reduce (fn [m sub-element]
-            (assoc m (first sub-element) (rest sub-element)))
-          nil
-          (rest element)))
 
 (defn ^:private construct-var-type-map
   "Converts a var-type (in the parsed format) into a similar stucture that
