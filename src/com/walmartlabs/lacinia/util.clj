@@ -31,6 +31,9 @@
                 (fn? reference)
                 field
 
+                (var? reference)
+                field
+
                 :let [factory? (not (keyword? reference))
                       callback-source (get callbacks-map
                                            (if factory?
