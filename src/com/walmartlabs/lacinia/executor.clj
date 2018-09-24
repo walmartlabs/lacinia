@@ -24,7 +24,7 @@
     [com.walmartlabs.lacinia.constants :as constants])
   (:import
     (clojure.lang PersistentQueue)
-    (com.walmartlabs.lacinia.resolve ResolveCommand)))resolve
+    (com.walmartlabs.lacinia.resolve ResolveCommand)))
 
 (defn ^:private ex-info-map
   [field-selection execution-context]
