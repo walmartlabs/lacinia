@@ -15,8 +15,10 @@ operationDefinition
     ;
 
 name
-  : NameId
-  | operationType
+  : 'query'
+  | 'mutation'
+  | 'subscription'
+  | NameId
   ;
 
 operationType

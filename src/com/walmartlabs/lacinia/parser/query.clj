@@ -113,16 +113,13 @@
 
       arguments (assoc :args (mapv xform arguments)))))
 
-(defmethod xform :nameid                                    ; Possibly not needed
+(defmethod xform :nameid
   [prod]
   (-> prod second keyword))
 
 (defmethod xform :name
-  [prod]
-  (case (-> prod second first)
-    :nameid (-> prod second xform)
-
-    :operationType (-> prod second second xform)))
+  [[_ [_ value]]]
+  (keyword value))
 
 (defmethod xform :operationType
   [prod]
