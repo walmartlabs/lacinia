@@ -34,7 +34,8 @@
     [clojure.pprint :as pprint])
   (:import
     (clojure.lang IObj)
-    (java.io Writer)))
+    (java.io Writer)
+    (com.walmartlabs.lacinia.resolve ResolveCommand)))
 
 ;; When using Clojure 1.8, the dependency on clojure-future-spec must be included,
 ;; and this code will trigger
@@ -767,14 +768,24 @@
           :else
           ;; So we have some privileged knowledge here: the callback returns a ResolverResult containing
           ;; the value. So we need to combine those together into a new ResolverResult.
-          (reduce #(combine-results conj %1 %2)
-                  (resolve-as [])
-                  (map-indexed
-                    (fn [i v]
-                      (next-selector (-> selector-context
-                                         (assoc :resolved-value v)
-                                         (update :path conj i))))
-                    resolved-value)))))
+          (let [unwrapper (fn [{:keys [resolved-value] :as selector-context}]
+                            (if-not (instance? ResolveCommand resolved-value)
+                              (next-selector selector-context)
+                              (loop [v resolved-value
+                                     sc selector-context]
+                                (let [next-v (resolve/nested-value v)
+                                      next-sc (resolve/apply-command v sc)]
+                                  (if (instance? ResolveCommand next-v)
+                                    (recur next-v next-sc)
+                                    (next-selector (assoc next-sc :resolved-value next-v)))))))]
+            (reduce #(combine-results conj %1 %2)
+                    (resolve-as [])
+                    (map-indexed
+                      (fn [i v]
+                        (unwrapper (-> selector-context
+                                       (assoc :resolved-value v)
+                                       (update :path conj i))))
+                      resolved-value))))))
 
     :non-null
     (let [next-selector (assemble-selector schema object-type field (:type type))]

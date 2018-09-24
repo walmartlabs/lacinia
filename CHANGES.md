@@ -1,3 +1,9 @@
+## 0.30.0 -- UNRELEASED
+
+A field resolver that returns a list of values may now wrap the individual
+items in the list with `com.walmartlabs.lacinia.resolve/with-context`
+(or `with-error`).
+
 ## 0.29.0 -- 14 Sep 2018
 
 Changes have started to bring Lacinia into compliance with
