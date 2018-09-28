@@ -7,6 +7,6 @@ To use Lacinia with Clojure 1.8, modify your :file:`project.clj` to include ``cl
 
     :dependencies [[org.clojure/clojure "1.8.0"]
                    [com.walmartlabs/lacinia "x.y.z"]
-                   [clojure-future-spec ""]
+                   [clojure-future-spec "1.9.0-beta4"]
                    ...]
 
