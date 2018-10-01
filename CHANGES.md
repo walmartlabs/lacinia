@@ -4,6 +4,8 @@ A field resolver that returns a list of values may now wrap the individual
 items in the list with `com.walmartlabs.lacinia.resolve/with-context`
 (or `with-error`).
 
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/18?closed=1)
+
 ## 0.29.0 -- 14 Sep 2018
 
 Changes have started to bring Lacinia into compliance with
@@ -50,6 +52,7 @@ to attach resolvers to a schema.
 It is now possible to combine external documentation, from a Markdown file,
 into an EDN schema.
 See `com.walmartlabs.lacinia.parser.docs/parse-docs` and
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/16?closed=1)
 `com.walmartlabs.lacinia.util/inject-descriptions`.
 
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/15?closed=1)
