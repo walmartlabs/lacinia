@@ -1,4 +1,4 @@
-## 0.30.0 -- UNRELEASED
+## 0.30.0 -- 1 Oct 2018
 
 A field resolver that returns a list of values may now wrap the individual
 items in the list with `com.walmartlabs.lacinia.resolve/with-context`
