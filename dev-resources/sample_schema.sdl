@@ -6,6 +6,9 @@
     JEDI
   }
 
+  "Extra tracing of field operations"
+  directive @Trace (label : String!) on FIELD_DEFINITION
+
   "Date in standard ISO format"
   scalar Date
 
@@ -27,7 +30,7 @@
   }
 
   type Query {
-    in_episode(episode: episode = NEWHOPE) : [CharacterOutput]
+    in_episode(episode: episode = NEWHOPE) : [CharacterOutput] @Trace
   }
 
   type OtherQuery {
@@ -36,6 +39,8 @@
 
   type Mutation {
     add(character: Character = {name: "Unspecified", episodes: [NEWHOPE, EMPIRE, JEDI]}) : Boolean
+    @deprecated(reason: "just for testing")
+    @Trace(label: "add-character")
   }
 
   type Subscription {

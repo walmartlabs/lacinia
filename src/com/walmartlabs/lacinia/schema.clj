@@ -23,6 +23,7 @@
   (:refer-clojure :exclude [compile])
   (:require
     [clojure.spec.alpha :as s]
+    [com.walmartlabs.lacinia.compiled-schema :refer [map->CompiledSchema]]
     [com.walmartlabs.lacinia.introspection :as introspection]
     [com.walmartlabs.lacinia.internal-utils
      :refer [map-vals map-kvs filter-vals deep-merge q
@@ -35,7 +36,8 @@
   (:import
     (clojure.lang IObj)
     (java.io Writer)
-    (com.walmartlabs.lacinia.resolve ResolveCommand)))
+    (com.walmartlabs.lacinia.resolve ResolveCommand)
+    (com.walmartlabs.lacinia.compiled_schema CompiledSchema)))
 
 ;; When using Clojure 1.8, the dependency on clojure-future-spec must be included,
 ;; and this code will trigger
@@ -305,6 +307,10 @@
 (s/def ::implements (s/and (s/coll-of ::type-name)
                            seq))
 (s/def ::description string?)
+(s/def ::directives (s/coll-of :directive))
+(s/def ::directive (s/keys :req-un [::directive-type]
+                           :opt-un [::directive-args]))
+(s/def ::directive-args (s/map-of keyword? any?))
 (s/def ::tag (s/or
                :symbol symbol?
                :class class?))
@@ -370,6 +376,18 @@
 
 (s/def ::subscriptions (s/map-of ::schema-key ::subscription))
 
+(s/def ::directive-defs (s/map-of ::schema-key ::directive-def))
+(s/def ::directive-def (s/keys :opt-un [::description
+                                        ::args]
+                               :req-un [::locations]))
+
+(s/def ::locations (s/coll-of ::location))
+(s/def ::location #{:query :mutation :subscription
+                    :field :fragment-definition :fragment-spread :inline-fragment
+                    :schema :scalar :object
+                    :field-definition :argument-definition :interface
+                    :union :enum :enum-value :input-object :input-field-definition})
+
 (s/def ::roots (s/map-of #{:query :mutation :subscription} ::schema-key))
 
 (s/def ::schema-object
@@ -382,7 +400,8 @@
                    ::roots
                    ::queries
                    ::mutations
-                   ::subscriptions]))
+                   ::subscriptions
+                   ::directive-defs]))
 
 ;; Again, this can be fleshed out once we have a handle on defining specs for
 ;; functions:
@@ -1235,7 +1254,6 @@
                       {:type root-name
                        :category category})))))
 
-(defrecord CompiledSchema [])
 
 (defn ^:private construct-compiled-schema
   [schema options]

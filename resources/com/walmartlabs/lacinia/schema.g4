@@ -1,7 +1,7 @@
 grammar GraphqlSchema;
 
 graphqlSchema
-  : '{' (schemaDef|typeDef|inputTypeDef|unionDef|enumDef|interfaceDef|scalarDef)* '}'
+  : '{' (schemaDef|typeDef|inputTypeDef|unionDef|enumDef|interfaceDef|scalarDef|directiveDef)* '}'
   ;
 
 description
@@ -20,52 +20,91 @@ operationTypeDef
   ;
 
 queryOperationDef
-  : 'query' ':' typeName
+  : 'query' ':' Name
   ;
 
 mutationOperationDef
-  : 'mutation' ':' typeName
+  : 'mutation' ':' Name
   ;
 
 subscriptionOperationDef
-  : 'subscription' ':' typeName
+  : 'subscription' ':' Name
+  ;
+
+directiveLocationList
+  : (directiveLocation '|')* directiveLocation
+  ;
+
+directiveLocation
+  : executableDirectiveLocation
+  | typeSystemDirectiveLocation
+  ;
+
+executableDirectiveLocation
+  : 'QUERY' | 'MUTATION' | 'SUBSCRIPTION' | 'FIELD' | 'FRAGMENT_DEFINITION' | 'FRAGMENT_SPREAD'
+  | 'INLINE_FRAGMENT'
+  ;
+
+typeSystemDirectiveLocation
+  : 'SCHEMA' | 'SCALAR' | 'OBJECT' | 'FIELD_DEFINITION' | 'ARGUMENT_DEFINITION'
+  | 'INTERFACE' | 'UNION' | 'ENUM' | 'ENUM_VALUE' | 'INPUT_OBJECT' | 'INPUT_FIELD_DEFINITION'
+  ;
+
+directiveDef
+  : description? 'directive' '@' Name argList? 'on' directiveLocationList
+  ;
+
+
+directiveList
+  : directive+
+  ;
+
+directive
+  : '@' Name directiveArgList?
+  ;
+
+directiveArgList
+  : '(' directiveArg+ ')'
+  ;
+
+directiveArg
+  : Name ':' value
   ;
 
 typeDef
-  : description? 'type' typeName implementationDef? fieldDefs
+  : description? 'type' Name implementationDef? fieldDefs directiveList?
   ;
 
 fieldDefs
   : '{' fieldDef+ '}'
   ;
 
-
 implementationDef
-  : 'implements' typeName+
+  : 'implements' Name+
   ;
 
 inputTypeDef
-  : description? 'input' typeName fieldDefs
+  : description? 'input' Name directiveList? fieldDefs
   ;
 
 interfaceDef
-  : description? 'interface' typeName fieldDefs
+  : description? 'interface' Name directiveList? fieldDefs
   ;
 
 scalarDef
-  : description? 'scalar' typeName
+  : description? 'scalar' Name directiveList?
   ;
 
 unionDef
-  : description? 'union' typeName '=' unionTypes
+  : description? 'union' Name directiveList? '=' unionTypes
   ;
 
 unionTypes
-  : (typeName '|')* typeName
+  : (Name '|')* Name
   ;
 
 enumDef
-  : description? 'enum' typeName enumValueDefs
+  : description? 'enum' Name directiveList? enumValueDefs
   ;
 
 enumValueDefs
@@ -73,32 +112,31 @@ enumValueDefs
   ;
 
 enumValueDef
-  : description? scalarName
-  ;
-
-scalarName
-  : Name
+  : description? Name directiveList?
   ;
 
 fieldDef
-  : description? fieldName fieldArgs? ':' typeSpec
+  : description? Name argList? ':' typeSpec directiveList?
   ;
 
-fieldArgs
+argList
   : '(' argument+ ')'
   ;
 
-fieldName
-  : Name
-  ;
-
 argument
-  : description? Name ':' typeSpec defaultValue?
+  : description? Name ':' typeSpec directiveList? defaultValue?
   ;
 
 typeSpec
   : (typeName|listType) required?
   ;
+
+
+/* This is a hook that allows the parser to follow the convention that
+   references to default scalar types use a Symbol, not a Keyword. */
+
+typeName
+  : Name;
 
 listType
   : '[' typeSpec ']'
@@ -106,10 +144,6 @@ listType
 
 required
   : '!'
-  ;
-
-typeName
-  : Name
   ;
 
 defaultValue

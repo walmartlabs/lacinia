@@ -16,11 +16,12 @@
   "Parse a Schema Definition Language document into a Lacinia input schema."
   {:added "0.22.0"}
   (:require
-    #_[io.pedestal.log :as log]
+    [io.pedestal.log :as log]
     [com.walmartlabs.lacinia.internal-utils :refer [remove-vals keepv q]]
     [com.walmartlabs.lacinia.parser.common :as common]
     [com.walmartlabs.lacinia.util :refer [inject-descriptions]]
-    [clojure.spec.alpha :as s])
+    [clojure.spec.alpha :as s]
+    [clojure.string :as str])
   (:import
     (clj_antlr ParseError)))
 
@@ -111,7 +112,6 @@
   [prod]
   (-> prod second xform))
 
-
 (defn ^:private apply-description
   [parsed descripion-prod]
   (cond-> parsed
@@ -159,12 +159,64 @@
 
 (defmethod xform :typeDef
   [prod]
-  (let [{:keys [typeName implementationDef fieldDefs description]} (tag prod)]
-    [[:objects (xform typeName)]
+  (let [{:keys [name implementationDef fieldDefs description]} (tag prod)]
+    [[:objects (xform name)]
      (-> {:fields (xform fieldDefs)}
-         (common/copy-meta typeName)
+         (common/copy-meta name)
          (apply-description description)
          (cond-> implementationDef (assoc :implements (xform implementationDef))))]))
+
+(defmethod xform :directiveDef
+  [prod]
+  (let [{:keys [name argList directiveLocationList description]} (tag prod)]
+    [[:directive-defs (xform name)]
+     (-> {:locations (xform directiveLocationList)}
+         (common/copy-meta name)
+         (apply-description description)
+         (cond->
+           argList (assoc :args (xform argList))))]))
+
+(defmethod xform :directiveLocationList
+  [prod]
+  (->> prod
+       rest
+       (filter #(-> % first (= :directiveLocation)))
+       (map xform)))
+
+(defn ^:private directive-name->keyword
+  [s]
+  (-> s
+      str/lower-case
+      (str/replace "_" "-")
+      keyword))
+
+(defmethod xform :directiveLocation
+  [prod]
+  (-> prod
+      second
+      second
+      second
+      directive-name->keyword))
+
+(defmethod xform :directiveList
+  [prod]
+  (mapv xform (rest prod)))
+
+(defmethod xform :directive
+  [prod]
+  (let [{:keys [name directiveArgList]} (tag prod)]
+    (-> {:type (xform name)}
+        (common/copy-meta name)
+        (cond->
+          directiveArgList (assoc :directive-args (xform directiveArgList))))))
+
+(defmethod xform :directiveArgList
+  [prod]
+  (reduce (fn [m valueProd]
+            (let [[_ name value] valueProd]
+              (assoc m (xform name) (xform value))))
+          {}
+          (rest prod)))
 
 (defmethod xform :fieldDefs
   [prod]
@@ -172,14 +224,16 @@
 
 (defmethod xform :fieldDef
   [prod]
-  (let [{:keys [fieldName typeSpec fieldArgs description]} (tag prod)]
-    [(xform fieldName)
+  (let [{:keys [name typeSpec argList description directiveList]} (tag prod)]
+    [(xform name)
      (-> {:type (xform typeSpec)}
-         (common/copy-meta fieldName)
+         (common/copy-meta name)
          (apply-description description)
-         (cond-> fieldArgs (assoc :args (xform fieldArgs))))]))
+         (cond->
+           argList (assoc :args (xform argList))
+           directiveList (assoc :directives (xform directiveList))))]))
 
-(defmethod xform :fieldArgs
+(defmethod xform :argList
   [prod]
   (checked-map "field argument" (map xform (rest prod))))
 
@@ -212,10 +266,6 @@
   [prod]
   (Float/parseFloat ^String (second prod)))
 
-(defmethod xform :fieldName
-  [prod]
-  (xform-second prod))
-
 (defmethod xform :implementationDef
   [prod]
   (let [types (drop 2 prod)]
@@ -235,33 +285,33 @@
 
 (defmethod xform :interfaceDef
   [prod]
-  (let [{:keys [typeName fieldDefs description]} (tag prod)]
-    [[:interfaces (xform typeName)]
+  (let [{:keys [name fieldDefs description]} (tag prod)]
+    [[:interfaces (xform name)]
      (-> {:fields (xform fieldDefs)}
-         (common/copy-meta typeName)
+         (common/copy-meta name)
          (apply-description description))]))
 
 (defmethod xform :unionDef
   [prod]
-  (let [{:keys [description typeName unionTypes]} (tag prod)]
-    [[:unions (xform typeName)]
+  (let [{:keys [description name unionTypes]} (tag prod)]
+    [[:unions (xform name)]
      (-> {:members (xform unionTypes)}
-         (common/copy-meta typeName)
+         (common/copy-meta name)
          (apply-description description))]))
 
 (defmethod xform :unionTypes
   [prod]
   (->> prod
        rest
-       (filter #(-> % first (= :typeName)))
+       (filter #(-> % first (= :name)))
        (mapv xform)))
 
 (defmethod xform :enumDef
   [prod]
-  (let [{:keys [description typeName enumValueDefs]} (tag prod)]
-    [[:enums (xform typeName)]
+  (let [{:keys [description name enumValueDefs]} (tag prod)]
+    [[:enums (xform name)]
      (-> {:values (xform enumValueDefs)}
-         (common/copy-meta typeName)
+         (common/copy-meta name)
          (apply-description description))]))
 
 (defmethod xform :enumValueDefs
@@ -270,29 +320,25 @@
 
 (defmethod xform :enumValueDef
   [prod]
-  (let [{:keys [description scalarName]} (tag prod)]
-    (-> {:enum-value (xform scalarName)}
-        (common/copy-meta scalarName)
+  (let [{:keys [description name]} (tag prod)]
+    (-> {:enum-value (xform name)}
+        (common/copy-meta name)
         (apply-description description))))
-
-(defmethod xform :scalarName
-  [prod]
-  (xform-second prod))
 
 (defmethod xform :inputTypeDef
   [prod]
-  (let [{:keys [typeName fieldDefs description]} (tag prod)]
-    [[:input-objects (xform typeName)]
+  (let [{:keys [name fieldDefs description]} (tag prod)]
+    [[:input-objects (xform name)]
      (-> {:fields (xform fieldDefs)}
-         (common/copy-meta typeName)
+         (common/copy-meta name)
          (apply-description description))]))
 
 (defmethod xform :scalarDef
   [prod]
-  (let [{:keys [typeName description]} (tag prod)]
-    [[:scalars (xform typeName)]
+  (let [{:keys [name description]} (tag prod)]
+    [[:scalars (xform name)]
      (-> {}
-         (common/copy-meta typeName)
+         (common/copy-meta name)
          (apply-description description))]))
 
 (defmethod xform :objectValue
@@ -348,6 +394,9 @@
   "Given a GraphQL schema string, parses it and returns a Lacinia EDN
   schema. Defers validation of the schema to the downstream schema
   validator.
+
+  Directives may be declared and used, but validation of directives is
+  also deferred downstream.
 
   `attach` should be a map consisting of the following keys:
 
