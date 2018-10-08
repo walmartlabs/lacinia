@@ -127,8 +127,13 @@
             {:args
              {:label
               {:type (non-null String)}}
-             :locations [:field-definition :argument-definition]}}}
+             :locations #{:field-definition :argument-definition}}}}
          (parse-string "{ directive @Trace (label : String!) on FIELD_DEFINITION | ARGUMENT_DEFINITION }"))))
+
+(deftest directive-args-must-be-unique
+  (when-let [e (is (thrown-with-msg? Throwable #"Conflicting field argument"
+                                     (parse-string "{ directive @Dupe (a : String, b : String, a : String) on ENUM }")))]
+    (is (= :a (-> e ex-data :key)))))
 
 (deftest field-directive
   (is (= '{:directive-defs
@@ -136,21 +141,28 @@
             {:args
              {:label
               {:type (non-null String)}}
-             :locations [:field-definition]}}
+             :locations #{:field-definition}}}
            :objects
            {:Ebb
             {:fields
              {:flow
               {:type String
-               :directives [{:type :Trace}]}
+               :directives [{:directive-type :Trace}]}
               :ready
               {:type Boolean
-               :directives [{:type :Trace
+               :directives [{:directive-type :Trace
                              :directive-args {:label "flow-ready"}}]}}}}}
          (parse-string "{ directive @Trace (label : String!) on FIELD_DEFINITION
                           type Ebb { flow : String @Trace
                                      ready : Boolean @Trace(label: \"flow-ready\") } }"))))
 
+(deftest enum-directive
+  (is (= {:enums {:Matter {:values [{:enum-value :Solid}
+                                    {:enum-value :Liquid}
+                                    {:enum-value :Gas}
+                                    {:enum-value :Plasma
+                                     :directives [{:directive-type :Rare}]}]}}}
+         (parse-string "{ enum Matter { Solid Liquid Gas Plasma @Rare }}"))))
 
 (deftest schema-parsing
   (let [parsed-schema (parse-schema "sample_schema.sdl"
@@ -165,7 +177,7 @@
     (testing "parsing"
       (is (= {:directive-defs {:Trace {:args {:label {:type '(non-null String)}}
                                        :description "Extra tracing of field operations"
-                                       :locations [:field-definition]}}
+                                       :locations #{:field-definition}}}
               :enums {:episode {:values [{:enum-value :NEWHOPE}
                                          {:enum-value :EMPIRE}
                                          {:enum-value :JEDI}]}}
@@ -189,7 +201,7 @@
                         :Query {:fields {:in_episode {:args {:episode {:type :episode
                                                                        :default-value :NEWHOPE
                                                                        :description "Episode for which to find characters"}}
-                                                      :directives [{:type :Trace}]
+                                                      :directives [{:directive-type :Trace}]
                                                       :resolve in-episode
                                                       :description "Find all characters for a given episode"
                                                       :type '(list :CharacterOutput)}}}
@@ -199,10 +211,10 @@
                         :Mutation {:fields {:add {:args {:character {:type :Character
                                                                      :default-value {:name "Unspecified"
                                                                                      :episodes [:NEWHOPE :EMPIRE :JEDI]}}}
-                                                  :directives [{:directive-args {:reason "just for testing"}
-                                                                :type :deprecated}
-                                                               {:directive-args {:label "add-character"}
-                                                                :type :Trace}]
+                                                  :directives [{:directive-type :deprecated
+                                                                :directive-args {:reason "just for testing"}}
+                                                               {:directive-type :Trace
+                                                                :directive-args {:label "add-character"}}]
                                                   :resolve add
                                                   :type 'Boolean}}}
                         :Subscription {:fields {:new_character {:args {:episodes {:type '(non-null (list (non-null :episode)))}}

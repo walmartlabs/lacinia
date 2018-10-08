@@ -310,6 +310,7 @@
 (s/def ::directives (s/coll-of :directive))
 (s/def ::directive (s/keys :req-un [::directive-type]
                            :opt-un [::directive-args]))
+(s/def ::directive-type ::schema-key)
 (s/def ::directive-args (s/map-of keyword? any?))
 (s/def ::tag (s/or
                :symbol symbol?
@@ -1065,10 +1066,37 @@
     (:type type-map)
     (recur (:type type-map))))
 
+(defn ^:private verify-directives
+  [schema object-def location]
+  (doseq [directive-type (-> object-def :directives keys)
+          :let [directive (get-in schema [::directive-defs directive-type])
+                object-name (:type-name object-def)
+                category (-> object-def :category name str/capitalize)]]
+    (when-not directive
+      (throw (ex-info (format "%s %s references unknown directive @%s."
+                              category
+                              (q object-name)
+                              (name directive-type))
+                      {:object-name object-name
+                       :directive-type directive-type})))
+
+    (when-not (-> directive :locations (contains? location))
+      (throw (ex-info (format "Direction @%s on %s %s is not applicable."
+                              (name directive-type)
+                              category
+                              (q object-name))
+                      {:object-name object-name
+                       :directive-type directive-type
+                       :allowed-locations (:locations directive)})))))
+
 (defn ^:private verify-fields-and-args
   "Verifies that the type of every field and every field argument is valid."
   [schema object-def]
-  (let [object-type-name (:type-name object-def)]
+  (let [object-type-name (:type-name object-def)
+        directives (::directive-defs schema)
+        location (if (= :input-object (:category object-def))
+                   :input-field-definition
+                   :field-definition)]
     (doseq [[field-name field-def] (:fields object-def)
             :let [field-type-name (extract-type-name (:type field-def))
                   qualified-name (keyword (name object-type-name)
@@ -1079,6 +1107,23 @@
                                 (q field-type-name))
                         {:field-name qualified-name
                          :schema-types (type-map schema)})))
+
+      (doseq [directive-type (-> object-def :directives keys)
+              :let [directive (get directives directive-type)]]
+        (when-not directive
+          (throw (ex-info (format "Field %s references unknown directive @%s."
+                                  (q qualified-name)
+                                  (name directive-type))
+                          {:field-name qualified-name
+                           :directive-type directive-type})))
+
+        (when-not (-> directive :locations (contains? location))
+          (throw (ex-info (format "Direction @%s on field %s is not applicable."
+                                  (name directive-type)
+                                  (q qualified-name))
+                          {:field-name qualified-name
+                           :directive-type directive-type
+                           :allowed-locations (:locations directive)}))))
 
       (doseq [[arg-name arg-def] (:args field-def)
               :let [arg-type-name (extract-type-name (:type arg-def))
@@ -1097,7 +1142,27 @@
                                   (q arg-name)
                                   (q qualified-name))
                           {:field-name qualified-name
-                           :arg-name arg-name})))))))
+                           :arg-name arg-name})))
+
+        (doseq [directive-type (-> arg-def :directives keys)
+                :let [directive (get directives directive-type)]]
+          (when-not directive
+            (throw (ex-info (format "Argument %s of field %s references unknown directive @%s."
+                                    (q arg-name)
+                                    (q qualified-name)
+                                    (name directive-type))
+                            {:field-name qualified-name
+                             :arg-name arg-name
+                             :directive-type directive-type})))
+
+          (when-not (-> directive :locations (contains? :argument-definition))
+            (throw (ex-info (format "Direction @%s on argument %s of field %s is not applicable."
+                                    (name directive-type)
+                                    (q arg-name)
+                                    (q qualified-name))
+                            {:field-name qualified-name
+                             :directive-type directive-type
+                             :allowed-locations (:locations directive)}))))))))
 
 (defn ^:private prepare-and-validate-interfaces
   "Invoked after compilation to add a :members set identifying which concrete types implement
@@ -1107,6 +1172,7 @@
     (map-types schema :interface
                (fn [interface]
                  (verify-fields-and-args schema interface)
+                 (verify-directives schema interface :interface)
                  (let [interface-name (:type-name interface)
                        implementors (->> objects
                                          (filter #(-> % :implements interface-name))
@@ -1121,6 +1187,9 @@
 (defn ^:private prepare-and-validate-object
   [schema object options]
   (verify-fields-and-args schema object)
+  (verify-directives schema object (if (= :object (:category object))
+                                     :object
+                                     :input-object))
   (doseq [interface-name (:implements object)
           :let [interface (get schema interface-name)
                 type-name (:type-name object)]
@@ -1254,6 +1323,54 @@
                       {:type root-name
                        :category category})))))
 
+(defn ^:private compile-directive-defs
+  [schema directive-defs]
+  (let [compile-directive-arg (fn [arg-name arg-def]
+                                (let [arg-def' (compile-arg arg-name arg-def)
+                                      arg-type-name (extract-type-name arg-def')
+                                      arg-type (get schema arg-type-name)]
+                                  (when-not arg-type
+                                    (throw (ex-info "Unknown argument type."
+                                                    {:arg-name arg-name
+                                                     :arg-type-name arg-type-name
+                                                     :schema-types (type-map schema)})))
+                                  (when-not (= :scalar (:category arg-type))
+                                    (throw (ex-info "Directive argument is not a scalar type."
+                                                    {:arg-name arg-name
+                                                     :arg-type-name arg-type-name
+                                                     :schema-types (type-map schema)})))
+                                  [arg-name arg-def']))
+        compile-directive-args (fn [directive-type directive-def]
+                                 (try
+                                   [directive-type (update directive-def :args #(map-kvs compile-directive-arg %))]))]
+    (assoc schema ::directive-defs
+           (map-kvs compile-directive-args
+                    (assoc directive-defs
+                           :deprecated {:args {:reason {:type 'String}}
+                                        :locations #{:field-definition :enum-value}})))))
+
+(defn ^:private validate-unions
+  [schema]
+  (doseq [u (->> schema
+                 vals
+                 (filter #(-> % :category (= :union))))
+          directive-type (-> u :directives keys)
+          :let [directive (get-in schema [::directive-defs directive-type])]]
+    (when-not directive
+      (throw (ex-info (format "Union %s references unknown directive %@."
+                              (-> u :type-name q)
+                              (name directive-type))
+                      {:union (:type-name q)
+                       :directive-type directive-type})))
+
+    (when-not (contains? (:locations directive) :union)
+      (throw (ex-info (format "Union %s references directive %@ which is not applicable."
+                              (-> u :type-name q)
+                              (name directive-type))
+                      {:union (:type-name q)
+                       :directive-type directive-type}))))
+
+  schema)
 
 (defn ^:private construct-compiled-schema
   [schema options]
@@ -1287,9 +1404,11 @@
         (merge-root :query :__Queries query)
         (merge-root :mutation :__Mutations mutation)
         (merge-root :subscription :__Subscriptions subscription)
+        (compile-directive-defs (:directive-defs schema))
         (prepare-and-validate-interfaces)
         (prepare-and-validate-objects :object options)
         (prepare-and-validate-objects :input-object options)
+        validate-unions
         map->CompiledSchema)))
 
 (defn default-field-resolver
@@ -1299,6 +1418,7 @@
   ^{:tag ResolverResult
     ::direct-fn field-name}
   (fn default-resolver [_ _ v]
+
     (resolve-as (get v field-name))))
 
 (defn hyphenating-default-field-resolver

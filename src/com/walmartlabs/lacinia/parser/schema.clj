@@ -181,7 +181,8 @@
   (->> prod
        rest
        (filter #(-> % first (= :directiveLocation)))
-       (map xform)))
+       (map xform)
+       set))
 
 (defn ^:private directive-name->keyword
   [s]
@@ -205,18 +206,22 @@
 (defmethod xform :directive
   [prod]
   (let [{:keys [name directiveArgList]} (tag prod)]
-    (-> {:type (xform name)}
+    (-> {:directive-type (xform name)}
         (common/copy-meta name)
         (cond->
           directiveArgList (assoc :directive-args (xform directiveArgList))))))
 
 (defmethod xform :directiveArgList
   [prod]
-  (reduce (fn [m valueProd]
-            (let [[_ name value] valueProd]
-              (assoc m (xform name) (xform value))))
-          {}
-          (rest prod)))
+  (checked-map "directive argument"
+               (->> prod
+                    rest
+                    (map xform))))
+
+(defmethod xform :directiveArg
+  [prod]
+  (let [[_ k v] prod]
+    [(xform k) (xform v)]))
 
 (defmethod xform :fieldDefs
   [prod]
@@ -320,10 +325,11 @@
 
 (defmethod xform :enumValueDef
   [prod]
-  (let [{:keys [description name]} (tag prod)]
+  (let [{:keys [description name directiveList]} (tag prod)]
     (-> {:enum-value (xform name)}
         (common/copy-meta name)
-        (apply-description description))))
+        (apply-description description)
+        (cond-> directiveList (assoc :directives (xform directiveList))))))
 
 (defmethod xform :inputTypeDef
   [prod]
