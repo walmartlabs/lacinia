@@ -13,7 +13,7 @@
 ; limitations under the License.
 
 (ns com.walmartlabs.lacinia.directives-test
-  (:require [clojure.test :as t :refer [deftest is testing]]
+  (:require [clojure.test :refer [deftest is testing]]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.test-schema :refer [test-schema]]
             [com.walmartlabs.lacinia :refer [execute]]))
@@ -220,7 +220,6 @@
 (defmacro directive-test
   [expected-msg expected-ex-data schema]
   `(when-let [e# (is (~'thrown? Throwable (schema/compile ~schema)))]
-     #_(prn e#)
      (is (= ~expected-msg (.getMessage e#)))
      (is (= ~expected-ex-data
             (merge-exception-data e#)))))
@@ -251,7 +250,7 @@
   (directive-test
     "Object `User' references unknown directive @Unknown."
     {:directive-type :Unknown
-     :object-name :User}
+     :object :User}
     {:objects
      {:User {:directives {:Unknown nil}
              :fields {}}}}))
@@ -261,7 +260,7 @@
     "Directive @Ebb on Object `Flow' is not applicable."
     {:allowed-locations #{:enum}
      :directive-type :Ebb
-     :object-name :Flow}
+     :object :Flow}
     {:directive-defs
      {:Ebb {:locations #{:enum}}}
      :objects

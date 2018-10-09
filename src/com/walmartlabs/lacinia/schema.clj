@@ -1077,7 +1077,7 @@
                               category
                               (q object-name)
                               (name directive-type))
-                      {:object-name object-name
+                      {location object-name
                        :directive-type directive-type})))
 
     (when-not (-> directive :locations (contains? location))
@@ -1085,7 +1085,7 @@
                               (name directive-type)
                               category
                               (q object-name))
-                      {:object-name object-name
+                      {location object-name
                        :directive-type directive-type
                        :allowed-locations (:locations directive)})))))
 
