@@ -203,3 +203,71 @@
       (is (= {:data {:human {:id "1001"}}}
              (execute compiled-schema q {:skip false} nil))
           "should return data"))))
+
+;; Validation of directives and elements using directives.
+
+(defn ^:private merge-exception-data
+  ([e]
+   (merge-exception-data e (ex-data e)))
+  ([^Throwable e data]
+   (let [next-e (.getCause e)]
+     (if (or (nil? next-e)
+             (identical? e next-e))
+       ;; This just makes the test verbose, so it's removed:
+       (dissoc data :schema-types)
+       (merge-exception-data next-e (merge data (ex-data e)))))))
+
+(defmacro directive-test
+  [expected-msg expected-ex-data schema]
+  `(when-let [e# (is (~'thrown? Throwable (schema/compile ~schema)))]
+     #_(prn e#)
+     (is (= ~expected-msg (.getMessage e#)))
+     (is (= ~expected-ex-data
+            (merge-exception-data e#)))))
+
+
+(deftest unknown-argument-type-for-directive
+  (directive-test
+    "Unknown argument type."
+    {:arg-name :date
+     :arg-type-name :Date}
+    {:directive-defs
+     {:Ebb {:locations #{:enum}
+            :args {:date {:type :Date}}}}}))
+
+(deftest incorrect-argument-type-for-directive
+  (directive-test
+    "Directive argument is not a scalar type."
+    {:arg-name :user
+     :arg-type-name :User}
+    {:directive-defs {:Ebb {:locations #{:enum}
+                            :args {:user {:type :User}}}}
+     :objects
+     {:User
+      {:fields
+       {:name {:type :String}}}}}))
+
+(deftest object-directive-unknown-type
+  (directive-test
+    "Object `User' references unknown directive @Unknown."
+    {:directive-type :Unknown
+     :object-name :User}
+    {:objects
+     {:User {:directives {:Unknown nil}
+             :fields {}}}}))
+
+(deftest object-directive-inapplicable
+  (directive-test
+    "Directive @Ebb on Object `Flow' is not applicable."
+    {:allowed-locations #{:enum}
+     :directive-type :Ebb
+     :object-name :Flow}
+    {:directive-defs
+     {:Ebb {:locations #{:enum}}}
+     :objects
+     {:Flow {:fields {}
+             :directives {:Ebb nil}}}}))
+
+(comment
+  (run-tests)
+  )

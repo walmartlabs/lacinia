@@ -1081,7 +1081,7 @@
                        :directive-type directive-type})))
 
     (when-not (-> directive :locations (contains? location))
-      (throw (ex-info (format "Direction @%s on %s %s is not applicable."
+      (throw (ex-info (format "Directive @%s on %s %s is not applicable."
                               (name directive-type)
                               category
                               (q object-name))
