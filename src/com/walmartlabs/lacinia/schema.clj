@@ -1156,11 +1156,12 @@
                              :directive-type directive-type})))
 
           (when-not (-> directive :locations (contains? :argument-definition))
-            (throw (ex-info (format "Direction @%s on argument %s of field %s is not applicable."
+            (throw (ex-info (format "Directive @%s on argument %s of field %s is not applicable."
                                     (name directive-type)
                                     (q arg-name)
                                     (q qualified-name))
                             {:field-name qualified-name
+                              :arg-name arg-name
                              :directive-type directive-type
                              :allowed-locations (:locations directive)}))))))))
 

@@ -315,6 +315,37 @@
        {:id {:type :String
              :directives {:Ebb nil}}}}}}))
 
+(deftest argument-directive-unknown-type
+  (directive-test
+    "Argument `ebb' of field `User/id' references unknown directive @Unknown."
+    {:directive-type :Unknown
+     :arg-name :ebb
+     :field-name :User/id}
+    {:objects
+     {:User
+      {:fields
+       {:id {:type :String
+             :args {:ebb {:type :String
+                          :directives {:Unknown nil}}}}}}}}))
+
+(deftest argument-directive-inapplicable
+  (directive-test
+    "Directive @Ebb on argument `format' of field `Flow/id' is not applicable."
+    {:allowed-locations #{:enum}
+     :directive-type :Ebb
+     :arg-name :format
+     :field-name :Flow/id}
+    {:directive-defs
+     {:Ebb {:locations #{:enum}}}
+     :objects
+     {:Flow
+      {:fields
+       {:id {:type :String
+             :args
+             {:format {:type :String
+                       :directives {:Ebb nil}}}}}}}}))
+
+
 (comment
   (require '[clojure.test :refer [run-tests]])
   (run-tests)
