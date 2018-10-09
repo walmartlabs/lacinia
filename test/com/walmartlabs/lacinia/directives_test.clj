@@ -268,6 +268,55 @@
      {:Flow {:fields {}
              :directives {:Ebb nil}}}}))
 
+(deftest union-directive-unknown-type
+  (directive-test
+    "Union `Ebb' references unknown directive @Unknown."
+    {:directive-type :Unknown
+     :union :Ebb}
+    {:objects
+     {:Flow {:fields {}}}
+     :unions
+     {:Ebb {:members [:Flow]
+            :directives {:Unknown nil}}}}))
+
+(deftest union-directive-inapplicable
+  (directive-test
+    "Union `Ebb' references directive @deprecated which is not applicable."
+    {:directive-type :deprecated
+     :union :Ebb}
+    {:objects
+     {:Flow {:fields {}}}
+     :unions
+     {:Ebb {:members [:Flow]
+            ;; Can only deprecated fields and enum values
+            :directives {:deprecated nil}}}}))
+
+
+(deftest field-directive-unknown-type
+  (directive-test
+    "Field `User/id' references unknown directive @Unknown."
+    {:directive-type :Unknown
+     :field-name :User/id}
+    {:objects
+     {:User
+      {:fields {:id {:type :String
+                     :directives {:Unknown nil}}}}}}))
+
+(deftest field-directive-inapplicable
+  (directive-test
+    "Directive @Ebb on field `Flow/id' is not applicable."
+    {:allowed-locations #{:enum}
+     :directive-type :Ebb
+     :field-name :Flow/id}
+    {:directive-defs
+     {:Ebb {:locations #{:enum}}}
+     :objects
+     {:Flow
+      {:fields
+       {:id {:type :String
+             :directives {:Ebb nil}}}}}}))
+
 (comment
+  (require '[clojure.test :refer [run-tests]])
   (run-tests)
   )

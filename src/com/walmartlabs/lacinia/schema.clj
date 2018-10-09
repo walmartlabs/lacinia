@@ -1108,7 +1108,7 @@
                         {:field-name qualified-name
                          :schema-types (type-map schema)})))
 
-      (doseq [directive-type (-> object-def :directives keys)
+      (doseq [directive-type (-> field-def :directives keys)
               :let [directive (get directives directive-type)]]
         (when-not directive
           (throw (ex-info (format "Field %s references unknown directive @%s."
@@ -1118,7 +1118,7 @@
                            :directive-type directive-type})))
 
         (when-not (-> directive :locations (contains? location))
-          (throw (ex-info (format "Direction @%s on field %s is not applicable."
+          (throw (ex-info (format "Directive @%s on field %s is not applicable."
                                   (name directive-type)
                                   (q qualified-name))
                           {:field-name qualified-name
@@ -1357,17 +1357,17 @@
           directive-type (-> u :directives keys)
           :let [directive (get-in schema [::directive-defs directive-type])]]
     (when-not directive
-      (throw (ex-info (format "Union %s references unknown directive %@."
+      (throw (ex-info (format "Union %s references unknown directive @%s."
                               (-> u :type-name q)
                               (name directive-type))
-                      {:union (:type-name q)
+                      {:union (:type-name u)
                        :directive-type directive-type})))
 
     (when-not (contains? (:locations directive) :union)
-      (throw (ex-info (format "Union %s references directive %@ which is not applicable."
+      (throw (ex-info (format "Union %s references directive @%s which is not applicable."
                               (-> u :type-name q)
                               (name directive-type))
-                      {:union (:type-name q)
+                      {:union (:type-name u)
                        :directive-type directive-type}))))
 
   schema)
