@@ -1,3 +1,6 @@
+Limited support for custom directives.
+
+
 ## 0.30.0 -- 1 Oct 2018
 
 A field resolver that returns a list of values may now wrap the individual
