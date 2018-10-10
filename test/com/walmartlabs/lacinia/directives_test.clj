@@ -257,7 +257,7 @@
 
 (deftest object-directive-inapplicable
   (directive-test
-    "Directive @Ebb on Object `Flow' is not applicable."
+    "Directive @Ebb on object `Flow' is not applicable."
     {:allowed-locations #{:enum}
      :directive-type :Ebb
      :object :Flow}
@@ -280,8 +280,10 @@
 
 (deftest union-directive-inapplicable
   (directive-test
-    "Union `Ebb' references directive @deprecated which is not applicable."
-    {:directive-type :deprecated
+    "Directive @deprecated on union `Ebb' is not applicable."
+    {:allowed-locations #{:enum-value
+                          :field-definition}
+     :directive-type :deprecated
      :union :Ebb}
     {:objects
      {:Flow {:fields {}}}
@@ -344,6 +346,41 @@
              :args
              {:format {:type :String
                        :directives [{:directive-type :Ebb}]}}}}}}}))
+
+(deftest enum-directive-unknown-type
+  (directive-test
+    "Enum `Colors' references unknown directive @Unknown."
+    {:directive-type :Unknown
+     :enum :Colors}
+    {:enums
+     {:Colors
+      {:values [:red :green :blue]
+       :directives [{:directive-type :Unknown}]}}}))
+
+(deftest enum-directive-inapplicable
+  (directive-test
+    "Directive @nope on enum `Colors' is not applicable."
+    {:allowed-locations #{:object}
+     :directive-type :nope
+     :enum :Colors}
+    {:directive-defs {:nope {:locations #{:object}}}
+     :enums
+     {:Colors
+      {:values [:red :green :blue]
+       :directives [{:directive-type :nope}]}}}))
+
+(deftest enum-value-directive-unknown-type
+  (directive-test
+    "Enum value `Colors/red' referenced unknown directive @Unknown."
+    {:directive-type :Unknown
+     :enum-value :Colors/red}
+    {:enums
+     {:Colors
+      {:values [{:enum-value :red
+                 :directives [{:directive-type :Unknown}]}
+                :green :blue]}}}))
+
+
 
 
 (comment

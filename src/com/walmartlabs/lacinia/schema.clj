@@ -283,6 +283,7 @@
 (s/def ::wrapped-type-modifier #(contains? #{'list 'non-null} %))
 (s/def ::arg (s/keys :req-un [::type]
                      :opt-un [::description
+                              ::directives
                               ::default-value]))
 (s/def ::default-value any?)
 (s/def ::args (s/map-of ::schema-key ::arg))
@@ -296,6 +297,7 @@
 (s/def ::field (s/keys :opt-un [::description
                                 ::resolve
                                 ::args
+                                ::directives
                                 ::deprecated]
                        :req-un [::type]))
 (s/def ::operation (s/keys :opt-un [::description
@@ -307,7 +309,7 @@
 (s/def ::implements (s/and (s/coll-of ::type-name)
                            seq))
 (s/def ::description string?)
-(s/def ::directives (s/coll-of :directive))
+(s/def ::directives (s/coll-of ::directive))
 (s/def ::directive (s/keys :req-un [::directive-type]
                            :opt-un [::directive-args]))
 (s/def ::directive-type ::schema-key)
@@ -317,15 +319,18 @@
                :class class?))
 (s/def ::object (s/keys :req-un [::fields]
                         :opt-un [::implements
+                                 ::directives
                                  ::description
                                  ::tag]))
 ;; Here we'd prefer a version of ::fields where :resolve was not defined.
 (s/def ::interface (s/keys :opt-un [::description
+                                    ::directives
                                     ::fields]))
 ;; A list of keyword identifying objects that are part of a union.
 (s/def ::members (s/and (s/coll-of ::type-name)
                         seq))
-(s/def ::union (s/keys :opt-un [::description]
+(s/def ::union (s/keys :opt-un [::description
+                                ::directives]
                        :req-un [::members]))
 (s/def ::enum-value (s/and (s/nonconforming
                              (s/or :string string?
@@ -335,19 +340,23 @@
 (s/def ::enum-value-def (s/or :bare-value ::enum-value
                               :described (s/keys :req-un [::enum-value]
                                                  :opt-un [::description
-                                                          ::deprecated])))
+                                                          ::deprecated
+                                                          ::directives])))
 (s/def ::values (s/and (s/coll-of ::enum-value-def) seq))
-(s/def ::enum (s/keys :opt-un [::description]
+(s/def ::enum (s/keys :opt-un [::description
+                               ::directives]
                       :req-un [::values]))
 ;; The type of an input object field is more constrained than an ordinary field, but that is
 ;; handled with compile-time checks.  Input objects should not have a :resolve or :args as well.
 ;; Defining an input-object in terms of :properties (with a corresponding ::properties and ::property spec)
 ;; may be more correct, but it's a big change.
-(s/def ::input-object (s/keys :opt-un [::description]
+(s/def ::input-object (s/keys :opt-un [::description
+                                       ::directives]
                               :req-un [::fields]))
 (s/def ::parse s/spec?)
 (s/def ::serialize s/spec?)
-(s/def ::scalar (s/keys :opt-un [::description]
+(s/def ::scalar (s/keys :opt-un [::description
+                                 ::directives]
                         :req-un [::parse
                                  ::serialize]))
 (s/def ::scalars (s/map-of ::schema-key ::scalar))
@@ -957,7 +966,7 @@
 (defn ^:private normalize-enum-value-def
   "The :values key of an enum definition is either a seq of enum values, or a seq of enum value defs.
   The enum values are just the keyword/symbol/string.
-  The enum value defs have keys :enum-value and :description.
+  The enum value defs have keys :enum-value, :description, and :directives.
   This normalizes into the enum value def form, and ensures that the :enum-value key is a keyword."
   [value-def]
   (if (map? value-def)
@@ -970,7 +979,7 @@
         values (mapv :enum-value value-defs)
         values-set (set values)
         ;; The detail for each value is the map that may includes :enum-value and
-        ;; may include :description and/or :deprecated.
+        ;; may include :description, :deprecated, and/or :directives.
         details (reduce (fn [m {:keys [enum-value] :as detail}]
                                (assoc m enum-value detail))
                              {}
@@ -1066,28 +1075,39 @@
     (:type type-map)
     (recur (:type type-map))))
 
+(defn ^:private unknown-directive
+  [location element-def directive-type]
+  (let [type-name (:type-name element-def)
+        category (-> element-def :category name str/capitalize)]
+    (throw (ex-info (format "%s %s references unknown directive @%s."
+                            category
+                            (q type-name)
+                            (name directive-type))
+                    {location type-name
+                     :directive-type directive-type}))))
+
+(defn ^:private inapplicable-directive
+  [location element-def directive-def]
+  (let [{:keys [directive-type locations]} directive-def
+        type-name (:type-name element-def)
+        category (-> element-def :category name)]
+    (throw (ex-info (format "Directive @%s on %s %s is not applicable."
+                            (name directive-type)
+                            category
+                            (q type-name))
+                    {location type-name
+                     :directive-type directive-type
+                     :allowed-locations locations}))))
+
 (defn ^:private verify-directives
   [schema object-def location]
   (doseq [{:keys [directive-type]} (:directives object-def)
-          :let [directive-def (get-in schema [::directive-defs directive-type])
-                object-name (:type-name object-def)
-                category (-> object-def :category name str/capitalize)]]
+          :let [directive-def (get-in schema [::directive-defs directive-type])]]
     (when-not directive-def
-      (throw (ex-info (format "%s %s references unknown directive @%s."
-                              category
-                              (q object-name)
-                              (name directive-type))
-                      {location object-name
-                       :directive-type directive-type})))
+      (unknown-directive location object-def directive-type))
 
     (when-not (-> directive-def :locations (contains? location))
-      (throw (ex-info (format "Directive @%s on %s %s is not applicable."
-                              (name directive-type)
-                              category
-                              (q object-name))
-                      {location object-name
-                       :directive-type directive-type
-                       :allowed-locations (:locations directive-def)})))))
+      (inapplicable-directive location object-def directive-def))))
 
 (defn ^:private verify-fields-and-args
   "Verifies that the type of every field and every field argument is valid."
@@ -1343,33 +1363,57 @@
                                   [arg-name arg-def']))
         compile-directive-args (fn [directive-type directive-def]
                                  (try
-                                   [directive-type (update directive-def :args #(map-kvs compile-directive-arg %))]))]
+                                   [directive-type (-> directive-def
+                                                       (assoc :directive-type directive-type)
+                                                       (update :args #(map-kvs compile-directive-arg %)))]))]
     (assoc schema ::directive-defs
            (map-kvs compile-directive-args
                     (assoc directive-defs
                            :deprecated {:args {:reason {:type 'String}}
                                         :locations #{:field-definition :enum-value}})))))
 
-(defn ^:private validate-unions
+(defn ^:private verify-union-directives
   [schema]
-  (doseq [u (->> schema
-                 vals
-                 (filter #(-> % :category (= :union))))
+  (doseq [u (types-with-category schema :union)
           {:keys [directive-type]} (:directives u)
-          :let [directive (get-in schema [::directive-defs directive-type])]]
-    (when-not directive
-      (throw (ex-info (format "Union %s references unknown directive @%s."
-                              (-> u :type-name q)
-                              (name directive-type))
-                      {:union (:type-name u)
-                       :directive-type directive-type})))
+          :let [directive-def (get-in schema [::directive-defs directive-type])]]
+    (when-not directive-def
+      (unknown-directive :union u directive-type))
 
-    (when-not (contains? (:locations directive) :union)
-      (throw (ex-info (format "Union %s references directive @%s which is not applicable."
-                              (-> u :type-name q)
-                              (name directive-type))
-                      {:union (:type-name u)
-                       :directive-type directive-type}))))
+    (when-not (contains? (:locations directive-def) :union)
+      (inapplicable-directive :union u directive-def)))
+
+  schema)
+
+(defn ^:private verify-enum-directives
+  [schema]
+  (doseq [e (types-with-category schema :enum)]
+    (doseq [{:keys [directive-type]} (:directives e)
+            :let [directive-def (get-in schema [::directive-defs directive-type])]]
+      (when-not directive-def
+        (unknown-directive :enum e directive-type))
+
+      (when-not (contains? (:locations directive-def) :enum)
+        (inapplicable-directive :enum e directive-def)))
+
+    (doseq [{:keys [enum-value directives]} (-> e :values-detail vals)
+            :let [value-name (keyword (-> e :type-name name) (name enum-value))]
+            {:keys [directive-type]} directives
+            :let [{:keys [locations] :as directive-def} (get-in schema [::directive-defs directive-type])]]
+      (when-not directive-def
+        (throw (ex-info (format "Enum value %s referenced unknown directive @%s."
+                                (q value-name)
+                                (name directive-type))
+                        {:enum-value value-name
+                         :directive-type directive-type})))
+
+      (when-not (contains? locations :enum-value)
+        (throw (ex-info (format "Directive @%s on enum value %s is not applicable."
+                                (name directive-type)
+                                (q value-name))
+                        {:enum-value value-name
+                         :directive-type directive-type
+                         :allowed-locations locations})))))
 
   schema)
 
@@ -1409,7 +1453,8 @@
         (prepare-and-validate-interfaces)
         (prepare-and-validate-objects :object options)
         (prepare-and-validate-objects :input-object options)
-        validate-unions
+        verify-union-directives
+        verify-enum-directives
         map->CompiledSchema)))
 
 (defn default-field-resolver
