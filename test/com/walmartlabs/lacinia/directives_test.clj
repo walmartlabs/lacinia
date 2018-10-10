@@ -252,7 +252,7 @@
     {:directive-type :Unknown
      :object :User}
     {:objects
-     {:User {:directives {:Unknown nil}
+     {:User {:directives [{:directive-type :Unknown}]
              :fields {}}}}))
 
 (deftest object-directive-inapplicable
@@ -265,7 +265,7 @@
      {:Ebb {:locations #{:enum}}}
      :objects
      {:Flow {:fields {}
-             :directives {:Ebb nil}}}}))
+             :directives [{:directive-type :Ebb}]}}}))
 
 (deftest union-directive-unknown-type
   (directive-test
@@ -276,7 +276,7 @@
      {:Flow {:fields {}}}
      :unions
      {:Ebb {:members [:Flow]
-            :directives {:Unknown nil}}}}))
+            :directives [{:directive-type :Unknown}]}}}))
 
 (deftest union-directive-inapplicable
   (directive-test
@@ -288,7 +288,7 @@
      :unions
      {:Ebb {:members [:Flow]
             ;; Can only deprecated fields and enum values
-            :directives {:deprecated nil}}}}))
+            :directives [{:directive-type :deprecated}]}}}))
 
 
 (deftest field-directive-unknown-type
@@ -299,7 +299,7 @@
     {:objects
      {:User
       {:fields {:id {:type :String
-                     :directives {:Unknown nil}}}}}}))
+                     :directives [{:directive-type :Unknown}]}}}}}))
 
 (deftest field-directive-inapplicable
   (directive-test
@@ -313,7 +313,7 @@
      {:Flow
       {:fields
        {:id {:type :String
-             :directives {:Ebb nil}}}}}}))
+             :directives [{:directive-type :Ebb}]}}}}}))
 
 (deftest argument-directive-unknown-type
   (directive-test
@@ -326,7 +326,7 @@
       {:fields
        {:id {:type :String
              :args {:ebb {:type :String
-                          :directives {:Unknown nil}}}}}}}}))
+                          :directives [{:directive-type :Unknown}]}}}}}}}))
 
 (deftest argument-directive-inapplicable
   (directive-test
@@ -343,7 +343,7 @@
        {:id {:type :String
              :args
              {:format {:type :String
-                       :directives {:Ebb nil}}}}}}}}))
+                       :directives [{:directive-type :Ebb}]}}}}}}}))
 
 
 (comment

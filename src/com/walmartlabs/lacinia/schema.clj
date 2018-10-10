@@ -1068,11 +1068,11 @@
 
 (defn ^:private verify-directives
   [schema object-def location]
-  (doseq [directive-type (-> object-def :directives keys)
-          :let [directive (get-in schema [::directive-defs directive-type])
+  (doseq [{:keys [directive-type]} (:directives object-def)
+          :let [directive-def (get-in schema [::directive-defs directive-type])
                 object-name (:type-name object-def)
                 category (-> object-def :category name str/capitalize)]]
-    (when-not directive
+    (when-not directive-def
       (throw (ex-info (format "%s %s references unknown directive @%s."
                               category
                               (q object-name)
@@ -1080,20 +1080,20 @@
                       {location object-name
                        :directive-type directive-type})))
 
-    (when-not (-> directive :locations (contains? location))
+    (when-not (-> directive-def :locations (contains? location))
       (throw (ex-info (format "Directive @%s on %s %s is not applicable."
                               (name directive-type)
                               category
                               (q object-name))
                       {location object-name
                        :directive-type directive-type
-                       :allowed-locations (:locations directive)})))))
+                       :allowed-locations (:locations directive-def)})))))
 
 (defn ^:private verify-fields-and-args
   "Verifies that the type of every field and every field argument is valid."
   [schema object-def]
   (let [object-type-name (:type-name object-def)
-        directives (::directive-defs schema)
+        directive-defs (::directive-defs schema)
         location (if (= :input-object (:category object-def))
                    :input-field-definition
                    :field-definition)]
@@ -1108,8 +1108,8 @@
                         {:field-name qualified-name
                          :schema-types (type-map schema)})))
 
-      (doseq [directive-type (-> field-def :directives keys)
-              :let [directive (get directives directive-type)]]
+      (doseq [{:keys [directive-type]} (:directives field-def)
+              :let [directive (get directive-defs directive-type)]]
         (when-not directive
           (throw (ex-info (format "Field %s references unknown directive @%s."
                                   (q qualified-name)
@@ -1144,8 +1144,8 @@
                           {:field-name qualified-name
                            :arg-name arg-name})))
 
-        (doseq [directive-type (-> arg-def :directives keys)
-                :let [directive (get directives directive-type)]]
+        (doseq [{:keys [directive-type]} (:directives arg-def)
+                :let [directive (get directive-defs directive-type)]]
           (when-not directive
             (throw (ex-info (format "Argument %s of field %s references unknown directive @%s."
                                     (q arg-name)
@@ -1161,7 +1161,7 @@
                                     (q arg-name)
                                     (q qualified-name))
                             {:field-name qualified-name
-                              :arg-name arg-name
+                             :arg-name arg-name
                              :directive-type directive-type
                              :allowed-locations (:locations directive)}))))))))
 
@@ -1355,7 +1355,7 @@
   (doseq [u (->> schema
                  vals
                  (filter #(-> % :category (= :union))))
-          directive-type (-> u :directives keys)
+          {:keys [directive-type]} (:directives u)
           :let [directive (get-in schema [::directive-defs directive-type])]]
     (when-not directive
       (throw (ex-info (format "Union %s references unknown directive @%s."

@@ -19,7 +19,7 @@
                                   [org.clojure/data.csv "0.1.4"]
                                   [org.clojure/tools.cli "0.3.7"]]}}
   :aliases {"benchmarks" ["run" "-m" "perf"]}
-  :jvm-opts ["-Xmx1g"]
+  :jvm-opts ["-Xmx1g" "-XX:-OmitStackTraceInFastThrow"]
   :test2junit-output-dir ~(or (System/getenv "CIRCLE_TEST_REPORTS") "target/test2junit")
   :codox {:source-uri "https://github.com/walmartlabs/lacinia/blob/master/{filepath}#L{line}"
           :metadata   {:doc/format :markdown}})
