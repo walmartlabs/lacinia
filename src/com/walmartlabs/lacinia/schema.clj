@@ -1099,7 +1099,7 @@
                      :directive-type directive-type
                      :allowed-locations locations}))))
 
-(defn ^:private verify-directives
+(defn ^:private validate-directives-in-def
   [schema object-def location]
   (doseq [{:keys [directive-type]} (:directives object-def)
           :let [directive-def (get-in schema [::directive-defs directive-type])]]
@@ -1193,7 +1193,7 @@
     (map-types schema :interface
                (fn [interface]
                  (verify-fields-and-args schema interface)
-                 (verify-directives schema interface :interface)
+                 (validate-directives-in-def schema interface :interface)
                  (let [interface-name (:type-name interface)
                        implementors (->> objects
                                          (filter #(-> % :implements interface-name))
@@ -1208,7 +1208,7 @@
 (defn ^:private prepare-and-validate-object
   [schema object options]
   (verify-fields-and-args schema object)
-  (verify-directives schema object (if (= :object (:category object))
+  (validate-directives-in-def schema object (if (= :object (:category object))
                                      :object
                                      :input-object))
   (doseq [interface-name (:implements object)
@@ -1372,32 +1372,27 @@
                            :deprecated {:args {:reason {:type 'String}}
                                         :locations #{:field-definition :enum-value}})))))
 
-(defn ^:private verify-union-directives
-  [schema]
-  (doseq [u (types-with-category schema :union)
-          {:keys [directive-type]} (:directives u)
-          :let [directive-def (get-in schema [::directive-defs directive-type])]]
-    (when-not directive-def
-      (unknown-directive :union u directive-type))
-
-    (when-not (contains? (:locations directive-def) :union)
-      (inapplicable-directive :union u directive-def)))
+(defn ^:private validate-directives-by-category
+  [schema category]
+  (run!
+    #(validate-directives-in-def schema % category)
+    (types-with-category schema category))
 
   schema)
 
-(defn ^:private verify-enum-directives
+(defn ^:private validate-enum-directives
   [schema]
-  (doseq [e (types-with-category schema :enum)]
-    (doseq [{:keys [directive-type]} (:directives e)
+  (doseq [enum-def (types-with-category schema :enum)]
+    (doseq [{:keys [directive-type]} (:directives enum-def)
             :let [directive-def (get-in schema [::directive-defs directive-type])]]
       (when-not directive-def
-        (unknown-directive :enum e directive-type))
+        (unknown-directive :enum enum-def directive-type))
 
       (when-not (contains? (:locations directive-def) :enum)
-        (inapplicable-directive :enum e directive-def)))
+        (inapplicable-directive :enum enum-def directive-def)))
 
-    (doseq [{:keys [enum-value directives]} (-> e :values-detail vals)
-            :let [value-name (keyword (-> e :type-name name) (name enum-value))]
+    (doseq [{:keys [enum-value directives]} (-> enum-def :values-detail vals)
+            :let [value-name (keyword (-> enum-def :type-name name) (name enum-value))]
             {:keys [directive-type]} directives
             :let [{:keys [locations] :as directive-def} (get-in schema [::directive-defs directive-type])]]
       (when-not directive-def
@@ -1414,7 +1409,6 @@
                         {:enum-value value-name
                          :directive-type directive-type
                          :allowed-locations locations})))))
-
   schema)
 
 (defn ^:private construct-compiled-schema
@@ -1453,8 +1447,9 @@
         (prepare-and-validate-interfaces)
         (prepare-and-validate-objects :object options)
         (prepare-and-validate-objects :input-object options)
-        verify-union-directives
-        verify-enum-directives
+        (validate-directives-by-category :union)
+        (validate-directives-by-category :scalar)
+        validate-enum-directives
         map->CompiledSchema)))
 
 (defn default-field-resolver

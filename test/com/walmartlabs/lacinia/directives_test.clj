@@ -13,10 +13,12 @@
 ; limitations under the License.
 
 (ns com.walmartlabs.lacinia.directives-test
-  (:require [clojure.test :refer [deftest is testing]]
-            [com.walmartlabs.lacinia.schema :as schema]
-            [com.walmartlabs.test-schema :refer [test-schema]]
-            [com.walmartlabs.lacinia :refer [execute]]))
+  (:require
+    [clojure.test :refer [deftest is testing]]
+    [clojure.spec.alpha :as s]
+    [com.walmartlabs.lacinia.schema :as schema]
+    [com.walmartlabs.test-schema :refer [test-schema]]
+    [com.walmartlabs.lacinia :refer [execute]]))
 
 ;;-------------------------------------------------------------------------------
 ;; ## Execution of directives
@@ -289,9 +291,33 @@
      {:Flow {:fields {}}}
      :unions
      {:Ebb {:members [:Flow]
-            ;; Can only deprecated fields and enum values
+            ;; Can only deprecate fields and enum values
             :directives [{:directive-type :deprecated}]}}}))
 
+(def ^:private mock-conformer (schema/as-conformer identity))
+
+(deftest scalar-directive-unknown-type
+  (directive-test
+    "Scalar `Ebb' references unknown directive @Unknown."
+    {:directive-type :Unknown
+     :scalar :Ebb}
+    {:scalars
+     {:Ebb {:parse mock-conformer
+            :serialize mock-conformer
+            :directives [{:directive-type :Unknown}]}}}))
+
+(deftest scalar-directive-inapplicable
+  (directive-test
+    "Directive @deprecated on scalar `Ebb' is not applicable."
+    {:allowed-locations #{:enum-value
+                          :field-definition}
+     :directive-type :deprecated
+     :scalar :Ebb}
+    {:scalars
+     {:Ebb {:parse mock-conformer
+            :serialize mock-conformer
+            ;; Can only deprecate fields and enum values
+            :directives [{:directive-type :deprecated}]}}}))
 
 (deftest field-directive-unknown-type
   (directive-test
