@@ -4,7 +4,7 @@ Directives
 Directives provide a way to describe additional options to the GraphQL executor.
 
 Directives is a GraphQL term; in practice, directives are much like meta data in Clojure,
-or annotation in Java.
+or annotations in Java.
 
 .. sidebar:: GraphQL Spec
 
@@ -19,13 +19,13 @@ may include more.
 
 .. warning::
 
-  Directive support is currently in transition towards partially supporting custom directives.
+  Directive support is currently in transition towards some support for custom directives.
 
 Directives in Schema IDL
 ------------------------
 
 When using :doc:`schema/parsing`, the `directive` keyword allows new directives to be defined.
-Directive definitions can be defined for executable elements (such as a field in a query document), or
+Directive definitions can be defined for executable elements (such as a field selection in a query document), or
 for type system elements (such as an object or field definition in the schema).
 
 Directives may also be defined in an EDN schema; the root ``:directive-defs`` element is a map of directives types
