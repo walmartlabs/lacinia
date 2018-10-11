@@ -963,6 +963,17 @@
                            :schema-types (type-map schema)})))))
     (assoc union :members members)))
 
+(defn ^:private apply-deprecated-directive
+  "For a field definition or enum value definition, checks for a :deprecated annotation and,
+  if present, sets the definitions :deprecated key."
+  [element-def]
+  (if-let [directive (some->> element-def
+                              :directives
+                              (filter #(-> % :directive-type (= :deprecated)))
+                              first)]
+    (assoc element-def :deprecated (get-in directive [:directive-args :reason] true))
+    element-def))
+
 (defn ^:private normalize-enum-value-def
   "The :values key of an enum definition is either a seq of enum values, or a seq of enum value defs.
   The enum values are just the keyword/symbol/string.
@@ -975,7 +986,10 @@
 
 (defmethod compile-type :enum
   [enum-def _]
-  (let [value-defs (->> enum-def :values (mapv normalize-enum-value-def))
+  (let [value-defs (->> enum-def
+                        :values
+                        (map normalize-enum-value-def)
+                        (mapv apply-deprecated-directive))
         values (mapv :enum-value value-defs)
         values-set (set values)
         ;; The detail for each value is the map that may includes :enum-value and
@@ -1199,8 +1213,10 @@
                                          (filter #(-> % :implements interface-name))
                                          (map :type-name)
                                          set)
-                       fields' (map-vals #(assoc % :type-name interface-name)
-                                         (:fields interface))]
+                       fields' (->> interface
+                                    :fields
+                                    (map-vals #(assoc % :type-name interface-name))
+                                    (map-vals apply-deprecated-directive))]
                    (-> interface
                        (assoc :members implementors :fields fields')
                        (dissoc :resolve)))))))
@@ -1208,64 +1224,64 @@
 (defn ^:private prepare-and-validate-object
   [schema object options]
   (verify-fields-and-args schema object)
-  (validate-directives-in-def schema object (if (= :object (:category object))
-                                     :object
-                                     :input-object))
-  (doseq [interface-name (:implements object)
-          :let [interface (get schema interface-name)
-                type-name (:type-name object)]
-          [field-name interface-field] (:fields interface)
-          :let [object-field (get-in object [:fields field-name])
-                interface-field-args (:args interface-field)
-                object-field-args (:args object-field)]]
+  (let [object-def? (= :object (:category object))]
+    (validate-directives-in-def schema object (if object-def? :object :input-object))
+    (doseq [interface-name (:implements object)
+            :let [interface (get schema interface-name)
+                  type-name (:type-name object)]
+            [field-name interface-field] (:fields interface)
+            :let [object-field (get-in object [:fields field-name])
+                  interface-field-args (:args interface-field)
+                  object-field-args (:args object-field)]]
 
-    (when-not object-field
-      (throw (ex-info "Missing interface field in object definition."
-                      {:object type-name
-                       :field-name field-name
-                       :interface-name interface-name})))
+      (when-not object-field
+        (throw (ex-info "Missing interface field in object definition."
+                        {:object type-name
+                         :field-name field-name
+                         :interface-name interface-name})))
 
-    (when-not (is-assignable? schema interface-field object-field)
-      (throw (ex-info "Object field is not compatible with extended interface type."
-                      {:object type-name
-                       :interface-name interface-name
-                       :field-name field-name})))
+      (when-not (is-assignable? schema interface-field object-field)
+        (throw (ex-info "Object field is not compatible with extended interface type."
+                        {:object type-name
+                         :interface-name interface-name
+                         :field-name field-name})))
 
-    (when interface-field-args
-      (doseq [interface-field-arg interface-field-args
-              :let [[arg-name interface-arg-def] interface-field-arg
-                    object-field-arg-def (get object-field-args arg-name)]]
+      (when interface-field-args
+        (doseq [interface-field-arg interface-field-args
+                :let [[arg-name interface-arg-def] interface-field-arg
+                      object-field-arg-def (get object-field-args arg-name)]]
 
-        (when-not object-field-arg-def
-          (throw (ex-info "Missing interface field argument in object definition."
-                          {:object type-name
-                           :field-name field-name
-                           :interface-name interface-name
-                           :argument-name arg-name})))
+          (when-not object-field-arg-def
+            (throw (ex-info "Missing interface field argument in object definition."
+                            {:object type-name
+                             :field-name field-name
+                             :interface-name interface-name
+                             :argument-name arg-name})))
 
-        (when-not (is-assignable? schema interface-arg-def object-field-arg-def)
-          (throw (ex-info "Object field's argument is not compatible with extended interface's argument type."
-                          {:object type-name
-                           :interface-name interface-name
-                           :field-name field-name
-                           :argument-name arg-name})))))
+          (when-not (is-assignable? schema interface-arg-def object-field-arg-def)
+            (throw (ex-info "Object field's argument is not compatible with extended interface's argument type."
+                            {:object type-name
+                             :interface-name interface-name
+                             :field-name field-name
+                             :argument-name arg-name})))))
 
-    (when-let [additional-args (seq (difference (into #{} (keys object-field-args))
-                                                (into #{} (keys interface-field-args))))]
-      (doseq [additional-arg-name additional-args
-              :let [arg-kind (get-in object-field-args [additional-arg-name :type :kind])]]
-        (when (= arg-kind :non-null)
-          (throw (ex-info "Additional arguments on an object field that are not defined in extended interface cannot be required."
-                          {:object type-name
-                           :interface-name interface-name
-                           :field-name field-name
-                           :argument-name additional-arg-name}))))))
+      (when-let [additional-args (seq (difference (into #{} (keys object-field-args))
+                                                  (into #{} (keys interface-field-args))))]
+        (doseq [additional-arg-name additional-args
+                :let [arg-kind (get-in object-field-args [additional-arg-name :type :kind])]]
+          (when (= arg-kind :non-null)
+            (throw (ex-info "Additional arguments on an object field that are not defined in extended interface cannot be required."
+                            {:object type-name
+                             :interface-name interface-name
+                             :field-name field-name
+                             :argument-name additional-arg-name}))))))
 
-  (update object :fields #(reduce-kv (fn [m field-name field]
-                                       (assoc m field-name
-                                              (prepare-field schema options object field)))
-                                     {}
-                                     %)))
+    (update object :fields #(reduce-kv (fn [m field-name field]
+                                         (assoc m field-name
+                                                (cond-> (prepare-field schema options object field)
+                                                  object-def? apply-deprecated-directive)))
+                                       {}
+                                       %))))
 
 (defn ^:private prepare-and-validate-objects
   "Comes very late in the compilation process to prepare objects, including validation that

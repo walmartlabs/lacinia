@@ -406,7 +406,43 @@
                  :directives [{:directive-type :Unknown}]}
                 :green :blue]}}}))
 
+(deftest can-deprecate-object-fields
+  (let [schema (schema/compile
+                 {:objects
+                  {:User
+                   {:fields {:id {:type :ID
+                                  :directives [{:directive-type :deprecated}]}
+                             :name {:type :String
+                                    :directives [{:directive-type :deprecated
+                                                  :directive-args
+                                                  {:reason "Use full_name instead."}}]}}}}})]
+    (is (= true
+           (get-in schema [:User :fields :id :deprecated])))
+    (is (= "Use full_name instead."
+           (get-in schema [:User :fields :name :deprecated])))))
 
+(deftest can-deprecate-interface-fields
+  (let [schema (schema/compile
+                 {:interfaces
+                  {:Account
+                   {:fields {:id {:type :ID
+                                  :directives [{:directive-type :deprecated}]}}}}})]
+    (is (= true
+           (get-in schema [:Account :fields :id :deprecated])))))
+
+
+(deftest can-deprecate-enum-values
+  (let [schema (schema/compile
+                 {:enums
+                  {:Color
+                   {:values [:red
+                             {:enum-value :green
+                              :directives [{:directive-type :deprecated}]}]}}})]
+    (is (= {:green {:directives [{:directive-type :deprecated}]
+                    :deprecated true
+                    :enum-value :green}
+            :red {:enum-value :red}}
+           (get-in schema [:Color :values-detail])))))
 
 
 (comment
