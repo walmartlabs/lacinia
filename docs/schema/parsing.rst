@@ -67,7 +67,7 @@ Unions may be documented, but do not contain fields.
 
 Enums may be documented, as well as Enum values (e.g., ``:Episode/JEDI``).
 
-As is normal with SDL, the available queries, mutations, and subscriptions (not shown in this example)
+As is normal with Schema Definition Language, the available queries, mutations, and subscriptions (not shown in this example)
 are defined on ordinary schema objects, and the ``schema`` element identifies which objects are used for
 which purposes.
 

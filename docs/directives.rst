@@ -3,6 +3,9 @@ Directives
 
 Directives provide a way to describe additional options to the GraphQL executor.
 
+Directives is a GraphQL term; in practice, directives are much like meta data in Clojure,
+or annotation in Java.
+
 .. sidebar:: GraphQL Spec
 
    Read about directives :spec:`here <Language.Directives>`
@@ -18,6 +21,9 @@ may include more.
 
   Directive support is currently in transition towards partially supporting custom directives.
 
+Directives in Schema IDL
+------------------------
+
 When using :doc:`schema/parsing`, the `directive` keyword allows new directives to be defined.
 Directive definitions can be defined for executable elements (such as a field in a query document), or
 for type system elements (such as an object or field definition in the schema).
@@ -30,6 +36,9 @@ to directive definition.  A directive defintion defines the types of any argumen
 
 This defines a field definition directive, ``@access``, and applies it to the  ``ultimate_answer``
 query field.
+
+Directive Validation
+--------------------
 
 Directives are validated:
 
@@ -45,5 +54,14 @@ Directives are validated:
 
    The goal of the current stage is to support parsing of SDL schemas that include directive definitions
    and directives on elements.
+
+   :doc:`introspection` hasn't caught up to to these changes; custom directives are not identified, nor
+   are directives on elements.
+
+@deprecated directive
+---------------------
+
+The ``@deprecated`` directive is supported.
+This enables :doc:`deprecation` of object fields and enum values.
 
 
