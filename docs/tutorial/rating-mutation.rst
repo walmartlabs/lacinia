@@ -15,7 +15,7 @@ It is implicit that queries are idempotent (can be repeated getting the same res
 and don't change server-side state), whereas mutations
 are expected to make changes to server-side state as a side-effect.
 However, that side-effect is essentially invisible to Lacinia, as
-it will occur inside a field resolver function.
+it will occur during the execution of a field resolver function.
 
 The difference between a query and a mutation in GraphQL is razor thin.
 When the incoming query document contains only a single top level
@@ -136,7 +136,7 @@ Dominion is a personal favorite, so let's rate that::
   => {:data {:rate_game {:name "Dominion", :rating_summary {:count 1, :average 4.0}}}}
 
 
-We can also see what happens when the query contains mistakes::
+We can also see what happens when the query contains mistakes [#jun2018]_::
 
   (q "mutation { rate_game(member_id: \"1410\", game_id: \"9999\", rating: 4) { name rating_summary { count average }}}")
   =>
@@ -180,3 +180,6 @@ A similar error would occur if the type of value provided to field argument is u
 
 .. [#errormaps] It can also be a seq of error maps, each containing,
    at a minimum, a ``:message`` key.
+.. [#jun2018] In June 2018 update to the GraphQL specification, the format of error maps in the result map
+   changed; when the tutorial upgrades to a version 0.29.0 of Lacinia, or later, the structure of the maps
+   in the ``:errors`` key will change somewhat.

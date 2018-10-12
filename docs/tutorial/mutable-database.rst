@@ -38,7 +38,7 @@ This namespace does two things:
 
 * Defines a component in terms of a record and a constructor function
 
-* Provides an API for database access focus on that component
+* Provides an API for database access focused upon that component
 
 At this point, the Component is nothing more than a home for the ``:data`` Atom.
 That Atom is created and initialized inside the ``start`` lifecycle method.
