@@ -16,7 +16,7 @@
   "Parse a Schema Definition Language document into a Lacinia input schema."
   {:added "0.22.0"}
   (:require
-    [io.pedestal.log :as log]
+    #_ [io.pedestal.log :as log]
     [com.walmartlabs.lacinia.internal-utils :refer [remove-vals keepv q]]
     [com.walmartlabs.lacinia.parser.common :as common]
     [com.walmartlabs.lacinia.util :refer [inject-descriptions]]
