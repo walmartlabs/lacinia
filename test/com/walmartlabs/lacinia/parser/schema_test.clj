@@ -160,9 +160,73 @@
   (is (= {:enums {:Matter {:values [{:enum-value :Solid}
                                     {:enum-value :Liquid}
                                     {:enum-value :Gas}
+                                    {:enum-value :Plasma}]
+                           :directives [{:directive-type :Trace}]}}}
+         (parse-string "{ enum Matter @Trace { Solid Liquid Gas Plasma} }"))))
+
+(deftest enum-value-directive
+  (is (= {:enums {:Matter {:values [{:enum-value :Solid}
+                                    {:enum-value :Liquid}
+                                    {:enum-value :Gas}
                                     {:enum-value :Plasma
                                      :directives [{:directive-type :Rare}]}]}}}
          (parse-string "{ enum Matter { Solid Liquid Gas Plasma @Rare }}"))))
+
+(deftest input-object-directives
+  (is (= '{:input-objects
+           {:Ebb
+            {:directives [{:directive-type :InputObject}]
+             :fields {:flow {:type String
+                             :args {:direction {:directives [{:directive-type :Arg}]
+                                                :type String}}
+                             :directives [{:directive-type :Field}]}}}}}
+         (parse-string "{ input Ebb @InputObject { flow(direction : String @Arg) : String @Field }}"))))
+
+(deftest object-directives
+  (is (= '{:objects
+           {:Ebb
+            {:directives [{:directive-type :Object}]
+             :fields {:flow {:type String
+                             :args {:direction {:directives [{:directive-type :Arg}]
+                                                :type String}}
+                             :directives [{:directive-type :Field}]}}}}}
+         (parse-string "{ type Ebb @Object { flow(direction : String @Arg) : String @Field }}"))))
+
+(deftest interface-directives
+  (is (= '{:interfaces
+           {:Ebb
+            {:directives [{:directive-type :Interface}]
+             :fields {:flow {:type String
+                             :args {:direction {:directives [{:directive-type :Arg}]
+                                                :type String}}
+                             :directives [{:directive-type :Field}]}}}}}
+         (parse-string "{ interface Ebb @Interface { flow(direction : String @Arg) : String @Field }}"))))
+
+(deftest union-directives
+  (is (= '{:objects
+           {:Beauty
+            {:fields {:level {:type String}}}}
+           :unions
+           {:Truth
+            {:members [:Beauty]
+             :directives [{:directive-type :Union}]}}}
+         (parse-string "{ union Truth @Union = Beauty
+                          type Beauty { level : String}
+                        }"))))
+
+(deftest field-argument-directive
+  (is (= '{:objects
+           {:Ebb
+            {:fields
+             {:flow {:type String
+                     :args {:direction {:type String
+                                        :directives [{:directive-type :Trace}]}}}}}}}
+         (parse-string "{ type Ebb { flow(direction: String @Trace) : String }}"))))
+
+(deftest schema-directives
+  (is (= {:roots {:query :Query
+                  :directives [{:directive-type :Schema}]}}
+         (parse-string "{ schema @Schema { query : Query } }"))))
 
 (deftest schema-parsing
   (let [parsed-schema (parse-schema "sample_schema.sdl"

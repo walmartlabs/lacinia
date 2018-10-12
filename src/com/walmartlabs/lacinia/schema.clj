@@ -398,6 +398,7 @@
                     :field-definition :argument-definition :interface
                     :union :enum :enum-value :input-object :input-field-definition})
 
+;; TODO: Figure out how to allow :directives here as well
 (s/def ::roots (s/map-of #{:query :mutation :subscription} ::schema-key))
 
 (s/def ::schema-object

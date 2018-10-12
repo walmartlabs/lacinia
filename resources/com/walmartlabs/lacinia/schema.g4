@@ -10,7 +10,7 @@ description
   ;
 
 schemaDef
-  : 'schema' '{' operationTypeDef+ '}'
+  : 'schema' directiveList? '{' operationTypeDef+ '}'
   ;
 
 operationTypeDef
@@ -72,7 +72,7 @@ directiveArg
   ;
 
 typeDef
-  : description? 'type' Name implementationDef? fieldDefs directiveList?
+  : description? 'type' Name directiveList? implementationDef? fieldDefs
   ;
 
 fieldDefs

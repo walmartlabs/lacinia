@@ -117,9 +117,22 @@
   (cond-> parsed
     descripion-prod (assoc :description (xform descripion-prod))))
 
+(defn ^:private apply-directives
+  [element directiveList]
+  (if directiveList
+    (assoc element :directives (xform directiveList))
+    element))
+
 (defmethod xform :schemaDef
   [prod]
-  [[:roots] (checked-map "schema entry" (map xform (drop 2 prod)))])
+  (let [sub-prods (drop 2 prod)
+        directiveList (when (= :directiveList (-> sub-prods first first))
+                        (first sub-prods))
+        remaining-prods (if directiveList
+                          (rest sub-prods)
+                          sub-prods)]
+    [[:roots] (-> (checked-map "schema entry" (map xform remaining-prods))
+                  (apply-directives directiveList))]))
 
 (defmethod xform :operationTypeDef
   [prod]
@@ -159,11 +172,12 @@
 
 (defmethod xform :typeDef
   [prod]
-  (let [{:keys [name implementationDef fieldDefs description]} (tag prod)]
+  (let [{:keys [name implementationDef fieldDefs description directiveList]} (tag prod)]
     [[:objects (xform name)]
      (-> {:fields (xform fieldDefs)}
          (common/copy-meta name)
          (apply-description description)
+         (apply-directives directiveList)
          (cond-> implementationDef (assoc :implements (xform implementationDef))))]))
 
 (defmethod xform :directiveDef
@@ -234,9 +248,9 @@
      (-> {:type (xform typeSpec)}
          (common/copy-meta name)
          (apply-description description)
+         (apply-directives directiveList)
          (cond->
-           argList (assoc :args (xform argList))
-           directiveList (assoc :directives (xform directiveList))))]))
+           argList (assoc :args (xform argList))))]))
 
 (defmethod xform :argList
   [prod]
@@ -244,11 +258,12 @@
 
 (defmethod xform :argument
   [prod]
-  (let [{:keys [name typeSpec defaultValue description]} (tag prod)]
+  (let [{:keys [name typeSpec defaultValue description directiveList]} (tag prod)]
     [(xform name)
      (-> {:type (xform typeSpec)}
          (common/copy-meta name)
          (apply-description description)
+         (apply-directives directiveList)
          (cond-> defaultValue (assoc :default-value (xform-second defaultValue))))]))
 
 (defmethod xform :value
@@ -290,19 +305,21 @@
 
 (defmethod xform :interfaceDef
   [prod]
-  (let [{:keys [name fieldDefs description]} (tag prod)]
+  (let [{:keys [name fieldDefs description directiveList]} (tag prod)]
     [[:interfaces (xform name)]
      (-> {:fields (xform fieldDefs)}
          (common/copy-meta name)
-         (apply-description description))]))
+         (apply-description description)
+         (apply-directives directiveList))]))
 
 (defmethod xform :unionDef
   [prod]
-  (let [{:keys [description name unionTypes]} (tag prod)]
+  (let [{:keys [description name unionTypes directiveList]} (tag prod)]
     [[:unions (xform name)]
      (-> {:members (xform unionTypes)}
          (common/copy-meta name)
-         (apply-description description))]))
+         (apply-description description)
+         (apply-directives directiveList))]))
 
 (defmethod xform :unionTypes
   [prod]
@@ -313,11 +330,12 @@
 
 (defmethod xform :enumDef
   [prod]
-  (let [{:keys [description name enumValueDefs]} (tag prod)]
+  (let [{:keys [description name enumValueDefs directiveList]} (tag prod)]
     [[:enums (xform name)]
      (-> {:values (xform enumValueDefs)}
          (common/copy-meta name)
-         (apply-description description))]))
+         (apply-description description)
+         (apply-directives directiveList))]))
 
 (defmethod xform :enumValueDefs
   [prod]
@@ -329,15 +347,16 @@
     (-> {:enum-value (xform name)}
         (common/copy-meta name)
         (apply-description description)
-        (cond-> directiveList (assoc :directives (xform directiveList))))))
+        (apply-directives directiveList))))
 
 (defmethod xform :inputTypeDef
   [prod]
-  (let [{:keys [name fieldDefs description]} (tag prod)]
+  (let [{:keys [name fieldDefs description directiveList]} (tag prod)]
     [[:input-objects (xform name)]
      (-> {:fields (xform fieldDefs)}
          (common/copy-meta name)
-         (apply-description description))]))
+         (apply-description description)
+         (apply-directives directiveList))]))
 
 (defmethod xform :scalarDef
   [prod]
