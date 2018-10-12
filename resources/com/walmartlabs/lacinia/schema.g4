@@ -72,7 +72,7 @@ directiveArg
   ;
 
 typeDef
-  : description? 'type' Name directiveList? implementationDef? fieldDefs
+  : description? 'type' Name implementationDef? directiveList? fieldDefs
   ;
 
 fieldDefs
