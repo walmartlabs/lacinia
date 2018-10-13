@@ -16,7 +16,7 @@ Tutorial
    mutable-database
    rating-mutation
    database-1
-   testing
+   testing-1
 
    wrap-up
 
