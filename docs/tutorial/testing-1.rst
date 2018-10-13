@@ -13,7 +13,7 @@ Dependencies
    :emphasize-lines: 6-12
 
 To start with, we're updating all our dependencies to the (at time of writing) latest versions.
-This includes bumping up the latest Clojure release, 1.9.
+This includes bumping up the Clojure version to 1.9.0.
 
 HTTP Port
 ---------
@@ -21,9 +21,10 @@ HTTP Port
 Let's save ourselves some frustration: when we run our tests, we can't know if there
 is a REPL-started system running or not.
 There's no problem with two complete system maps running at the same time, and even
-hitting the same database ... that's why we like Component, as it helps us avoid unecessary globals.
+hitting the same database, all within a single process
+... that's why we like Component, as it helps us avoid unecessary globals.
 
-Unfortunately, we still have one conflict: HTTP port.
+Unfortunately, we still have one conflict: the HTTP port for inbound requests.
 Only one of the systems can bind to the default 8888 port, so let's make sure our tests use
 a different port.
 
@@ -37,7 +38,8 @@ Simplify Utility
 ----------------
 
 To keep our tests simple, we'll want to use the ``simplify`` utility function discussed earlier.
-Here, we're creating a new namespace for test utilities:
+Here, we're creating a new namespace for test utilities, and moving the ``simplify`` function
+from the ``user`` namespace to the ``test-utils`` namespace:
 
 .. ex:: 4388d0d7974e498fb600da77a2d7915c8e8a0812 dev-resources/clojure_game_geek/test_utils.clj
 
@@ -50,9 +52,9 @@ Integration or Unit?  Yes
 
 When it comes to testing, your first thought should be at what level of granularity testing should occur.
 `Unit testing` is generally testing the smallest possible bit of code; in Clojure terms, testing a single
-function.
+function, ideally isolated from everything else.
 
-`Integration testing` is at a higher level, testing how several elements of the system work together.
+`Integration testing` is testing at a higher level, testing how several elements of the system work together.
 
 Our application is layered as follows:
 
@@ -74,9 +76,13 @@ In theory, we could test each layer separately;  that is, we could test the
 ``clojure-game-geek.db`` functions against a database (or even, so mockup of a database),
 then test the field resolver functions against the ``db`` functions, etc.
 
-In practive, building a Lacinia application is an exercise in interaction; the individual bits
-of code are often quite small, but there can be issues with how they interaction, so I prefer
+In practive, building a Lacinia application is an exercise in integration; the individual bits
+of code are often quite small, but there can be issues with how they interact, so I prefer
 a modest amount of integration testing.
+There's no point in testing a block of database code, only to discover that the results
+don't work with the field resolver functions calling that code.
+Likewise, for nominal success cases, there's no point in testing the raw database code if
+the exact same code will be exercised when testing the field resolver functions.
 
 There's still a place for more focused testing, especially testing of edge cases and failure
 scenarios.
@@ -86,11 +92,11 @@ authentication and authorization, we may want to exercise our code by sending HT
 from the tests.
 
 For our first test, we'll do some integration testing; our tests will start at the
-Lacinia step, and work all the way down to the database instance (running in our Docker container).
+Lacinia step from the diagram above, and work all the way down to the database instance (running in our Docker container).
 
 To that mind, we want to start up the schema connected to field resolvers, the ``db`` namespace,
 and the database itself.
-The easiest way to do this start up a new system, and extract the pieces we need.
+The easiest way to do this start up a new system, and extract the pieces we need from the running system map.
 
 First Test
 ----------
@@ -118,7 +124,7 @@ the chart above.
 Running the Tests
 -----------------
 
-There's a number of ways to run tests.
+There's a number of ways to run Clojure tests.
 
 From the command line, ``lein test``::
 
@@ -133,12 +139,20 @@ From the command line, ``lein test``::
 But who wants to do that all the time?
 
 Clojure startup time is somewhat slow, as before your tests can run, large numbers of Java classes
-must be loaded, and signifcant amounts of Clojure code, both from our applicationo and in any libraries, must
+must be loaded, and signifcant amounts of Clojure code, both from our application and from any libraries, must
 be read, parsed, and compiled.
+
+Fortunately, Clojure was created with a REPL-oriented development in mind.
+This is a fast-feedback cycle, where you can run tests, diagnose failures, make code corrections,
+and re-run the tests in a matter of seconds.
+Generally, the slowest part of the loop is the part that executes inside your grey matter.
+Because the your Clojure code base is already loaded and running, even a change that affects many namespaces
+can be reloaded in milliseconds.
 
 If you are using an IDE, you will be able to run tests directly in a running REPL.
 In Cursive, :kbd:`Ctrl-Shift-T` runs all tests in the current namespace, and
 :kbd:`Ctrl-Alt-Cmd-T` runs just the test under the cursor.
+Cursive is even smart enough to properly reload all modified namespaces.
 
 Similar commands exist for whichever editor you are using.
 Being able to load code and run tests is a fraction of a second is incredibly liberating if you are
@@ -181,14 +195,16 @@ What if it's not?  It might look like this::
 Conclusion
 ----------
 
-We've created one test, and managed to get it to run.
+We've created just one test, and managed to get it to run.
 That's a great start.
 Next up, we'll flesh out our tests, fix the many outdated
-functions in ``clojure-game-geek.db``, and do some refactoring to ensure that our tests
-are concise, readable, and efficient.
+functions in the ``clojure-game-geek.db`` namespace,
+and do some refactoring to ensure that our tests are concise, readable, and efficient.
 
 .. [#testdata] An improved approach might be to create a fresh database namespace for each test, or
    each test namespace, and create and populate the tables with fresh test data each time.
+   This might be very important when attempting to run these tests inside a Continuous Integration
+   server.
 
 .. [#twitter] Downside: you'll probably read a lot less Twitter while developing.
 
