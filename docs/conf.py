@@ -76,7 +76,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'com.walmartlabs/lacinia'
-copyright = u'2015-2017, Walmartlabs'
+copyright = u'2015-2018, Walmartlabs'
 author = u'Lacinia Contributors'
 
 # The version info for the project you're documenting, acts as replacement for

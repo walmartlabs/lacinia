@@ -1,5 +1,9 @@
 Limited support for custom directives.
 
+*Breaking Change*: Previous releases of the Schema Definition Language parser
+wrapped the entire document with `{` and `}`.
+This release fixes that, but it means that existing SDL document will not
+parse correctly until the curly braces are removed.
 
 ## 0.30.0 -- 1 Oct 2018
 

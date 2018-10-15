@@ -72,14 +72,14 @@
 (deftest schema-scalar
   (is (= {:scalars
           {:Date {}}}
-         (parse-string "{ scalar Date }"))))
+         (parse-string "scalar Date"))))
 
 (deftest schema-input-type
   (is (= {:input-objects
           {:Ebb
            {:fields
             {:flow {:type 'String}}}}}
-         (parse-string "{ input Ebb { flow: String } }"))))
+         (parse-string "input Ebb { flow: String }"))))
 
 (deftest schema-type
   (is (= {:objects
@@ -87,7 +87,7 @@
            {:fields
             {:flow
              {:type 'String}}}}}
-         (parse-string "{ type Ebb { flow: String }}"))))
+         (parse-string "type Ebb { flow: String }"))))
 
 (deftest schema-enums
   (is (= {:enums
@@ -95,7 +95,7 @@
            {:values [{:enum-value :player}
                      {:enum-value :missile}
                      {:enum-value :treasure}]}}}
-         (parse-string "{ enum Target { player missile treasure }}"))))
+         (parse-string "enum Target { player missile treasure }"))))
 
 (deftest schema-interface
   (is (= {:interfaces
@@ -103,13 +103,13 @@
            {:fields
             {:ebb
              {:type 'String}}}}}
-         (parse-string "{ interface Flow { ebb : String }}"))))
+         (parse-string "interface Flow { ebb : String }"))))
 
 (deftest schema-union
   (is (= {:unions
           {:Matter
            {:members [:Solid :Liquid :Gas :Plasma]}}}
-         (parse-string "{ union Matter = Solid | Liquid | Gas | Plasma }"))))
+         (parse-string "union Matter = Solid | Liquid | Gas | Plasma"))))
 
 (deftest schema-field-args
   (is (= {:objects
@@ -118,7 +118,7 @@
             {:flow
              {:args {:enabled {:type 'Boolean}}
               :type 'String}}}}}
-         (parse-string "{ type Ebb { flow (enabled: Boolean) : String }}"))))
+         (parse-string "type Ebb { flow (enabled: Boolean) : String }"))))
 
 
 (deftest schema-directives
@@ -128,11 +128,11 @@
              {:label
               {:type (non-null String)}}
              :locations #{:field-definition :argument-definition}}}}
-         (parse-string "{ directive @Trace (label : String!) on FIELD_DEFINITION | ARGUMENT_DEFINITION }"))))
+         (parse-string "directive @Trace (label : String!) on FIELD_DEFINITION | ARGUMENT_DEFINITION"))))
 
 (deftest directive-args-must-be-unique
   (when-let [e (is (thrown-with-msg? Throwable #"Conflicting field argument"
-                                     (parse-string "{ directive @Dupe (a : String, b : String, a : String) on ENUM }")))]
+                                     (parse-string "directive @Dupe (a : String, b : String, a : String) on ENUM")))]
     (is (= :a (-> e ex-data :key)))))
 
 (deftest field-directive
@@ -152,9 +152,9 @@
               {:type Boolean
                :directives [{:directive-type :Trace
                              :directive-args {:label "flow-ready"}}]}}}}}
-         (parse-string "{ directive @Trace (label : String!) on FIELD_DEFINITION
-                          type Ebb { flow : String @Trace
-                                     ready : Boolean @Trace(label: \"flow-ready\") } }"))))
+         (parse-string "directive @Trace (label : String!) on FIELD_DEFINITION
+                        type Ebb { flow : String @Trace
+                                   ready : Boolean @Trace(label: \"flow-ready\") }"))))
 
 
 (deftest enum-directive
@@ -163,7 +163,7 @@
                                     {:enum-value :Gas}
                                     {:enum-value :Plasma}]
                            :directives [{:directive-type :Trace}]}}}
-         (parse-string "{ enum Matter @Trace { Solid Liquid Gas Plasma} }"))))
+         (parse-string "enum Matter @Trace { Solid Liquid Gas Plasma}"))))
 
 (deftest enum-value-directive
   (is (= {:enums {:Matter {:values [{:enum-value :Solid}
@@ -171,7 +171,7 @@
                                     {:enum-value :Gas}
                                     {:enum-value :Plasma
                                      :directives [{:directive-type :Rare}]}]}}}
-         (parse-string "{ enum Matter { Solid Liquid Gas Plasma @Rare }}"))))
+         (parse-string "enum Matter { Solid Liquid Gas Plasma @Rare }"))))
 
 (deftest input-object-directives
   (is (= '{:input-objects
@@ -181,7 +181,7 @@
                              :args {:direction {:directives [{:directive-type :Arg}]
                                                 :type String}}
                              :directives [{:directive-type :Field}]}}}}}
-         (parse-string "{ input Ebb @InputObject { flow(direction : String @Arg) : String @Field }}"))))
+         (parse-string "input Ebb @InputObject { flow(direction : String @Arg) : String @Field }"))))
 
 (deftest object-directives
   (is (= '{:objects
@@ -191,7 +191,7 @@
                              :args {:direction {:directives [{:directive-type :Arg}]
                                                 :type String}}
                              :directives [{:directive-type :Field}]}}}}}
-         (parse-string "{ type Ebb @Object { flow(direction : String @Arg) : String @Field }}"))))
+         (parse-string "type Ebb @Object { flow(direction : String @Arg) : String @Field }"))))
 
 (deftest interface-directives
   (is (= '{:interfaces
@@ -201,11 +201,11 @@
                              :args {:direction {:directives [{:directive-type :Arg}]
                                                 :type String}}
                              :directives [{:directive-type :Field}]}}}}}
-         (parse-string "{ interface Ebb @Interface { flow(direction : String @Arg) : String @Field }}"))))
+         (parse-string "interface Ebb @Interface { flow(direction : String @Arg) : String @Field }"))))
 
 (deftest scalar-directives
   (is (= {:scalars {:Date {:directives [{:directive-type :deprecated}]}}}
-         (parse-string "{ scalar Date @deprecated}"))))
+         (parse-string "scalar Date @deprecated"))))
 
 (deftest union-directives
   (is (= '{:objects
@@ -215,9 +215,8 @@
            {:Truth
             {:members [:Beauty]
              :directives [{:directive-type :Union}]}}}
-         (parse-string "{ union Truth @Union = Beauty
-                          type Beauty { level : String}
-                        }"))))
+         (parse-string "union Truth @Union = Beauty
+                        type Beauty { level : String}"))))
 
 (deftest field-argument-directive
   (is (= '{:objects
@@ -226,12 +225,12 @@
              {:flow {:type String
                      :args {:direction {:type String
                                         :directives [{:directive-type :Trace}]}}}}}}}
-         (parse-string "{ type Ebb { flow(direction: String @Trace) : String }}"))))
+         (parse-string "type Ebb { flow(direction: String @Trace) : String }"))))
 
 (deftest schema-directives
   (is (= {:roots {:query :Query
                   :directives [{:directive-type :Schema}]}}
-         (parse-string "{ schema @Schema { query : Query } }"))))
+         (parse-string "schema @Schema { query : Query }"))))
 
 (deftest schema-parsing
   (let [parsed-schema (parse-schema "sample_schema.sdl"
@@ -386,10 +385,10 @@
     (is (= "Conflicting field argument: `episode'."
            (.getMessage e)))
     (is (= {:key :episode
-            :locations [{:column 16
-                         :line 29}
-                        {:column 44
-                         :line 29}]}
+            :locations [{:column 14
+                         :line 28}
+                        {:column 42
+                         :line 28}]}
            (ex-data e))))
 
   ;; This is a stand-in for any of the root things that can have a key conflict
@@ -397,10 +396,10 @@
                             (parse-schema "duplicate-type.sdl" {})))]
     (is (= "Conflicting objects: `Tree'." (.getMessage e)))
     (is (= {:key :Tree
-            :locations [{:column 3
-                         :line 2}
-                        {:column 3
-                         :line 6}]}
+            :locations [{:column 1
+                         :line 1}
+                        {:column 1
+                         :line 5}]}
            (ex-data e)))))
 
 (deftest supports-multiple-inheritance

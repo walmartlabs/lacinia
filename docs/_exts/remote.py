@@ -241,7 +241,7 @@ class RemoteExample(Directive):
     def run(self):
         tag = self.arguments[0]
         path = self.arguments[1]
-        url = 'https://raw.githubusercontent.com/walmartlabs/clojure-game-geek/' + tag + '/' + path
+        url = 'https://raw.githubusercontent.com/hlship/clojure-game-geek/' + tag + '/' + path
 
         content = [".. remoteinclude:: " + url ]
 

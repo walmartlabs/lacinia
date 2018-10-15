@@ -1,7 +1,7 @@
 grammar GraphqlSchema;
 
 graphqlSchema
-  : '{' (schemaDef|typeDef|inputTypeDef|unionDef|enumDef|interfaceDef|scalarDef|directiveDef)* '}'
+  : (schemaDef|typeDef|inputTypeDef|unionDef|enumDef|interfaceDef|scalarDef|directiveDef)*
   ;
 
 description

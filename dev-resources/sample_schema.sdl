@@ -1,41 +1,40 @@
-{
-  # Changing this will probably break tests.
-  enum episode {
-    NEWHOPE
-    EMPIRE
-    JEDI
-  }
+# Changing this will probably break tests.
+enum episode {
+  NEWHOPE
+  EMPIRE
+  JEDI
+}
 
-  "Extra tracing of field operations"
-  directive @Trace (label : String!) on FIELD_DEFINITION
+"Extra tracing of field operations"
+directive @Trace (label : String!) on FIELD_DEFINITION
 
-  "Date in standard ISO format"
-  scalar Date
+"Date in standard ISO format"
+scalar Date
 
-  interface Human {
-    name: String
-    birthDate: Date
-  }
+interface Human {
+  name: String
+  birthDate: Date
+}
 
-  type CharacterOutput implements Human {
-    name: String
-    birthDate: Date
-    episodes: [episode]
-  }
+type CharacterOutput implements Human {
+  name: String
+  birthDate: Date
+  episodes: [episode]
+}
 
-  input Character {
-    name: String!
-    birthDate: Date
-    episodes: [episode]
-  }
+input Character {
+  name: String!
+  birthDate: Date
+  episodes: [episode]
+}
 
-  type Query {
-    in_episode(episode: episode = NEWHOPE) : [CharacterOutput] @Trace
-  }
+type Query {
+  in_episode(episode: episode = NEWHOPE) : [CharacterOutput] @Trace
+}
 
-  type OtherQuery {
-    find_by_names(names: [String!]!) : [CharacterOutput]
-  }
+type OtherQuery {
+  find_by_names(names: [String!]!) : [CharacterOutput]
+}
 
   type Mutation {
     add(character: Character = {name: "Unspecified", episodes: [NEWHOPE, EMPIRE, JEDI]}) : Boolean
@@ -43,15 +42,14 @@
     @Trace(label: "add-character")
   }
 
-  type Subscription {
-    new_character(episodes: [episode!]!) : CharacterOutput
-  }
+type Subscription {
+  new_character(episodes: [episode!]!) : CharacterOutput
+}
 
-  union Queries = Query | OtherQuery
+union Queries = Query | OtherQuery
 
-  schema {
-    query: Queries
-    mutation: Mutation
-    subscription: Subscription
-  }
+schema {
+  query: Queries
+  mutation: Mutation
+  subscription: Subscription
 }

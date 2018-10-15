@@ -1,1 +1,1 @@
-{ enum Location { MATRIX ZION MACHINE_CITY}}
+enum Location { MATRIX ZION MACHINE_CITY}
