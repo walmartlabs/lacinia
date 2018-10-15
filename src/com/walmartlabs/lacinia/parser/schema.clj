@@ -360,11 +360,12 @@
 
 (defmethod xform :scalarDef
   [prod]
-  (let [{:keys [name description]} (tag prod)]
+  (let [{:keys [name description directiveList]} (tag prod)]
     [[:scalars (xform name)]
      (-> {}
          (common/copy-meta name)
-         (apply-description description))]))
+         (apply-description description)
+         (apply-directives directiveList))]))
 
 (defmethod xform :objectValue
   [prod]

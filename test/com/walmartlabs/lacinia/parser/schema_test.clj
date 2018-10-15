@@ -156,6 +156,7 @@
                           type Ebb { flow : String @Trace
                                      ready : Boolean @Trace(label: \"flow-ready\") } }"))))
 
+
 (deftest enum-directive
   (is (= {:enums {:Matter {:values [{:enum-value :Solid}
                                     {:enum-value :Liquid}
@@ -201,6 +202,10 @@
                                                 :type String}}
                              :directives [{:directive-type :Field}]}}}}}
          (parse-string "{ interface Ebb @Interface { flow(direction : String @Arg) : String @Field }}"))))
+
+(deftest scalar-directives
+  (is (= {:scalars {:Date {:directives [{:directive-type :deprecated}]}}}
+         (parse-string "{ scalar Date @deprecated}"))))
 
 (deftest union-directives
   (is (= '{:objects
