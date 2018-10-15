@@ -207,10 +207,10 @@
     (is (= "Conflicting field argument: `episode'."
            (.getMessage e)))
     (is (= {:key :episode
-            :locations [{:column 16
-                         :line 29}
-                        {:column 44
-                         :line 29}]}
+            :locations [{:column 14
+                         :line 28}
+                        {:column 42
+                         :line 28}]}
            (ex-data e))))
 
   ;; This is a stand-in for any of the root things that can have a key conflict
@@ -218,10 +218,10 @@
                             (parse-schema "duplicate-type.sdl" {})))]
     (is (= "Conflicting objects: `Tree'." (.getMessage e)))
     (is (= {:key :Tree
-            :locations [{:column 3
-                         :line 2}
-                        {:column 3
-                         :line 6}]}
+            :locations [{:column 1
+                         :line 1}
+                        {:column 1
+                         :line 5}]}
            (ex-data e)))))
 
 (deftest supports-multiple-inheritance

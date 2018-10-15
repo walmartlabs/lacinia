@@ -1,51 +1,49 @@
-{
-  # Changing this will probably break tests.
-  enum episode {
-    NEWHOPE
-    EMPIRE
-    JEDI
-  }
+# Changing this will probably break tests.
+enum episode {
+  NEWHOPE
+  EMPIRE
+  JEDI
+}
 
-  scalar Date
+scalar Date
 
-  interface Character {
-    name: String
-    birthDate: Date
-  }
+interface Character {
+  name: String
+  birthDate: Date
+}
 
-  type CharacterOutput implements Character {
-    name: String
-    birthDate: Date
-    episodes: [episode]
-  }
+type CharacterOutput implements Character {
+  name: String
+  birthDate: Date
+  episodes: [episode]
+}
 
-  input Character {
-    name: String!
-    birthDate: Date
-    episodes: [episode]
-  }
+input Character {
+  name: String!
+  birthDate: Date
+  episodes: [episode]
+}
 
-  type Query {
-    in_episode(episode: episode = NEWHOPE, episode: String) : [CharacterOutput]
-  }
+type Query {
+  in_episode(episode: episode = NEWHOPE, episode: String) : [CharacterOutput]
+}
 
-  type Query {
-    find_by_names(names: [String!]!) : [CharacterOutput]
-    find_by_names(character_names: [String!]!) : [CharacterOutput]
-  }
+type Query {
+  find_by_names(names: [String!]!) : [CharacterOutput]
+  find_by_names(character_names: [String!]!) : [CharacterOutput]
+}
 
-  union Queries = Query
+union Queries = Query
 
-  type Queries {
-    find_by_names: Character
-  }
+type Queries {
+  find_by_names: Character
+}
 
-  type Mutation {
-    add(character: Character = {name: "Unspecified", episode: [NEWHOPE, EMPIRE, JEDI]}) : Boolean
-  }
+type Mutation {
+  add(character: Character = {name: "Unspecified", episode: [NEWHOPE, EMPIRE, JEDI]}) : Boolean
+}
 
-  schema {
-    query: Queries
-    mutation: Mutation
-  }
+schema {
+  query: Queries
+  mutation: Mutation
 }
