@@ -132,7 +132,16 @@
                           (rest sub-prods)
                           sub-prods)]
     [[:roots] (-> (checked-map "schema entry" (map xform remaining-prods))
+                  ;; Temporary location until patch-schema-directives is invoked
                   (apply-directives directiveList))]))
+
+(defn ^:private patch-schema-directives
+  [schema]
+  (if-let [directives (get-in schema [:roots :directives])]
+    (-> schema
+        (assoc :directives directives)
+        (update :roots dissoc :directives))
+    schema))
 
 (defmethod xform :operationTypeDef
   [prod]
@@ -414,7 +423,8 @@
         (attach-field-fns :stream streamers)
         ;; TODO: This should inject stuff into the scalar, not replace it, right?
         (attach-scalars scalars)
-        (inject-descriptions documentation))))
+        (inject-descriptions documentation)
+        patch-schema-directives)))
 
 (defn parse-schema
   "Given a GraphQL schema string, parses it and returns a Lacinia EDN

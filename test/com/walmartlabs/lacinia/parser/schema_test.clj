@@ -228,8 +228,8 @@
          (parse-string "type Ebb { flow(direction: String @Trace) : String }"))))
 
 (deftest schema-directives
-  (is (= {:roots {:query :Query
-                  :directives [{:directive-type :Schema}]}}
+  (is (= {:roots {:query :Query}
+          :directives [{:directive-type :Schema}]}
          (parse-string "schema @Schema { query : Query }"))))
 
 (deftest schema-parsing
