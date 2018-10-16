@@ -124,7 +124,7 @@ argList
   ;
 
 argument
-  : description? Name ':' typeSpec directiveList? defaultValue?
+  : description? Name ':' typeSpec defaultValue? directiveList?
   ;
 
 typeSpec

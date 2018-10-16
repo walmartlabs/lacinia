@@ -224,8 +224,11 @@
             {:fields
              {:flow {:type String
                      :args {:direction {:type String
-                                        :directives [{:directive-type :Trace}]}}}}}}}
-         (parse-string "type Ebb { flow(direction: String @Trace) : String }"))))
+                                        :directives [{:directive-type :Trace}]}
+                            :level {:type Int
+                                    :default-value 10
+                                    :directives [{:directive-type :Flow}]}}}}}}}
+         (parse-string "type Ebb { flow(direction: String @Trace, level : Int = 10 @Flow) : String }"))))
 
 (deftest schema-directives
   (is (= {:roots {:query :Query}
