@@ -5,6 +5,9 @@ enum episode {
   JEDI
 }
 
+"Extra tracing of field operations"
+directive @Trace (label : String!) on FIELD_DEFINITION
+
 "Date in standard ISO format"
 scalar Date
 
@@ -26,16 +29,18 @@ input Character {
 }
 
 type Query {
-  in_episode(episode: episode = NEWHOPE) : [CharacterOutput]
+  in_episode(episode: episode = NEWHOPE) : [CharacterOutput] @Trace
 }
 
 type OtherQuery {
   find_by_names(names: [String!]!) : [CharacterOutput]
 }
 
-type Mutation {
-  add(character: Character = {name: "Unspecified", episodes: [NEWHOPE, EMPIRE, JEDI]}) : Boolean
-}
+  type Mutation {
+    add(character: Character = {name: "Unspecified", episodes: [NEWHOPE, EMPIRE, JEDI]}) : Boolean
+    @deprecated(reason: "just for testing")
+    @Trace(label: "add-character")
+  }
 
 type Subscription {
   new_character(episodes: [episode!]!) : CharacterOutput

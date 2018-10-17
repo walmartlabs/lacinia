@@ -18,4 +18,7 @@ Typically, the description indicates an alternative field to use instead.
 Deprecation does *not* affect execution of the field in any way; the deprecation flag and reason simply shows up
 in :doc:`introspection <introspection>`.
 
+When using the :doc:`Schema Definition Language <schema/parsing>`, elements may be marked with the
+``@deprecated`` :doc:`directive <directives>`.
+
 

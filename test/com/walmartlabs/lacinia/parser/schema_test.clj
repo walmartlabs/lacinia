@@ -62,6 +62,179 @@
       slurp
       (parser/parse-schema options)))
 
+(defn ^:private parse-string
+  [s]
+  (parser/parse-schema s {}))
+
+;; Warm up with some very targeted parser tests
+;; (these are invaluable after any large changes to the grammar).
+
+(deftest schema-scalar
+  (is (= {:scalars
+          {:Date {}}}
+         (parse-string "scalar Date"))))
+
+(deftest schema-input-type
+  (is (= {:input-objects
+          {:Ebb
+           {:fields
+            {:flow {:type 'String}}}}}
+         (parse-string "input Ebb { flow: String }"))))
+
+(deftest schema-type
+  (is (= {:objects
+          {:Ebb
+           {:fields
+            {:flow
+             {:type 'String}}}}}
+         (parse-string "type Ebb { flow: String }"))))
+
+(deftest schema-enums
+  (is (= {:enums
+          {:Target
+           {:values [{:enum-value :player}
+                     {:enum-value :missile}
+                     {:enum-value :treasure}]}}}
+         (parse-string "enum Target { player missile treasure }"))))
+
+(deftest schema-interface
+  (is (= {:interfaces
+          {:Flow
+           {:fields
+            {:ebb
+             {:type 'String}}}}}
+         (parse-string "interface Flow { ebb : String }"))))
+
+(deftest schema-union
+  (is (= {:unions
+          {:Matter
+           {:members [:Solid :Liquid :Gas :Plasma]}}}
+         (parse-string "union Matter = Solid | Liquid | Gas | Plasma"))))
+
+(deftest schema-field-args
+  (is (= {:objects
+          {:Ebb
+           {:fields
+            {:flow
+             {:args {:enabled {:type 'Boolean}}
+              :type 'String}}}}}
+         (parse-string "type Ebb { flow (enabled: Boolean) : String }"))))
+
+
+(deftest schema-directives
+  (is (= '{:directive-defs
+           {:Trace
+            {:args
+             {:label
+              {:type (non-null String)}}
+             :locations #{:field-definition :argument-definition}}}}
+         (parse-string "directive @Trace (label : String!) on FIELD_DEFINITION | ARGUMENT_DEFINITION"))))
+
+(deftest directive-args-must-be-unique
+  (when-let [e (is (thrown-with-msg? Throwable #"Conflicting field argument"
+                                     (parse-string "directive @Dupe (a : String, b : String, a : String) on ENUM")))]
+    (is (= :a (-> e ex-data :key)))))
+
+(deftest field-directive
+  (is (= '{:directive-defs
+           {:Trace
+            {:args
+             {:label
+              {:type (non-null String)}}
+             :locations #{:field-definition}}}
+           :objects
+           {:Ebb
+            {:fields
+             {:flow
+              {:type String
+               :directives [{:directive-type :Trace}]}
+              :ready
+              {:type Boolean
+               :directives [{:directive-type :Trace
+                             :directive-args {:label "flow-ready"}}]}}}}}
+         (parse-string "directive @Trace (label : String!) on FIELD_DEFINITION
+                        type Ebb { flow : String @Trace
+                                   ready : Boolean @Trace(label: \"flow-ready\") }"))))
+
+
+(deftest enum-directive
+  (is (= {:enums {:Matter {:values [{:enum-value :Solid}
+                                    {:enum-value :Liquid}
+                                    {:enum-value :Gas}
+                                    {:enum-value :Plasma}]
+                           :directives [{:directive-type :Trace}]}}}
+         (parse-string "enum Matter @Trace { Solid Liquid Gas Plasma}"))))
+
+(deftest enum-value-directive
+  (is (= {:enums {:Matter {:values [{:enum-value :Solid}
+                                    {:enum-value :Liquid}
+                                    {:enum-value :Gas}
+                                    {:enum-value :Plasma
+                                     :directives [{:directive-type :Rare}]}]}}}
+         (parse-string "enum Matter { Solid Liquid Gas Plasma @Rare }"))))
+
+(deftest input-object-directives
+  (is (= '{:input-objects
+           {:Ebb
+            {:directives [{:directive-type :InputObject}]
+             :fields {:flow {:type String
+                             :args {:direction {:directives [{:directive-type :Arg}]
+                                                :type String}}
+                             :directives [{:directive-type :Field}]}}}}}
+         (parse-string "input Ebb @InputObject { flow(direction : String @Arg) : String @Field }"))))
+
+(deftest object-directives
+  (is (= '{:objects
+           {:Ebb
+            {:directives [{:directive-type :Object}]
+             :fields {:flow {:type String
+                             :args {:direction {:directives [{:directive-type :Arg}]
+                                                :type String}}
+                             :directives [{:directive-type :Field}]}}}}}
+         (parse-string "type Ebb @Object { flow(direction : String @Arg) : String @Field }"))))
+
+(deftest interface-directives
+  (is (= '{:interfaces
+           {:Ebb
+            {:directives [{:directive-type :Interface}]
+             :fields {:flow {:type String
+                             :args {:direction {:directives [{:directive-type :Arg}]
+                                                :type String}}
+                             :directives [{:directive-type :Field}]}}}}}
+         (parse-string "interface Ebb @Interface { flow(direction : String @Arg) : String @Field }"))))
+
+(deftest scalar-directives
+  (is (= {:scalars {:Date {:directives [{:directive-type :deprecated}]}}}
+         (parse-string "scalar Date @deprecated"))))
+
+(deftest union-directives
+  (is (= '{:objects
+           {:Beauty
+            {:fields {:level {:type String}}}}
+           :unions
+           {:Truth
+            {:members [:Beauty]
+             :directives [{:directive-type :Union}]}}}
+         (parse-string "union Truth @Union = Beauty
+                        type Beauty { level : String}"))))
+
+(deftest field-argument-directive
+  (is (= '{:objects
+           {:Ebb
+            {:fields
+             {:flow {:type String
+                     :args {:direction {:type String
+                                        :directives [{:directive-type :Trace}]}
+                            :level {:type Int
+                                    :default-value 10
+                                    :directives [{:directive-type :Flow}]}}}}}}}
+         (parse-string "type Ebb { flow(direction: String @Trace, level : Int = 10 @Flow) : String }"))))
+
+(deftest schema-directives
+  (is (= {:roots {:query :Query}
+          :directives [{:directive-type :Schema}]}
+         (parse-string "schema @Schema { query : Query }"))))
+
 (deftest schema-parsing
   (let [parsed-schema (parse-schema "sample_schema.sdl"
                                     {:resolvers resolver-map
@@ -73,7 +246,10 @@
                                                      :Query/in_episode "Find all characters for a given episode"
                                                      :Query/in_episode.episode "Episode for which to find characters"}})]
     (testing "parsing"
-      (is (= {:enums {:episode {:values [{:enum-value :NEWHOPE}
+      (is (= {:directive-defs {:Trace {:args {:label {:type '(non-null String)}}
+                                       :description "Extra tracing of field operations"
+                                       :locations #{:field-definition}}}
+              :enums {:episode {:values [{:enum-value :NEWHOPE}
                                          {:enum-value :EMPIRE}
                                          {:enum-value :JEDI}]}}
               ;; Demonstrate that the scalar in the SDL (with a description) has the :parse and :serialize merged onto it:
@@ -96,6 +272,7 @@
                         :Query {:fields {:in_episode {:args {:episode {:type :episode
                                                                        :default-value :NEWHOPE
                                                                        :description "Episode for which to find characters"}}
+                                                      :directives [{:directive-type :Trace}]
                                                       :resolve in-episode
                                                       :description "Find all characters for a given episode"
                                                       :type '(list :CharacterOutput)}}}
@@ -105,6 +282,10 @@
                         :Mutation {:fields {:add {:args {:character {:type :Character
                                                                      :default-value {:name "Unspecified"
                                                                                      :episodes [:NEWHOPE :EMPIRE :JEDI]}}}
+                                                  :directives [{:directive-type :deprecated
+                                                                :directive-args {:reason "just for testing"}}
+                                                               {:directive-type :Trace
+                                                                :directive-args {:label "add-character"}}]
                                                   :resolve add
                                                   :type 'Boolean}}}
                         :Subscription {:fields {:new_character {:args {:episodes {:type '(non-null (list (non-null :episode)))}}
