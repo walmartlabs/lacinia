@@ -1,0 +1,115 @@
+External Database, Phase 2
+==========================
+
+Let's get the rest of the functions in the ``clojure-game-geek.db`` namespace
+working again and add tests for them.
+We'll do a little refactoring as well, to make both the production code
+and the tests clearer and simpler.
+
+Logging
+-------
+
+It's always a good idea to know exactly what SQL queries are executing in
+your application; you'll never figure out what's slowing down your application
+if you don't know what queries are even executing.
+
+.. ex:: 9d588edac8afa44afd9a5ae095f88332fdba6c25 src/clojure_game_geek/db.clj
+   :emphasize-lines: 4,39-44
+   :lines: 1-44
+
+We've introduced our own version of ``postgres.async/query!`` with
+two differences:
+
+* It logs the SQL and parameters it will execute
+* It accepts a component, and extracts the connecton from the component
+
+Because of how we format the SQL in our code, it is useful to convert
+the embedded newlines and indentation into single spaces.
+
+A bit about logging: In a typical Java, or even Clojure, application
+the focus on logging is on a textural message for the user to read.
+Different developers approach this in different ways ... everything
+from the inscrutably cryptic to the overly verbose.
+Yes, across that spectrum, there always an assumption that some user is reading the log.
+
+The ``io.pedestal/pedestal.log`` library introduces a different idea:
+logs as a stream of data ... a sequence of maps.
+That's what we see in the call to ``log/debug``: just keys and values
+that are interesting.
+
+When logged, it may look like::
+
+   DEBUG clojure-game-geek.db - {:sql "select game_id, name, summary, min_players, max_players, created_at, updated_at from board_game where game_id = $1", :params (1234), :line 42}
+
+That's the debug level and namespace, and the map of keys and values (``pedestal.log``
+adds the ``:line`` key).
+
+The useful and interesting details are present and unambiguously formatted,
+since it is not formatted specifically for a user to read.
+
+This can be a very powerful concept; these logs can even be read back
+into memory, converted  back into data, and operated on with all the
+``map``, ``reduce``, and ``filter`` power that Clojure provides. [#mapreduce]_
+
+After years of sweating the details on formatting (and capitalizing, and quoting, and
+punctuating) human-readible error messages, it is a joy to just throw whatever
+data is useful into the log, and not care about all those human oriented formatting details.
+
+This is, of course, all possible because all data in Clojure can be printed out nicely
+and even read back in again.
+By comparison, data value or other objects in Java
+only have useful debugging output if their class provides
+an override of the ``toString()`` method.
+
+When it comes time to execute a query, not much has changed
+except that it isn't necessary to extract the connection from
+the componment:
+
+.. ex:: 9d588edac8afa44afd9a5ae095f88332fdba6c25 src/clojure_game_geek/db.clj
+   :lines: 46-52
+   :emphasize-lines: 3
+
+logback-test.xml
+----------------
+
+We can enable logging, just for testing purposes, in our ``logback-test.xml``:
+
+.. ex:: 9d588edac8afa44afd9a5ae095f88332fdba6c25 dev-resources/logback-test.xml
+   :emphasize-lines: 13
+
+Nicely, Logback will pick up this change to the configuration file without
+a restart.
+
+Re-running tests
+----------------
+
+If we switch back to the ``clojure-game-geek.system-tests`` namespace and re-run the tests,
+the debug output will be mixed into the test tool output::
+
+   Loading src/clojure_game_geek/db.clj... done
+   Loading test/clojure_game_geek/system_tests.clj... done
+   Running tests in clojure-game-geek.system-tests
+   DEBUG clojure-game-geek.db - {:sql "select game_id, name, summary, min_players, max_players, created_at, updated_at from board_game where game_id = $1", :params (1234), :line 42}
+   Ran 1 test containing 1 assertion.
+   No failures.
+
+
+More code updates
+-----------------
+
+The remaining
+
+.. ex:: 587b2809386469bb30df347f971c72889cad9239 src/clojure_game_geek/db.clj
+   :lines: 54-
+
+The majority of this is quite straight-forward, except for
+``upsert-game-rating``, which makes use of PostgreSQL language extensions
+to handle a conflict (where a rating already exists for a particular
+game and member) - the insert is converted to an update.
+
+In the next chapter, we'll focus on testing the code we've just added.
+
+.. [#mapreduce] I've used this on another project where a bug manifested only
+   at a large scale of operations; by hooking into Logback and capturing the
+   logged maps, it was possible to quickly filter through megabytes of output
+   to the find the clues that revealed how the bug occured.

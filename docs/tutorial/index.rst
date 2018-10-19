@@ -17,6 +17,7 @@ Tutorial
    rating-mutation
    database-1
    testing-1
+   database-2
 
    wrap-up
 

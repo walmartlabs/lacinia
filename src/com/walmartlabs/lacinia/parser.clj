@@ -13,7 +13,9 @@
 ; limitations under the License.
 
 (ns com.walmartlabs.lacinia.parser
-  "Parsing of client querys using the ANTLR grammar."
+  "Parse a query document using a compiled schema.
+
+  Also provides functions that operate on the parsed query."
   (:require
     [clojure.string :as str]
     [com.walmartlabs.lacinia.compiled-schema :refer [compiled-schema?]]
@@ -1135,17 +1137,19 @@
         (update :fragments #(map-vals prepare %)))))
 
 (defn parse-query
-  "Given a compiled schema and a query-string, parses it using the Antlr grammar.
-  Returns an executable form of the query: a map of the form `{:fragments ... :selections ...}`."
-  ([schema query-string]
-   (parse-query schema query-string nil))
+  "Given a compiled schema and a query document, parses the query to an executable form
+   as well as performing a number of validations.
+
+   When the request containing the query document provides an operation name, that is provided
+   and the parsed query executes just that operation."
+  ([schema query-document]
+   (parse-query schema query-document nil))
   ;; This version is rarely used: it assumes that document defines multiple named operations and only
-  ;; one is being selected. With an eye towards fast execution of parsed and cached queries, this may
-  ;; not be the right approach.
-  ([schema query-string operation-name]
+  ;; one is being selected.
+  ([schema query-document operation-name]
    (when-not (compiled-schema? schema)
      (throw (IllegalStateException. "The provided schema has not been compiled.")))
-   (xform-query schema (qp/parse-query query-string) operation-name)))
+   (xform-query schema (qp/parse-query query-document) operation-name)))
 
 (defn operations
   "Given a previously parsed query, this returns a map of two keys:
