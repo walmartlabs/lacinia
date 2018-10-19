@@ -110,8 +110,8 @@ Our goal in this chapter is to update just one basic query to use the database,
 the query that retrieves a game by its unique id.
 We'll make just the changes necessary for that one query before moving on.
 
-.. ex:: database-1a src/clojure_game_geek/db.clj
-   :emphasize-lines: 5-6, 8-23, 29-42
+.. ex:: 4b9aec3656a5b4daa760709d50c26f9fe2b65608 src/clojure_game_geek/db.clj
+   :emphasize-lines: 5, 7-22, 28-43
 
 The requires for the ``db`` namespace have changed; we're using the ``postgres.async`` namespace to
 connect to the database, and that entails using some ``clojure.core.async`` functions.
@@ -120,7 +120,7 @@ The ClojureGameGeekDb record has changed; it now has a ``conn`` (connection) fie
 the connection to the PostgreSQL database.
 The ``start`` method now opens the connection to the database.
 
-For the meantime, we're hardwired the connection details (hostname, username, password, and port) to our Docker container.
+For the meantime, we've hardwired the connection details (hostname, username, password, and port) to our Docker container.
 A later chapter will discuss approaches to configuration.
 Also note that we're connecting to port ``25432`` on ``localhost``; Docker will forward that port to the container
 port ``5432``.

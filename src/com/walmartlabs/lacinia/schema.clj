@@ -23,6 +23,7 @@
   (:refer-clojure :exclude [compile])
   (:require
     [clojure.spec.alpha :as s]
+    [com.walmartlabs.lacinia.compiled-schema :refer [map->CompiledSchema]]
     [com.walmartlabs.lacinia.introspection :as introspection]
     [com.walmartlabs.lacinia.internal-utils
      :refer [map-vals map-kvs filter-vals deep-merge q
@@ -35,7 +36,8 @@
   (:import
     (clojure.lang IObj)
     (java.io Writer)
-    (com.walmartlabs.lacinia.resolve ResolveCommand)))
+    (com.walmartlabs.lacinia.resolve ResolveCommand)
+    (com.walmartlabs.lacinia.compiled_schema CompiledSchema)))
 
 ;; When using Clojure 1.8, the dependency on clojure-future-spec must be included,
 ;; and this code will trigger
@@ -281,6 +283,7 @@
 (s/def ::wrapped-type-modifier #(contains? #{'list 'non-null} %))
 (s/def ::arg (s/keys :req-un [::type]
                      :opt-un [::description
+                              ::directives
                               ::default-value]))
 (s/def ::default-value any?)
 (s/def ::args (s/map-of ::schema-key ::arg))
@@ -294,6 +297,7 @@
 (s/def ::field (s/keys :opt-un [::description
                                 ::resolve
                                 ::args
+                                ::directives
                                 ::deprecated]
                        :req-un [::type]))
 (s/def ::operation (s/keys :opt-un [::description
@@ -305,20 +309,28 @@
 (s/def ::implements (s/and (s/coll-of ::type-name)
                            seq))
 (s/def ::description string?)
+(s/def ::directives (s/coll-of ::directive))
+(s/def ::directive (s/keys :req-un [::directive-type]
+                           :opt-un [::directive-args]))
+(s/def ::directive-type ::schema-key)
+(s/def ::directive-args (s/map-of keyword? any?))
 (s/def ::tag (s/or
                :symbol symbol?
                :class class?))
 (s/def ::object (s/keys :req-un [::fields]
                         :opt-un [::implements
+                                 ::directives
                                  ::description
                                  ::tag]))
 ;; Here we'd prefer a version of ::fields where :resolve was not defined.
 (s/def ::interface (s/keys :opt-un [::description
+                                    ::directives
                                     ::fields]))
 ;; A list of keyword identifying objects that are part of a union.
 (s/def ::members (s/and (s/coll-of ::type-name)
                         seq))
-(s/def ::union (s/keys :opt-un [::description]
+(s/def ::union (s/keys :opt-un [::description
+                                ::directives]
                        :req-un [::members]))
 (s/def ::enum-value (s/and (s/nonconforming
                              (s/or :string string?
@@ -328,19 +340,23 @@
 (s/def ::enum-value-def (s/or :bare-value ::enum-value
                               :described (s/keys :req-un [::enum-value]
                                                  :opt-un [::description
-                                                          ::deprecated])))
+                                                          ::deprecated
+                                                          ::directives])))
 (s/def ::values (s/and (s/coll-of ::enum-value-def) seq))
-(s/def ::enum (s/keys :opt-un [::description]
+(s/def ::enum (s/keys :opt-un [::description
+                               ::directives]
                       :req-un [::values]))
 ;; The type of an input object field is more constrained than an ordinary field, but that is
 ;; handled with compile-time checks.  Input objects should not have a :resolve or :args as well.
 ;; Defining an input-object in terms of :properties (with a corresponding ::properties and ::property spec)
 ;; may be more correct, but it's a big change.
-(s/def ::input-object (s/keys :opt-un [::description]
+(s/def ::input-object (s/keys :opt-un [::description
+                                       ::directives]
                               :req-un [::fields]))
 (s/def ::parse s/spec?)
 (s/def ::serialize s/spec?)
-(s/def ::scalar (s/keys :opt-un [::description]
+(s/def ::scalar (s/keys :opt-un [::description
+                                 ::directives]
                         :req-un [::parse
                                  ::serialize]))
 (s/def ::scalars (s/map-of ::schema-key ::scalar))
@@ -370,6 +386,18 @@
 
 (s/def ::subscriptions (s/map-of ::schema-key ::subscription))
 
+(s/def ::directive-defs (s/map-of ::schema-key ::directive-def))
+(s/def ::directive-def (s/keys :opt-un [::description
+                                        ::args]
+                               :req-un [::locations]))
+
+(s/def ::locations (s/coll-of ::location))
+(s/def ::location #{:query :mutation :subscription
+                    :field :fragment-definition :fragment-spread :inline-fragment
+                    :schema :scalar :object
+                    :field-definition :argument-definition :interface
+                    :union :enum :enum-value :input-object :input-field-definition})
+
 (s/def ::roots (s/map-of #{:query :mutation :subscription} ::schema-key))
 
 (s/def ::schema-object
@@ -382,7 +410,10 @@
                    ::roots
                    ::queries
                    ::mutations
-                   ::subscriptions]))
+                   ::subscriptions
+                   ;; Schema-level directives
+                   ::directives
+                   ::directive-defs]))
 
 ;; Again, this can be fleshed out once we have a handle on defining specs for
 ;; functions:
@@ -934,10 +965,21 @@
                            :schema-types (type-map schema)})))))
     (assoc union :members members)))
 
+(defn ^:private apply-deprecated-directive
+  "For a field definition or enum value definition, checks for a :deprecated annotation and,
+  if present, sets the definitions :deprecated key."
+  [element-def]
+  (if-let [directive (some->> element-def
+                              :directives
+                              (filter #(-> % :directive-type (= :deprecated)))
+                              first)]
+    (assoc element-def :deprecated (get-in directive [:directive-args :reason] true))
+    element-def))
+
 (defn ^:private normalize-enum-value-def
   "The :values key of an enum definition is either a seq of enum values, or a seq of enum value defs.
   The enum values are just the keyword/symbol/string.
-  The enum value defs have keys :enum-value and :description.
+  The enum value defs have keys :enum-value, :description, and :directives.
   This normalizes into the enum value def form, and ensures that the :enum-value key is a keyword."
   [value-def]
   (if (map? value-def)
@@ -946,11 +988,14 @@
 
 (defmethod compile-type :enum
   [enum-def _]
-  (let [value-defs (->> enum-def :values (mapv normalize-enum-value-def))
+  (let [value-defs (->> enum-def
+                        :values
+                        (map normalize-enum-value-def)
+                        (mapv apply-deprecated-directive))
         values (mapv :enum-value value-defs)
         values-set (set values)
         ;; The detail for each value is the map that may includes :enum-value and
-        ;; may include :description and/or :deprecated.
+        ;; may include :description, :deprecated, and/or :directives.
         details (reduce (fn [m {:keys [enum-value] :as detail}]
                                (assoc m enum-value detail))
                              {}
@@ -1046,10 +1091,48 @@
     (:type type-map)
     (recur (:type type-map))))
 
+(defn ^:private unknown-directive
+  [location element-def directive-type]
+  (let [type-name (:type-name element-def)
+        category (-> element-def :category name str/capitalize)]
+    (throw (ex-info (format "%s %s references unknown directive @%s."
+                            category
+                            (q type-name)
+                            (name directive-type))
+                    {location type-name
+                     :directive-type directive-type}))))
+
+(defn ^:private inapplicable-directive
+  [location element-def directive-def]
+  (let [{:keys [directive-type locations]} directive-def
+        type-name (:type-name element-def)
+        category (-> element-def :category name)]
+    (throw (ex-info (format "Directive @%s on %s %s is not applicable."
+                            (name directive-type)
+                            category
+                            (q type-name))
+                    {location type-name
+                     :directive-type directive-type
+                     :allowed-locations locations}))))
+
+(defn ^:private validate-directives-in-def
+  [schema object-def location]
+  (doseq [{:keys [directive-type]} (:directives object-def)
+          :let [directive-def (get-in schema [::directive-defs directive-type])]]
+    (when-not directive-def
+      (unknown-directive location object-def directive-type))
+
+    (when-not (-> directive-def :locations (contains? location))
+      (inapplicable-directive location object-def directive-def))))
+
 (defn ^:private verify-fields-and-args
   "Verifies that the type of every field and every field argument is valid."
   [schema object-def]
-  (let [object-type-name (:type-name object-def)]
+  (let [object-type-name (:type-name object-def)
+        directive-defs (::directive-defs schema)
+        location (if (= :input-object (:category object-def))
+                   :input-field-definition
+                   :field-definition)]
     (doseq [[field-name field-def] (:fields object-def)
             :let [field-type-name (extract-type-name (:type field-def))
                   qualified-name (keyword (name object-type-name)
@@ -1060,6 +1143,23 @@
                                 (q field-type-name))
                         {:field-name qualified-name
                          :schema-types (type-map schema)})))
+
+      (doseq [{:keys [directive-type]} (:directives field-def)
+              :let [directive (get directive-defs directive-type)]]
+        (when-not directive
+          (throw (ex-info (format "Field %s references unknown directive @%s."
+                                  (q qualified-name)
+                                  (name directive-type))
+                          {:field-name qualified-name
+                           :directive-type directive-type})))
+
+        (when-not (-> directive :locations (contains? location))
+          (throw (ex-info (format "Directive @%s on field %s is not applicable."
+                                  (name directive-type)
+                                  (q qualified-name))
+                          {:field-name qualified-name
+                           :directive-type directive-type
+                           :allowed-locations (:locations directive)}))))
 
       (doseq [[arg-name arg-def] (:args field-def)
               :let [arg-type-name (extract-type-name (:type arg-def))
@@ -1078,7 +1178,28 @@
                                   (q arg-name)
                                   (q qualified-name))
                           {:field-name qualified-name
-                           :arg-name arg-name})))))))
+                           :arg-name arg-name})))
+
+        (doseq [{:keys [directive-type]} (:directives arg-def)
+                :let [directive (get directive-defs directive-type)]]
+          (when-not directive
+            (throw (ex-info (format "Argument %s of field %s references unknown directive @%s."
+                                    (q arg-name)
+                                    (q qualified-name)
+                                    (name directive-type))
+                            {:field-name qualified-name
+                             :arg-name arg-name
+                             :directive-type directive-type})))
+
+          (when-not (-> directive :locations (contains? :argument-definition))
+            (throw (ex-info (format "Directive @%s on argument %s of field %s is not applicable."
+                                    (name directive-type)
+                                    (q arg-name)
+                                    (q qualified-name))
+                            {:field-name qualified-name
+                             :arg-name arg-name
+                             :directive-type directive-type
+                             :allowed-locations (:locations directive)}))))))))
 
 (defn ^:private prepare-and-validate-interfaces
   "Invoked after compilation to add a :members set identifying which concrete types implement
@@ -1088,13 +1209,16 @@
     (map-types schema :interface
                (fn [interface]
                  (verify-fields-and-args schema interface)
+                 (validate-directives-in-def schema interface :interface)
                  (let [interface-name (:type-name interface)
                        implementors (->> objects
                                          (filter #(-> % :implements interface-name))
                                          (map :type-name)
                                          set)
-                       fields' (map-vals #(assoc % :type-name interface-name)
-                                         (:fields interface))]
+                       fields' (->> interface
+                                    :fields
+                                    (map-vals #(assoc % :type-name interface-name))
+                                    (map-vals apply-deprecated-directive))]
                    (-> interface
                        (assoc :members implementors :fields fields')
                        (dissoc :resolve)))))))
@@ -1102,61 +1226,64 @@
 (defn ^:private prepare-and-validate-object
   [schema object options]
   (verify-fields-and-args schema object)
-  (doseq [interface-name (:implements object)
-          :let [interface (get schema interface-name)
-                type-name (:type-name object)]
-          [field-name interface-field] (:fields interface)
-          :let [object-field (get-in object [:fields field-name])
-                interface-field-args (:args interface-field)
-                object-field-args (:args object-field)]]
+  (let [object-def? (= :object (:category object))]
+    (validate-directives-in-def schema object (if object-def? :object :input-object))
+    (doseq [interface-name (:implements object)
+            :let [interface (get schema interface-name)
+                  type-name (:type-name object)]
+            [field-name interface-field] (:fields interface)
+            :let [object-field (get-in object [:fields field-name])
+                  interface-field-args (:args interface-field)
+                  object-field-args (:args object-field)]]
 
-    (when-not object-field
-      (throw (ex-info "Missing interface field in object definition."
-                      {:object type-name
-                       :field-name field-name
-                       :interface-name interface-name})))
+      (when-not object-field
+        (throw (ex-info "Missing interface field in object definition."
+                        {:object type-name
+                         :field-name field-name
+                         :interface-name interface-name})))
 
-    (when-not (is-assignable? schema interface-field object-field)
-      (throw (ex-info "Object field is not compatible with extended interface type."
-                      {:object type-name
-                       :interface-name interface-name
-                       :field-name field-name})))
+      (when-not (is-assignable? schema interface-field object-field)
+        (throw (ex-info "Object field is not compatible with extended interface type."
+                        {:object type-name
+                         :interface-name interface-name
+                         :field-name field-name})))
 
-    (when interface-field-args
-      (doseq [interface-field-arg interface-field-args
-              :let [[arg-name interface-arg-def] interface-field-arg
-                    object-field-arg-def (get object-field-args arg-name)]]
+      (when interface-field-args
+        (doseq [interface-field-arg interface-field-args
+                :let [[arg-name interface-arg-def] interface-field-arg
+                      object-field-arg-def (get object-field-args arg-name)]]
 
-        (when-not object-field-arg-def
-          (throw (ex-info "Missing interface field argument in object definition."
-                          {:object type-name
-                           :field-name field-name
-                           :interface-name interface-name
-                           :argument-name arg-name})))
+          (when-not object-field-arg-def
+            (throw (ex-info "Missing interface field argument in object definition."
+                            {:object type-name
+                             :field-name field-name
+                             :interface-name interface-name
+                             :argument-name arg-name})))
 
-        (when-not (is-assignable? schema interface-arg-def object-field-arg-def)
-          (throw (ex-info "Object field's argument is not compatible with extended interface's argument type."
-                          {:object type-name
-                           :interface-name interface-name
-                           :field-name field-name
-                           :argument-name arg-name})))))
+          (when-not (is-assignable? schema interface-arg-def object-field-arg-def)
+            (throw (ex-info "Object field's argument is not compatible with extended interface's argument type."
+                            {:object type-name
+                             :interface-name interface-name
+                             :field-name field-name
+                             :argument-name arg-name})))))
 
-    (when-let [additional-args (seq (difference (into #{} (keys object-field-args))
-                                                (into #{} (keys interface-field-args))))]
-      (doseq [additional-arg-name additional-args
-              :let [arg-kind (get-in object-field-args [additional-arg-name :type :kind])]]
-        (when (= arg-kind :non-null)
-          (throw (ex-info "Additional arguments on an object field that are not defined in extended interface cannot be required."
-                          {:object type-name
-                           :interface-name interface-name
-                           :field-name field-name
-                           :argument-name additional-arg-name}))))))
+      (when-let [additional-args (seq (difference (into #{} (keys object-field-args))
+                                                  (into #{} (keys interface-field-args))))]
+        (doseq [additional-arg-name additional-args
+                :let [arg-kind (get-in object-field-args [additional-arg-name :type :kind])]]
+          (when (= arg-kind :non-null)
+            (throw (ex-info "Additional arguments on an object field that are not defined in extended interface cannot be required."
+                            {:object type-name
+                             :interface-name interface-name
+                             :field-name field-name
+                             :argument-name additional-arg-name}))))))
 
-  (update object :fields #(reduce-kv (fn [m field-name field]
-                                       (assoc m field-name
-                                              (prepare-field schema options object field)))
-                                     {}
-                                     %)))
+    (update object :fields #(reduce-kv (fn [m field-name field]
+                                         (assoc m field-name
+                                                (cond-> (prepare-field schema options object field)
+                                                  object-def? apply-deprecated-directive)))
+                                       {}
+                                       %))))
 
 (defn ^:private prepare-and-validate-objects
   "Comes very late in the compilation process to prepare objects, including validation that
@@ -1235,7 +1362,72 @@
                       {:type root-name
                        :category category})))))
 
-(defrecord CompiledSchema [])
+(defn ^:private compile-directive-defs
+  [schema directive-defs]
+  (let [compile-directive-arg (fn [arg-name arg-def]
+                                (let [arg-def' (compile-arg arg-name arg-def)
+                                      arg-type-name (extract-type-name arg-def')
+                                      arg-type (get schema arg-type-name)]
+                                  (when-not arg-type
+                                    (throw (ex-info "Unknown argument type."
+                                                    {:arg-name arg-name
+                                                     :arg-type-name arg-type-name
+                                                     :schema-types (type-map schema)})))
+                                  (when-not (= :scalar (:category arg-type))
+                                    (throw (ex-info "Directive argument is not a scalar type."
+                                                    {:arg-name arg-name
+                                                     :arg-type-name arg-type-name
+                                                     :schema-types (type-map schema)})))
+                                  [arg-name arg-def']))
+        compile-directive-args (fn [directive-type directive-def]
+                                 (try
+                                   [directive-type (-> directive-def
+                                                       (assoc :directive-type directive-type)
+                                                       (update :args #(map-kvs compile-directive-arg %)))]))]
+    (assoc schema ::directive-defs
+           (map-kvs compile-directive-args
+                    (assoc directive-defs
+                           :deprecated {:args {:reason {:type 'String}}
+                                        :locations #{:field-definition :enum-value}})))))
+
+(defn ^:private validate-directives-by-category
+  [schema category]
+  (run!
+    #(validate-directives-in-def schema % category)
+    (types-with-category schema category))
+
+  schema)
+
+(defn ^:private validate-enum-directives
+  [schema]
+  (doseq [enum-def (types-with-category schema :enum)]
+    (doseq [{:keys [directive-type]} (:directives enum-def)
+            :let [directive-def (get-in schema [::directive-defs directive-type])]]
+      (when-not directive-def
+        (unknown-directive :enum enum-def directive-type))
+
+      (when-not (contains? (:locations directive-def) :enum)
+        (inapplicable-directive :enum enum-def directive-def)))
+
+    (doseq [{:keys [enum-value directives]} (-> enum-def :values-detail vals)
+            :let [value-name (keyword (-> enum-def :type-name name) (name enum-value))]
+            {:keys [directive-type]} directives
+            :let [{:keys [locations] :as directive-def} (get-in schema [::directive-defs directive-type])]]
+      (when-not directive-def
+        (throw (ex-info (format "Enum value %s referenced unknown directive @%s."
+                                (q value-name)
+                                (name directive-type))
+                        {:enum-value value-name
+                         :directive-type directive-type})))
+
+      (when-not (contains? locations :enum-value)
+        (throw (ex-info (format "Directive @%s on enum value %s is not applicable."
+                                (name directive-type)
+                                (q value-name))
+                        {:enum-value value-name
+                         :directive-type directive-type
+                         :allowed-locations locations})))))
+  schema)
 
 (defn ^:private construct-compiled-schema
   [schema options]
@@ -1269,9 +1461,13 @@
         (merge-root :query :__Queries query)
         (merge-root :mutation :__Mutations mutation)
         (merge-root :subscription :__Subscriptions subscription)
+        (compile-directive-defs (:directive-defs schema))
         (prepare-and-validate-interfaces)
         (prepare-and-validate-objects :object options)
         (prepare-and-validate-objects :input-object options)
+        (validate-directives-by-category :union)
+        (validate-directives-by-category :scalar)
+        validate-enum-directives
         map->CompiledSchema)))
 
 (defn default-field-resolver
@@ -1281,6 +1477,7 @@
   ^{:tag ResolverResult
     ::direct-fn field-name}
   (fn default-resolver [_ _ v]
+
     (resolve-as (get v field-name))))
 
 (defn hyphenating-default-field-resolver

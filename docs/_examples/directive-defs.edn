@@ -1,0 +1,10 @@
+{:directive-defs
+ {:access
+  {:locations #{:field-definition}
+   :args {:role {:type (not-null String)}}}}
+
+ :queries
+ {:ultimate_answer
+  {:type String
+   :directives [{:directive-type :access
+                 :directive-args {:role "deep-thought"}}]}}}

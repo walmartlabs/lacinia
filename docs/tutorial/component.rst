@@ -37,7 +37,8 @@ That's where the fun really starts.
 
 Components `may` have a lifecycle; if they do, they implement the Lifecycle
 protocol containing methods ``start`` and ``stop``.
-This is why many components are implemented as Clojure records ... records can implement a protocol.
+This is why many components are implemented as Clojure records ...
+records can implement a protocol, but simple maps can't.
 
 Rather than get into the minutiae, let's see how it all fits together in
 our Clojure Game Geek application.
@@ -91,7 +92,7 @@ will be ``assoc``-ed as the ``:schema-provider`` key of the ``:server`` componen
 Once a component has its dependencies ``assoc``-ed in, and is itself started
 (more on that in a moment), it may be ``assoc``-ed into further components.
 
-The Component library really embraces the identity vs. state concept; the identity of
+The Component library embraces the identity vs. state concept; the identity of
 the component is its key in the system map ... its state is a series of transformations
 of the initial map.
 
@@ -161,7 +162,7 @@ the dependency on the ``:schema-provider`` component.
 system namespace
 ----------------
 
-A new, tiny namespace has been created, just to put together the Component system.
+A new, tiny namespace has been created, just to put together the Component system map.
 
 .. ex:: component src/clojure_game_geek/system.clj
 
@@ -185,7 +186,7 @@ loading schemas or starting and stopping Pedestal is present any longer.
 
 The user namespace previously had vars for both the schema and the Pedestal
 service.
-Now it only has a single var, for the Component system.
+Now it only has a single var, for the Component system map.
 
 Interestingly, as our system grows later, the user namespace will likely
 not change at all, just the system map it gets from ``system/new-system`` will

@@ -1,10 +1,8 @@
+interface Matrix
 {
-  interface Matrix
-  {
-    eject(the_one: Boolean!) : Human
-  }
+eject(the_one: Boolean!) : Human
+}
 
-  type Human {
-    name : String!
-  }
+type Human {
+name : String!
 }

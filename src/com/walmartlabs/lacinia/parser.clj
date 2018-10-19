@@ -16,6 +16,7 @@
   "Parsing of client querys using the ANTLR grammar."
   (:require
     [clojure.string :as str]
+    [com.walmartlabs.lacinia.compiled-schema :refer [compiled-schema?]]
     [com.walmartlabs.lacinia.internal-utils
      :refer [cond-let update? q map-vals filter-vals remove-vals
              with-exception-context throw-exception to-message
@@ -27,8 +28,7 @@
     [com.walmartlabs.lacinia.parser.query :as qp]
     [flatland.ordered.map :refer [ordered-map]])
   (:import
-    (clojure.lang ExceptionInfo)
-    (com.walmartlabs.lacinia.schema CompiledSchema)))
+    (clojure.lang ExceptionInfo)))
 
 (defn ^:private first-match
   [pred coll]
@@ -1143,7 +1143,7 @@
   ;; one is being selected. With an eye towards fast execution of parsed and cached queries, this may
   ;; not be the right approach.
   ([schema query-string operation-name]
-   (when-not (instance? CompiledSchema schema)
+   (when-not (compiled-schema? schema)
      (throw (IllegalStateException. "The provided schema has not been compiled.")))
    (xform-query schema (qp/parse-query query-string) operation-name)))
 
