@@ -248,6 +248,46 @@
     {:enum-value enum-def
      :description description}))
 
+(defn assoc-in!
+  "A variant of `assoc-in` that requires that each k in ks already exist (except the last), throwing an exception if not."
+  [m [k & more-ks] v]
+  (cond
+
+    (not (seq more-ks))
+    (assoc m k v)
+
+    (not (contains? m k))
+    (throw (ex-info "Intermediate key not found during assoc-in!"
+                    {:map m
+                     :key k
+                     :more-keys more-ks
+                     :value v}))
+
+    :else
+    (update m k assoc-in! more-ks v)))
+
+(defn ^:private update-in!*
+  [m [k & more-ks] f]
+  (cond
+    (not (contains? m k))
+    (throw (ex-info "Intermdiate key not found during update-in!"
+                    {:map m
+                     :key k
+                     :more-keys more-ks}))
+
+    (not (seq more-ks))
+    (assoc m k (f (get m k)))
+
+    :else
+    (assoc m k
+           (update-in!* (get m k) more-ks f))))
+
+(defn update-in!
+  "A variant of `update-in` that requires that each k in ks already exist, throwing an exception if not."
+  [m ks f & args]
+  ;; Could be optimized when no args
+  (update-in!* m ks #(apply f % args)))
+
 (defn apply-description
   "Adds a description to an element of the schema.
 
@@ -278,7 +318,7 @@
           root (type-root schema type-name)]
 
     simple?
-    (assoc-in schema [root type-name :description] description)
+    (assoc-in! schema [root type-name :description] description)
 
     (= :unions root)
     (throw (ex-info "Error attaching documentation: union members may not be documented"
@@ -297,7 +337,7 @@
       ;; The field-name is actually the enum value, in this context
       (if-let [ix (index-of (enum-matcher field-name)
                             (get-in schema [root type-name :values]))]
-        (update-in schema [root type-name :values ix] apply-enum-description description)
+        (update-in! schema [root type-name :values ix] apply-enum-description description)
         (throw (ex-info "Error attaching documentation: enum value not found"
                         {:type-name type-name
                          :enum-value field-name'}))))
@@ -307,8 +347,8 @@
                  [root type-name :fields field-name'])]
 
     (str/blank? arg-name)
-    (assoc-in schema (conj base :description) description)
+    (assoc-in! schema (conj base :description) description)
 
     :else
-    (assoc-in schema (conj base :args (keyword arg-name) :description) description)))
+    (assoc-in! schema (conj base :args (keyword arg-name) :description) description)))
 

@@ -17,7 +17,7 @@
   (:require
     [com.walmartlabs.lacinia.internal-utils
      :refer [to-message map-vals cond-let update? apply-description
-             resolver-path]]))
+             resolver-path assoc-in!]]))
 
 (defn ^:private attach-callbacks
   [field-container callbacks-map callback-kw error-name]
@@ -141,6 +141,8 @@
   Additionally, the `Type` can be `queries`, `mutations`, or `subscriptions`, in which case
   the `name` will be the name of the operation (e.g., `:queries/episode`).
 
+  An exception is thrown if an element identified by a key does not exist.
+
   See [[parse-docs]]."
   {:added "0.27.0"}
   [schema documentation]
@@ -165,6 +167,6 @@
   {:added "0.27.0"}
   [schema resolvers]
   (reduce-kv (fn [schema' k resolver]
-               (assoc-in schema' (resolver-path schema' k) resolver))
+               (assoc-in! schema' (resolver-path schema' k) resolver))
              schema
              resolvers))
