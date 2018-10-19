@@ -43,7 +43,8 @@ from the ``user`` namespace to the ``test-utils`` namespace:
 
 .. ex:: 4388d0d7974e498fb600da77a2d7915c8e8a0812 dev-resources/clojure_game_geek/test_utils.clj
 
-This is located in the ``dev-resource`` folder, so that it won't be confused for tests.
+This is located in the ``dev-resource`` folder, so that that Leiningen
+won't treat it as a namespace containing tests to execute.
 
 Over time, we're likely to add a number of little tools here to make tests more clear and concise.
 
@@ -68,24 +69,27 @@ Our application is layered as follows:
       fieldresolver [label="Field Resolver\nfunction"]
       dbaccess [label="clojure-game-geek.db\nfunction"]
 
-      client -> HTTP -> Pedestal -> Lacinia -> fieldresolver -> dbaccess -> DB
+      client -> Pedestal [label="HTTP"]
+      Pedestal -> Lacinia -> fieldresolver -> dbaccess -> PostgreSQL
 
     }
 
 In theory, we could test each layer separately;  that is, we could test the
-``clojure-game-geek.db`` functions against a database (or even, so mockup of a database),
+``clojure-game-geek.db`` functions against a database (or even, some mockup of a database),
 then test the field resolver functions against the ``db`` functions, etc.
 
-In practive, building a Lacinia application is an exercise in integration; the individual bits
-of code are often quite small, but there can be issues with how they interact, so I prefer
-a modest amount of integration testing.
+In practice, building a Lacinia application is an exercise in integration; the individual bits
+of code are often quite small and simple, but there can be issues with how these bits of code interact.
+
+I prefer a modest amount of integration testing using a portion of the full stack.
+
 There's no point in testing a block of database code, only to discover that the results
 don't work with the field resolver functions calling that code.
 Likewise, for nominal success cases, there's no point in testing the raw database code if
 the exact same code will be exercised when testing the field resolver functions.
 
-There's still a place for more focused testing, especially testing of edge cases and failure
-scenarios.
+There's still a place for more focused testing, especially testing o failure
+scenarios and other edge cases.
 
 Likewise, as we build up more code in our application outside of Lacinia, such as request
 authentication and authorization, we may want to exercise our code by sending HTTP requests in
@@ -119,7 +123,7 @@ in our database look like.
 
 It's quite easy to craft a tiny GraphQL query and execute it; that will flow through Lacinia, to
 our field resolvers, to the database access code, and ultimately to the database, just like
-the chart above.
+in the diagram.
 
 Running the Tests
 -----------------
@@ -142,20 +146,21 @@ Clojure startup time is somewhat slow, as before your tests can run, large numbe
 must be loaded, and signifcant amounts of Clojure code, both from our application and from any libraries, must
 be read, parsed, and compiled.
 
-Fortunately, Clojure was created with a REPL-oriented development in mind.
+Fortunately, Clojure was created with a REPL-oriented development workflow in mind.
 This is a fast-feedback cycle, where you can run tests, diagnose failures, make code corrections,
 and re-run the tests in a matter of seconds.
 Generally, the slowest part of the loop is the part that executes inside your grey matter.
-Because the your Clojure code base is already loaded and running, even a change that affects many namespaces
+
+Because the Clojure code base is already loaded and running, even a change that affects many namespaces
 can be reloaded in milliseconds.
 
 If you are using an IDE, you will be able to run tests directly in a running REPL.
 In Cursive, :kbd:`Ctrl-Shift-T` runs all tests in the current namespace, and
 :kbd:`Ctrl-Alt-Cmd-T` runs just the test under the cursor.
-Cursive is even smart enough to properly reload all modified namespaces.
+Cursive is even smart enough to properly reload all modified namespaces before executing the tests.
 
 Similar commands exist for whichever editor you are using.
-Being able to load code and run tests is a fraction of a second is incredibly liberating if you are
+Being able to load code and run tests in a fraction of a second is incredibly liberating if you are
 used to a more typical grind of starting a new process just to run tests [#twitter]_ .
 
 Database Issues
@@ -191,6 +196,9 @@ What if it's not?  It might look like this::
    Ran 1 tests containing 1 assertions.
    0 failures, 1 errors.
    Tests failed.
+
+If you see a huge swath of tests failing, the first thing to do is double check external dependencies,
+such as the database running inside the Docker container.
 
 Conclusion
 ----------
