@@ -13,21 +13,21 @@ field resolvers, will be unaffected.
 Dependency Changes
 ------------------
 
-.. ex:: database-1e project.clj
-   :emphasize-lines: 7, 9-11
+.. ex:: eebe71c16781d549aa3b1b48b8802282e709b65d project.clj
+   :emphasize-lines: 6,8-14
 
 We're bringing in the very latest versions of lacinia and lacinia-pedestal (something we'll
 likely do almost every chapter).
+Since these are now based on Clojure 1.9, it's a fine time to upgrade
+to that.
 
-The main addition is the alaisi/postgres.async library, which is used to execute queries and other
-operations against a PostgreSQL database.
+We're also adding several new dependencies for accessing a PostgreSQL database:
 
-lacinia-pedestal and postgres.async disagree on which version of
-org.clojure/core.async [#async]_ to use, so we're pinning the version of core.async to
-the very latest version available.
+* The Clojure ``java.jdbc`` library
+* The PostgreSQL driver that plugs into the library
+* A java library, ``c3p0``, that  is used for connection pooling
 
-This kind of dependency version conflict is unfortunately a common occurance when different libraries are maintained by different groups on different schedules.
-Fortunately, in this case, settling on a common version doesn't break either lacinia-pedestal or postgres.async.
+
 
 Database Initialization
 -----------------------
@@ -107,61 +107,39 @@ In prior chapters, the ``:db`` component was just a wrapper around an Atom; star
 update it to be a wrapper around a connection to the PostgreSQL database running in the Docker container.
 
 Our goal in this chapter is to update just one basic query to use the database,
-the query that retrieves a game by its unique id.
+the query that retrieves a board game by its unique id.
 We'll make just the changes necessary for that one query before moving on.
 
-.. ex:: 4b9aec3656a5b4daa760709d50c26f9fe2b65608 src/clojure_game_geek/db.clj
-   :emphasize-lines: 5, 7-22, 28-43
+.. ex:: eebe71c16781d549aa3b1b48b8802282e709b65d src/clojure_game_geek/db.clj
+   :emphasize-lines: 3-26,33-38
 
-The requires for the ``db`` namespace have changed; we're using the ``postgres.async`` namespace to
-connect to the database, and that entails using some ``clojure.core.async`` functions.
+The requires for the ``db`` namespace have changed; we're using the ``clojure.java.jdbc`` namespace to
+connect to the database and execute queries, and also making use of the ``ComboPooledDataSource`` class,
+which allows for pooled connections.
 
-The ClojureGameGeekDb record has changed; it now has a ``conn`` (connection) field, and that is
+The ClojureGameGeekDb record has changed; it now has a ``ds`` (data source) field, and that is
 the connection to the PostgreSQL database.
-The ``start`` method now opens the connection to the database.
+The ``start`` method now opens the connection pool to the database, and the
+``stop`` method shuts down the connection pool.
 
 For the meantime, we've hardwired the connection details (hostname, username, password, and port) to our Docker container.
 A later chapter will discuss approaches to configuration.
 Also note that we're connecting to port ``25432`` on ``localhost``; Docker will forward that port to the container
 port ``5432``.
 
-We've added a private ``take!`` function [#bang]_; its purpose is to obtain the result of a query
-against the database.
-Because we are using the postgres.async library, when we perform a query or other
-database operation, we don't block the current thread until results are ready.
-
-Instead, the postgres.async functions return a core.async `channel`.
-
-A full discussion of core.async will come later; for the moment, you can think of a channel
-as similar to a promise; the query operation will run asynchronously in another thread,
-and the result of the query operation will be `conveyed` through the channel.
-
-The core.async ``<!!`` function blocks the current thread until a value is conveyed.
-We've managed to turn an asynchronous operation back into a synchronous one ... once again, baby
-steps.
-A later chapter will discuss how to fully leverage asynchronous queries when using Lacinia.
-
-A common convention with core.async channels is to convey either an actual result, or an exception
-if something goes wrong.
-That can happen here: if there's a problem executing the query, an exception will be conveyed
-in the channel, instead of the expected sequence of row maps.
-
-In the ``take!`` function, we check if the conveyed value is an exception, and throw it (in the
-current thread) if so.
-
 That leaves the revised implementation of the ``find-game-by-id`` function; the only data access function rewritten to use
 the database connection.
 It simply constructs and executes the SQL query.
 
-With postgres.async the query is a vector
-consisting of a SQL query string followed by zero or more query variables.
-Each query variable is numbered from 1 and represented as ``$n`` in the SQL query string.
+With ``clojure.java.jdbc`` the query is a vector
+consisting of a SQL query string followed by zero or more query parameters.
+The `?` character in the query string corresponds to a query parameter, based on position.
 
-The ``query!`` function returns a channel, which is passed through ``take!`` to get
-the results.
-The results will be a sequence of maps, each map one matching row.
-For this particular query, we are expecting a single match, so we can use ``first`` to return
-just the map for the matching row.
+The ``jdbc/query`` function returns a seq of matching rows.
+By default, each selected row is converted into a Clojure map, and the column names are
+turned into keywords.
+
+For an operation like this one, which returns at most one map, we use ``first``.
 
 If no rows match, then ``first`` will return nil.
 That's a perfectly good way to identify that the provided Board Game id was not valid.
@@ -232,16 +210,5 @@ It's time to write some tests, then convert the rest of the ``db`` namespace.
    Docker includes infrastructure for downloading the images from a central repository.
    Ultimately, it's faster and easier to get PostgreSQL running
    inside a container that to install the database onto your computer.
-
-.. [#async] core.async is a very powerful library for performing asynchronous computation
-   in Clojure. We'll discuss core.async, and how it relates to Lacinia, in a later chapter.
-
-.. [#bang] The Clojure naming convention is that names of unsafe functions end with a ``!``.
-
-   Unsafe functions either have side effects, or may block the current thread.
-
-   This largely applies to low-level functions, such as ``take!`` or ``<!!``.
-   All of the data access functions, such as ``find-game-by-id`` are also unsafe, but
-   are expected to be so by context, so their names don't end with ``!``.
 
 .. [#emacs] The author uses Cursive, but Emacs and other editors all have similar functionality.
