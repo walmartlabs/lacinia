@@ -5,16 +5,6 @@ Before we get much further, we are very far along for code that has no tests.  L
 
 First, we need to reorganize a couple of things, to make testing easier.
 
-Dependencies
-------------
-
-
-.. ex:: 593e5e55aa57aa4bd2d30eb8dd0ebf8e810cd197 project.clj
-   :emphasize-lines: 6-12
-
-To start with, we're updating all our dependencies to the (at time of writing) latest versions.
-This includes bumping up the Clojure version to 1.9.0.
-
 HTTP Port
 ---------
 
@@ -171,31 +161,26 @@ These tests assume the database is running locally, and has been initialized.
 
 What if it's not?  It might look like this::
 
-   ~/workspaces/github/clojure-game-geek > lein test
-
    lein test clojure-game-geek.system-tests
-
-   lein test :only clojure-game-geek.system-tests/can-read-board-game
-
-   ERROR in (can-read-board-game) (SocketChannelImpl.java:-2)
-   Uncaught exception, not in assertion.
-   expected: nil
-     actual: java.net.ConnectException: Connection refused: localhost/127.0.0.1:25432
-    at sun.nio.ch.SocketChannelImpl.checkConnect (SocketChannelImpl.java:-2)
-       sun.nio.ch.SocketChannelImpl.finishConnect (SocketChannelImpl.java:717)
-       io.netty.channel.socket.nio.NioSocketChannel.doFinishConnect (NioSocketChannel.java:330)
-       io.netty.channel.nio.AbstractNioChannel$AbstractNioUnsafe.finishConnect (AbstractNioChannel.java:338)
-       io.netty.channel.nio.NioEventLoop.processSelectedKey (NioEventLoop.java:580)
-       io.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized (NioEventLoop.java:504)
-       io.netty.channel.nio.NioEventLoop.processSelectedKeys (NioEventLoop.java:418)
-       io.netty.channel.nio.NioEventLoop.run (NioEventLoop.java:390)
-       io.netty.util.concurrent.SingleThreadEventExecutor$5.run (SingleThreadEventExecutor.java:742)
-       io.netty.util.concurrent.DefaultThreadFactory$DefaultRunnableDecorator.run (DefaultThreadFactory.java:145)
-       java.lang.Thread.run (Thread.java:748)
+   WARN  com.mchange.v2.resourcepool.BasicResourcePool - com.mchange.v2.resourcepool.BasicResourcePool$ScatteredAcquireTask@614dbaad -- Acquisition Attempt Failed!!! Clearing pending acquires. While trying to acquire a needed new resource, we failed to succeed more than the maximum number of allowed acquisition attempts (30). Last acquisition attempt exception:
+   org.postgresql.util.PSQLException: Connection to localhost:25432 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.
+           at org.postgresql.core.v3.ConnectionFactoryImpl.openConnectionImpl(ConnectionFactoryImpl.java:280)
+           at org.postgresql.core.ConnectionFactory.openConnection(ConnectionFactory.java:49)
+           at org.postgresql.jdbc.PgConnection.<init>(PgConnection.java:195)
+           at org.postgresql.Driver.makeConnection(Driver.java:454)
+           at org.postgresql.Driver.connect(Driver.java:256)
+           at com.mchange.v2.c3p0.DriverManagerDataSource.getConnection(DriverManagerDataSource.java:175)
+           at com.mchange.v2.c3p0.WrapperConnectionPoolDataSource.getPooledConnection(WrapperConnectionPoolDataSource.java:220)
+           at com.mchange.v2.c3p0.WrapperConnectionPoolDataSource.getPooledConnection(WrapperConnectionPoolDataSource.java:206)
+           at com.mchange.v2.c3p0.impl.C3P0PooledConnectionPool$1PooledConnectionResourcePoolManager.acquireResource(C3P0PooledConnectionPool.java:20
+   ...
 
    Ran 1 tests containing 1 assertions.
    0 failures, 1 errors.
    Tests failed.
+
+Because of the connection pooling, this actually takes quite some time
+to fail, and produces hundreds (!) of lines of exception output.
 
 If you see a huge swath of tests failing, the first thing to do is double check external dependencies,
 such as the database running inside the Docker container.
