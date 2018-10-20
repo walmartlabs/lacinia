@@ -100,8 +100,24 @@ Much better to have as consistent a representation of the data as possible, span
 the GraphQL schema, the Clojure data access code, and the over-the-wire JSON format ... and not buy yourself any extra work that
 has no tangible benefits.
 
-Database Connection
--------------------
+org.clojure/java.jdbc
+---------------------
+
+This library is the standard approach to accessing a database from Clojure code.
+``java.jdbc`` can access, in a uniform manner, any database for which there is a Java JDBC driver.
+
+The ``clojure.java.jdbc`` namespace contains a number of functions for acessing a database, including
+functions for executing arbitrary queries, and specialized functions for peforming inserts, updates, and deletes.
+
+For all of those functions, the first parameter is a `database spec`, a map of data used to connect to the database.
+In a trivial case, this identifies the Java JDBC driver class, and provides extra information to build a JDBC URL, including
+details such as the database host, the user and password, and the name of the database.
+
+In practice, opening up a new connection for each operation is unacceptible so we'll jump right in with a
+database connection pooling library, ``C3P0``.
+
+clojure-game-geek.db
+--------------------
 
 In prior chapters, the ``:db`` component was just a wrapper around an Atom; starting here, we're going to
 update it to be a wrapper around a connection to the PostgreSQL database running in the Docker container.
@@ -133,15 +149,15 @@ It simply constructs and executes the SQL query.
 
 With ``clojure.java.jdbc`` the query is a vector
 consisting of a SQL query string followed by zero or more query parameters.
-The `?` character in the query string corresponds to a query parameter, based on position.
+Each ``?`` character in the query string corresponds to a query parameter, based on position.
 
-The ``jdbc/query`` function returns a seq of matching rows.
+The ``clojure.java.jdbc/query`` function returns a seq of matching rows.
 By default, each selected row is converted into a Clojure map, and the column names are
-turned into keywords.
+converted from strings into keywords.
 
 For an operation like this one, which returns at most one map, we use ``first``.
 
-If no rows match, then ``first`` will return nil.
+If no rows match, then the seq will be empty, and ``first`` will return nil.
 That's a perfectly good way to identify that the provided Board Game id was not valid.
 
 At the REPL
@@ -157,11 +173,17 @@ Starting a new REPL, we can give the new code and schema a test::
                         :name "Zertz",
                         :summary "Two player abstract with forced moves and shrinking board",
                         :min_players 2,
-                        :max_players 2}}} min_players max_players }}")
+                        :max_players 2}}}")
 
 
-Great! That works ... though all the other ``db`` namespace functions,
-expecting to operate against an Atom, are now broken.
+Great! That works!
+
+Notice how everything fits together: the column names in the database (``game_id``, ``summary``, etc.)
+became keywords (``:game_id``,  ``:summary``, etc.) in a map; meanwhile the GraphQL field names did the same
+conversion and everything meets together in the middle, with GraphQL fields selecting those same keys from the map.
+
+Meanwhile all the other ``clojure-game-geek.db`` namespace functions,
+expecting to operate against a map inside an Atom, are now broken.
 We'll fix them in the next couple of chapters.
 
 User Namespace Improvements

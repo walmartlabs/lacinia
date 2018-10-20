@@ -13,15 +13,15 @@ It's always a good idea to know exactly what SQL queries are executing in
 your application; you'll never figure out what's slowing down your application
 if you don't know what queries are even executing.
 
-.. ex:: 9d588edac8afa44afd9a5ae095f88332fdba6c25 src/clojure_game_geek/db.clj
-   :emphasize-lines: 4,39-44
-   :lines: 1-44
+.. ex:: cb2d1187d6cd244ad3b7435ec6e94b127c37e69d src/clojure_game_geek/db.clj
+   :emphasize-lines: 4,35-40
+   :lines: 1-40
 
-We've introduced our own version of ``postgres.async/query!`` with
+We've introduced our own version of ``clojure.java.jdbc/query`` with
 two differences:
 
 * It logs the SQL and parameters it will execute
-* It accepts a component, and extracts the connecton from the component
+* It accepts a component, and extracts the database specification from the component
 
 Because of how we format the SQL in our code, it is useful to convert
 the embedded newlines and indentation into single spaces.
@@ -39,9 +39,10 @@ that are interesting.
 
 When logged, it may look like::
 
-   DEBUG clojure-game-geek.db - {:sql "select game_id, name, summary, min_players, max_players, created_at, updated_at from board_game where game_id = $1", :params (1234), :line 42}
+   DEBUG clojure-game-geek.db - {:sql "select game_id, name, summary, min_players, max_players, created_at, updated_at from board_game where game_id = $1",
+     :params (1234), :line 38}
 
-That's the debug level and namespace, and the map of keys and values (``pedestal.log``
+That's the debug level and namespace, and the map of keys and values (``io.pedestal.log``
 adds the ``:line`` key).
 
 The useful and interesting details are present and unambiguously formatted,
@@ -57,17 +58,17 @@ data is useful into the log, and not care about all those human oriented formatt
 
 This is, of course, all possible because all data in Clojure can be printed out nicely
 and even read back in again.
-By comparison, data value or other objects in Java
+By comparison, data values or other objects in Java
 only have useful debugging output if their class provides
 an override of the ``toString()`` method.
 
 When it comes time to execute a query, not much has changed
-except that it isn't necessary to extract the connection from
+except that it isn't necessary to extract the databased spec from
 the componment:
 
-.. ex:: 9d588edac8afa44afd9a5ae095f88332fdba6c25 src/clojure_game_geek/db.clj
-   :lines: 46-52
-   :emphasize-lines: 3
+.. ex:: database-2a src/clojure_game_geek/db.clj
+   :lines: 42-47
+   :emphasize-lines: 4
 
 logback-test.xml
 ----------------
@@ -93,14 +94,14 @@ the debug output will be mixed into the test tool output::
    Ran 1 test containing 1 assertion.
    No failures.
 
-
 More code updates
 -----------------
 
-The remaining
+The remaining functions in ``clojure-game-geek.db`` can be rewritten to make use of ``query`` and
+operate on the real database:
 
-.. ex:: 587b2809386469bb30df347f971c72889cad9239 src/clojure_game_geek/db.clj
-   :lines: 54-
+.. ex:: database-2a src/clojure_game_geek/db.clj
+   :lines: 49-
 
 The majority of this is quite straight-forward, except for
 ``upsert-game-rating``, which makes use of PostgreSQL language extensions
