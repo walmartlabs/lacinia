@@ -2,7 +2,7 @@ Application Context
 ===================
 
 The application context passed to your field resolvers is normally set by the initial call to
-``com.walmartlabs.lacina/execute-query``.
+``com.walmartlabs.lacinia/execute-query``.
 Lacinia uses the context for its own book-keeping (the keys it places into the map are namespaced to
 avoid collisions) but otherwise the same map is passed to all field resolvers.
 
