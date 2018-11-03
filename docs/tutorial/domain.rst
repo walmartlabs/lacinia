@@ -5,7 +5,7 @@ Our goal will be to provide a GraphQL interface to data about board games
 (one of the author's hobbies), as a limited version of
 `Board Game Geek <https://boardgamegeek.com/>`_.
 
-The basic types are as follows:
+The basic types in the final system are as follows:
 
 .. graphviz::
 
@@ -30,3 +30,5 @@ A BoardGame may have any number of Designers.
 
 Users of Clojure Game Geek, represented as type Member, may provide their personal ratings for board games.
 
+This is a tiny sliver of the functionality of Board Game Geek, but sufficiently meaty to give us a taste for building
+full applications.

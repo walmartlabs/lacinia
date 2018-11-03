@@ -20,14 +20,16 @@ a game by its id:
 A Lacinia schema is an `EDN <https://github.com/edn-format/edn>`_ file.
 It is a map of maps; the top level keys identify the type of definition: ``:objects``,
 ``:queries``, ``:interfaces``, ``:enums``, and so forth.
-Each type has its own structure.
+The inner maps are keywords to a type-specific structure.
+This schema defines a single query, ``game_by_id`` that returns an object as defined by the
+``BoardGame`` type.
 
 A schema is declarative: it defines what operations are possible, and what types and fields exist,
 but has nothing to say about where any of the data comes from.
 In fact, Lacinia has no opinion about that either!
 GraphQL is a contract between a consumer and a provider for how to request
 and present data, it's not any form of database layer, object relational mapper, or anything
-of that type.
+similar.
 
 Instead, Lacinia handles the parsing of a client query, and guides
 the execution of that query, ultimately invoking application-specific callback hooks:
@@ -48,7 +50,7 @@ It's an excellent habit to add descriptions early, rather than try and go back
 and add them in later.
 
 We'll add more fields, more types, relationships between types, and more operations
-as we go.
+in later chapters.
 
 We've also demonstrated the use of a few Lacinia conventions in our schema:
 
@@ -62,8 +64,8 @@ We've also demonstrated the use of a few Lacinia conventions in our schema:
 In addition, all GraphQL names (for fields, types, and so forth) must contain only alphanumerics
 and the underscore.
 The dash character is, unfortunately, not allowed.
-If we tried to name the query ``query-by-id``, Lacinia would throw an exception when we attempted
-to use the schema.
+If we tried to name the query ``query-by-id``, Lacinia would throw a `clojure.spec <https://clojure.org/guides/spec>`_ validation exception when we attempted
+to use the schema. [#spec]_
 
 In Lacinia, there are base types, such as ``String`` and ``:BoardGame`` and wrapped types, such
 as ``(non-null String)``.
@@ -97,6 +99,9 @@ schema gets very large.
 
 The field resolver in this case is a placeholder; it ignores all the arguments
 passed to it, and simply returns nil.
+Like all field resolver functions, it accepts three arguments: a context map,
+a map of field arguments, and a container value.
+We'll discuss what these are and how to use them shortly.
 
 user namespace
 --------------
@@ -105,19 +110,24 @@ user namespace
 
    An annoyance with putting code into the ``user`` namespace is that you can't
    start a new REPL unless and until the ``user`` namespace loads.
-   Every so often, you have to go in and comment everything out just to get
+   Every so often, you have to go in your ``user`` namespace and comment everything out just to get
    a REPL running, to start debugging an error elsewhere.
 
-A key advantage of Clojure is REPL-oriented development: we want to be able to
+A key advantage of Clojure is REPL-oriented [#repl]_ development: we want to be able to
 run our code through its paces almost as soon as we've written it - and when we
-change code, we want to be able to try out the new version instantly.
+change code, we want to be able to try out the changed code instantly.
+
+Clojure, by design, is almost uniquely good at this interactive style of development.
+Features of Clojure exist just to support REPL-oriented development, and its one of the ways
+in which using Clojure will vastly improve your productivity!
 
 We can add a bit of scaffolding to the ``user`` namespace, specific to
 our needs in this project.
 When you launch a REPL, it always starts in this namespace.
 
 We can define the user namespace in the ``dev-resources`` folder; this ensures
-that it is not packaged up with the rest of our application when we deploy.
+that it is not packaged up with the rest of our application when we eventually package
+and deploy the application.
 
 .. ex:: init-schema dev-resources/user.clj
 
@@ -144,7 +154,7 @@ With all that in place, we can launch a REPL and try it out::
 
 The value returned makes use of an ordered map.
 Again, that's part of the GraphQL
-spec: the order in which things appear in the query dictates the order in which
+specification: the order in which things appear in the query dictates the order in which
 they appear in the result.
 In any case, this result is equivalent to ``{:data {:game_by_id nil}}``.
 
@@ -155,8 +165,31 @@ This is not an error ... remember that we defined the type of the
 
 However, Lacinia still returns a map with the operation name and operation selection.
 Failure to return a result with a ``:data`` key would signify an error executing
-the query.
+the query, such as a parse error.
 That's not the case here at all.
 
+Summary
+-------
+
+We've defined an exceptionally simple schema in EDN, but still have managed to load it
+into memory and compile it.
+We've also used the REPL to execute a query against the schema and seen the initial
+(and quite minimal) result.
+
+In the next chapter, we'll build on this modest start, introducing more schema types, and
+
+
+
 .. [#internal] Internally, `everything` is converted to keywords, so if you prefer
-   to use symbols everywhere, nothing will break.
+   to use symbols everywhere, nothing will break. This is part of the schema compilation
+   process.
+
+.. [#spec] Because the input schema format is so complex, it `always` validated
+   using clojure.spec. This helps to ensure that minor typos or other gaffes
+   are caught early rather than causing you great confusion later.
+
+.. [#repl] Read Eval Print Loop: you type in an expression, and Clojure evaluates and
+   prints the result.  This is an innovation that came early to Lisps,
+   and is integral to other languages such as Python, Ruby, and modern JavaScript.
+   Stuart Halloway has a talk, `Running with Scissors: Live Coding With Data <https://www.youtube.com/watch?v=Qx0-pViyIDU>`_,
+   that goes into a lot more detail on how important and useful the REPL is.

@@ -23,6 +23,10 @@ The former brings in quite a few dependencies, including Pedestal, and the under
 The ``io.aviso/logging`` library sets up
 `Logback <https://logback.qos.ch/>`_ as the logging library.
 
+Clojure and Java are both rich with web and logging frameworks; Pedestal and Logback are simply particular
+choices that we've made and prefer; many other people are using Lacinia on the web without
+using Logback `or` Pedestal.
+
 Some Configuration
 ------------------
 

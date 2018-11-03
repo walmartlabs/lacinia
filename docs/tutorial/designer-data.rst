@@ -3,9 +3,9 @@ Adding Designers
 
 So far, we've been working with just a single entity type, BoardGame.
 
-Let's see what we can do when we add Designer to the mix.
+Let's see what we can do when we add the Designer entity type to the mix.
 
-Initially, we'll define each designer in terms of an id, a name, and an optional
+Initially, we'll define each Designer in terms of an id, a name, and an optional
 home page URL.
 
 .. ex:: add-designers dev-resources/cgg-data.edn
@@ -24,13 +24,24 @@ Schema Changes
 We've added a ``:designers`` field to BoardGame, and added
 a new Designer type.
 
-Notice that we've defined the ``:designers`` field as ``(non-null (list :Designer))``.
-This is somewhat overkill (the world won't end if the result map contains a nil instead of an
+In Lacinia, we use a wrapper, ``list``, around a type, to denote a list of that type.
+In the EDN, the ``list`` wrapper is applied using the syntax of a function call in Clojure code.
+
+A second wrapper, ``non-null``, is used when a value must be present, and not null (or ``nil`` in Clojure).
+By default, all values `can be` nil and that flexibility is encouraged, so ``non-null`` is rarely used.
+
+Here we've defined the ``:designers`` field as ``(non-null (list :Designer))``.
+This is somewhat overkill (the world won't end if the result map contains a ``nil`` instead of an
 empty list), but demonstrates that the ``list`` and ``non-null`` modifiers can
 nest properly.
 
 We could go further: ``(non-null (list (non-null :Designer)))`` ... but that's
-not really adding value.
+adding far more complexity than value.
+
+.. sidebar:: Limits of Types
+
+   You can indicate that, for example, a list contains non-nil values, but there isn't
+   anyway in GraphQL to signify a non-`empty` list.
 
 We need a field resolver for the ``:designers`` field, to convert from
 what's in our data (a set of designer ids) into what we are promising in the schema:
@@ -75,7 +86,7 @@ After reloading code in the REPL, we can exercise these new types and relationsh
 For the first time, we're seeing the "graph" in GraphQL.
 
 An important part of GraphQL is that your query must always extend to scalar fields;
-if you stop at a compound type, Lacinia will report an error instead::
+if you select a field that is a compound type, such as ``BoardGame/designers``, Lacinia will report an error instead::
 
   (q "{ game_by_id(id: \"1237\") { name designers }}")
   =>
@@ -92,6 +103,20 @@ To really demonstrate navigation, we can go from BoardGame to Designer and back:
   => {:data {:game_by_id {:name "Zertz",
                           :designers [{:name "Kris Burm",
                                        :games [{:name "Zertz"}]}]}}}
+
+Summary
+-------
+
+Lacinia provides the mechanism to create relationships between entities, such as between BoardGame and Designer.
+It still falls on the field resolvers to provide that data for such linkages.
+
+With that in place, the same ``lacinia/execute`` function that gives us data about a single entity can traverse the graph and
+return data from a variety of entities, organized however you need it.
+
+Next up, we'll take what we have and make it easy to access via HTTP.
+
+
+
 
 .. [#root] Root resolvers, such as for the ``game_by_id`` query operation, are the
    exception: they are passed nil.

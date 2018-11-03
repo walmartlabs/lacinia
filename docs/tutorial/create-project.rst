@@ -16,8 +16,8 @@ The first step is to create a new, empty project::
 Although Leiningen has an ``app`` template, it is not significantly different than the default
 template.
 
-Normally, we might delete some files we don't need, such as `.hgignore` and the default `doc` directory,
-but for simplicity we'll keep those around.
+Normally, we might delete some files we don't need, such as :file:`.hgignore` and the default :file:`doc` directory,
+but for simplicity we'll just ignore those.
 
 Initially, the :file:`project.clj` is almost empty:
 
