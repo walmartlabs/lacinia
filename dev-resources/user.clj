@@ -7,4 +7,6 @@
     [clojure.spec.alpha :as s]
     [expound.alpha :as expound]))
 
+(require 'com.walmartlabs.lacinia.expound)
+
 (alter-var-root #'s/*explain-out* (constantly expound/printer))

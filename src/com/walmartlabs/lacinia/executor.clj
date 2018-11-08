@@ -475,6 +475,7 @@
                                                   :errors errors
                                                   :timings timings
                                                   :path []
+                                                  :resolved-type (get-in parsed-query [:root :type-name])
                                                   :resolved-value (::resolved-value context)})
         operation-result (if (= :mutation operation-type)
                            (execute-nested-selections-sync execution-context enabled-selections)

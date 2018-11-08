@@ -21,7 +21,7 @@
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.executor :as executor]
     [com.walmartlabs.lacinia.util :as util]
-    [com.walmartlabs.test-utils :refer [is-thrown]]
+    [com.walmartlabs.test-utils :refer [is-thrown execute]]
     [clojure.string :as str]
     [clojure.pprint :as pprint]))
 
@@ -31,8 +31,6 @@
      (when-not (-> tuple# second some?)
        (do-report {:type    :fail
                    :message "Expected some errors in the resolved tuple"}))))
-
-
 
 (deftest schema-shape
   (testing "schema with not required field"
@@ -191,3 +189,12 @@
   (is-compile-exception
     {:queries {:hopeless {:type :String}}}
     "should contain key: :resolve"))
+
+(deftest typename-at-root
+  (let [compiled-schema (schema/compile {})]
+    (is (= {:data {:__typename :QueryRoot}}
+           (execute compiled-schema "{ __typename }")))
+
+    (is (= {:data {:__typename :MutationRoot}}
+           (execute compiled-schema "mutation { __typename }")))))
+
