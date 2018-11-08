@@ -6,9 +6,9 @@
             [test2junit "1.2.5"]]
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [clj-antlr "0.2.4"]
-                 [org.clojure/data.json "0.2.6"]
-                 [org.flatland/ordered "1.5.6"
-                  :exclusions [org.clojure/tools.macro]]]
+                 [org.clojure/data.json "0.2.6"]]
+  :source-paths ["src"
+                 "vendor-src"]
   :profiles {:dev {:dependencies [[criterium "0.4.4"]
                                   [expound "0.7.1"]
                                   [joda-time "2.10"]
@@ -22,4 +22,5 @@
   :jvm-opts ["-Xmx1g" "-XX:-OmitStackTraceInFastThrow"]
   :test2junit-output-dir ~(or (System/getenv "CIRCLE_TEST_REPORTS") "target/test2junit")
   :codox {:source-uri "https://github.com/walmartlabs/lacinia/blob/master/{filepath}#L{line}"
+          :source-paths ["src"]                             ; and not vendor-src
           :metadata   {:doc/format :markdown}})

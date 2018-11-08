@@ -28,7 +28,7 @@
     [clojure.spec.alpha :as s]
     [com.walmartlabs.lacinia.resolve :as resolve]
     [com.walmartlabs.lacinia.parser.query :as qp]
-    [flatland.ordered.map :refer [ordered-map]])
+    [com.walmartlabs.lacinia.vendor.ordered.map :refer [ordered-map]])
   (:import
     (clojure.lang ExceptionInfo)))
 
