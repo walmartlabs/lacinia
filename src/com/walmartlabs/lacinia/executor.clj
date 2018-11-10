@@ -352,6 +352,7 @@
                              execution-context
                              (update execution-context :path conj (:alias selection)))
         sub-selections (:selections selection)
+
         ;; The selector pipeline validates the resolved value and handles things like iterating over
         ;; seqs before (repeatedly) invoking the callback, at which point, it is possible to
         ;; perform a recursive selection on the nested fields of the origin field.

@@ -786,15 +786,19 @@
       (fn select-list [{:keys [resolved-value callback]
                         :as selector-context}]
         (cond
-          (or (nil? resolved-value)
-              (and (not (seq resolved-value))))
+          (nil? resolved-value)
           (callback (assoc selector-context
-                           :resolved-value []
+                           :resolved-value nil
                            :resolved-type nil))
 
           (not (sequential-or-set? resolved-value))
           (selector-error selector-context
                           (error "Field resolver returned a single value, expected a collection of values."))
+
+          (not (seq resolved-value))
+          (callback (assoc selector-context
+                           :resolved-value []
+                           :resolved-type nil))
 
           :else
           ;; So we have some privileged knowledge here: the callback returns a ResolverResult containing
