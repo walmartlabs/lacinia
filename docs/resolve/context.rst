@@ -37,7 +37,7 @@ using the ``com.walmartlabs.lacinia.resolve/with-context`` function.
 The map provided to ``with-context`` will be merged into the application context before any nested resolvers are invoked.
 In this way, the new key, ``::search-term``, is only present in the context for field resolvers below ``products`` field.
 
-Some field resolvers returns lists of values; the entire list can be wrapped in this way _OR_ individual values within the
+Some field resolvers returns lists of values; the entire list can be wrapped in this way **OR** individual values within the
 list may be wrapped.
 
 .. tip::

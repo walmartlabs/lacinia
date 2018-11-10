@@ -25,14 +25,6 @@ When the resolved value is ready, the ``deliver!`` method can be invoked on the 
 .. literalinclude:: ../_examples/async-example.edn
    :language: clojure
 
-.. sidebar:: core.async?
-
-   In this example we are using the ``clojure.core.async/thread`` macro to perform work
-   in a background thread, since that may be familiar.
-   Lacinia does not use the ``org.clojure/core.async`` library; we like to keep
-   dependencies minimal and options open.  It's relatively easy
-   to link a core.async channel to a ``ResolverResultPromise``.
-
 The promise is created and returned from the
 field resolver function.
 In addition, as a side effect, a thread is started to perform some work.

@@ -1,6 +1,5 @@
 (require
-  '[com.walmartlabs.lacinia.resolve :as resolve]
-  '[clojure.core.async :refer [thread]])
+  '[com.walmartlabs.lacinia.resolve :as resolve])
 
 (defn ^:private get-user
   [connection user-id]
@@ -11,11 +10,11 @@
   (let [{:keys [id]} args
         {:keys [connection]} context
         result (resolve/resolve-promise)]
-    (thread
-      (try
-        (resolve/deliver! result (get-user connection id))
-        (catch Throwable t
-          (resolve/deliver! result nil
-            {:message (str "Exception: " (.getMessage t))}))))
+    (.start (Thread.
+            #(try
+              (resolve/deliver! result (get-user connection id))
+              (catch Throwable t
+                (resolve/deliver! result nil
+                  {:message (str "Exception: " (.getMessage t))})))))
 
     result))

@@ -6,6 +6,9 @@ Every field inside the operation or other object will have
 a field resolver: if an explicit one is not provided, Lacinia creates
 a default one.
 
+A field resolver's responsibility is to *resolve* a value; in the simplest case,
+this is accomplished by just returning the value.
+
 As you might guess, the processing of queries into result map data is quite recursive.
 The initial operation's field resolver is passed nil as the container resolved value.
 
@@ -20,7 +23,7 @@ specific to that field.
 
 The rules of field resolvers:
 
-- A operation will resolve to a map of keys and values (or resolve to a sequence of maps).
+- A operation will resolve to a map of keys and values (or resolve to a sequence of such maps).
   The fields requested in the client's query will be used to resolve nested selections.
 
 - Each field is passed its containing field's resolved value.
@@ -28,19 +31,19 @@ The rules of field resolvers:
 
 .. tip::
 
-   It is possible to :doc:`preview nested selections <selections>` in a field resolver, which can enable
-   some important optimizations.
+   It is possible to :doc:`preview nested selections <selections>` in a field resolver, which can be used
+   to implement some important optimizations.
 
 Meanwhile, the selected data from the resolved value is added to the result map.
 
 If the value is a scalar type, it is added as-is.
 
-Otherwise, the value is a structured type, and the query must provide nested selections.
+Otherwise, the value is a structured type, and the query **must** provide nested selections.
 
 Field Resolver Arguments
 ------------------------
 
-A field resolver is passed three parameters:
+A field resolver is passed three arguments:
 
 * The application context.
 
@@ -70,6 +73,11 @@ Field Arguments
 ```````````````
 
 This is a map of arguments provided in the query.
+The arguments map has keyword keys; the value types are as determined by
+definition of the field argument.
+
+If the argument value is expressed as a query variable, the variable will be resolved to
+a simple value when the field resolver is invoked.
 
 Container's Resolved Value
 ``````````````````````````
@@ -87,7 +95,7 @@ For structured types, the field resolver returns a resolved value;
 the query *must* contain nested selections.
 These selections will trigger further fields, whose resolvers will be passed the resolved value.
 
-For example, you might have an ``:lineItem`` query of type ``:LineItem``, and LineItem might include a field,
+For example, you might have a ``:lineItem`` query of type ``:LineItem``, and LineItem might include a field,
 ``:product`` of type ``:Product``.
 A query ``{lineItem(id:"12345") { product }}`` is not valid: it is not possible to return a Product directly,
 you **must** select specific fields within Product:  ``{lineItem(id:"12345") { product { name upc price }}}``.
@@ -112,7 +120,7 @@ In the majority of cases, there is a direct mapping from a field name (in the sc
 of the resolved value.
 
 When the ``:resolve`` key for a field is not specified, a default resolver
-is provided automatically; this default resolver simply expects the resolved value to be a map
+is provided automatically; this default resolver simply expects the container resolved value to be a map
 containing a key that exactly matches the field name.
 
 It is even possible to customize this default field resolver, as an option passed to
