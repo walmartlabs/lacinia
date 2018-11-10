@@ -1,0 +1,12 @@
+{:objects
+ {:Container
+  {:fields
+   {:empty_list {:type (list String)}
+    :non_empty_list {:type (list String)}
+    :null_list {:type (list String)}}}}
+
+ :queries
+ {:container {:type :Container
+              :args {:null {:type Boolean
+                            :default-value false}}
+              :resolve :query/container}}}

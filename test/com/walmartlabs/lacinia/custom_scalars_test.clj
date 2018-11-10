@@ -284,7 +284,7 @@
                       {:words [["foo" "bar"]]}
                       nil))
           "should return an error")
-      (is (= {:data {:shout []}}
+      (is (= {:data {:shout nil}}
              (execute schema "query ($words: [[[CustomType]]]) {
                               shout(words: $words)
                             }"

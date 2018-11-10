@@ -169,11 +169,11 @@
              }
            }}"]
     (is (= {:data {:__type {:fields [{:name "appears_in"
-                                      :type {:fields []
+                                      :type {:fields nil
                                              :kind :LIST
                                              :name nil}}
                                      {:name "arch_enemy"
-                                      :type {:fields []
+                                      :type {:fields nil
                                              :kind :NON_NULL
                                              :name nil}}
                                      {:name "bar"
@@ -186,7 +186,7 @@
                                                       {:name "arch_enemy"
                                                        :type {:kind :NON_NULL
                                                               :name nil
-                                                              :ofType {:enumValues []}}}
+                                                              :ofType {:enumValues nil}}}
                                                       {:name "bar"
                                                        :type {:kind :INTERFACE
                                                               :name "character"
@@ -198,19 +198,19 @@
                                                       {:name "droids"
                                                        :type {:kind :NON_NULL
                                                               :name nil
-                                                              :ofType {:enumValues []}}}
+                                                              :ofType {:enumValues nil}}}
                                                       {:name "enemies"
                                                        :type {:kind :LIST
                                                               :name nil
-                                                              :ofType {:enumValues []}}}
+                                                              :ofType {:enumValues nil}}}
                                                       {:name "family"
                                                        :type {:kind :NON_NULL
                                                               :name nil
-                                                              :ofType {:enumValues []}}}
+                                                              :ofType {:enumValues nil}}}
                                                       {:name "foo"
                                                        :type {:kind :NON_NULL
                                                               :name nil
-                                                              :ofType {:enumValues []}}}
+                                                              :ofType {:enumValues nil}}}
                                                       {:name "forceSide"
                                                        :type {:kind :OBJECT
                                                               :name "force"
@@ -218,7 +218,7 @@
                                                       {:name "friends"
                                                        :type {:kind :LIST
                                                               :name nil
-                                                              :ofType {:enumValues []}}}
+                                                              :ofType {:enumValues nil}}}
                                                       {:name "id"
                                                        :type {:kind :SCALAR
                                                               :name "String"
@@ -239,7 +239,7 @@
                                                       {:name "arch_enemy"
                                                        :type {:kind :NON_NULL
                                                               :name nil
-                                                              :ofType {:enumValues []}}}
+                                                              :ofType {:enumValues nil}}}
                                                       {:name "bar"
                                                        :type {:kind :INTERFACE
                                                               :name "character"
@@ -251,19 +251,19 @@
                                                       {:name "droids"
                                                        :type {:kind :NON_NULL
                                                               :name nil
-                                                              :ofType {:enumValues []}}}
+                                                              :ofType {:enumValues nil}}}
                                                       {:name "enemies"
                                                        :type {:kind :LIST
                                                               :name nil
-                                                              :ofType {:enumValues []}}}
+                                                              :ofType {:enumValues nil}}}
                                                       {:name "family"
                                                        :type {:kind :NON_NULL
                                                               :name nil
-                                                              :ofType {:enumValues []}}}
+                                                              :ofType {:enumValues nil}}}
                                                       {:name "foo"
                                                        :type {:kind :NON_NULL
                                                               :name nil
-                                                              :ofType {:enumValues []}}}
+                                                              :ofType {:enumValues nil}}}
                                                       {:name "forceSide"
                                                        :type {:kind :OBJECT
                                                               :name "force"
@@ -271,7 +271,7 @@
                                                       {:name "friends"
                                                        :type {:kind :LIST
                                                               :name nil
-                                                              :ofType {:enumValues []}}}
+                                                              :ofType {:enumValues nil}}}
                                                       {:name "id"
                                                        :type {:kind :SCALAR
                                                               :name "String"
@@ -283,19 +283,19 @@
                                              :kind :INTERFACE
                                              :name "character"}}
                                      {:name "droids"
-                                      :type {:fields []
+                                      :type {:fields nil
                                              :kind :NON_NULL
                                              :name nil}}
                                      {:name "enemies"
-                                      :type {:fields []
+                                      :type {:fields nil
                                              :kind :LIST
                                              :name nil}}
                                      {:name "family"
-                                      :type {:fields []
+                                      :type {:fields nil
                                              :kind :NON_NULL
                                              :name nil}}
                                      {:name "foo"
-                                      :type {:fields []
+                                      :type {:fields nil
                                              :kind :NON_NULL
                                              :name nil}}
                                      {:name "forceSide"
@@ -306,7 +306,7 @@
                                                       {:name "members"
                                                        :type {:kind :LIST
                                                               :name nil
-                                                              :ofType {:enumValues []}}}
+                                                              :ofType {:enumValues nil}}}
                                                       {:name "name"
                                                        :type {:kind :SCALAR
                                                               :name "String"
@@ -314,15 +314,15 @@
                                              :kind :OBJECT
                                              :name "force"}}
                                      {:name "friends"
-                                      :type {:fields []
+                                      :type {:fields nil
                                              :kind :LIST
                                              :name nil}}
                                      {:name "id"
-                                      :type {:fields []
+                                      :type {:fields nil
                                              :kind :SCALAR
                                              :name "String"}}
                                      {:name "name"
-                                      :type {:fields []
+                                      :type {:fields nil
                                              :kind :SCALAR
                                              :name "String"}}]
                             :kind :INTERFACE
@@ -515,47 +515,47 @@
             :mutationType {:name "MutationRoot"}
             :queryType {:name "QueryRoot"}
             :types [{:description nil
-                     :enumValues []
-                     :fields []
-                     :inputFields []
-                     :interfaces []
+                     :enumValues nil
+                     :fields nil
+                     :inputFields nil
+                     :interfaces nil
                      :kind :SCALAR
                      :name "Boolean"
-                     :possibleTypes []}
+                     :possibleTypes nil}
                     {:description nil
-                     :enumValues []
-                     :fields []
-                     :inputFields []
-                     :interfaces []
+                     :enumValues nil
+                     :fields nil
+                     :inputFields nil
+                     :interfaces nil
                      :kind :SCALAR
                      :name "Date"
-                     :possibleTypes []}
+                     :possibleTypes nil}
                     {:description nil
-                     :enumValues []
-                     :fields []
-                     :inputFields []
-                     :interfaces []
+                     :enumValues nil
+                     :fields nil
+                     :inputFields nil
+                     :interfaces nil
                      :kind :SCALAR
                      :name "Float"
-                     :possibleTypes []}
+                     :possibleTypes nil}
                     {:description nil
-                     :enumValues []
-                     :fields []
-                     :inputFields []
-                     :interfaces []
+                     :enumValues nil
+                     :fields nil
+                     :inputFields nil
+                     :interfaces nil
                      :kind :SCALAR
                      :name "ID"
-                     :possibleTypes []}
+                     :possibleTypes nil}
                     {:description nil
-                     :enumValues []
-                     :fields []
-                     :inputFields []
-                     :interfaces []
+                     :enumValues nil
+                     :fields nil
+                     :inputFields nil
+                     :interfaces nil
                      :kind :SCALAR
                      :name "Int"
-                     :possibleTypes []}
+                     :possibleTypes nil}
                     {:description "Root of all mutations."
-                     :enumValues []
+                     :enumValues nil
                      :fields [{:args [{:defaultValue nil
                                        :description nil
                                        :name "does_nothing"
@@ -627,13 +627,13 @@
                                :type {:kind :INTERFACE
                                       :name "character"
                                       :ofType nil}}]
-                     :inputFields []
-                     :interfaces []
+                     :inputFields nil
+                     :interfaces nil
                      :kind :OBJECT
                      :name "MutationRoot"
-                     :possibleTypes []}
+                     :possibleTypes nil}
                     {:description "Root of all queries."
-                     :enumValues []
+                     :enumValues nil
                      :fields [{:args [{:defaultValue "\"2001\""
                                        :description nil
                                        :name "id"
@@ -712,21 +712,21 @@
                                :type {:kind :OBJECT
                                       :name "galaxy_date"
                                       :ofType nil}}]
-                     :inputFields []
-                     :interfaces []
+                     :inputFields nil
+                     :interfaces nil
                      :kind :OBJECT
                      :name "QueryRoot"
-                     :possibleTypes []}
+                     :possibleTypes nil}
                     {:description nil
-                     :enumValues []
-                     :fields []
-                     :inputFields []
-                     :interfaces []
+                     :enumValues nil
+                     :fields nil
+                     :inputFields nil
+                     :interfaces nil
                      :kind :SCALAR
                      :name "String"
-                     :possibleTypes []}
+                     :possibleTypes nil}
                     {:description nil
-                     :enumValues []
+                     :enumValues nil
                      :fields [{:args []
                                :deprecationReason nil
                                :description nil
@@ -844,8 +844,8 @@
                                :type {:kind :SCALAR
                                       :name "String"
                                       :ofType nil}}]
-                     :inputFields []
-                     :interfaces []
+                     :inputFields nil
+                     :interfaces nil
                      :kind :INTERFACE
                      :name "character"
                      :possibleTypes [{:kind :OBJECT
@@ -855,7 +855,7 @@
                                       :name "human"
                                       :ofType nil}]}
                     {:description nil
-                     :enumValues []
+                     :enumValues nil
                      :fields [{:args []
                                :deprecationReason nil
                                :description nil
@@ -1001,15 +1001,15 @@
                                       :ofType {:kind :SCALAR
                                                :name "String"
                                                :ofType nil}}}]
-                     :inputFields []
+                     :inputFields nil
                      :interfaces [{:kind :INTERFACE
                                    :name "character"
                                    :ofType nil}]
                      :kind :OBJECT
                      :name "droid"
-                     :possibleTypes []}
+                     :possibleTypes nil}
                     {:description nil
-                     :enumValues []
+                     :enumValues nil
                      :fields [{:args []
                                :deprecationReason nil
                                :description nil
@@ -1036,11 +1036,11 @@
                                       :ofType {:kind :SCALAR
                                                :name "Int"
                                                :ofType nil}}}]
-                     :inputFields []
-                     :interfaces []
+                     :inputFields nil
+                     :interfaces nil
                      :kind :OBJECT
                      :name "echoArgs"
-                     :possibleTypes []}
+                     :possibleTypes nil}
                     {:description "The episodes of the original Star Wars trilogy."
                      :enumValues [{:deprecationReason nil
                                    :description nil
@@ -1054,14 +1054,14 @@
                                    :description nil
                                    :isDeprecated false
                                    :name "JEDI"}]
-                     :fields []
-                     :inputFields []
-                     :interfaces []
+                     :fields nil
+                     :inputFields nil
+                     :interfaces nil
                      :kind :ENUM
                      :name "episode"
-                     :possibleTypes []}
+                     :possibleTypes nil}
                     {:description nil
-                     :enumValues []
+                     :enumValues nil
                      :fields [{:args []
                                :deprecationReason nil
                                :description nil
@@ -1088,13 +1088,13 @@
                                :type {:kind :SCALAR
                                       :name "String"
                                       :ofType nil}}]
-                     :inputFields []
-                     :interfaces []
+                     :inputFields nil
+                     :interfaces nil
                      :kind :OBJECT
                      :name "force"
-                     :possibleTypes []}
+                     :possibleTypes nil}
                     {:description nil
-                     :enumValues []
+                     :enumValues nil
                      :fields [{:args []
                                :deprecationReason nil
                                :description nil
@@ -1103,13 +1103,13 @@
                                :type {:kind :SCALAR
                                       :name "Date"
                                       :ofType nil}}]
-                     :inputFields []
-                     :interfaces []
+                     :inputFields nil
+                     :interfaces nil
                      :kind :OBJECT
                      :name "galaxy_date"
-                     :possibleTypes []}
+                     :possibleTypes nil}
                     {:description nil
-                     :enumValues []
+                     :enumValues nil
                      :fields [{:args []
                                :deprecationReason nil
                                :description nil
@@ -1245,16 +1245,16 @@
                                       :ofType {:kind :SCALAR
                                                :name "String"
                                                :ofType nil}}}]
-                     :inputFields []
+                     :inputFields nil
                      :interfaces [{:kind :INTERFACE
                                    :name "character"
                                    :ofType nil}]
                      :kind :OBJECT
                      :name "human"
-                     :possibleTypes []}
+                     :possibleTypes nil}
                     {:description nil
-                     :enumValues []
-                     :fields []
+                     :enumValues nil
+                     :fields nil
                      :inputFields [{:defaultValue nil
                                     :description nil
                                     :name "date"
@@ -1275,13 +1275,13 @@
                                     :type {:kind :SCALAR
                                            :name "String"
                                            :ofType nil}}]
-                     :interfaces []
+                     :interfaces nil
                      :kind :INPUT_OBJECT
                      :name "nestedInputObject"
-                     :possibleTypes []}
+                     :possibleTypes nil}
                     {:description nil
-                     :enumValues []
-                     :fields []
+                     :enumValues nil
+                     :fields nil
                      :inputFields [{:defaultValue nil
                                     :description nil
                                     :name "integer"
@@ -1300,10 +1300,10 @@
                                     :type {:kind :SCALAR
                                            :name "String"
                                            :ofType nil}}]
-                     :interfaces []
+                     :interfaces nil
                      :kind :INPUT_OBJECT
                      :name "testInputObject"
-                     :possibleTypes []}]}
+                     :possibleTypes nil}]}
            (-> (execute q) :data :__schema)))))
 
 (deftest mixed-use-of-keywords
