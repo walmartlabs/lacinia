@@ -15,11 +15,10 @@
 (ns com.walmartlabs.lacinia.resolver-errors-test
   "Tests for errors and exceptions inside field resolvers, and for the exception converter."
   (:require
-   [clojure.test :refer [deftest is testing]]
-   [com.walmartlabs.lacinia.resolve :refer [resolve-as]]
-   [com.walmartlabs.test-utils :refer [execute simplify] :as utils]
-   [com.walmartlabs.lacinia.schema :as schema]
-   [com.walmartlabs.lacinia :as lacinia])
+    [clojure.test :refer [deftest is testing]]
+    [com.walmartlabs.lacinia.resolve :refer [resolve-as]]
+    [com.walmartlabs.test-utils :refer [execute] :as utils]
+    [com.walmartlabs.lacinia.schema :as schema])
   (:import (clojure.lang ExceptionInfo)))
 
 (def ^:private failure-exception (ex-info "Fail!" {:reason :testing}))
@@ -98,10 +97,7 @@
                                   {:container {:type :container
                                                :args {:id {:type 'String}}
                                                :resolve (fn [ctx args v]
-                                                          (get container-data (:id args)))}}})
-          execute-query (fn [q]
-                          (-> (lacinia/execute schema q {} nil nil)
-                              (simplify)))]
+                                                          (get container-data (:id args)))}}})]
       (testing "when the sub-selector returns data"
         (let [q "query foo { container(id:\"full-container\") { contents { name } } }"]
           (is (= {:data {:container {:contents [{:name "Book"}
@@ -110,12 +106,15 @@
                                          :line 1}]
                             :message "Some error"
                             :path [:container :contents]}]}
-                 (execute-query q)))))
+                 (execute schema q)))))
       (testing "when the sub-selector returns an empty collection"
         (let [q "query foo { container(id:\"empty-container\") { contents { name } } }"]
+          ;; Event though the container contents are empty, the field resolver is still invoked,
+          ;; and the attached error is still processed.
           (is (= {:data {:container {:contents []}}
                   :errors [{:locations [{:column 47
                                          :line 1}]
                             :message "Some error"
                             :path [:container :contents]}]}
-                 (execute-query q))))))))
+                 (execute schema q))))))))
+

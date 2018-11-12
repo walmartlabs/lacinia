@@ -14,3 +14,5 @@ This method is the analog of an ordinary field resolver function.
 The support for this protocol is baked directly into
 ``com.walmartlabs.lacina.schema/compile``.
 
+Just like field resolver functions, FieldResolver instances can resolve a value directly by
+returning it, or can return a ResolverResult.

@@ -14,6 +14,10 @@ This release replaces the dependency on
 with vendored copies of the code in an internal namespace.
 This is to enable compatibility with JDK 11.
 
+Previously, there were places where a field resolver might return nil for
+a nullable list, and the nil was converted to an empty list.
+That no longer happens, the nil stays nil.
+
 ## 0.30.0 -- 1 Oct 2018
 
 A field resolver that returns a list of values may now wrap the individual

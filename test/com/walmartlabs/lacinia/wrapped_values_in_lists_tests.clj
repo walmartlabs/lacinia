@@ -48,7 +48,7 @@
                     {::root-prefix (:root_prefix args)}))}}}))
 
 
-(deftest exposeses-context-to-sub-resolvers
+(deftest exposes-context-to-sub-resolvers
   (is (= {:data {:objects [{:id "00100"
                             :xid "r-i0-00100"}
                            {:id "00200"

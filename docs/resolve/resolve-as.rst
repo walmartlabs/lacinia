@@ -1,18 +1,28 @@
 Using ResolverResult
 ====================
 
-A field resolver usually just returns the resolved value, or (for a list type) a seq of resolved values.
+In the simplest case, a field resolver will do its job, resolving a value, simply by returning the value.
+
+However, there are several other scenarios:
+
+* There may be errors associated with the field which must be communicated back to Lacinia (for the
+  top-level ``:errors`` key in the result map)
+
+* A field resolver may want to introduce :doc:`changes into the application context <context>`
+  as a way of communicating to deeply nested field resolvers
+
+* A field resolver may operate :doc:`asynchronously <async>`, and want to return a promise for data that will
+  be available in the future
 
 .. sidebar:: GraphQL Spec
 
    Read about :spec:`errors <Errors>`.
 
-What if you want to add errors?
 Field resolvers should not throw exceptions; instead, if there is a problem generating the resolved value,
 they should use the ``com.walmartlabs.lacinia.resolve/resolve-as`` function to return a ResolverResult value.
 
 When using ``resolve-as``, you may pass the error map as the second parameter (which is optional).
-You may pass a single map, or a seq of error maps.
+You may pass a single error map, or a seq of error maps.
 This first parameter is the resolved value, which may be ``nil``.
 
 .. sidebar:: Why not just throw an exception?
@@ -70,4 +80,4 @@ function as follows:
 This places the type tag on the function, not on the symbol (as normally happens with ``defn``).
 
 It doesn't matter whether the function invokes ``resolve-as`` or ``resolve-promise``, but returning
-nil or a bare value will cause runtime exceptions, so be careful.
+nil or a bare value from a field resolver tagged with ResolverResult will cause runtime exceptions, so be careful.
