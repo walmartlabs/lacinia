@@ -28,7 +28,7 @@
                                                       {:message "Warning!"
                                                        :foo :bar}))}))
 
-(deftest with-extension
+(deftest with-extensions
   (is (= {:data {:extension "OK"}
           :extensions {:foo {:bar :baz}}}
          (execute compiled-schema "{ extension }"))))

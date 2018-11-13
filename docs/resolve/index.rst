@@ -30,5 +30,6 @@ In some cases, a field resolver may need to perform additional queries against a
     async
     selections
     context
+    extensions
     timing
     examples
