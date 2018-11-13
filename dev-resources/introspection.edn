@@ -6,35 +6,35 @@
    [{:kind :SCALAR,
      :name "Boolean",
      :description nil,
-     :fields [],
-     :inputFields [],
-     :interfaces [],
-     :enumValues [],
-     :possibleTypes []}
+     :fields nil,
+     :inputFields nil,
+     :interfaces nil,
+     :enumValues nil,
+     :possibleTypes nil}
     {:kind :SCALAR,
      :name "Float",
      :description nil,
-     :fields [],
-     :inputFields [],
-     :interfaces [],
-     :enumValues [],
-     :possibleTypes []}
+     :fields nil,
+     :inputFields nil,
+     :interfaces nil,
+     :enumValues nil,
+     :possibleTypes nil}
     {:kind :SCALAR,
      :name "ID",
      :description nil,
-     :fields [],
-     :inputFields [],
-     :interfaces [],
-     :enumValues [],
-     :possibleTypes []}
+     :fields nil,
+     :inputFields nil,
+     :interfaces nil,
+     :enumValues nil,
+     :possibleTypes nil}
     {:kind :SCALAR,
      :name "Int",
      :description nil,
-     :fields [],
-     :inputFields [],
-     :interfaces [],
-     :enumValues [],
-     :possibleTypes []}
+     :fields nil,
+     :inputFields nil,
+     :interfaces nil,
+     :enumValues nil,
+     :possibleTypes nil}
     {:kind :OBJECT,
      :name "QueryRoot",
      :description "Root of all queries.",
@@ -75,18 +75,18 @@
         :ofType {:kind :OBJECT, :name "human", :ofType nil}},
        :isDeprecated false,
        :deprecationReason nil}],
-     :inputFields [],
-     :interfaces [],
-     :enumValues [],
-     :possibleTypes []}
+     :inputFields nil,
+     :interfaces nil,
+     :enumValues nil,
+     :possibleTypes nil}
     {:kind :SCALAR,
      :name "String",
      :description nil,
-     :fields [],
-     :inputFields [],
-     :interfaces [],
-     :enumValues [],
-     :possibleTypes []}
+     :fields nil,
+     :inputFields nil,
+     :interfaces nil,
+     :enumValues nil,
+     :possibleTypes nil}
     {:kind :INTERFACE,
      :name "character",
      :description nil,
@@ -121,9 +121,9 @@
        :type {:kind :SCALAR, :name "String", :ofType nil},
        :isDeprecated false,
        :deprecationReason nil}],
-     :inputFields [],
-     :interfaces [],
-     :enumValues [],
+     :inputFields nil,
+     :interfaces nil,
+     :enumValues nil,
      :possibleTypes
      [{:kind :OBJECT, :name "droid", :ofType nil}
       {:kind :OBJECT, :name "human", :ofType nil}]}
@@ -170,16 +170,16 @@
         :ofType {:kind :SCALAR, :name "String", :ofType nil}},
        :isDeprecated false,
        :deprecationReason nil}],
-     :inputFields [],
+     :inputFields nil,
      :interfaces [{:kind :INTERFACE, :name "character", :ofType nil}],
-     :enumValues [],
-     :possibleTypes []}
+     :enumValues nil,
+     :possibleTypes nil}
     {:kind :ENUM,
      :name "episode",
      :description "The episodes of the original Star Wars trilogy.",
-     :fields [],
-     :inputFields [],
-     :interfaces [],
+     :fields nil,
+     :inputFields nil,
+     :interfaces nil,
      :enumValues
      [{:name "NEWHOPE",
        :description nil,
@@ -193,7 +193,7 @@
        :description nil,
        :isDeprecated false,
        :deprecationReason nil}],
-     :possibleTypes []}
+     :possibleTypes nil}
     {:kind :OBJECT,
      :name "human",
      :description nil,
@@ -234,10 +234,10 @@
        :type {:kind :SCALAR, :name "String", :ofType nil},
        :isDeprecated false,
        :deprecationReason nil}],
-     :inputFields [],
+     :inputFields nil,
      :interfaces [{:kind :INTERFACE, :name "character", :ofType nil}],
-     :enumValues [],
-     :possibleTypes []}],
+     :enumValues nil,
+     :possibleTypes nil}],
    :directives
    [{:name "skip",
      :description
