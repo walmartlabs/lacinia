@@ -120,7 +120,7 @@
   (in milliseconds). Timing checks only occur when enabled (timings is non-nil)
   and not for default resolvers."
   [execution-context field-selection]
-  (let [timings (:timings execution-context)
+  (let [*timings (:*timings execution-context)
         {:keys [arguments]} field-selection
         container-value (:resolved-value execution-context)
         {:keys [context]} execution-context
@@ -130,7 +130,7 @@
                                :com.walmartlabs.lacinia/container-type-name resolved-type
                                constants/selection-key field-selection)
         field-resolver (field-selection-resolver schema field-selection resolved-type container-value)
-        start-ms (when (and (some? timings)
+        start-ms (when (and (some? *timings)
                             (not (-> field-resolver meta ::schema/default-resolver?)))
                    (System/currentTimeMillis))
         resolver-result (field-resolver resolve-context arguments container-value)]
@@ -154,7 +154,7 @@
                                  ;; The timings are always a list; we don't know if the field is resolved once,
                                  ;; resolved multiple times because it is inside a nested value, or resolved multiple
                                  ;; times because of multiple top-level operations.
-                                 (swap! timings
+                                 (swap! *timings
                                         update-in (conj (:path execution-context) :execution/timings)
                                         (fnil conj []) timing))
                                (resolve/deliver! final-result resolved-value)))
@@ -164,12 +164,15 @@
 
 (defrecord ExecutionContext
   ;; context, resolved-value, and resolved-type change constantly during the process
-  ;; errors is an Atom containing a vector, which accumulates
+  ;; *errors is an Atom containing a vector, which accumulates
   ;; error-maps during execution.
-  ;; timings is usually nil, or may be an Atom containing an empty map, which
+  ;; *warnings is an Atom containing a vector of warnings (error maps that
+  ;; appear in the result as [:extensions :warnings].
+  ;; *timings is usually nil, or may be an Atom containing an empty map, which
+  ;; *extensions is an atom containing a map, if non-empty, it is added to the result map as :extensions
   ;; accumulates timing data during execution.
   ;; path is used when reporting errors
-  [context resolved-value resolved-type errors timings path])
+  [context resolved-value resolved-type *errors *warnings *extensions *timings path])
 
 (defn ^:private null-to-nil
   [v]
@@ -353,17 +356,21 @@
                              (update execution-context :path conj (:alias selection)))
         sub-selections (:selections selection)
 
+        apply-errors (fn [selection-context sc-key ec-atom-key]
+                       (when-let [errors (get selection-context sc-key)]
+                         (->> errors
+                              (mapcat #(enhance-errors selection execution-context' %))
+                              (swap! (get execution-context' ec-atom-key) into))))
+
         ;; The selector pipeline validates the resolved value and handles things like iterating over
         ;; seqs before (repeatedly) invoking the callback, at which point, it is possible to
         ;; perform a recursive selection on the nested fields of the origin field.
         selector-callback
-        (fn selector-callback [{:keys [errors resolved-value resolved-type execution-context]}]
+        (fn selector-callback [{:keys [resolved-value resolved-type execution-context] :as selection-context}]
           ;; Any errors from the resolver (via with-errors) or anywhere along the
           ;; selection pipeline are enhanced and added to the execution context.
-          (when errors
-            (->> errors
-                 (mapcat #(enhance-errors selection execution-context' %))
-                 (swap! (:errors execution-context) into)))
+          (apply-errors selection-context :errors :*errors)
+          (apply-errors selection-context :warnings :*warnings)
 
           (if (and (some? resolved-value)
                    resolved-type
@@ -464,8 +471,10 @@
   (let [parsed-query (get context constants/parsed-query-key)
         {:keys [selections operation-type]} parsed-query
         enabled-selections (remove :disabled? selections)
-        errors (atom [])
-        timings (when (:com.walmartlabs.lacinia/enable-timing? context)
+        *errors (atom [])
+        *warnings (atom [])
+        *extensions (atom {})
+        *timings (when (:com.walmartlabs.lacinia/enable-timing? context)
                   (atom {}))
         context' (assoc context constants/schema-key
                         (get parsed-query constants/schema-key))
@@ -473,8 +482,10 @@
         ;; For subscriptions, the :resolved-value will be set to a non-nil value before
         ;; executing the query.
         execution-context (map->ExecutionContext {:context context'
-                                                  :errors errors
-                                                  :timings timings
+                                                  :*errors *errors
+                                                  :*warnings *warnings
+                                                  :*timings *timings
+                                                  :*extensions *extensions
                                                   :path []
                                                   :resolved-value (::resolved-value context)})
         operation-result (if (= :mutation operation-type)
@@ -484,10 +495,15 @@
     (resolve/on-deliver! operation-result
                          (fn [selected-data]
                            (let [data (propogate-nulls false selected-data)]
-                             (resolve/deliver! result-promise
-                                               (cond-> {:data data}
-                                                 timings (assoc-in [:extensions :timing] @timings)
-                                                 (seq @errors) (assoc :errors (distinct @errors)))))))
+                             (let [errors (seq @*errors)
+                                   warnings (seq @*warnings)
+                                   extensions @*extensions]
+                               (resolve/deliver! result-promise
+                                                 (cond-> {:data data}
+                                                   (seq extensions) (assoc :extensions extensions)
+                                                   *timings (assoc-in [:extensions :timing] @*timings)
+                                                   errors (assoc :errors (distinct errors))
+                                                   warnings (assoc-in [:extensions :warnings] (distinct warnings))))))))
     result-promise))
 
 (defn invoke-streamer

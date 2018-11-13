@@ -15,8 +15,13 @@
 (ns com.walmartlabs.lacinia.resolve
   "Complex results for field resolver functions.
 
-  Resolver functions may return a value directly, or may wrap a value with
-  a modifier ([[with-error]] or [[with-context]]).
+  Resolver functions may return a value directly, or return a value in an immediate
+  or asynchronous [[ResolverResult]].  The resolved value may be wrapped in a
+  a modifier:
+
+  * [[with-error]]
+  * [[with-context]]
+  * [[with-extensions]]
 
   A value or wrapped value may be returned asynchronously using a [[ResolverResultPromise]].
 
@@ -50,7 +55,15 @@
     "Returns a new instance of the same command, but wrapped around a different nested value."))
 
 (defn with-error
-  "Wraps a value, modifiying it to include an error map (or seq of error maps)."
+  "Wraps a value, modifiying it to include an error map (or seq of error maps).
+
+  The provided error map (or maps) will be enhanced with a :location key,
+  identifying where field occurs within the query document, and a :path key,
+  identifying the sequence of fields (or aliases) and list indexes within the
+  :data key of the result map.
+
+  Any additional keys in the error map beyond :message (which must be present,
+  and must be a string) will be added to an embedded :extensions map."
   {:added "0.19.0"}
   [value error]
   (reify
@@ -82,8 +95,8 @@
       (with-context new-value context-map))))
 
 (defprotocol ResolverResult
-  "A special type returned from a field resolver that can contain a resolved value
-  and/or errors."
+  "A special type returned from a field resolver that can contain a resolved value,
+  possibly wrapped with modifiers."
 
     (on-deliver! [this callback]
     "Provides a callback that is invoked immediately after the ResolverResult is realized.
@@ -227,15 +240,15 @@
   resolver.
 
   `wrap-resolver-result` understands resolver functions that return either a [[ResolverResult]]
-  or a bare value, as well as functions that wrapped with the [[with-error]] or
-  [[with-context]] modifier.
+  or a bare value, as well as values wrapped with a modifier (such as [[with-error]]).
 
   The wrapper-fn is passed the underlying value and must return a new value.
   The new value will be re-wrapped with modifiers as necessary.
 
-  The wrapped value may itself be a ResolverResult, and the
-  value (either plain, or inside a ResolverResult) may also be decorated
-  using `with-error` or `with-context`."
+  The new value returned by the wrapper-fn may itself be a ResolverResult, and the
+  value (either plain, or inside a ResolverResult) may also be modified (via [[with-error]], etc.).
+
+  Returns a standard field resolver function, with the standard three parameters (context, args, value)."
   {:added "0.23.0"}
   [resolver wrapper-fn]
   (let [resolver-fn (as-resolver-fn resolver)]
@@ -268,3 +281,49 @@
           (invoke-wrapper resolved-value))
 
         final-result))))
+
+(defn ^:private with-extensions*
+  [value f args]
+  (reify
+    ResolveCommand
+
+    (apply-command [_ selection-context]
+      (apply swap! (get-in selection-context [:execution-context :*extensions])
+             f args)
+
+      selection-context)
+
+    (nested-value [_] value)
+
+    (replace-nested-value [_ new-value]
+      (with-extensions* new-value f args))))
+
+(defn with-extensions
+  "Wraps a value with an update to the extensions for the request.
+
+  The extensions are a map, and this applies a change to that map, as with
+  clojure.core/update: the function is provided with the current value of the
+  extensions map and the arguments, and returns the new value of the extensions map."
+  {:added "0.31.0"}
+  [value f & args]
+  (with-extensions* value f args))
+
+
+(defn with-warning
+  "As with [[with-error]], but the error map will be added to the :warnings
+  key of the root :extensions map (not to the root :errors map).  Errors should
+  only be used to indicate a substantial failure, whereas warnings are more
+  advisory.  It is up to the application to determine what situations call
+  for an error and what call for a warning."
+  {:added "0.31.0"}
+  [value warning]
+  (reify
+    ResolveCommand
+
+    (apply-command [_ selection-context]
+      (update selection-context :warnings conj warning))
+
+    (nested-value [_] value)
+
+    (replace-nested-value [_ new-value]
+      (with-warning new-value warning))))

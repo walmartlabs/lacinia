@@ -125,13 +125,21 @@
   (let [resolver-fn (constantly (-> 300
                                     (r/with-context {:gnip :gnop})
                                     (r/with-error :fail-1)
-                                    (r/with-error :fail-2)))
+                                    (r/with-error :fail-2)
+                                    (r/with-warning :warning-1)
+                                    (r/with-warning :warning-2)
+                                    (r/with-extensions assoc-in [:fie :fie :foe] :fum)))
         wrapped (r/wrap-resolver-result resolver-fn inc-wrapper)
         *result (as-promise (wrapped nil nil nil))
-        [sc final-value] (apply-resolve-command {} @*result)]
+        *extensions (atom {})
+        [sc final-value] (apply-resolve-command {:execution-context {:*extensions *extensions}} @*result)]
     (is (= 301 final-value))
+    (is (= {:fie {:fie {:foe :fum}}}
+           @*extensions))
     (is (= {:errors [:fail-1 :fail-2]                       ; check order of application
-            :execution-context {:context {:gnip :gnop}}}
+            :warnings [:warning-1 :warning-2]
+            :execution-context {:context {:gnip :gnop}
+                                :*extensions *extensions}}
            sc))))
 
 (deftest wrapped-value-may-itself-be-resolver-result

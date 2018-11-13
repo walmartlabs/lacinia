@@ -13,6 +13,9 @@ Previously, there were places where a field resolver might return nil for
 a nullable list, and the nil was converted to an empty list.
 That no longer happens, the nil stays nil.
 
+Added new resolver result modifiers, ``com.walmartlabs.lacinia.resolve/with-extensions``
+and ``with-warning``.
+
 ## 0.30.0 -- 1 Oct 2018
 
 A field resolver that returns a list of values may now wrap the individual
