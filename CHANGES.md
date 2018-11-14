@@ -3,11 +3,16 @@
 Limited support for custom directives.
 
 **Breaking Change**: Previous releases of the Schema Definition Language parser
-wrapped the entire document with `{` and `}.
+wrapped the entire document with `{` and `}`.
 This is not correct, and such documents are not valid SDL.
 
 This release fixes that, but it means that any existing SDL documents will not
 parse correctly until the outermost curly braces are removed.
+
+This release replaces the dependency on
+[org.flatland/ordered](https://github.com/amalloy/ordered)
+with vendored copies of the code in an internal namespace.
+This is to enable compatibility with JDK 11.
 
 Previously, there were places where a field resolver might return nil for
 a nullable list, and the nil was converted to an empty list.
