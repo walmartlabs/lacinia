@@ -20,8 +20,12 @@
   a modifier:
 
   * [[with-error]]
+  * [[with-warning]]
   * [[with-context]]
   * [[with-extensions]]
+
+  The modifiers exist to resolve a value _and_ to perform a side effect, such as
+  adding an error to the execution result.
 
   A value or wrapped value may be returned asynchronously using a [[ResolverResultPromise]].
 
