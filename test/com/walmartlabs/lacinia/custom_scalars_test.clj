@@ -427,9 +427,9 @@
                                              (:in args))})
                    (util/attach-scalar-transformers
                      {:parse (schema/as-conformer (fn [s]
-                                                    (if (= "5" s)
+                                                    (if (= 5 s)
                                                       (schema/coercion-failure "Just don't like 5.")
-                                                      (Integer/parseInt s))))
+                                                      s)))
                       :serialize (schema/as-conformer
                                    (fn [v]
                                      (if (< v 5)
@@ -449,7 +449,7 @@
                         :extensions {:argument :in
                                      :field :dupe
                                      :type-name :LimitedInt
-                                     :value "5"}}]}
+                                     :value 5}}]}
              (execute schema
                       "{ dupe (in: 5) }"
                       nil
@@ -468,7 +468,7 @@
                                      :line 1}]
                         :message "5 is too big."
                         :path [:test]
-                        :extensions {:arguments {:in "5"}}}]}
+                        :extensions {:arguments {:in 5}}}]}
              (execute schema
                       "{ test (in:5) }"
                       nil

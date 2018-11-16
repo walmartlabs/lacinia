@@ -1,0 +1,10 @@
+{:scalars
+ {:Data
+  {:description "Arbitrary JSON/EDN data."
+   :parse :scalars/data.parse
+   :serialize :scalars/data.serialize}}
+
+ :queries
+ {:echo {:type :Data
+         :args {:input {:type :Data}}
+         :resolve :queries/echo}}}
