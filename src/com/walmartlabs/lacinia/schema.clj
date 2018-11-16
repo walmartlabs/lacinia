@@ -1030,14 +1030,6 @@
            :values-detail details
            :values-set values-set)))
 
-(defmethod compile-type :scalar
-  [scalar _]
-  (let [{:keys [parse serialize]} scalar]
-    (when-not (and parse serialize)
-      (throw (ex-info "Scalars must declare both :parse and :serialize functions."
-                      {:scalar scalar})))
-    scalar))
-
 (defmethod compile-type :object
   [object schema]
   (let [implements (->> object :implements (map as-keyword) set)
