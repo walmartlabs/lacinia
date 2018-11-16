@@ -23,7 +23,6 @@
   (:refer-clojure :exclude [compile])
   (:require
     [clojure.spec.alpha :as s]
-    [com.walmartlabs.lacinia.compiled-schema :refer [map->CompiledSchema]]
     [com.walmartlabs.lacinia.introspection :as introspection]
     [com.walmartlabs.lacinia.internal-utils
      :refer [map-vals map-kvs filter-vals deep-merge q
@@ -36,13 +35,18 @@
   (:import
     (clojure.lang IObj)
     (java.io Writer)
-    (com.walmartlabs.lacinia.resolve ResolveCommand)
-    (com.walmartlabs.lacinia.compiled_schema CompiledSchema)))
+    (com.walmartlabs.lacinia.resolve ResolveCommand)))
 
 ;; When using Clojure 1.8, the dependency on clojure-future-spec must be included,
 ;; and this code will trigger
 (when (-> *clojure-version* :minor (< 9))
   (require '[clojure.future :refer [any? simple-keyword? simple-symbol?]]))
+
+(defrecord CompiledSchema [])
+
+(defn ^:no-doc compiled-schema?
+  [m]
+  (instance? CompiledSchema m))
 
 ;;-------------------------------------------------------------------------------
 ;; ## Helpers
