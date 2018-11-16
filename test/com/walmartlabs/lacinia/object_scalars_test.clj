@@ -27,8 +27,8 @@
   (-> (io/resource "object-scalars-schema.edn")
       slurp
       edn/read-string
-      (attach-scalar-transformers {:scalars/data.parse (schema/as-conformer identity)
-                                   :scalars/data.serialize (schema/as-conformer identity)})
+      (attach-scalar-transformers {:scalars/data.parse identity
+                                   :scalars/data.serialize identity})
       (attach-resolvers {:queries/echo (fn [_ {:keys [input]} _]
                                          {:input_arg input})})
       schema/compile))

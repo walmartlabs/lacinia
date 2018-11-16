@@ -2,12 +2,30 @@
 
 Limited support for custom directives.
 
-**Breaking Change**: Previous releases of the Schema Definition Language parser
-wrapped the entire document with `{` and `}.
+### **Breaking Change**: Schema Definition Language Documents
+
+Previous releases of the Schema Definition Language parser
+wrapped the entire document with `{` and `}`.
 This is not correct, and such documents are not valid SDL.
 
 This release fixes that, but it means that any existing SDL documents will not
 parse correctly until the outermost curly braces are removed.
+
+### **Breaking Change**: Incompatible changes to scalars
+
+This release revamps how custom scalars are implemented.
+These changes make scalars more flexible, allowing for use cases
+that were previously not possible.
+
+- Scalar :parse and :serialize are no longer clojure.spec conformers, but are simple functions
+- The :parse callback may now be passed non-strings, such as numbers or even maps
+- The callbacks should not throw an exception, but should invoke
+  `com.walmartlabs.lacinia.schema/coercion-failure`.
+
+Schemas that use custom scalars will not compile until the scalars are
+updated (you'll see a clojure.spec validation exception).
+
+### Other changes
 
 Previously, there were places where a field resolver might return nil for
 a nullable list, and the nil was converted to an empty list.

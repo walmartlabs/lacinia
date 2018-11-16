@@ -255,15 +255,19 @@
                                  (q type-name))
                          {:category (:category scalar-type)}))
 
-      (let [coerced (-> scalar-type :parse (s/conform arg-value))]
+      (let [parser (:parse scalar-type)
+            coerced (when (some? arg-value)
+                      (parser arg-value))]
         (cond
 
-          (= ::s/invalid coerced)
-          (throw-exception (format "Scalar value is not parsable as type %s."
-                                   (q type-name)))
+          ;(= ::s/invalid coerced)
+          ;(throw-exception (format "Scalar value is not parsable as type %s."
+          ;                         (q type-name)))
 
           (schema/is-coercion-failure? coerced)
-          (throw-exception (:message coerced)
+          (throw-exception (format "Scalar value is not parsable as type %s: %s"
+                                   (q type-name)
+                                   (:message coerced))
                            (dissoc coerced :message))
 
           :else

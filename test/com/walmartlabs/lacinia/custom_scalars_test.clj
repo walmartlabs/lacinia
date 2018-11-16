@@ -13,8 +13,7 @@
 ; limitations under the License.
 
 (ns com.walmartlabs.lacinia.custom-scalars-test
-  (:require [clojure.spec.alpha :as s]
-            [clojure.test :refer [deftest is testing]]
+  (:require [clojure.test :refer [deftest is testing]]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.test-schema :refer [test-schema]]
             [com.walmartlabs.test-utils :refer [is-thrown execute]]
@@ -38,23 +37,21 @@
 
 (deftest custom-scalars
   (testing "custom scalars defined as conformers"
-    (let [parse-conformer (s/conformer
-                           (fn [x]
-                             (if (and
+    (let [parse-event (fn [x]
+                        (if (and
                                   (string? x)
                                   (< (count x) 3))
-                               x
-                               :clojure.spec.alpha/invalid)))
-          serialize-conformer (s/conformer
-                               (fn [x]
-                                 (case x
-                                   "200" "OK"
-                                   "500" "ERROR"
-                                   :clojure.spec.alpha/invalid)))]
+                          x
+                          (schema/coercion-failure "invalid")))
+          serialize-event (fn [x]
+                            (case x
+                              "200" "OK"
+                              "500" "ERROR"
+                              (schema/coercion-failure "invalid")))]
       (testing "custom scalar's serializing option"
         (let [schema (schema/compile {:scalars
-                                      {:Event {:parse parse-conformer
-                                               :serialize serialize-conformer}}
+                                      {:Event {:parse parse-event
+                                               :serialize serialize-event}}
 
                                       :objects
                                       {:galaxy_event
@@ -69,10 +66,10 @@
               "should return conformed value")))
       (testing "custom scalar's invalid value"
         (let [schema (schema/compile {:scalars
-                                      {:Event {:parse parse-conformer
-                                               :serialize serialize-conformer}
-                                       :EventId {:parse parse-conformer
-                                                 :serialize (s/conformer str)}}
+                                      {:Event {:parse parse-event
+                                               :serialize serialize-event}
+                                       :EventId {:parse parse-event
+                                                 :serialize str}}
 
                                       :objects
                                       {:galaxy_event
@@ -105,13 +102,15 @@
                                          :value "1003"}
                             :locations [{:column 3
                                          :line 1}]
-                            :message "Exception applying arguments to field `human': For argument `id', scalar value is not parsable as type `EventId'."}]}
+                            :message
+                            "Exception applying arguments to field `human': For argument `id', scalar value is not parsable as type `EventId': invalid"}]}
                  (execute schema q1 nil nil))
               "should return error message")
+
           (is (= {:data {:events {:lookup nil}}
                   :errors [{:locations [{:column 12
                                          :line 1}]
-                            :message "Invalid value for a scalar type."
+                            :message "Coercion error serializing value: invalid"
                             :path [:events :lookup]
                             :extensions {:type :Event
                                          :value "1"}}]}
@@ -120,14 +119,14 @@
 
 (deftest custom-scalars-with-variables
   (let [date-formatter (SimpleDateFormat. "yyyy-MM-dd")
-        parse-conformer (s/conformer (fn [input]
-                                       (try (.parse date-formatter input)
-                                            (catch Exception e
-                                              :clojure.spec.alpha/invalid))))
-        serialize-conformer (s/conformer (fn [output] (.format date-formatter output)))
+        parse-date (fn [input]
+                     (try (.parse date-formatter input)
+                          (catch Exception _
+                            (schema/coercion-failure "invalid"))))
+        serialize-date (fn [output] (.format date-formatter output))
         schema (schema/compile
-                {:scalars {:Date {:parse parse-conformer
-                                  :serialize serialize-conformer}}
+                 {:scalars {:Date {:parse parse-date
+                                   :serialize serialize-date}}
 
                  :queries {:today {:type :Date
                                    :args {:asOf {:type :Date}}
@@ -152,7 +151,7 @@
                                    :value "abc"}
                       :locations [{:column 31
                                    :line 2}]
-                      :message "Scalar value is not parsable as type `Date'."}]}
+                      :message "Scalar value is not parsable as type `Date': invalid"}]}
            (execute schema "query ($asOf: Date) {
                               today(asOf: $asOf)
                             }"
@@ -175,13 +174,13 @@
 
 (deftest custom-scalars-with-complex-types
   (let [date-formatter (DateTimeFormat/forPattern "yyyy-MM-dd")
-        parse-conformer (s/conformer (fn [input]
-                                       (try (DateTime. (.parseDateTime date-formatter input))
-                                            (catch Exception e
-                                              :clojure.spec/invalid))))
-        serialize-conformer (s/conformer (fn [output] (.print date-formatter output)))
-        schema (schema/compile {:scalars {:Date {:parse parse-conformer
-                                                  :serialize serialize-conformer}}
+        parse-date #(try
+                      (DateTime. (.parseDateTime date-formatter %))
+                      (catch Exception e
+                        (schema/coercion-failure "invalid")))
+        serialize-date #(.print date-formatter %)
+        schema (schema/compile {:scalars {:Date {:parse parse-date
+                                                 :serialize serialize-date}}
                                 :queries {:sundays {:type '(list (non-null :Date))
                                                     :args {:between {:type '(non-null (list (non-null :Date)))}}
                                                     :resolve (fn [ctx args v]
@@ -258,8 +257,8 @@
         "should return an error"))
 
   (testing "nested lists"
-    (let [scalars {:CustomType {:parse (s/conformer (fn [x] (name x)))
-                                :serialize (s/conformer (fn [x] (.toUpperCase x)))}}
+    (let [scalars {:CustomType {:parse name
+                                :serialize #(.toUpperCase %)}}
           schema (schema/compile {:scalars scalars
                                   :queries {:shout {:type '(list (list (list :CustomType)))
                                                     :args {:words {:type '(list (list (list :CustomType)))}}
@@ -293,8 +292,8 @@
           "should return empty list")))
 
   (testing "nested list with a non-null root element in query result"
-    (let [scalars {:CustomType {:parse (s/conformer (fn [x] (name x)))
-                                :serialize (s/conformer (fn [x] (.toUpperCase x)))}}
+    (let [scalars {:CustomType {:parse name
+                                :serialize #(.toUpperCase %)}}
           schema (schema/compile {:scalars scalars
                                   :queries {:shout {:type '(list (list (list (non-null :CustomType))))
                                                     :args {:words {:type '(list (list (list :CustomType)))}}
@@ -333,8 +332,8 @@
           "should return data")))
 
   (testing "nested list with a non-null root element in query args"
-    (let [scalars {:CustomType {:parse (s/conformer (fn [x] (name x)))
-                                :serialize (s/conformer (fn [x] (.toUpperCase x)))}}
+    (let [scalars {:CustomType {:parse name
+                                :serialize #(.toUpperCase %)}}
           schema (schema/compile {:scalars scalars
                                   :queries {:shout {:type '(list (list (list :CustomType)))
                                                     :args {:words {:type '(list (list (list (non-null :CustomType))))}}
@@ -386,10 +385,10 @@
           "should return an error")))
 
   (testing "nested non-null lists with a root list allowed to contain nulls in query args"
-    (let [scalars {:CustomType {:parse (s/conformer (fn [x] (if (some? x)
-                                                              (name x)
-                                                              :clojure.spec/invalid)))
-                                :serialize (s/conformer (fn [x] (when x (.toUpperCase x))))}}
+    (let [scalars {:CustomType {:parse (fn [x] (if (some? x)
+                                                 (name x)
+                                                 (schema/coercion-failure "invalid")))
+                                :serialize (fn [x] (when x (.toUpperCase x)))}}
           schema (schema/compile {:scalars scalars
                                   :queries {:shout {:type '(list (list (list :CustomType)))
                                                     :args {:words {:type '(non-null (list (non-null (list (non-null (list :CustomType))))))}}
@@ -426,15 +425,14 @@
                                            (fn [_ args _]
                                              (:in args))})
                    (util/attach-scalar-transformers
-                     {:parse (schema/as-conformer (fn [s]
-                                                    (if (= 5 s)
-                                                      (schema/coercion-failure "Just don't like 5.")
-                                                      s)))
-                      :serialize (schema/as-conformer
-                                   (fn [v]
-                                     (if (< v 5)
-                                       v
-                                       (schema/coercion-failure "5 is too big."))))})
+                     {:parse (fn [s]
+                               (if (= 5 s)
+                                 (schema/coercion-failure "Just don't like 5.")
+                                 s))
+                      :serialize (fn [v]
+                                   (if (< v 5)
+                                     v
+                                     (schema/coercion-failure "5 is too big.")))})
                    schema/compile)]
     (testing "parsers"
       (is (= {:data {:dupe 4}}
@@ -445,7 +443,7 @@
 
       (is (= {:errors [{:locations [{:column 3
                                      :line 1}]
-                        :message "Exception applying arguments to field `dupe': For argument `in', just don't like 5."
+                        :message "Exception applying arguments to field `dupe': For argument `in', scalar value is not parsable as type `LimitedInt': Just don't like 5."
                         :extensions {:argument :in
                                      :field :dupe
                                      :type-name :LimitedInt
@@ -466,9 +464,11 @@
       (is (= {:data {:test nil}
               :errors [{:locations [{:column 3
                                      :line 1}]
-                        :message "5 is too big."
+                        :message "Coercion error serializing value: 5 is too big."
                         :path [:test]
-                        :extensions {:arguments {:in 5}}}]}
+                        :extensions {:arguments {:in 5}
+                                     :type :LimitedInt
+                                     :value "5"}}]}
              (execute schema
                       "{ test (in:5) }"
                       nil

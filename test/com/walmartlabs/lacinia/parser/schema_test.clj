@@ -50,9 +50,7 @@
                              :OtherQuery {:find_by_names find-by-names}
                              :Mutation {:add add}})
 
-(def ^:private date-parse (schema/as-conformer str))
-
-(def ^:private scalar-map {:Date {:parse date-parse :serialize date-parse}})
+(def ^:private scalar-map {:Date {:parse str :serialize str}})
 
 (def ^:private streamer-map {:Subscription {:new_character new-character}})
 
@@ -253,8 +251,8 @@
                                          {:enum-value :EMPIRE}
                                          {:enum-value :JEDI}]}}
               ;; Demonstrate that the scalar in the SDL (with a description) has the :parse and :serialize merged onto it:
-              :scalars {:Date {:parse date-parse
-                               :serialize date-parse
+              :scalars {:Date {:parse str
+                               :serialize str
                                :description "Date in standard ISO format"}}
               :interfaces {:Human {:fields {:name {:type 'String}
                                             :birthDate {:type :Date}}}}

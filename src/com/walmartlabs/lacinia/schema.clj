@@ -28,7 +28,8 @@
     [com.walmartlabs.lacinia.internal-utils
      :refer [map-vals map-kvs filter-vals deep-merge q
              is-internal-type-name? sequential-or-set? as-keyword
-             cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag]]
+             cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag
+             to-message]]
     [com.walmartlabs.lacinia.resolve :as resolve :refer [ResolverResult resolve-as combine-results is-resolver-result?]]
     [clojure.string :as str]
     [clojure.set :refer [difference]]
@@ -137,7 +138,11 @@
   The function is only invoked if the value to be conformed is non-nil.
 
   Any exception thrown by the function is silently caught and the returned conformer
-  will return :clojure.spec/invalid or a [[coercion-failure]]."
+  will return :clojure.spec/invalid or a [[coercion-failure]].
+
+  This function has been deprecated, as Scalar parse and serialize callbacks are now
+  simple functions, and not conformers."
+  {:deprecated "0.31.0"}
   [f]
   (s/conformer
     (fn [x]
@@ -151,44 +156,46 @@
 
 (defn ^:private invalid-scalar
   [type-name value]
-  (ex-info (format "Invalid %s value." (name type-name))
-           {:value (pr-str value)}))
+  (coercion-failure (format "Invalid %s value." (name type-name))
+                    {:value (pr-str value)}))
 
-(defmacro ^:private catch-as-invalid
+(defmacro ^:private catch-as-coercion-failure
   [& body]
   `(try
      ~@body
-     (catch Throwable _#
-       ::s/invalid)))
+     (catch Throwable t#
+       (coercion-failure (str "Unable to to perform cooercion: "
+                              (to-message t#))))))
 
-(defn ^:private parse-int
+(defn ^:private int-parse
   [v]
   (cond
+    ;; The serialized is a little more forgiving about converting non-integers to integers.
+    ;; On the parse side, we're a little more picky.
     (integer? v)
     (if (<= Integer/MIN_VALUE v Integer/MAX_VALUE)
       (int v)
-      (throw (ex-info "Int value outside of allowed 32 bit integer range." {:value v})))
+      (coercion-failure "Int value outside of allowed 32 bit integer range." {:value (pr-str v)}))
 
-    (string? v) (catch-as-invalid (Integer/parseInt v))
+    (string? v)
+    (catch-as-coercion-failure
+      (Integer/parseInt v))
 
-    :else (throw (invalid-scalar :Int v))))
+    :else
+    (invalid-scalar :Int v)))
 
-(defn ^:private serialize-int
+(defn ^:private int-serialize
   [v]
   (cond
-    ;; Spec: should attempt to coerce raw values to int
     (string? v)
-    (let [v' (catch-as-invalid (Integer/parseInt v))]
-      (if (keyword? v')
-        v'
-        (recur v')))
+    (catch-as-coercion-failure (Integer/parseInt v))
 
     (and (number? v)
          (<= Integer/MIN_VALUE v Integer/MAX_VALUE))
     (int v)
 
     :else
-    (throw (ex-info "Int value outside of allowed 32 bit integer range." {:value (pr-str v)}))))
+    (coercion-failure "Int value outside of allowed 32 bit integer range." {:value (pr-str v)})))
 
 (defn ^:private coerce-to-float
   [v]
@@ -201,17 +208,17 @@
     (double v)
 
     (string? v)
-    (catch-as-invalid (Double/parseDouble v))
+    (catch-as-coercion-failure (Double/parseDouble v))
 
     :else
-    (throw (invalid-scalar :Float v))))
+    (invalid-scalar :Float v)))
 
 (defn ^:private string->boolean
   [^String s]
   (case s
     "true" true
     "false" false
-    (throw (ex-info "Boolean string must be `true' or `false'." {:value s}))))
+    (coercion-failure "Boolean string must be `true' or `false'." {:value s})))
 
 (defn ^:private parse-boolean
   [v]
@@ -223,35 +230,34 @@
     (string->boolean v)
 
     :else
-    (throw (invalid-scalar :Boolean v))))
+    (invalid-scalar :Boolean v)))
 
 (defn ^:private serialize-boolean
   [v]
   (cond
-    (instance? Boolean v) v
+    (instance? Boolean v)
+    v
 
-    ;; Spec: coerce non-boolean raw values to Boolean when possible.
+    ;; coerce non-boolean raw values to Boolean when possible
     (number? v)
     (not (zero? v))
 
     (string? v) (string->boolean v)
 
     :else
-    (throw (invalid-scalar :Boolean v))))
+    (invalid-scalar :Boolean v)))
 
 (def default-scalar-transformers
-  (let [str-conformer (as-conformer str)
-        float-conformer (as-conformer coerce-to-float)]
-    {:String {:parse str-conformer
-              :serialize str-conformer}
-     :Float {:parse float-conformer
-             :serialize float-conformer}
-     :Int {:parse (as-conformer parse-int)
-           :serialize (as-conformer serialize-int)}
-     :Boolean {:parse (as-conformer parse-boolean)
-               :serialize (as-conformer serialize-boolean)}
-     :ID {:parse str-conformer
-          :serialize str-conformer}}))
+  {:String {:parse str
+            :serialize str}
+   :Float {:parse coerce-to-float
+           :serialize coerce-to-float}
+   :Int {:parse int-parse
+         :serialize int-serialize}
+   :Boolean {:parse parse-boolean
+             :serialize serialize-boolean}
+   :ID {:parse str
+        :serialize str}})
 
 (defn ^:private error
   ([message]
@@ -353,8 +359,14 @@
 (s/def ::input-object (s/keys :opt-un [::description
                                        ::directives]
                               :req-un [::fields]))
-(s/def ::parse s/spec?)
-(s/def ::serialize s/spec?)
+;; Prior to 0.31.0, specs were conformers.
+;; With the breaking change in 0.31.0, we want to make sure that custom directives
+;; have been updated.
+(s/def ::not-a-conformer #(not (s/spec? %)))
+(s/def ::parse-or-serialize-fn (s/and ::not-a-conformer
+                                      fn?))
+(s/def ::parse ::parse-or-serialize-fn)
+(s/def ::serialize ::parse-or-serialize-fn)
 (s/def ::scalar (s/keys :opt-un [::description
                                  ::directives]
                         :req-un [::parse
@@ -647,17 +659,22 @@
                    (let [serializer (:serialize field-type)]
                      (fn select-coerion [selector-context]
                        (let [{:keys [resolved-value]} selector-context
-                             serialized (s/conform serializer resolved-value)]
+                             serialized (when (some? resolved-value)
+                                          (serializer resolved-value))]
                          (cond
 
-                           (= serialized :clojure.spec.alpha/invalid)
-                           (selector-error selector-context (error "Invalid value for a scalar type."
-                                                                   {:type field-type-name
-                                                                    :value (pr-str resolved-value)}))
+                           ;(= serialized :clojure.spec.alpha/invalid)
+                           ;(selector-error selector-context (error "Invalid value for a scalar type."
+                           ;                                        {:type field-type-name
+                           ;                                         :value (pr-str resolved-value)}))
 
                            (is-coercion-failure? serialized)
-                           (selector-error selector-context serialized)
-
+                           (selector-error selector-context
+                                           (-> serialized
+                                               (update :message
+                                                       #(str "Coercion error serializing value: " %))
+                                               (assoc :type field-type-name
+                                                      :value (pr-str resolved-value))))
                            :else
                            (selector (assoc selector-context :resolved-value serialized))))))
                    selector)

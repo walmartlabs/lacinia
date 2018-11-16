@@ -77,7 +77,7 @@
                                  :value "42.0"}
                     :locations [{:column 24
                                  :line 1}]
-                    :message "Invalid Int value."}]}
+                    :message "Scalar value is not parsable as type `Int': Invalid Int value."}]}
          (query "query ($IntVar: Int) { root (int: $IntVar) { int }}"
                 {:IntVar 42.0}))))
 

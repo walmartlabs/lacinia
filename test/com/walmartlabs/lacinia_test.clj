@@ -456,9 +456,10 @@
     ;; TODO: It would be nice to capture some of the details provided in the exception thrown by a failed coercion
     (is (= [{:locations [{:column 10
                           :line 1}]
-             :message "Int value outside of allowed 32 bit integer range."
+             :message "Coercion error serializing value: Int value outside of allowed 32 bit integer range."
              :path [:test :int]
-             :extensions {;; This is the pr-str of the value:
+             :extensions {:type :Int
+                          ;; This is the pr-str of the value:
                           :value "1000000000000000000000000000000000000000000000000000000000000N"}}]
            (:errors query-result)))
     (is (= java.lang.Double

@@ -120,50 +120,6 @@
       (is (= (pprint/write as-map :stream nil)
              (pprint/write compiled-schema :stream nil))))))
 
-(deftest custom-scalars
-  []
-  (testing "custom scalars defined as conformers"
-    (let [parse-conformer (s/conformer
-                           (fn [x]
-                             (case x
-                               "200" "OK"
-                               "500" "ERROR"
-                               ::s/invalid)))
-          serialize-conformer (s/conformer
-                               (fn [x]
-                                 (case x
-                                   "OK" "200"
-                                   "ERROR" "500"
-                                   ::s/invalid)))]
-      (is (schema/compile {:scalars
-                           {:Event {:parse parse-conformer
-                                    :serialize serialize-conformer}}
-
-                           :queries
-                           {:events {:type :Event
-                                     :resolve (constantly "200")}}}))
-      (is-thrown [e (schema/compile {:scalars
-                                     {:Event {:parse str
-                                              :serialize serialize-conformer}}
-
-                                     :queries
-                                     {:events {:type :Event
-                                               :resolve (constantly "200")}}})]
-                 (let [problems (:clojure.spec.alpha/problems (ex-data e))]
-                   (is (= 1 (count problems))
-                       "should find one invalid conformer")
-                   (is (= {:in [0
-                                :scalars
-                                :Event
-                                1
-                                :parse]
-                           :path [:schema
-                                  :scalars
-                                  1
-                                  :parse]}
-                          (-> problems first (select-keys [:path :in])))
-                       "should find problem in parse conformer"))))))
-
 (defmacro is-compile-exception
   [schema expected-message]
   `(is-thrown [e# (schema/compile ~schema)]
