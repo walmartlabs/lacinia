@@ -258,19 +258,12 @@
       (let [parser (:parse scalar-type)
             coerced (when (some? arg-value)
                       (parser arg-value))]
-        (cond
-
-          ;(= ::s/invalid coerced)
-          ;(throw-exception (format "Scalar value is not parsable as type %s."
-          ;                         (q type-name)))
-
-          (schema/is-coercion-failure? coerced)
+        (if (schema/is-coercion-failure? coerced)
           (throw-exception (format "Scalar value is not parsable as type %s: %s"
                                    (q type-name)
                                    (:message coerced))
                            (dissoc coerced :message))
 
-          :else
           coerced)))))
 
 (defmethod process-literal-argument :null

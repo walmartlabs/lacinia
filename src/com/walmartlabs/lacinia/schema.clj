@@ -661,21 +661,13 @@
                        (let [{:keys [resolved-value]} selector-context
                              serialized (when (some? resolved-value)
                                           (serializer resolved-value))]
-                         (cond
-
-                           ;(= serialized :clojure.spec.alpha/invalid)
-                           ;(selector-error selector-context (error "Invalid value for a scalar type."
-                           ;                                        {:type field-type-name
-                           ;                                         :value (pr-str resolved-value)}))
-
-                           (is-coercion-failure? serialized)
+                         (if (is-coercion-failure? serialized)
                            (selector-error selector-context
                                            (-> serialized
                                                (update :message
                                                        #(str "Coercion error serializing value: " %))
                                                (assoc :type field-type-name
                                                       :value (pr-str resolved-value))))
-                           :else
                            (selector (assoc selector-context :resolved-value serialized))))))
                    selector)
 
