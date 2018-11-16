@@ -1,7 +1,9 @@
 ## 0.31.0 -- UNRELEASED
 
-Limited support for custom directives.
-
+This release, regrettably, has some backwards incompatible changes (notice the `0.` at the front
+of the version number).
+The necessary changes to existing applications are expected to minor and localized.
+ 
 ### **Breaking Change**: Schema Definition Language Documents
 
 Previous releases of the Schema Definition Language parser
@@ -26,6 +28,13 @@ Schemas that use custom scalars will not compile until the scalars are
 updated (you'll see a clojure.spec validation exception).
 
 ### Other changes
+
+Limited support for custom directives.
+
+This release replaces the dependency on
+[org.flatland/ordered](https://github.com/amalloy/ordered)
+with vendored copies of the code in an internal namespace.
+This is to enable compatibility with JDK 11.
 
 Previously, there were places where a field resolver might return nil for
 a nullable list, and the nil was converted to an empty list.

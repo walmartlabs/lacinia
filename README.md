@@ -231,6 +231,11 @@ More details are [in the manual](http://lacinia.readthedocs.io/en/latest/clojure
 
 ## License
 
-Copyright © 2017 WalmartLabs
+Copyright © 2017-2018 WalmartLabs
 
 Distributed under the Apache License, Version 2.0.
+
+Portions of the code are derived from
+the [ordered](https://github.com/amalloy/ordered)
+and [useful](https://github.com/amalloy/useful) libraries, which are released under the terms
+of the [Eclipse Public License - v 1.0](LICENSE.ordered.txt).
