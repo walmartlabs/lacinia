@@ -43,6 +43,10 @@ That no longer happens, the nil stays nil.
 Added new resolver result modifiers, ``com.walmartlabs.lacinia.resolve/with-extensions``
 and ``with-warning``.
 
+The dependency on `org.flatland/ordered` has been removed;
+the code from `ordered` has been vendored (copied into local source
+with renamed namespaces), along with a patch for JDK 11 compatibility.
+
 ## 0.30.0 -- 1 Oct 2018
 
 A field resolver that returns a list of values may now wrap the individual
