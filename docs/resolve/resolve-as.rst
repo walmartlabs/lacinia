@@ -19,7 +19,7 @@ However, there are several other scenarios:
    Read about :spec:`errors <Errors>`.
 
 Field resolvers should not throw exceptions; instead, if there is a problem generating the resolved value,
-they should use the ``com.walmartlabs.lacinia.resolve/resolve-as`` function to return a ResolverResult value.
+they should use the :api:`resolve/resolve-as` function to return a ResolverResult value.
 
 When using ``resolve-as``, you may pass the error map as the second parameter (which is optional).
 You may pass a single error map, or a seq of error maps.
@@ -67,7 +67,7 @@ Tagging Resolvers
 -----------------
 
 If you write a function that *always* returns a ResolverResult, you should set the tag of the
-function to be ``com.walmartlabs.lacinia.resolve/ResolverResult``.
+function to be :api:`resolve/ResolverResult`.
 Doing so enables an optimization inside Lacinia - it can skip the code that checks to see if
 the function did in fact return a ResolverResult and wrap it in a ResolverResult if not.
 

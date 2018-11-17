@@ -2,7 +2,7 @@ Application Context
 ===================
 
 The application context passed to your field resolvers is normally set by the initial call to
-``com.walmartlabs.lacinia/execute-query``.
+:api:`execute`.
 Lacinia uses the context for its own book-keeping (the keys it places into the map are namespaced to
 avoid collisions) but otherwise the same map is passed to all field resolvers.
 
@@ -28,7 +28,7 @@ field, to highlight the parts of the name that match the search term.
 
 The resolver for the ``products`` field can communicate this information
 "down tree" to the resolver for the ``highlighted_name`` field, by
-using the ``com.walmartlabs.lacinia.resolve/with-context`` function.
+using the :api:`resolve/with-context` function.
 
 .. literalinclude:: /_examples/mutable-context.edn
    :language: clojure

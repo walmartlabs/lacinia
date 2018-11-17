@@ -1,6 +1,6 @@
 import urllib
 
-from docutils import nodes
+from docutils import nodes, utils
 from docutils.parsers.rst import Directive, directives
 from docutils.statemachine import ViewList
 
@@ -10,6 +10,7 @@ from sphinx.locale import _
 from sphinx.util import parselinenos
 from sphinx.util.nodes import set_source_info
 
+from string import split, strip
 
 def dedent_lines(lines, dedent):
     if not dedent:
@@ -264,9 +265,31 @@ class RemoteExample(Directive):
 
         return node.children
 
+
+def api_link_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
+
+  text = strip(text)
+
+  terms = split(text, "/")
+
+  if len(terms) == 1:
+    package = 'com.walmartlabs.lacinia'
+    varname = terms[0]
+  else:
+    package = 'com.walmartlabs.lacinia.' + terms[0]
+    varname = terms[1]
+
+  ref = 'http://walmartlabs.github.io/lacinia/%s.html#var-%s' % (package, varname)
+  title = '%s/%s' % (package, varname)
+  # set_classes(options)
+  node = nodes.reference(rawtext, utils.unescape(title), refuri=ref, **options)
+
+  return [node], []
+
 def setup(app):
     app.add_directive('remoteinclude', RemoteInclude)
     app.add_directive('ex', RemoteExample)
+    app.add_role('api', api_link_role)
 
     return {
         'version': '0.1',

@@ -36,7 +36,7 @@ Here is an example that defines and uses a custom ``:Date`` scalar type:
    This is just an simplified example used to illustrate the broad strokes. It is not thread safe, because
    the ``SimpleDateFormat`` class is not thread safe.
 
-The function ``com.walmartlabs.lacinia.schema/as-conformer`` is an easy way to wrap a function as a conformer.
+The function :api:`schema/as-conformer` is an easy way to wrap a function as a conformer.
 
 Handling Invalid Values
 -----------------------
@@ -46,7 +46,7 @@ Especially when parsing an input string into a value, there can be problems, inc
 When using ``as-conformer``, any exception thrown by the function will be consumed and converted into ``:clojure.spec/invalid-value``.
 Lacinia will generate a default error message, and an error map will be added to the ``:errors`` key of the result.
 
-If you want more control, you can use the function ``com.walmartlabs.lacinia.schema/coercion-failure``, which allows you
+If you want more control, you can use the function :api:`schema/coercion-failure`, which allows you
 to provide a customized message and even additional data for the error map.
 
 Scalars and Variables
@@ -70,5 +70,5 @@ Attaching Scalar Transformers
 
 As with field resolvers, the pair of transformers for each scalar have no place in an EDN file as they are functions.
 Instead, the transformers can be attached after reading the schema from an EDN file, using the function
-``com.walmartlabs.lacinia.util/attach-scalar-transformers``.
+:api:`util/attach-scalar-transformers`.
 

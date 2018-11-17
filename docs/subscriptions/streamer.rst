@@ -10,7 +10,7 @@ The streamer is provided as the ``:stream`` key in the subscription definition.
   :language: clojure
 
 Streamers parallel :doc:`field resolvers <../resolve/index>`, and a function,
-``com.walmartlabs.lacinia.util/attach-streamers``, is provided to replace
+:api:`util/attach-streamers`, is provided to replace
 keywords in the schema with actual functions.
 
 A streamer is passed three values:
