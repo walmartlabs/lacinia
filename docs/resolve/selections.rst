@@ -106,7 +106,7 @@ the default field resolver for the ``friends`` field will access it.
 
 That's simpler, but costly when ``friends`` is not part of the query.
 
-The function ``com.walmartlabs.lacinia.executor/selects-field?`` can help here:
+The function :api:`executor/selects-field?` can help here:
 
 .. literalinclude:: ../_examples/selects-field.edn
    :language: clojure

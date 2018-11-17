@@ -13,7 +13,7 @@ to explicitly tag the value with its object type.
 Using tag-with-type
 -------------------
 
-The function ``com.walmartlabs.lacinia.schema/tag-with-type`` exists for this purpose.
+The function :api:`schema/tag-with-type` exists for this purpose.
 The tag value is a keyword matching an object definition.
 
 When a field returns a list of an interface, or a list of a union,

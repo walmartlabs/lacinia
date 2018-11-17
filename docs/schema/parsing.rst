@@ -8,7 +8,7 @@ GraphQL SDL Parsing
 As noted in the :doc:`overview <../overview>`, Lacinia schemas are represented as
 Clojure data. However, Lacinia also contains a facility to transform schemas
 written in the GraphQL Schema Definition Language into the form usable by Lacinia.
-This is exposed by the function ``com.walmartlabs.lacinia.parser.schema/parse-schema``.
+This is exposed by the function :api:`parser.schema/parse-schema`.
 
 The Lacinia schema definition includes things which are not available in the SDL, such as
 resolvers, subscription streamers, custom scalar parsers/serializers and documentation.
@@ -59,7 +59,7 @@ of the ``Query`` object.
    embedded :spec:`schema documentation <Descriptions>`.
 
    Alternately, the documentation map can be parsed from a Markdown file using
-   ``com.walmartlabs.lacinia.parser.docs/parse-docs``.
+   :api:`parser.docs/parse-docs`.
 
 The same key structure can be used to document input objects and interfaces.
 

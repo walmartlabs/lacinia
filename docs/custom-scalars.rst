@@ -66,7 +66,7 @@ invalid data sent in the request.
 
 The parse and serialize callback functions should not throw an exception; instead, to indicate a parsing or
 serializing problem, they should not throw an exception, instead they
-should invoke the function ``com.walmartlabs.lacinia.schema/coercion-failure``, which allows you
+should invoke the function :api:`schema/coercion-failure`, which allows you
 to provide a customized message and even additional data for the error map.
 
 Scalars and Variables
@@ -90,5 +90,5 @@ Attaching Scalar Transformers
 
 As with field resolvers, the pair of transformers for each scalar have no place in an EDN file as they are functions.
 Instead, the transformers can be attached after reading the schema from an EDN file, using the function
-``com.walmartlabs.lacinia.util/attach-scalar-transformers``.
+:api:`util/attach-scalar-transformers`.
 

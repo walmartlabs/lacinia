@@ -16,7 +16,7 @@ Instead of returning a normal value, an asynchronous field resolver
 returns a special kind of :doc:`ResolverResult <resolve-as>`, a
 ``ResolverResultPromise``.
 
-Such a promise is created by the ``com.walmartlabs.lacinia/resolve-promise`` function.
+Such a promise is created by the :api:`resolve/resolve-promise function.
 
 The field resolver function returns immediately, but will typically perform some work in a background
 thread.
@@ -84,7 +84,7 @@ There are typically only eight threads in that pool, so a callback that does a l
 processing (or blocks due to I/O operations) can result in a damaging impact on overall server throughput.
 
 To address this, an optional executor can be provided, via the dynamic
-``com.walmartlabs.lacinia.resolve/*callback-executor*`` var.
+:api:`resolve/*callback-executor*` var.
 When a ResolverResultPromise is delivered, the executor (if non-nil) will be used
 to execute the callback; Java thread pools implement this interface.
 

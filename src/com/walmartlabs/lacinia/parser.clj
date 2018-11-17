@@ -18,7 +18,6 @@
   Also provides functions that operate on the parsed query."
   (:require
     [clojure.string :as str]
-    [com.walmartlabs.lacinia.compiled-schema :refer [compiled-schema?]]
     [com.walmartlabs.lacinia.internal-utils
      :refer [cond-let update? q map-vals filter-vals remove-vals
              with-exception-context throw-exception to-message
@@ -1181,7 +1180,7 @@
   ;; This version is rarely used: it assumes that document defines multiple named operations and only
   ;; one is being selected.
   ([schema query-document operation-name]
-   (when-not (compiled-schema? schema)
+   (when-not (schema/compiled-schema? schema)
      (throw (IllegalStateException. "The provided schema has not been compiled.")))
    (xform-query schema (qp/parse-query query-document) operation-name)))
 

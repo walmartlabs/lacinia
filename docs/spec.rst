@@ -2,8 +2,8 @@ clojure.spec
 ============
 
 Lacinia makes use of clojure.spec; specifically, the arguments to
-``com.walmartlabs.lacinia.schema/compile`` and
-``com.walmartlabs.lacinia.parser.schema/parse-schema`` are *always* validated with spec.
+:api:`schema/compile` and
+:api:`parser.schema/parse-schema` are *always* validated with spec.
 
 This is useful, especially for ``compile``, and the data structure passed in for compilation is complex and
 deeply nested.

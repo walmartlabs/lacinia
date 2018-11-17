@@ -57,7 +57,7 @@ Application Context
 
 The application context is a map passed to the field resolver.
 It allows some global state to be passed down into field resolvers; the
-context is initially provided to ``com.walmartlabs.lacinia/execute``.
+context is initially provided to :api:`/execute`
 The initial application context may even be nil.
 
 Many resolvers can simply ignore the context.
@@ -124,7 +124,7 @@ is provided automatically; this default resolver simply expects the container re
 containing a key that exactly matches the field name.
 
 It is even possible to customize this default field resolver, as an option passed to
-``com.walmartlabs.lacina.schema/compile``.
+:api:`schema/compile`.
 
 .. [#root-value] Or, in practice, a sequence of maps.
    In theory, an operation type could be a scalar, but use cases for this are rare.
