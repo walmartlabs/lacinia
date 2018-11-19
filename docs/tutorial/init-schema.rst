@@ -131,7 +131,7 @@ and deploy the application.
 
 .. ex:: init-schema dev-resources/user.clj
 
-The key function is ``q``, which invokes :api:`#execute`.
+The key function is ``q``, which invokes :api:`/execute`.
 
 We'll use that to test GraphQL queries against our schema and see the results
 directly in the REPL: no web browser necessary!
