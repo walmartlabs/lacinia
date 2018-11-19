@@ -265,26 +265,26 @@ class RemoteExample(Directive):
 
         return node.children
 
+def api_link_inner(baseurl, rawtext, text, options):
 
-def api_link_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
+  package, varname = split(strip(text), "/")
 
-  text = strip(text)
-
-  terms = split(text, "/")
-
-  if len(terms) == 1:
+  if package == '':
     package = 'com.walmartlabs.lacinia'
-    varname = terms[0]
   else:
-    package = 'com.walmartlabs.lacinia.' + terms[0]
-    varname = terms[1]
+    package = 'com.walmartlabs.lacinia.' + package
 
-  ref = 'http://walmartlabs.github.io/lacinia/%s.html#var-%s' % (package, varname)
+  ref = '%s/%s.html#var-%s' % (baseurl, package, varname)
   title = '%s/%s' % (package, varname)
-  # set_classes(options)
   node = nodes.reference(rawtext, utils.unescape(title), refuri=ref, **options)
 
   return [node], []
+
+
+
+def api_link_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
+
+  return api_link_inner('http://walmartlabs.github.io/lacinia', rawtext, text, options)
 
 def setup(app):
     app.add_directive('remoteinclude', RemoteInclude)

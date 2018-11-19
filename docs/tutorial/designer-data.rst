@@ -110,7 +110,7 @@ Summary
 Lacinia provides the mechanism to create relationships between entities, such as between BoardGame and Designer.
 It still falls on the field resolvers to provide that data for such linkages.
 
-With that in place, the same ``lacinia/execute`` function that gives us data about a single entity can traverse the graph and
+With that in place, the same :api:`/execute` function that gives us data about a single entity can traverse the graph and
 return data from a variety of entities, organized however you need it.
 
 Next up, we'll take what we have and make it easy to access via HTTP.
