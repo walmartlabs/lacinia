@@ -2,7 +2,7 @@
 
 This release, regrettably, has some backwards incompatible changes (notice the `0.` at the front
 of the version number).
-The necessary changes to existing applications are expected to minor and localized.
+The necessary changes to existing applications are expected to be minor and localized.
  
 ### **Breaking Change**: Schema Definition Language Documents
 
@@ -19,7 +19,7 @@ This release revamps how custom scalars are implemented.
 These changes make scalars more flexible, allowing for use cases
 that were previously not possible.
 
-- Scalar :parse and :serialize are no longer clojure.spec conformers, but are simple functions
+- Scalar the :parse and :serialize callbacks are no longer clojure.spec conformers, but are simple functions
 - The :parse callback may now be passed non-strings, such as numbers or even maps
 - The callbacks should not throw an exception, but should invoke
   `com.walmartlabs.lacinia.schema/coercion-failure`.
@@ -42,10 +42,6 @@ That no longer happens, the nil stays nil.
 
 Added new resolver result modifiers, ``com.walmartlabs.lacinia.resolve/with-extensions``
 and ``with-warning``.
-
-The dependency on `org.flatland/ordered` has been removed;
-the code from `ordered` has been vendored (copied into local source
-with renamed namespaces), along with a patch for JDK 11 compatibility.
 
 ## 0.30.0 -- 1 Oct 2018
 
