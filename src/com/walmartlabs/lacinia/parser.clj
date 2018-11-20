@@ -114,8 +114,6 @@
 
       :boolean [:scalar (Boolean/valueOf ^String value)]
 
-      ; (:string :integer :float :boolean) [:scalar value]
-
       :null [:null nil]
 
       (:enum :variable) [type value]
