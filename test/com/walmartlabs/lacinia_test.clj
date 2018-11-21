@@ -458,7 +458,7 @@
                           :line 1}]
              :message "Coercion error serializing value: Int value outside of allowed 32 bit integer range."
              :path [:test :int]
-             :extensions {:type :Int
+             :extensions {:type-name :Int
                           ;; This is the pr-str of the value:
                           :value "1000000000000000000000000000000000000000000000000000000000000N"}}]
            (:errors query-result)))

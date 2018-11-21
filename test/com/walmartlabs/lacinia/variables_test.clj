@@ -74,10 +74,10 @@
   (is (= {:errors [{:extensions {:argument :int
                                  :field :root
                                  :type-name :Int
-                                 :value "42.0"}
+                                 :value 42.0}
                     :locations [{:column 24
                                  :line 1}]
-                    :message "Scalar value is not parsable as type `Int': Invalid Int value."}]}
+                    :message "Unable to convert 42.0 to scalar type `Int'."}]}
          (query "query ($IntVar: Int) { root (int: $IntVar) { int }}"
                 {:IntVar 42.0}))))
 

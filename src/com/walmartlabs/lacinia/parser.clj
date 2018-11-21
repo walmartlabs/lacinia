@@ -254,16 +254,31 @@
                                  (q type-name))
                          {:category (:category scalar-type)}))
 
-      (let [parser (:parse scalar-type)
-            coerced (when (some? arg-value)
-                      (parser arg-value))]
-        (if (schema/is-coercion-failure? coerced)
-          (throw-exception (format "Scalar value is not parsable as type %s: %s"
-                                   (q type-name)
-                                   (:message coerced))
-                           (dissoc coerced :message))
+      (cond-let
+        (nil? arg-value)
+        nil
 
-          coerced)))))
+        :let [parser (:parse scalar-type)
+              coerced (parser arg-value)]
+
+        ;; The parser callback can return nil if it fails to perform the conversion
+        ;; and get a generic message, or return a coercion-failure with more details.
+
+        (nil? coerced)
+        (throw-exception (format "Unable to convert %s to scalar type %s."
+                                 (pr-str arg-value)
+                                 (q type-name))
+                         {:value arg-value
+                          :type-name type-name})
+
+        (schema/is-coercion-failure? coerced)
+        (throw-exception (format "Scalar value is not parsable as type %s: %s"
+                                 (q type-name)
+                                 (:message coerced))
+                         (dissoc coerced :message))
+
+        :else
+        coerced))))
 
 (defmethod process-literal-argument :null
   [schema argument-definition arg-value]
