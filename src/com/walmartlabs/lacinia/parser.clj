@@ -113,8 +113,6 @@
 
       :boolean [:scalar (Boolean/valueOf ^String value)]
 
-      ; (:string :integer :float :boolean) [:scalar value]
-
       :null [:null nil]
 
       (:enum :variable) [type value]
@@ -1169,11 +1167,11 @@
                (not= 1 (count selections)))
       (throw (IllegalStateException. "Subscriptions only allow exactly one selection for the operation.")))
 
-
     ;; Build the result describing the fragments and selections (for the selected operation).
     {:fragments (normalize-fragment-definitions schema' fragment-definition)
      :selections selections
      :operation-type operation-type
+     :root root
      constants/schema-key schema}))
 
 (defn prepare-with-query-variables
