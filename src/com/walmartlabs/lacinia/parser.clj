@@ -105,7 +105,13 @@
   (let [{:keys [type value]} argument-value]
     (case type
 
-      (:string :integer :float :boolean) [:scalar value]
+      :string [:scalar value]
+
+      :integer [:scalar (Long/valueOf ^String value)]
+
+      :float [:scalar (Double/valueOf ^String value)]
+
+      :boolean [:scalar (Boolean/valueOf ^String value)]
 
       :null [:null nil]
 
@@ -208,6 +214,18 @@
     [:array [[arg-type arg-value]]]
     arg-tuple))
 
+(defn ^:private arg-tuple->value
+  [[arg-type arg-value]]
+  (case arg-type
+    :scalar
+    arg-value
+
+    :array
+    (map arg-tuple->value arg-value)
+
+    :object
+    (map-vals arg-tuple->value arg-value)))
+
 (defmulti ^:private process-literal-argument
   "Validates a literal argument value to ensure it is compatible
   with the declared type of the field argument. Returns the underlying
@@ -216,7 +234,7 @@
   arg-value is a tuple of argument type (:scalar, :enum, :null, :array, or :object) and
   the parsed value."
 
-  (fn [schema argument-definition [arg-type _]]
+  (fn [_schema argument-definition [arg-type _]]
     (if (contains-modifier? :list argument-definition)
       ;; list types allow a single value on input
       :array
@@ -272,39 +290,48 @@
                             :enum-type enum-type-name})))))
 
 (defmethod process-literal-argument :object
-  [schema argument-definition [_ arg-value]]
-  (let [type-name (schema/root-type-name argument-definition)
-        schema-type (get schema type-name)]
-    (when-not (= :input-object (:category schema-type))
+  [schema argument-definition arg-tuple]
+  (let [[_ arg-value] arg-tuple
+        type-name (schema/root-type-name argument-definition)
+        schema-type (get schema type-name)
+        schema-category (:category schema-type)]
+    (cond
+
+      ;; An input object has fields, some of which are required, some of which
+      ;; have default values.
+      (= :input-object schema-category)
+      (let [object-fields (:fields schema-type)
+            default-values (collect-default-values object-fields)
+            required-keys (keys (filter-vals non-null-kind? object-fields))
+            process-object-field (fn [m k v]
+                                   (if-let [field (get object-fields k)]
+                                     (assoc m k
+                                            (process-literal-argument schema field v))
+                                     (throw-exception (format "Input object contained unexpected key %s."
+                                                              (q k))
+                                                      {:schema-type type-name})))
+            object-value (reduce-kv process-object-field
+                                    nil
+                                    arg-value)
+            with-defaults (merge default-values object-value)]
+        (doseq [k required-keys]
+          (when (nil? (get with-defaults k))
+            (throw-exception (format "No value provided for non-nullable key %s of input object %s."
+                                     (q k)
+                                     (q type-name))
+                             {:missing-key k
+                              :required-keys (sort required-keys)
+                              :schema-type type-name})))
+        with-defaults)
+
+      (= :scalar schema-category)
+      ;; A scalar usually accepts a string, but it can accept other types including even a map
+      (process-literal-argument schema argument-definition
+                                [:scalar (arg-tuple->value arg-tuple)])
+
+      :else
       (throw-exception "Input object supplied for argument whose type is not an input object."
-                       {:argument-type (:type-name schema-type)}))
-
-    ;; An input object has fields, some of which are required, some of which
-    ;; have default values.
-
-    (let [object-fields (:fields schema-type)
-          default-values (collect-default-values object-fields)
-          required-keys (keys (filter-vals non-null-kind? object-fields))
-          process-object-field (fn [m k v]
-                                 (if-let [field (get object-fields k)]
-                                   (assoc m k
-                                          (process-literal-argument schema field v))
-                                   (throw-exception (format "Input object contained unexpected key %s."
-                                                            (q k))
-                                                    {:schema-type type-name})))
-          object-value (reduce-kv process-object-field
-                                  nil
-                                  arg-value)
-          with-defaults (merge default-values object-value)]
-      (doseq [k required-keys]
-        (when (nil? (get with-defaults k))
-          (throw-exception (format "No value provided for non-nullable key %s of input object %s."
-                                   (q k)
-                                   (q type-name))
-                           {:missing-key k
-                            :required-keys (sort required-keys)
-                            :schema-type type-name})))
-      with-defaults)))
+                       {:argument-type (:type-name schema-type)}))))
 
 (defmethod process-literal-argument :array
   [schema argument-definition arg-tuple]
@@ -585,8 +612,16 @@
   [schema argument-definitions arguments]
   (when-not (empty? arguments)
     (let [process-arg (fn [arg-name arg-value]
-                        (let [arg-def (get argument-definitions arg-name)]
+                        (let [arg-def (get argument-definitions arg-name)
+                              arg-type-name (schema/root-type-name arg-def)
+                              arg-type (get schema arg-type-name)]
                           (with-exception-context {:argument arg-name}
+                            (when (and (= :scalar (:category arg-type))
+                                       (= :object (first arg-value)))
+                              (throw-exception (format "Argument %s contains a scalar argument with nested variables, which is not allowed."
+                                                       (q arg-name))
+                                               nil))
+
                             (when-not arg-def
                               (throw-exception (format "Unknown argument %s."
                                                        (q arg-name))
