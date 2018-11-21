@@ -23,6 +23,7 @@ that were previously not possible.
 - The :parse callback may now be passed non-strings, such as numbers or even maps
 - The callbacks should not throw an exception, but should invoke
   `com.walmartlabs.lacinia.schema/coercion-failure`.
+- Callbacks may also return nil to indicate a coercion failure
 
 Schemas that use custom scalars will not compile until the scalars are
 updated (you'll see a clojure.spec validation exception).

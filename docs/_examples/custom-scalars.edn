@@ -15,11 +15,15 @@
   (schema/compile
     {:scalars
      {:Date
-      {:parse #(try
-                 (.parse date-formatter %)
-                 (catch Throwable _
-                   (schema/coercion-failure "invalid date format")))
-       :serialize #(.format date-formatter %)}}
+      {:parse #(when (string? %)
+                 (try
+                   (.parse date-formatter %)
+                   (catch Throwable _
+                     nil)))
+       :serialize #(try
+                     (.format date-formatter %)
+                     (catch Throwable _
+                       nil))}}
 
      :queries
      {:today
@@ -31,12 +35,12 @@
        :resolve (fn [ctx {:keys [input]} v] input)}}}))
 
 (g/execute schema "{today}" nil nil)
-=> {:data {:today "2016-12-09"}}
+=> {:data {:today "2018-11-21"}}
 (g/execute schema "{ echo(input: \"2018-11-22\") }" nil nil)
 => {:data {:echo "2018-11-22"}}
 (g/execute schema "{ echo(input: \"thanksgiving\") }" nil nil)
 =>
-{:errors [{:message "Exception applying arguments to field `echo': For argument `input', scalar value is not parsable as type `Date': invalid date format",
+{:errors [{:message "Exception applying arguments to field `echo': For argument `input', unable to convert \"thanksgiving\" to scalar type `Date'.",
            :locations [{:line 1, :column 3}],
            :extensions {:field :echo, :argument :input, :value "thanksgiving", :type-name :Date}}]}
 
