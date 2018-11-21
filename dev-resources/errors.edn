@@ -1,121 +1,131 @@
-{:data {:planets [{:name "Mercury", :moons []}
-                  {:name "Venus", :moons []}
-                  {:name "Earth", :moons [{:name "Luna", :bases [{:name "Alpha"} {:name "Moon 1"} {:name "月基地图"}]}]}
-                  {:name "Mars", :moons [{:name "Phobos", :bases []} {:name "Deimos", :bases []}]}
-                  {:name "Asteroid Belt",
-                   :moons [{:name "Asteroid 1", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 2", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 3", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 4", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 5", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 6", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 7", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 8", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 9", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 10", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 11", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 12", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 13", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 14", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 15", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 16", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 17", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 18", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 19", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 20", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 21", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 22", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 23", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 24", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 25", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 26", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 27", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 28", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 29", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 30", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 31", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 32", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 33", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 34", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 35", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 36", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 37", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 38", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 39", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 40", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 41", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 42", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 43", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 44", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 45", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 46", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 47", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 48", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 49", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 50", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 51", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 52", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 53", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 54", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 55", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 56", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 57", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 58", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 59", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 60", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 61", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 62", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 63", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 64", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 65", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 66", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 67", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 68", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 69", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 70", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 71", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 72", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 73", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 74", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 75", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 76", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 77", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 78", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 79", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 80", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 81", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 82", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 83", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 84", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 85", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 86", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 87", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 88", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 89", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 90", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 91", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 92", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 93", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 94", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 95", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 96", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 97", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 98", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 99", :bases [{:name "Pad"}]}
-                           {:name "Asteroid 100", :bases [{:name "Pad"}]}]}
-                  {:name "Jupiter",
-                   :moons [{:name "Europa", :bases [{:name "Beta"}]}
-                           {:name "Ganymede", :bases []}
-                           {:name "Callisto", :bases [{:name "Gamma"}]}]}
-                  {:name "Saturn",
-                   :moons [{:name "Dione", :bases []}
-                           {:name "Tethys", :bases []}
-                           {:name "Titan", :bases [{:name "Omega"}]}]}
-                  {:name "Saturn", :moons []}
-                  {:name "Uranus", :moons []}]},
- :errors [{:message "This base has been destroyed.",
-           :locations [{:line 1, :column 39}],
-           :path [:planets :moons :bases :name]}
-          {:message "Europa is forbidden. Attempt no landing there.",
-           :locations [{:line 1, :column 39}],
-           :path [:planets :moons :bases :name]}]}
+{:data
+ {:planets
+  [{:name "Mercury", :moons nil}
+   {:name "Venus", :moons nil}
+   {:name "Earth",
+    :moons
+    [{:name "Luna",
+      :bases [{:name "Alpha"} {:name "Moon 1"} {:name "月基地图"}]}]}
+   {:name "Mars",
+    :moons [{:name "Phobos", :bases nil} {:name "Deimos", :bases nil}]}
+   {:name "Asteroid Belt",
+    :moons
+    [{:name "Asteroid 1", :bases [{:name "Pad"}]}
+     {:name "Asteroid 2", :bases [{:name "Pad"}]}
+     {:name "Asteroid 3", :bases [{:name "Pad"}]}
+     {:name "Asteroid 4", :bases [{:name "Pad"}]}
+     {:name "Asteroid 5", :bases [{:name "Pad"}]}
+     {:name "Asteroid 6", :bases [{:name "Pad"}]}
+     {:name "Asteroid 7", :bases [{:name "Pad"}]}
+     {:name "Asteroid 8", :bases [{:name "Pad"}]}
+     {:name "Asteroid 9", :bases [{:name "Pad"}]}
+     {:name "Asteroid 10", :bases [{:name "Pad"}]}
+     {:name "Asteroid 11", :bases [{:name "Pad"}]}
+     {:name "Asteroid 12", :bases [{:name "Pad"}]}
+     {:name "Asteroid 13", :bases [{:name "Pad"}]}
+     {:name "Asteroid 14", :bases [{:name "Pad"}]}
+     {:name "Asteroid 15", :bases [{:name "Pad"}]}
+     {:name "Asteroid 16", :bases [{:name "Pad"}]}
+     {:name "Asteroid 17", :bases [{:name "Pad"}]}
+     {:name "Asteroid 18", :bases [{:name "Pad"}]}
+     {:name "Asteroid 19", :bases [{:name "Pad"}]}
+     {:name "Asteroid 20", :bases [{:name "Pad"}]}
+     {:name "Asteroid 21", :bases [{:name "Pad"}]}
+     {:name "Asteroid 22", :bases [{:name "Pad"}]}
+     {:name "Asteroid 23", :bases [{:name "Pad"}]}
+     {:name "Asteroid 24", :bases [{:name "Pad"}]}
+     {:name "Asteroid 25", :bases [{:name "Pad"}]}
+     {:name "Asteroid 26", :bases [{:name "Pad"}]}
+     {:name "Asteroid 27", :bases [{:name "Pad"}]}
+     {:name "Asteroid 28", :bases [{:name "Pad"}]}
+     {:name "Asteroid 29", :bases [{:name "Pad"}]}
+     {:name "Asteroid 30", :bases [{:name "Pad"}]}
+     {:name "Asteroid 31", :bases [{:name "Pad"}]}
+     {:name "Asteroid 32", :bases [{:name "Pad"}]}
+     {:name "Asteroid 33", :bases [{:name "Pad"}]}
+     {:name "Asteroid 34", :bases [{:name "Pad"}]}
+     {:name "Asteroid 35", :bases [{:name "Pad"}]}
+     {:name "Asteroid 36", :bases [{:name "Pad"}]}
+     {:name "Asteroid 37", :bases [{:name "Pad"}]}
+     {:name "Asteroid 38", :bases [{:name "Pad"}]}
+     {:name "Asteroid 39", :bases [{:name "Pad"}]}
+     {:name "Asteroid 40", :bases [{:name "Pad"}]}
+     {:name "Asteroid 41", :bases [{:name "Pad"}]}
+     {:name "Asteroid 42", :bases [{:name "Pad"}]}
+     {:name "Asteroid 43", :bases [{:name "Pad"}]}
+     {:name "Asteroid 44", :bases [{:name "Pad"}]}
+     {:name "Asteroid 45", :bases [{:name "Pad"}]}
+     {:name "Asteroid 46", :bases [{:name "Pad"}]}
+     {:name "Asteroid 47", :bases [{:name "Pad"}]}
+     {:name "Asteroid 48", :bases [{:name "Pad"}]}
+     {:name "Asteroid 49", :bases [{:name "Pad"}]}
+     {:name "Asteroid 50", :bases [{:name "Pad"}]}
+     {:name "Asteroid 51", :bases [{:name "Pad"}]}
+     {:name "Asteroid 52", :bases [{:name "Pad"}]}
+     {:name "Asteroid 53", :bases [{:name "Pad"}]}
+     {:name "Asteroid 54", :bases [{:name "Pad"}]}
+     {:name "Asteroid 55", :bases [{:name "Pad"}]}
+     {:name "Asteroid 56", :bases [{:name "Pad"}]}
+     {:name "Asteroid 57", :bases [{:name "Pad"}]}
+     {:name "Asteroid 58", :bases [{:name "Pad"}]}
+     {:name "Asteroid 59", :bases [{:name "Pad"}]}
+     {:name "Asteroid 60", :bases [{:name "Pad"}]}
+     {:name "Asteroid 61", :bases [{:name "Pad"}]}
+     {:name "Asteroid 62", :bases [{:name "Pad"}]}
+     {:name "Asteroid 63", :bases [{:name "Pad"}]}
+     {:name "Asteroid 64", :bases [{:name "Pad"}]}
+     {:name "Asteroid 65", :bases [{:name "Pad"}]}
+     {:name "Asteroid 66", :bases [{:name "Pad"}]}
+     {:name "Asteroid 67", :bases [{:name "Pad"}]}
+     {:name "Asteroid 68", :bases [{:name "Pad"}]}
+     {:name "Asteroid 69", :bases [{:name "Pad"}]}
+     {:name "Asteroid 70", :bases [{:name "Pad"}]}
+     {:name "Asteroid 71", :bases [{:name "Pad"}]}
+     {:name "Asteroid 72", :bases [{:name "Pad"}]}
+     {:name "Asteroid 73", :bases [{:name "Pad"}]}
+     {:name "Asteroid 74", :bases [{:name "Pad"}]}
+     {:name "Asteroid 75", :bases [{:name "Pad"}]}
+     {:name "Asteroid 76", :bases [{:name "Pad"}]}
+     {:name "Asteroid 77", :bases [{:name "Pad"}]}
+     {:name "Asteroid 78", :bases [{:name "Pad"}]}
+     {:name "Asteroid 79", :bases [{:name "Pad"}]}
+     {:name "Asteroid 80", :bases [{:name "Pad"}]}
+     {:name "Asteroid 81", :bases [{:name "Pad"}]}
+     {:name "Asteroid 82", :bases [{:name "Pad"}]}
+     {:name "Asteroid 83", :bases [{:name "Pad"}]}
+     {:name "Asteroid 84", :bases [{:name "Pad"}]}
+     {:name "Asteroid 85", :bases [{:name "Pad"}]}
+     {:name "Asteroid 86", :bases [{:name "Pad"}]}
+     {:name "Asteroid 87", :bases [{:name "Pad"}]}
+     {:name "Asteroid 88", :bases [{:name "Pad"}]}
+     {:name "Asteroid 89", :bases [{:name "Pad"}]}
+     {:name "Asteroid 90", :bases [{:name "Pad"}]}
+     {:name "Asteroid 91", :bases [{:name "Pad"}]}
+     {:name "Asteroid 92", :bases [{:name "Pad"}]}
+     {:name "Asteroid 93", :bases [{:name "Pad"}]}
+     {:name "Asteroid 94", :bases [{:name "Pad"}]}
+     {:name "Asteroid 95", :bases [{:name "Pad"}]}
+     {:name "Asteroid 96", :bases [{:name "Pad"}]}
+     {:name "Asteroid 97", :bases [{:name "Pad"}]}
+     {:name "Asteroid 98", :bases [{:name "Pad"}]}
+     {:name "Asteroid 99", :bases [{:name "Pad"}]}
+     {:name "Asteroid 100", :bases [{:name "Pad"}]}]}
+   {:name "Jupiter",
+    :moons
+    [{:name "Europa", :bases [{:name "Beta"}]}
+     {:name "Ganymede", :bases nil}
+     {:name "Callisto", :bases [{:name "Gamma"}]}]}
+   {:name "Saturn",
+    :moons
+    [{:name "Dione", :bases nil}
+     {:name "Tethys", :bases nil}
+     {:name "Titan", :bases [{:name "Omega"}]}]}
+   {:name "Saturn", :moons nil}
+   {:name "Uranus", :moons nil}]},
+ :errors
+ [{:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets :moons :bases :name]}
+  {:message "Europa is forbidden. Attempt no landing there.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets :moons :bases :name]}]}

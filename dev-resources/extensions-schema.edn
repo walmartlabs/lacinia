@@ -1,0 +1,5 @@
+{:queries
+ {:extension {:type String
+              :resolve :queries/extension}
+  :warning {:type String
+            :resolve :queries/warning}}}

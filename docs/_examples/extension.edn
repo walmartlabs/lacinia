@@ -1,0 +1,9 @@
+(require '[com.walmartlabs.lacinia.resolve :refer [with-extensions]])
+
+(defn resolve-user
+  [context args value]
+  (let [start-ms (System/currentTimeMillis)
+        user-data (get-user-data (:id args))
+        elapsed-ms (- (System/currentTimeMillis) start-ms)]
+    (with-extensions user-data
+      update :total-db-access-ms (fnil + 0) elapsed-ms)))
