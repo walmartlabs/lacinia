@@ -346,7 +346,7 @@
                                        ::directives]
                               :req-un [::fields]))
 ;; Prior to 0.31.0, specs were conformers.
-;; With the breaking change in 0.31.0, we want to make sure that custom directives
+;; With the breaking change in 0.31.0, we want to make sure that custom scalars
 ;; have been updated.
 (s/def ::not-a-conformer #(not (s/spec? %)))
 (s/def ::parse-or-serialize-fn (s/and ::not-a-conformer
