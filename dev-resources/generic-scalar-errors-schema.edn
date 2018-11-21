@@ -1,0 +1,14 @@
+{:objects
+ {:Data
+  {:fields
+   {:value {:type Int}}}}
+
+ :queries
+ {:make_data
+  {:type :Data
+   :args {:value {:type Int}}
+   :resolve :queries/make-data}
+
+  :bad_data
+  {:type :Data
+   :resolve :queries/bad-data}}}

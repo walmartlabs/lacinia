@@ -24,7 +24,7 @@ of a value, and the parse operation will convert it back to the appropriate type
 Both a parse function and a serialize function must be defined for each scalar type.
 These callback functions are passed a value and peform necessary coercions and validations.
 
-Neither callback is passed ``nil``.
+Neither callback is ever passed ``nil``.
 
 Dates are a common example of this, as dates are not supported directly in JSON, but are typically encoded as
 some form of string.
@@ -56,7 +56,7 @@ Serializing
 Serializing is often the same as parsing (in fact, it is not uncommon to use one function for both roles).
 
 The serialize callback is passed whatever value was selected from a field and cooerces it to an appropriate
-value for the response (typically, a string or value that can be encoded into JSON).
+value for the response (typically, either a string, or another value that can be encoded into JSON).
 
 Handling Invalid Values
 -----------------------
@@ -64,10 +64,13 @@ Handling Invalid Values
 Especially when parsing an input string into a value, there can be problems, especially included
 invalid data sent in the request.
 
-The parse and serialize callback functions should not throw an exception; instead, to indicate a parsing or
-serializing problem, they should not throw an exception, instead they
-should invoke the function :api:`schema/coercion-failure`, which allows you
-to provide a customized message and even additional data for the error map.
+The parse and serialize callback functions should **not** throw an exception; instead, to indicate a parsing or
+serializing problem, they may return nil, or create a coercion failure result by invoking the function :api:`schema/coercion-failure`.
+
+Returning nil results in a generic error message (as in the example above).
+By creating a coercion failure result, a specific error message can be provided, as well as additional data.
+
+In either case, the parse or serialization failure will result in an error being added to the result map.
 
 Scalars and Variables
 ---------------------

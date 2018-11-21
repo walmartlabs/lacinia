@@ -271,14 +271,13 @@
 
 (deftest query-argument-validations
     (let [q "{ echoArgs(integer: \"hello world\") { integer } }"]
-      (is (= {:errors
-              [{:extensions {:argument :integer
-                             :field :echoArgs
-                             :type-name :Int
-                             :value "hello world"}
-                :locations [{:column 3
-                             :line 1}]
-                :message "Exception applying arguments to field `echoArgs': For argument `integer', scalar value is not parsable as type `Int': Unable to to perform cooercion: For input string: \"hello world\""}]}
+      (is (= {:errors [{:extensions {:argument :integer
+                                     :field :echoArgs
+                                     :type-name :Int
+                                     :value "hello world"}
+                        :locations [{:column 3
+                                     :line 1}]
+                        :message "Exception applying arguments to field `echoArgs': For argument `integer', unable to convert \"hello world\" to scalar type `Int'."}]}
              (execute compiled-schema q {} nil))))
 
   (testing "undefined argument"
@@ -300,14 +299,13 @@
                                       string: \"five\",
                                       nestedInputObject: {integerArray: \"hello world\",
                                                           date: \"1983-08-13\"}}) { integer }}"]
-      (is (= {:errors
-              [{:extensions {:argument :inputObject
-                             :field :echoArgs
-                             :type-name :Int
-                             :value "hello world"}
-                :locations [{:column 3
-                             :line 1}]
-                :message "Exception applying arguments to field `echoArgs': For argument `inputObject', scalar value is not parsable as type `Int': Unable to to perform cooercion: For input string: \"hello world\""}]}
+      (is (= {:errors [{:extensions {:argument :inputObject
+                                     :field :echoArgs
+                                     :type-name :Int
+                                     :value "hello world"}
+                        :locations [{:column 3
+                                     :line 1}]
+                        :message "Exception applying arguments to field `echoArgs': For argument `inputObject', unable to convert \"hello world\" to scalar type `Int'."}]}
 
              (execute compiled-schema q {} nil)))))
 
@@ -334,14 +332,13 @@
 
   (testing "invalid array element"
     (let [q "{echoArgs(integer: 3, integerArray: [1, 2, \"foo\"]) { integer }}"]
-      (is (= {:errors
-              [{:extensions {:argument :integerArray
-                             :field :echoArgs
-                             :type-name :Int
-                             :value "foo"}
-                :locations [{:column 2
-                             :line 1}]
-                :message "Exception applying arguments to field `echoArgs': For argument `integerArray', scalar value is not parsable as type `Int': Unable to to perform cooercion: For input string: \"foo\""}]}
+      (is (= {:errors [{:extensions {:argument :integerArray
+                                     :field :echoArgs
+                                     :type-name :Int
+                                     :value "foo"}
+                        :locations [{:column 2
+                                     :line 1}]
+                        :message "Exception applying arguments to field `echoArgs': For argument `integerArray', unable to convert \"foo\" to scalar type `Int'."}]}
 
              (execute compiled-schema q {} nil)))))
 

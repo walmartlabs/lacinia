@@ -113,8 +113,6 @@
 
       :boolean [:scalar (Boolean/valueOf ^String value)]
 
-      ; (:string :integer :float :boolean) [:scalar value]
-
       :null [:null nil]
 
       (:enum :variable) [type value]
@@ -254,16 +252,31 @@
                                  (q type-name))
                          {:category (:category scalar-type)}))
 
-      (let [parser (:parse scalar-type)
-            coerced (when (some? arg-value)
-                      (parser arg-value))]
-        (if (schema/is-coercion-failure? coerced)
-          (throw-exception (format "Scalar value is not parsable as type %s: %s"
-                                   (q type-name)
-                                   (:message coerced))
-                           (dissoc coerced :message))
+      (cond-let
+        (nil? arg-value)
+        nil
 
-          coerced)))))
+        :let [parser (:parse scalar-type)
+              coerced (parser arg-value)]
+
+        ;; The parser callback can return nil if it fails to perform the conversion
+        ;; and get a generic message, or return a coercion-failure with more details.
+
+        (nil? coerced)
+        (throw-exception (format "Unable to convert %s to scalar type %s."
+                                 (pr-str arg-value)
+                                 (q type-name))
+                         {:value arg-value
+                          :type-name type-name})
+
+        (schema/is-coercion-failure? coerced)
+        (throw-exception (format "Scalar value is not parsable as type %s: %s"
+                                 (q type-name)
+                                 (:message coerced))
+                         (dissoc coerced :message))
+
+        :else
+        coerced))))
 
 (defmethod process-literal-argument :null
   [schema argument-definition arg-value]
@@ -1154,11 +1167,11 @@
                (not= 1 (count selections)))
       (throw (IllegalStateException. "Subscriptions only allow exactly one selection for the operation.")))
 
-
     ;; Build the result describing the fragments and selections (for the selected operation).
     {:fragments (normalize-fragment-definitions schema' fragment-definition)
      :selections selections
      :operation-type operation-type
+     :root root
      constants/schema-key schema}))
 
 (defn prepare-with-query-variables

@@ -19,7 +19,8 @@
             [com.walmartlabs.test-utils :refer [is-thrown execute]]
             [clojure.java.io :as io]
             [clojure.edn :as edn]
-            [com.walmartlabs.lacinia.util :as util])
+            [com.walmartlabs.lacinia.util :as util]
+            [com.walmartlabs.test-utils :as utils])
   (:import (java.text SimpleDateFormat)
            (java.util Date)
            (org.joda.time DateTime DateTimeConstants)
@@ -112,7 +113,7 @@
                                          :line 1}]
                             :message "Coercion error serializing value: invalid"
                             :path [:events :lookup]
-                            :extensions {:type :Event
+                            :extensions {:type-name :Event
                                          :value "1"}}]}
                  (execute schema q2 nil nil))
               "should return error message"))))))
@@ -467,9 +468,34 @@
                         :message "Coercion error serializing value: 5 is too big."
                         :path [:test]
                         :extensions {:arguments {:in 5}
-                                     :type :LimitedInt
+                                     :type-name :LimitedInt
                                      :value "5"}}]}
              (execute schema
                       "{ test (in:5) }"
                       nil
                       nil))))))
+
+(deftest generic-scalar-errors
+  ;; Tests for when a scalar parser or serializer returns nil
+  (let [schema (utils/compile-schema "generic-scalar-errors-schema.edn"
+                                     {:queries/make-data (fn [_ args _]
+                                                           args)
+                                      :queries/bad-data (constantly {:value "not-a-number"})})]
+    (is (= {:errors [{:extensions {:argument :value
+                                   :field :make_data
+                                   :type-name :Int
+                                   :value "get real"}
+                      :locations [{:column 3
+                                   :line 1}]
+                      :message "Exception applying arguments to field `make_data': For argument `value', unable to convert \"get real\" to scalar type `Int'."}]}
+           (execute schema "{ make_data(value: \"get real\") { value } }")))
+
+
+    (is (= {:data {:bad_data {:value nil}}
+            :errors [{:locations [{:column 14
+                                   :line 1}]
+                      :extensions {:type-name :Int
+                                   :value "\"not-a-number\""}
+                      :message "Unable to serialize \"not-a-number\" as type `Int'."
+                      :path [:bad_data :value]}]}
+           (execute schema "{ bad_data { value } }")))))

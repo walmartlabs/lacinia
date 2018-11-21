@@ -54,5 +54,4 @@
   (expect ::schema/parse (schema/as-conformer identity)
           "scalar parse and serialize functions must now be simple functions"
           "not clojure.spec conformers"
-          "see release notes")
-  )
+          "see release notes"))

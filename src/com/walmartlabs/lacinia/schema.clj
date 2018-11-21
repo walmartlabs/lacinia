@@ -158,18 +158,12 @@
             (coercion-failure message (ex-data e))
             ::s/invalid))))))
 
-(defn ^:private invalid-scalar
-  [type-name value]
-  (coercion-failure (format "Invalid %s value." (name type-name))
-                    {:value (pr-str value)}))
-
 (defmacro ^:private catch-as-coercion-failure
   [& body]
   `(try
      ~@body
-     (catch Throwable t#
-       (coercion-failure (str "Unable to to perform cooercion: "
-                              (to-message t#))))))
+     (catch Throwable _#
+       nil)))
 
 (defn ^:private int-parse
   [v]
@@ -183,10 +177,7 @@
 
     (string? v)
     (catch-as-coercion-failure
-      (Integer/parseInt v))
-
-    :else
-    (invalid-scalar :Int v)))
+      (Integer/parseInt v))))
 
 (defn ^:private int-serialize
   [v]
@@ -194,12 +185,12 @@
     (string? v)
     (catch-as-coercion-failure (Integer/parseInt v))
 
-    (and (number? v)
-         (<= Integer/MIN_VALUE v Integer/MAX_VALUE))
-    (int v)
-
-    :else
-    (coercion-failure "Int value outside of allowed 32 bit integer range." {:value (pr-str v)})))
+    ;; Per the spec, if it's in range, we just truncate it to an int.
+    ;; Note that we should be rejecting floats that have a non-zero decimal amount.
+    (number? v)
+    (if (<= Integer/MIN_VALUE v Integer/MAX_VALUE)
+      (int v)
+      (coercion-failure "Int value outside of allowed 32 bit integer range." {:value (pr-str v)}))))
 
 (defn ^:private coerce-to-float
   [v]
@@ -212,10 +203,7 @@
     (double v)
 
     (string? v)
-    (catch-as-coercion-failure (Double/parseDouble v))
-
-    :else
-    (invalid-scalar :Float v)))
+    (catch-as-coercion-failure (Double/parseDouble v))))
 
 (defn ^:private string->boolean
   [^String s]
@@ -231,10 +219,7 @@
     v
 
     (string? v)
-    (string->boolean v)
-
-    :else
-    (invalid-scalar :Boolean v)))
+    (string->boolean v)))
 
 (defn ^:private serialize-boolean
   [v]
@@ -246,10 +231,7 @@
     (number? v)
     (not (zero? v))
 
-    (string? v) (string->boolean v)
-
-    :else
-    (invalid-scalar :Boolean v)))
+    (string? v) (string->boolean v)))
 
 (def default-scalar-transformers
   {:String {:parse str
@@ -364,7 +346,7 @@
                                        ::directives]
                               :req-un [::fields]))
 ;; Prior to 0.31.0, specs were conformers.
-;; With the breaking change in 0.31.0, we want to make sure that custom directives
+;; With the breaking change in 0.31.0, we want to make sure that custom scalars
 ;; have been updated.
 (s/def ::not-a-conformer #(not (s/spec? %)))
 (s/def ::parse-or-serialize-fn (s/and ::not-a-conformer
@@ -654,7 +636,7 @@
         category (:category field-type)
 
         ;; Build up layers of checks and other logic and a series of chained selector functions.
-        ;; Normally, don't redefine local symbols, but here is makes it easier to follow and less
+        ;; Normally, don't redefine local symbols, but here it makes it easier to follow and less
         ;; brittle.
 
         selector floor-selector
@@ -662,17 +644,34 @@
         selector (if (= :scalar category)
                    (let [serializer (:serialize field-type)]
                      (fn select-coerion [selector-context]
-                       (let [{:keys [resolved-value]} selector-context
-                             serialized (when (some? resolved-value)
-                                          (serializer resolved-value))]
-                         (if (is-coercion-failure? serialized)
-                           (selector-error selector-context
-                                           (-> serialized
-                                               (update :message
-                                                       #(str "Coercion error serializing value: " %))
-                                               (assoc :type field-type-name
-                                                      :value (pr-str resolved-value))))
-                           (selector (assoc selector-context :resolved-value serialized))))))
+                       (cond-let
+
+                         :let [{:keys [resolved-value]} selector-context]
+
+                         (nil? resolved-value)
+                         (selector selector-context)
+
+                         :let [serialized (serializer resolved-value)]
+
+                         (nil? serialized)
+                         (selector-error selector-context
+                                         (let [value-str (pr-str resolved-value)]
+                                           {:message (format "Unable to serialize %s as type %s."
+                                                             value-str
+                                                             (q field-type-name))
+                                            :value value-str
+                                            :type-name field-type-name}))
+
+                         (is-coercion-failure? serialized)
+                         (selector-error selector-context
+                                         (-> serialized
+                                             (update :message
+                                                     #(str "Coercion error serializing value: " %))
+                                             (assoc :type-name field-type-name
+                                                    :value (pr-str resolved-value))))
+
+                         :else
+                         (selector (assoc selector-context :resolved-value serialized)))))
                    selector)
 
         selector (if (= :enum category)
