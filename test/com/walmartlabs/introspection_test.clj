@@ -518,7 +518,7 @@
                      :enumValues nil
                      :fields nil
                      :inputFields nil
-                     :interfaces nil
+                     :interfaces []
                      :kind :SCALAR
                      :name "Boolean"
                      :possibleTypes nil}
@@ -526,7 +526,7 @@
                      :enumValues nil
                      :fields nil
                      :inputFields nil
-                     :interfaces nil
+                     :interfaces []
                      :kind :SCALAR
                      :name "Date"
                      :possibleTypes nil}
@@ -534,7 +534,7 @@
                      :enumValues nil
                      :fields nil
                      :inputFields nil
-                     :interfaces nil
+                     :interfaces []
                      :kind :SCALAR
                      :name "Float"
                      :possibleTypes nil}
@@ -542,7 +542,7 @@
                      :enumValues nil
                      :fields nil
                      :inputFields nil
-                     :interfaces nil
+                     :interfaces []
                      :kind :SCALAR
                      :name "ID"
                      :possibleTypes nil}
@@ -550,7 +550,7 @@
                      :enumValues nil
                      :fields nil
                      :inputFields nil
-                     :interfaces nil
+                     :interfaces []
                      :kind :SCALAR
                      :name "Int"
                      :possibleTypes nil}
@@ -628,7 +628,7 @@
                                       :name "character"
                                       :ofType nil}}]
                      :inputFields nil
-                     :interfaces nil
+                     :interfaces []
                      :kind :OBJECT
                      :name "MutationRoot"
                      :possibleTypes nil}
@@ -713,7 +713,7 @@
                                       :name "galaxy_date"
                                       :ofType nil}}]
                      :inputFields nil
-                     :interfaces nil
+                     :interfaces []
                      :kind :OBJECT
                      :name "QueryRoot"
                      :possibleTypes nil}
@@ -721,7 +721,7 @@
                      :enumValues nil
                      :fields nil
                      :inputFields nil
-                     :interfaces nil
+                     :interfaces []
                      :kind :SCALAR
                      :name "String"
                      :possibleTypes nil}
@@ -845,7 +845,7 @@
                                       :name "String"
                                       :ofType nil}}]
                      :inputFields nil
-                     :interfaces nil
+                     :interfaces []
                      :kind :INTERFACE
                      :name "character"
                      :possibleTypes [{:kind :OBJECT
@@ -1037,7 +1037,7 @@
                                                :name "Int"
                                                :ofType nil}}}]
                      :inputFields nil
-                     :interfaces nil
+                     :interfaces []
                      :kind :OBJECT
                      :name "echoArgs"
                      :possibleTypes nil}
@@ -1056,7 +1056,7 @@
                                    :name "JEDI"}]
                      :fields nil
                      :inputFields nil
-                     :interfaces nil
+                     :interfaces []
                      :kind :ENUM
                      :name "episode"
                      :possibleTypes nil}
@@ -1089,7 +1089,7 @@
                                       :name "String"
                                       :ofType nil}}]
                      :inputFields nil
-                     :interfaces nil
+                     :interfaces []
                      :kind :OBJECT
                      :name "force"
                      :possibleTypes nil}
@@ -1104,7 +1104,7 @@
                                       :name "Date"
                                       :ofType nil}}]
                      :inputFields nil
-                     :interfaces nil
+                     :interfaces []
                      :kind :OBJECT
                      :name "galaxy_date"
                      :possibleTypes nil}
@@ -1275,7 +1275,7 @@
                                     :type {:kind :SCALAR
                                            :name "String"
                                            :ofType nil}}]
-                     :interfaces nil
+                     :interfaces []
                      :kind :INPUT_OBJECT
                      :name "nestedInputObject"
                      :possibleTypes nil}
@@ -1300,7 +1300,7 @@
                                     :type {:kind :SCALAR
                                            :name "String"
                                            :ofType nil}}]
-                     :interfaces nil
+                     :interfaces []
                      :kind :INPUT_OBJECT
                      :name "testInputObject"
                      :possibleTypes nil}]}

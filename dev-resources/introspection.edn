@@ -1,3 +1,4 @@
+
 {:data
  {:__schema
   {:queryType {:name "QueryRoot"},
@@ -8,7 +9,7 @@
      :description nil,
      :fields nil,
      :inputFields nil,
-     :interfaces nil,
+     :interfaces [],
      :enumValues nil,
      :possibleTypes nil}
     {:kind :SCALAR,
@@ -16,7 +17,7 @@
      :description nil,
      :fields nil,
      :inputFields nil,
-     :interfaces nil,
+     :interfaces [],
      :enumValues nil,
      :possibleTypes nil}
     {:kind :SCALAR,
@@ -24,7 +25,7 @@
      :description nil,
      :fields nil,
      :inputFields nil,
-     :interfaces nil,
+     :interfaces [],
      :enumValues nil,
      :possibleTypes nil}
     {:kind :SCALAR,
@@ -32,7 +33,7 @@
      :description nil,
      :fields nil,
      :inputFields nil,
-     :interfaces nil,
+     :interfaces [],
      :enumValues nil,
      :possibleTypes nil}
     {:kind :OBJECT,
@@ -76,7 +77,7 @@
        :isDeprecated false,
        :deprecationReason nil}],
      :inputFields nil,
-     :interfaces nil,
+     :interfaces [],
      :enumValues nil,
      :possibleTypes nil}
     {:kind :SCALAR,
@@ -84,7 +85,7 @@
      :description nil,
      :fields nil,
      :inputFields nil,
-     :interfaces nil,
+     :interfaces [],
      :enumValues nil,
      :possibleTypes nil}
     {:kind :INTERFACE,
@@ -122,7 +123,7 @@
        :isDeprecated false,
        :deprecationReason nil}],
      :inputFields nil,
-     :interfaces nil,
+     :interfaces [],
      :enumValues nil,
      :possibleTypes
      [{:kind :OBJECT, :name "droid", :ofType nil}
@@ -179,7 +180,7 @@
      :description "The episodes of the original Star Wars trilogy.",
      :fields nil,
      :inputFields nil,
-     :interfaces nil,
+     :interfaces [],
      :enumValues
      [{:name "NEWHOPE",
        :description nil,
