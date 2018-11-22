@@ -518,7 +518,7 @@
                      :enumValues nil
                      :fields nil
                      :inputFields nil
-                     :interfaces []
+                     :interfaces nil
                      :kind :SCALAR
                      :name "Boolean"
                      :possibleTypes nil}
@@ -526,7 +526,7 @@
                      :enumValues nil
                      :fields nil
                      :inputFields nil
-                     :interfaces []
+                     :interfaces nil
                      :kind :SCALAR
                      :name "Date"
                      :possibleTypes nil}
@@ -534,7 +534,7 @@
                      :enumValues nil
                      :fields nil
                      :inputFields nil
-                     :interfaces []
+                     :interfaces nil
                      :kind :SCALAR
                      :name "Float"
                      :possibleTypes nil}
@@ -542,7 +542,7 @@
                      :enumValues nil
                      :fields nil
                      :inputFields nil
-                     :interfaces []
+                     :interfaces nil
                      :kind :SCALAR
                      :name "ID"
                      :possibleTypes nil}
@@ -550,7 +550,7 @@
                      :enumValues nil
                      :fields nil
                      :inputFields nil
-                     :interfaces []
+                     :interfaces nil
                      :kind :SCALAR
                      :name "Int"
                      :possibleTypes nil}
@@ -721,7 +721,7 @@
                      :enumValues nil
                      :fields nil
                      :inputFields nil
-                     :interfaces []
+                     :interfaces nil
                      :kind :SCALAR
                      :name "String"
                      :possibleTypes nil}
@@ -845,7 +845,7 @@
                                       :name "String"
                                       :ofType nil}}]
                      :inputFields nil
-                     :interfaces []
+                     :interfaces nil
                      :kind :INTERFACE
                      :name "character"
                      :possibleTypes [{:kind :OBJECT
@@ -1056,7 +1056,7 @@
                                    :name "JEDI"}]
                      :fields nil
                      :inputFields nil
-                     :interfaces []
+                     :interfaces nil
                      :kind :ENUM
                      :name "episode"
                      :possibleTypes nil}
@@ -1275,7 +1275,7 @@
                                     :type {:kind :SCALAR
                                            :name "String"
                                            :ofType nil}}]
-                     :interfaces []
+                     :interfaces nil
                      :kind :INPUT_OBJECT
                      :name "nestedInputObject"
                      :possibleTypes nil}
@@ -1300,7 +1300,7 @@
                                     :type {:kind :SCALAR
                                            :name "String"
                                            :ofType nil}}]
-                     :interfaces []
+                     :interfaces nil
                      :kind :INPUT_OBJECT
                      :name "testInputObject"
                      :possibleTypes nil}]}
@@ -1469,18 +1469,3 @@
            (utils/execute schema "{
              __type(name: \"Filter\") { inputFields { name defaultValue } }
            }")))))
-
-;; This is a temporary check related to https://github.com/graphql/graphiql/issues/746
-;; and https://github.com/walmartlabs/lacinia/issues/249
-;; We must ensure that, for an object definition, the interfaces field is an empty list, not nil,
-;; even when the object implements no interfaces.
-
-(deftest interfaces-is-empty-list
-  (let [schema (schema/compile '{:objects
-                                 {:StringHolder
-                                  {:fields
-                                   {:string {:type String}}}}})]
-    (is (= {:data
-            {:__type {:fields [{:name "string"}]
-                      :interfaces []}}}
-           (utils/execute schema "{ __type(name: \"StringHolder\") { fields { name } interfaces { name } } }")))))

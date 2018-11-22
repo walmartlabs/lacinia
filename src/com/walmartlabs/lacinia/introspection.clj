@@ -50,11 +50,13 @@
   (schema-type schema (get schema type-name)))
 
 (defn ^:private resolve-interfaces
-  [context _ value]
-  (let [interfaces (-> value ::type-def :implements sort seq)
-        schema (get context constants/schema-key)]
-    (map #(type-name->schema-type schema %)
-         interfaces)))
+  [context _ object]
+  (let [{:keys [::category ::type-def]} object]
+    (when (= :object category)
+      (let [interfaces (-> type-def :implements sort seq)
+            schema (get context constants/schema-key)]
+        (map #(type-name->schema-type schema %)
+             interfaces)))))
 
 (defn ^:private is-deprecated?
   "The :deprecated key can either be a boolean, or a string which is the deprecation reason."
