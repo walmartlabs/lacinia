@@ -628,7 +628,7 @@
                                       :name "character"
                                       :ofType nil}}]
                      :inputFields nil
-                     :interfaces nil
+                     :interfaces []
                      :kind :OBJECT
                      :name "MutationRoot"
                      :possibleTypes nil}
@@ -713,7 +713,7 @@
                                       :name "galaxy_date"
                                       :ofType nil}}]
                      :inputFields nil
-                     :interfaces nil
+                     :interfaces []
                      :kind :OBJECT
                      :name "QueryRoot"
                      :possibleTypes nil}
@@ -1037,7 +1037,7 @@
                                                :name "Int"
                                                :ofType nil}}}]
                      :inputFields nil
-                     :interfaces nil
+                     :interfaces []
                      :kind :OBJECT
                      :name "echoArgs"
                      :possibleTypes nil}
@@ -1089,7 +1089,7 @@
                                       :name "String"
                                       :ofType nil}}]
                      :inputFields nil
-                     :interfaces nil
+                     :interfaces []
                      :kind :OBJECT
                      :name "force"
                      :possibleTypes nil}
@@ -1104,7 +1104,7 @@
                                       :name "Date"
                                       :ofType nil}}]
                      :inputFields nil
-                     :interfaces nil
+                     :interfaces []
                      :kind :OBJECT
                      :name "galaxy_date"
                      :possibleTypes nil}

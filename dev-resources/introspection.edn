@@ -76,7 +76,7 @@
        :isDeprecated false,
        :deprecationReason nil}],
      :inputFields nil,
-     :interfaces nil,
+     :interfaces [],
      :enumValues nil,
      :possibleTypes nil}
     {:kind :SCALAR,
