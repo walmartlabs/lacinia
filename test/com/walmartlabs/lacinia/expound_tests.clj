@@ -47,3 +47,11 @@
 (deftest sdl-function-map
   (expect ::ps/fn-map {:foo :bar :gnip {:q 'gnop}}
           "fn?" "simple-keyword?"))
+
+;; Really want a good message for this incompatible change in 0.31.0
+
+(deftest parse-and-serialize-must-be-bare-functions
+  (expect ::schema/parse (schema/as-conformer identity)
+          "scalar parse and serialize functions must now be simple functions"
+          "not clojure.spec conformers"
+          "see release notes"))

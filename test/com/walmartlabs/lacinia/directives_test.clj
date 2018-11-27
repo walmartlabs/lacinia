@@ -294,7 +294,7 @@
             ;; Can only deprecate fields and enum values
             :directives [{:directive-type :deprecated}]}}}))
 
-(def ^:private mock-conformer (schema/as-conformer identity))
+(def ^:private mock-conformer identity)
 
 (deftest scalar-directive-unknown-type
   (directive-test

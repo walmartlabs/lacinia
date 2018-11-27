@@ -25,3 +25,4 @@
 
 (defmsg ::schema/graphql-identifier "must be a valid GraphQL identifier: contain only letters, numbers, and underscores")
 
+(defmsg ::schema/not-a-conformer "scalar parse and serialize functions must now be simple functions, not clojure.spec conformers (see release notes)")

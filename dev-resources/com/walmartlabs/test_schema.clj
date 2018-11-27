@@ -1,7 +1,8 @@
 (ns com.walmartlabs.test-schema
-  (:require [com.walmartlabs.lacinia.schema :as schema ]
-            [com.walmartlabs.lacinia.internal-utils :refer [ map-vals]]
-            [clojure.spec.alpha :as s]))
+  (:require [com.walmartlabs.lacinia.schema :as schema]
+            [com.walmartlabs.lacinia.internal-utils :refer [map-vals]]
+            [clojure.spec.alpha :as s])
+  (:import (java.text DateFormat)))
 
 ;; —————————————————————————————————————————————————————————————————————————————
 ;; ## Helpers
@@ -130,7 +131,7 @@
 ;; —————————————————————————————————————————————————————————————————————————————
 ;; ## Schema
 
-(def date-formatter
+(def ^DateFormat date-formatter
   "Used by custom scalar :Date"
   (java.text.SimpleDateFormat. "yyyy-MM-dd"))
 
@@ -142,8 +143,11 @@
 
    :scalars
    {:Date
-    {:parse (s/conformer #(.parse date-formatter %))
-     :serialize (s/conformer (constantly "A long time ago"))}}
+    {:parse #(try
+               (.parse date-formatter ^String %)
+               (catch Throwable _
+                      (schema/coercion-failure "Invalid date format")))
+     :serialize (constantly "A long time ago")}}
 
    :interfaces
    {:character

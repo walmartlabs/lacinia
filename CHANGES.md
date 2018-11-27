@@ -1,13 +1,36 @@
 ## 0.31.0 -- UNRELEASED
 
-Limited support for custom directives.
+This release, regrettably, has some backwards incompatible changes (notice the `0.` at the front
+of the version number).
+The necessary changes to existing applications are expected to be minor and localized.
+ 
+### **Breaking Change**: Schema Definition Language Documents
 
-**Breaking Change**: Previous releases of the Schema Definition Language parser
+Previous releases of the Schema Definition Language parser
 wrapped the entire document with `{` and `}`.
 This is not correct, and such documents are not valid SDL.
 
 This release fixes that, but it means that any existing SDL documents will not
 parse correctly until the outermost curly braces are removed.
+
+### **Breaking Change**: Incompatible changes to scalars
+
+This release revamps how custom scalars are implemented.
+These changes make scalars more flexible, allowing for use cases
+that were previously not possible.
+
+- Scalar the :parse and :serialize callbacks are no longer clojure.spec conformers, but are simple functions
+- The :parse callback may now be passed non-strings, such as numbers or even maps
+- The callbacks should not throw an exception, but should invoke
+  `com.walmartlabs.lacinia.schema/coercion-failure`.
+- Callbacks may also return nil to indicate a coercion failure
+
+Schemas that use custom scalars will not compile until the scalars are
+updated (you'll see a clojure.spec validation exception).
+
+### Other changes
+
+Limited support for custom directives.
 
 This release replaces the dependency on
 [org.flatland/ordered](https://github.com/amalloy/ordered)

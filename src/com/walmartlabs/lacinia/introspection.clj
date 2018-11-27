@@ -233,7 +233,7 @@
   [schema type-map value]
   (let [type-name (:type type-map)
         scalar-def (get schema type-name)
-        serialized (-> scalar-def :serialize (s/conform value))]
+        serialized ((:serialize scalar-def) value)]
     (if (string? serialized)
       (json/write-str serialized)
       (str serialized))))

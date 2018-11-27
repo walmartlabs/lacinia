@@ -8,22 +8,25 @@ Defining custom scalars may allow users to better model their domain.
    Read about :spec:`custom scalars <Scalars>`.
 
 
-To define a custom scalar, you must provide implementations, in your schema, for two transforming operations:
+To define a custom scalar, you must provide implementations, in your schema, for two transforming callback functions:
 
 parse
   parses query arguments and coerces them into their scalar types according to the schema.
 
 serialize
-  serializes a scalar to the type that will be in the result of the query or mutation.
+  serializes a scalar to a value that will be in the result of the query or mutation.
 
 In other words, a scalar is serialized to another type, typically a string, as part of executing a query
 and generating results.
 In some cases, such as field arguments, the reverse may be true: the client will provide the serialized version
 of a value, and the parse operation will convert it back to the appropriate type.
 
-These operations are implemented in terms of a `clojure.spec conformer <http://clojure.github.io/clojure/branch-master/clojure.spec-api.html#clojure.spec/conformer>`_.
+Both a parse function and a serialize function must be defined for each scalar type.
+These callback functions are passed a value and peform necessary coercions and validations.
 
-Dates are a common example of this, as dates are not supported directly in JSON, but must always be encoded as
+Neither callback is ever passed ``nil``.
+
+Dates are a common example of this, as dates are not supported directly in JSON, but are typically encoded as
 some form of string.
 
 Here is an example that defines and uses a custom ``:Date`` scalar type:
@@ -36,18 +39,38 @@ Here is an example that defines and uses a custom ``:Date`` scalar type:
    This is just an simplified example used to illustrate the broad strokes. It is not thread safe, because
    the ``SimpleDateFormat`` class is not thread safe.
 
-The function :api:`schema/as-conformer` is an easy way to wrap a function as a conformer.
+
+Parsing
+-------
+
+The parse callback is provided a value the originates in either the GraphQL query document, or in the
+variables map.
+
+The values passed to the callback may be strings, numbers, or even maps (with keyword keys).
+It is expected that the parse function will do any necessary conversions and validations, or indicate
+an invalid value.
+
+Serializing
+-----------
+
+Serializing is often the same as parsing (in fact, it is not uncommon to use one function for both roles).
+
+The serialize callback is passed whatever value was selected from a field and cooerces it to an appropriate
+value for the response (typically, either a string, or another value that can be encoded into JSON).
 
 Handling Invalid Values
 -----------------------
 
-Especially when parsing an input string into a value, there can be problems, including invalid user input.
+Especially when parsing an input string into a value, there can be problems, especially included
+invalid data sent in the request.
 
-When using ``as-conformer``, any exception thrown by the function will be consumed and converted into ``:clojure.spec/invalid-value``.
-Lacinia will generate a default error message, and an error map will be added to the ``:errors`` key of the result.
+The parse and serialize callback functions should **not** throw an exception; instead, to indicate a parsing or
+serializing problem, they may return nil, or create a coercion failure result by invoking the function :api:`schema/coercion-failure`.
 
-If you want more control, you can use the function :api:`schema/coercion-failure`, which allows you
-to provide a customized message and even additional data for the error map.
+Returning nil results in a generic error message (as in the example above).
+By creating a coercion failure result, a specific error message can be provided, as well as additional data.
+
+In either case, the parse or serialization failure will result in an error being added to the result map.
 
 Scalars and Variables
 ---------------------

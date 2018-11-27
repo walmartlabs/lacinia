@@ -20,6 +20,7 @@
     [com.walmartlabs.lacinia.internal-utils :refer [remove-vals keepv q]]
     [com.walmartlabs.lacinia.parser.common :as common]
     [com.walmartlabs.lacinia.util :refer [inject-descriptions]]
+    [com.walmartlabs.lacinia.schema :as schema]
     [clojure.spec.alpha :as s]
     [clojure.string :as str])
   (:import
@@ -473,8 +474,8 @@
 
 (s/def ::field-fn (s/map-of simple-keyword? (s/or :function fn? :keyword simple-keyword?)))
 (s/def ::fn-map (s/map-of simple-keyword? ::field-fn))
-(s/def ::parse s/spec?)
-(s/def ::serialize s/spec?)
+(s/def ::parse ::schema/parse-or-serialize-fn)
+(s/def ::serialize ::schema/parse-or-serialize-fn)
 (s/def ::scalar-def (s/keys :req-un [::parse ::serialize]
                             :opt-un [::description]))
 (s/def ::description string?)
