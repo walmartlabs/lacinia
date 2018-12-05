@@ -7,7 +7,7 @@
 
 [Lacinia Manual](http://lacinia.readthedocs.io/en/latest/) |
 [Lacinia Tutorial](http://lacinia.readthedocs.io/en/latest/tutorial) |
-[API Documentation](http://walmartlabs.github.io/lacinia/)
+[API Documentation](http://walmartlabs.github.io/apidocs/lacinia/)
 
 This library is a full implementation of
 Facebook's [GraphQL specification](https://facebook.github.io/graphql).

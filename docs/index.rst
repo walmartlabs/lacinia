@@ -56,7 +56,7 @@ responding with JSON, it is also exceptionally useful for allowing backend syste
 
    contributing
 
-   API Documentation <http://walmartlabs.github.io/lacinia/>
+   API Documentation <http://walmartlabs.github.io/apidocs/lacinia/>
    GitHub Project <https://github.com/walmartlabs/lacinia>
 
 
