@@ -281,10 +281,9 @@ def api_link_inner(baseurl, rawtext, text, options):
   return [node], []
 
 
-
 def api_link_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
 
-  return api_link_inner('http://walmartlabs.github.io/lacinia', rawtext, text, options)
+  return api_link_inner('http://walmartlabs.github.io/apidocs/lacinia', rawtext, text, options)
 
 def setup(app):
     app.add_directive('remoteinclude', RemoteInclude)
