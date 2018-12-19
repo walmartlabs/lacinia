@@ -1,7 +1,7 @@
 {:directive-defs
  {:access
   {:locations #{:field-definition}
-   :args {:role {:type (not-null String)}}}}
+   :args {:role {:type (non-null String)}}}}
 
  :queries
  {:ultimate_answer
