@@ -1,3 +1,5 @@
+## 0.32.0 -- UNRELEASED
+
 ## 0.31.0 -- 4 Jan 2019
 
 This release, regrettably, has some backwards incompatible changes (notice the `0.` at the front
@@ -43,6 +45,9 @@ That no longer happens, the nil stays nil.
 
 Added new resolver result modifiers, ``com.walmartlabs.lacinia.resolve/with-extensions``
 and ``with-warning``.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/19?closed=1)
+
 
 ## 0.30.0 -- 1 Oct 2018
 
