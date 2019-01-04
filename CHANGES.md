@@ -1,4 +1,4 @@
-## 0.31.0 -- UNRELEASED
+## 0.31.0 -- 4 Jan 2019
 
 This release, regrettably, has some backwards incompatible changes (notice the `0.` at the front
 of the version number).
