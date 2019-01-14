@@ -21,7 +21,7 @@ This release revamps how custom scalars are implemented.
 These changes make scalars more flexible, allowing for use cases
 that were previously not possible.
 
-- Scalar the :parse and :serialize callbacks are no longer clojure.spec conformers, but are simple functions
+- The :parse and :serialize callbacks for scalars are no longer clojure.spec conformers, but are simple functions
 - The :parse callback may now be passed non-strings, such as numbers or even maps
 - The callbacks should not throw an exception, but should invoke
   `com.walmartlabs.lacinia.schema/coercion-failure`.
