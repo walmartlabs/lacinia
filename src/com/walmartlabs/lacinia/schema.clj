@@ -417,7 +417,10 @@
 ;; functions:
 (s/def ::default-field-resolver ifn?)
 
-(s/def ::compile-options (s/keys :opt-un [::default-field-resolver]))
+(s/def ::promote-nils-to-empty-list? boolean?)
+
+(s/def ::compile-options (s/keys :opt-un [::default-field-resolver
+                                          ::promote-nils-to-empty-list?]))
 
 (defmulti ^:private check-compatible
   "Given two type definitions, dispatches on a vector of the category of the two types.
@@ -794,16 +797,17 @@
   (case (:kind type)
 
     :list
-    (let [next-selector (assemble-selector schema object-type field (:type type))]
+    (let [next-selector (assemble-selector schema object-type field (:type type))
+          allow-nil? (not (get-in schema [::options :promote-nils-to-empty-list?]))]
       (fn select-list [{:keys [resolved-value callback]
                         :as selector-context}]
         (cond
-          (nil? resolved-value)
+          (and allow-nil? (nil? resolved-value))
           (callback (assoc selector-context
                            :resolved-value nil
                            :resolved-type nil))
 
-          (not (sequential-or-set? resolved-value))
+          (and allow-nil? (not (sequential-or-set? resolved-value)))
           (selector-error selector-context
                           (error "Field resolver returned a single value, expected a collection of values."))
 
@@ -1454,7 +1458,8 @@
                                                   %)))]
     (-> {::roots {:query query
                   :mutation mutation
-                  :subscription subscription}}
+                  :subscription subscription}
+         ::options options}
         (xfer-types merged-scalars :scalar)
         (xfer-types (:enums schema) :enum)
         (xfer-types (:unions schema) :union)
@@ -1520,6 +1525,11 @@
 
   : A function that accepts a field name (as a keyword) and converts it into the
     default field resolver; this defaults to [[default-field-resolver]].
+
+  :promote-nils-to-empty-list?
+  : Returns the prior, incorrect behavior, where a list field that resolved to nil
+    would be \"promoted\" to an empty list. This may be necessary when existing clients
+    rely on the incorrect behavior, which was fixed in 0.31.0.
 
   Produces a form ready for use in executing a query."
   ([schema]

@@ -1,5 +1,9 @@
 ## 0.32.0 -- UNRELEASED
 
+Added a schema compile option, `:promote-nils-to-empty-list?`, which converts
+nils resolved from list fields back into empty lists (use only if you
+have existing clients that break when they see those nils).
+
 ## 0.31.0 -- 4 Jan 2019
 
 This release, regrettably, has some backwards incompatible changes (notice the `0.` at the front
