@@ -29,3 +29,32 @@
                     :null_list nil}}}
            (execute schema
                     "{ container { empty_list non_empty_list null_list }}")))))
+
+(deftest non-null-list-field-check
+  (let [schema (compile-schema "lists-schema.edn"
+                               {:query/container
+                                (constantly {:empty_list []
+                                             :non_empty_list ["Peekaboo"]
+                                             :null_list nil})})]
+    (is (= {:data {:container nil}
+            :errors [{:locations [{:column 15
+                                   :line 1}]
+                      :message "Non-nullable field was null."
+                      :path [:container
+                             :non_null_list]}]}
+           (execute schema
+                    "{ container { non_null_list }}")))))
+
+
+(deftest promotion-of-nils-to-empty-lists
+  (let [schema (compile-schema "lists-schema.edn"
+                               {:query/container
+                                (constantly {:empty_list []
+                                             :non_empty_list ["Peekaboo"]
+                                             :null_list nil})}
+                               {:promote-nils-to-empty-list? true})]
+    (is (= {:data {:container {:empty_list []
+                               :non_empty_list ["Peekaboo"]
+                               :null_list []}}}
+           (execute schema
+                    "{ container { empty_list non_empty_list null_list }}")))))
