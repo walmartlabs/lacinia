@@ -257,7 +257,10 @@
         nil
 
         :let [parser (:parse scalar-type)
-              coerced (parser arg-value)]
+              coerced (try
+                        (parser arg-value)
+                        (catch Throwable t
+                          (schema/coercion-failure (to-message t) (ex-data t))))]
 
         ;; The parser callback can return nil if it fails to perform the conversion
         ;; and get a generic message, or return a coercion-failure with more details.

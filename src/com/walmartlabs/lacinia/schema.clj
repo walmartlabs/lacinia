@@ -61,6 +61,8 @@
   "Returns a special record that indicates a failure coercing a scalar value.
   This may be returned from a scalar's :parse or :serialize callback.
 
+  This is deprecated in version 0.32.0; just throw an exception instead.
+
   A coercion failure includes a message key, and may also include additional data.
 
   message
@@ -68,7 +70,8 @@
 
   data
   : An optional map of additional details about the failure."
-  {:added "0.16.0"}
+  {:added "0.16.0"
+   :deprecated "0.32.0"}
   ([message]
    (coercion-failure message nil))
   ([message data]
@@ -654,7 +657,10 @@
                          (nil? resolved-value)
                          (selector selector-context)
 
-                         :let [serialized (serializer resolved-value)]
+                         :let [serialized (try
+                                            (serializer resolved-value)
+                                            (catch Throwable t
+                                              (coercion-failure (to-message t) (ex-data t))))]
 
                          (nil? serialized)
                          (selector-error selector-context
