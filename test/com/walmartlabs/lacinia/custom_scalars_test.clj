@@ -36,8 +36,8 @@
     (is (= {:data {:now {:date "A long time ago"}}}
            (execute default-schema q nil nil)))))
 
-(deftest custom-scalars
-  (testing "custom scalars defined as conformers"
+(deftest custom-scalars-invoking-coercion-failure
+  (testing "custom scalars defined as functions"
     (let [parse-event (fn [x]
                         (if (and
                                   (string? x)
@@ -112,6 +112,88 @@
                   :errors [{:locations [{:column 12
                                          :line 1}]
                             :message "Coercion error serializing value: invalid"
+                            :path [:events :lookup]
+                            :extensions {:type-name :Event
+                                         :value "1"}}]}
+                 (execute schema q2 nil nil))
+              "should return error message"))))))
+
+(deftest custom-scalars-throwing-exceptions
+  (testing "custom scalars defined as functions"
+    (let [parse-event (fn [x]
+                        (if (and
+                              (string? x)
+                              (< (count x) 3))
+                          x
+                          (throw (IllegalArgumentException. "parse exception"))))
+          serialize-event (fn [x]
+                            (case x
+                              "200" "OK"
+                              "500" "ERROR"
+                              (throw (IllegalArgumentException. "serialize exception"))))]
+      (testing "custom scalar's serializing option"
+        (let [schema (schema/compile {:scalars
+                                      {:Event {:parse parse-event
+                                               :serialize serialize-event}}
+
+                                      :objects
+                                      {:galaxy_event
+                                       {:fields {:lookup {:type :Event}}}}
+
+                                      :queries
+                                      {:events {:type :galaxy_event
+                                                :resolve (fn [ctx args v]
+                                                           {:lookup "200"})}}})
+              q "{ events { lookup }}"]
+          (is (= {:data {:events {:lookup "OK"}}} (execute schema q nil nil))
+              "should return conformed value")))
+      (testing "custom scalar's invalid value"
+        (let [schema (schema/compile {:scalars
+                                      {:Event {:parse parse-event
+                                               :serialize serialize-event}
+                                       :EventId {:parse parse-event
+                                                 :serialize str}}
+
+                                      :objects
+                                      {:galaxy_event
+                                       {:fields {:lookup {:type :Event}}}
+                                       :human
+                                       {:fields {:id {:type :EventId}
+                                                 :name {:type 'String}}}}
+
+                                      :queries
+                                      {:events {:type :galaxy_event
+                                                :resolve (fn [ctx args v]
+                                                           ;; type of :lookup is :Event
+                                                           ;; that is a custom scalar with
+                                                           ;; a serialize function that
+                                                           ;; deems anything other than
+                                                           ;; "200" or "500" invalid.
+                                                           ;; So value 1 should cause
+                                                           ;; an error.
+                                                           {:lookup 1})}
+                                       :human {:type '(non-null :human)
+                                               :args {:id {:type :EventId}}
+                                               :resolve (fn [ctx args v]
+                                                          {:id "1000"
+                                                           :name "Luke Skywalker"})}}})
+              q1 "{ human(id: \"1003\") { id, name }}"
+              q2 "{ events { lookup }}"]
+          (is (= {:errors [{:extensions {:argument :id
+                                         :field :human
+                                         :type-name :EventId
+                                         :value "1003"}
+                            :locations [{:column 3
+                                         :line 1}]
+                            :message
+                            "Exception applying arguments to field `human': For argument `id', scalar value is not parsable as type `EventId': parse exception"}]}
+                 (execute schema q1 nil nil))
+              "should return error message")
+
+          (is (= {:data {:events {:lookup nil}}
+                  :errors [{:locations [{:column 12
+                                         :line 1}]
+                            :message "Coercion error serializing value: serialize exception"
                             :path [:events :lookup]
                             :extensions {:type-name :Event
                                          :value "1"}}]}
