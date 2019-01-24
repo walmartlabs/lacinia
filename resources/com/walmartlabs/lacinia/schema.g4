@@ -10,7 +10,7 @@ description
   ;
 
 schemaDef
-  : 'schema' directiveList? '{' operationTypeDef+ '}'
+  : K_SCHEMA directiveList? '{' operationTypeDef+ '}'
   ;
 
 operationTypeDef
@@ -20,15 +20,15 @@ operationTypeDef
   ;
 
 queryOperationDef
-  : 'query' ':' Name
+  : K_QUERY ':' anyName
   ;
 
 mutationOperationDef
-  : 'mutation' ':' Name
+  : K_MUTATION ':' anyName
   ;
 
 subscriptionOperationDef
-  : 'subscription' ':' Name
+  : K_SUBSCRIPTION ':' anyName
   ;
 
 directiveLocationList
@@ -41,17 +41,15 @@ directiveLocation
   ;
 
 executableDirectiveLocation
-  : 'QUERY' | 'MUTATION' | 'SUBSCRIPTION' | 'FIELD' | 'FRAGMENT_DEFINITION' | 'FRAGMENT_SPREAD'
-  | 'INLINE_FRAGMENT'
+  : EXECUTABLE_DIRECTIVE_LOCATION
   ;
 
 typeSystemDirectiveLocation
-  : 'SCHEMA' | 'SCALAR' | 'OBJECT' | 'FIELD_DEFINITION' | 'ARGUMENT_DEFINITION'
-  | 'INTERFACE' | 'UNION' | 'ENUM' | 'ENUM_VALUE' | 'INPUT_OBJECT' | 'INPUT_FIELD_DEFINITION'
+  : TYPE_SYSTEM_DIRECTIVE_LOCATION
   ;
 
 directiveDef
-  : description? 'directive' '@' Name argList? 'on' directiveLocationList
+  : description? K_DIRECTIVE '@' anyName argList? K_ON directiveLocationList
   ;
 
 
@@ -60,7 +58,7 @@ directiveList
   ;
 
 directive
-  : '@' Name directiveArgList?
+  : '@' anyName directiveArgList?
   ;
 
 directiveArgList
@@ -68,11 +66,11 @@ directiveArgList
   ;
 
 directiveArg
-  : Name ':' value
+  : anyName ':' value
   ;
 
 typeDef
-  : description? 'type' Name implementationDef? directiveList? fieldDefs
+  : description? K_TYPE anyName implementationDef? directiveList? fieldDefs
   ;
 
 fieldDefs
@@ -80,31 +78,31 @@ fieldDefs
   ;
 
 implementationDef
-  : 'implements' Name+
+  : K_IMPLEMENTS anyName+
   ;
 
 inputTypeDef
-  : description? 'input' Name directiveList? fieldDefs
+  : description? K_INPUT anyName directiveList? fieldDefs
   ;
 
 interfaceDef
-  : description? 'interface' Name directiveList? fieldDefs
+  : description? K_INTERFACE anyName directiveList? fieldDefs
   ;
 
 scalarDef
-  : description? 'scalar' Name directiveList?
+  : description? K_SCALAR anyName directiveList?
   ;
 
 unionDef
-  : description? 'union' Name directiveList? '=' unionTypes
+  : description? K_UNION anyName directiveList? '=' unionTypes
   ;
 
 unionTypes
-  : (Name '|')* Name
+  : (anyName '|')* anyName
   ;
 
 enumDef
-  : description? 'enum' Name directiveList? enumValueDefs
+  : description? K_ENUM anyName directiveList? enumValueDefs
   ;
 
 enumValueDefs
@@ -112,11 +110,11 @@ enumValueDefs
   ;
 
 enumValueDef
-  : description? Name directiveList?
+  : description? nameTokens directiveList?
   ;
 
 fieldDef
-  : description? Name argList? ':' typeSpec directiveList?
+  : description? anyName argList? ':' typeSpec directiveList?
   ;
 
 argList
@@ -124,7 +122,7 @@ argList
   ;
 
 argument
-  : description? Name ':' typeSpec defaultValue? directiveList?
+  : description? anyName ':' typeSpec defaultValue? directiveList?
   ;
 
 typeSpec
@@ -136,7 +134,7 @@ typeSpec
    references to default scalar types use a Symbol, not a Keyword. */
 
 typeName
-  : Name;
+  : anyName;
 
 listType
   : '[' typeSpec ']'
@@ -150,9 +148,69 @@ defaultValue
   : '=' value
   ;
 
+anyName
+  : nameTokens
+  | K_TRUE
+  | K_FALSE
+  | K_NULL
+  ;
+
+nameTokens
+  : Name
+  | EXECUTABLE_DIRECTIVE_LOCATION
+  | TYPE_SYSTEM_DIRECTIVE_LOCATION
+  | K_TYPE
+  | K_IMPLEMENTS
+  | K_INTERFACE
+  | K_SCHEMA
+  | K_ENUM
+  | K_UNION
+  | K_INPUT
+  | K_DIRECTIVE
+  | K_EXTEND
+  | K_SCALAR
+  | K_ON
+  | K_FRAGMENT
+  | K_QUERY
+  | K_MUTATION
+  | K_SUBSCRIPTION
+  | K_VALUE
+  ;
+
+EXECUTABLE_DIRECTIVE_LOCATION
+  : 'QUERY' | 'MUTATION' | 'SUBSCRIPTION' | 'FIELD' | 'FRAGMENT_DEFINITION' | 'FRAGMENT_SPREAD'
+  | 'INLINE_FRAGMENT'
+  ;
+
+TYPE_SYSTEM_DIRECTIVE_LOCATION
+  : 'SCHEMA' | 'SCALAR' | 'OBJECT' | 'FIELD_DEFINITION' | 'ARGUMENT_DEFINITION'
+  | 'INTERFACE' | 'UNION' | 'ENUM' | 'ENUM_VALUE' | 'INPUT_OBJECT' | 'INPUT_FIELD_DEFINITION'
+  ;
+
+
+K_TYPE         : 'type'         ;
+K_IMPLEMENTS   : 'implements'   ;
+K_INTERFACE    : 'interface'    ;
+K_SCHEMA       : 'schema'       ;
+K_ENUM         : 'enum'         ;
+K_UNION        : 'union'        ;
+K_INPUT        : 'input'        ;
+K_DIRECTIVE    : 'directive'    ;
+K_EXTEND       : 'extend'       ;
+K_SCALAR       : 'scalar'       ;
+K_ON           : 'on'           ;
+K_FRAGMENT     : 'fragment'     ;
+K_QUERY        : 'query'        ;
+K_MUTATION     : 'mutation'     ;
+K_SUBSCRIPTION : 'subscription' ;
+K_VALUE        : 'value'        ;
+K_TRUE         : 'true'         ;
+K_FALSE        : 'false'        ;
+K_NULL         : 'null'         ;
+
 BooleanValue
-    : 'true'
-    | 'false'
+    : K_TRUE
+    | K_FALSE
     ;
 
 Name
@@ -172,7 +230,7 @@ value
     ;
 
 enumValue
-    : Name
+    : nameTokens
     ;
 
 arrayValue
@@ -184,15 +242,11 @@ objectValue
     ;
 
 objectField
-    : Name ':' value
+    : anyName ':' value
     ;
 
 NullValue
-    : Null
-    ;
-
-Null
-    : 'null'
+    : K_NULL
     ;
 
 IntValue

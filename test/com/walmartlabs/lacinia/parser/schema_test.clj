@@ -87,6 +87,14 @@
              {:type 'String}}}}}
          (parse-string "type Ebb { flow: String }"))))
 
+(deftest schema-type-2
+  (is (= {:objects
+          {:Ebb
+           {:fields
+            {:type
+             {:type 'String}}}}}
+         (parse-string "type Ebb { type: String }"))))
+
 (deftest schema-enums
   (is (= {:enums
           {:Target
@@ -106,8 +114,8 @@
 (deftest schema-union
   (is (= {:unions
           {:Matter
-           {:members [:Solid :Liquid :Gas :Plasma]}}}
-         (parse-string "union Matter = Solid | Liquid | Gas | Plasma"))))
+           {:members [:Solid :Liquid :Gas :Plasma :INPUT_OBJECT]}}}
+         (parse-string "union Matter = Solid | Liquid | Gas | Plasma | INPUT_OBJECT"))))
 
 (deftest schema-field-args
   (is (= {:objects
@@ -118,6 +126,14 @@
               :type 'String}}}}}
          (parse-string "type Ebb { flow (enabled: Boolean) : String }"))))
 
+(deftest schema-field-args-2
+  (is (= {:objects
+          {:Ebb
+           {:fields
+            {:flow
+             {:args {:input {:type 'Boolean}}
+              :type 'String}}}}}
+         (parse-string "type Ebb { flow (input: Boolean) : String }"))))
 
 (deftest schema-directives
   (is (= '{:directive-defs
