@@ -94,6 +94,15 @@
              {:type 'String}}}}}
          (parse-string "type Ebb { type: String }"))))
 
+(deftest schema-extend-type
+  (is (= {:objects
+          {:Ebb
+           {:fields
+            {:a {:type 'String}
+             :b {:type 'String}}}}}
+         (parse-string (str "type Ebb { a: String }\n"
+                            "extend type Ebb { b: String }")))))
+
 (deftest schema-enums
   (is (= {:enums
           {:Target
