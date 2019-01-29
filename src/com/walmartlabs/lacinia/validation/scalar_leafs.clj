@@ -15,8 +15,7 @@
 (ns com.walmartlabs.lacinia.validation.scalar-leafs
   {:no-doc true}
   (:require
-    [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.lacinia.internal-utils :refer [q]]))
+    [com.walmartlabs.lacinia.internal-utils :refer [q root-type-name]]))
 
 (defn ^:private validate-selection
   "Recursively checks if all specified fields are scalar or enum types.
@@ -43,7 +42,7 @@
     :else
     [{:message (format "Field %s (of type %s) must have at least one selection."
                        (-> selection :field (q))
-                       (-> selection :field-definition schema/root-type-name q))
+                       (-> selection :field-definition root-type-name q))
       :locations [(:location selection)]}]))
 
 (defn ^:private validate-fragment

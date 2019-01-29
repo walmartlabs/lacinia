@@ -21,10 +21,9 @@
     [com.walmartlabs.lacinia.internal-utils
      :refer [cond-let update? q map-vals filter-vals remove-vals
              with-exception-context throw-exception to-message
-             keepv as-keyword *exception-context*]]
+             keepv as-keyword *exception-context* expand-type root-type-name]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.constants :as constants]
-    [clojure.spec.alpha :as s]
     [com.walmartlabs.lacinia.resolve :as resolve]
     [com.walmartlabs.lacinia.parser.query :as qp]
     [com.walmartlabs.lacinia.vendor.ordered.map :refer [ordered-map]])
@@ -69,9 +68,7 @@
 ;; directives. A directive effector is invoked during the prepare phase to modify
 ;; a node based on the directive arguments.
 (def ^:private builtin-directives
-  (let [if-arg {:if {:type {:kind :non-null
-                            :type {:kind :root
-                                   :type :Boolean}}}}]
+  (let [if-arg {:if (expand-type '(non-null :Boolean))}]
     {:skip {:args if-arg
             :effector (fn [node arguments]
                         (cond-> node
@@ -242,7 +239,7 @@
 
 (defmethod process-literal-argument :scalar
   [schema argument-definition [_ arg-value]]
-  (let [type-name (schema/root-type-name argument-definition)
+  (let [type-name (root-type-name argument-definition)
         scalar-type (get schema type-name)]
     (with-exception-context {:value arg-value
                              :type-name type-name}
@@ -291,7 +288,7 @@
 (defmethod process-literal-argument :enum
   [schema argument-definition [_ arg-value]]
   ;; First, make sure the category is an enum
-  (let [enum-type-name (schema/root-type-name argument-definition)
+  (let [enum-type-name (root-type-name argument-definition)
         type-def (get schema enum-type-name)]
     (with-exception-context {:value arg-value}
       (when-not (= :enum (:category type-def))
@@ -307,7 +304,7 @@
 (defmethod process-literal-argument :object
   [schema argument-definition arg-tuple]
   (let [[_ arg-value] arg-tuple
-        type-name (schema/root-type-name argument-definition)
+        type-name (root-type-name argument-definition)
         schema-type (get schema type-name)
         schema-category (:category schema-type)]
     (cond
@@ -628,7 +625,7 @@
   (when-not (empty? arguments)
     (let [process-arg (fn [arg-name arg-value]
                         (let [arg-def (get argument-definitions arg-name)
-                              arg-type-name (schema/root-type-name arg-def)
+                              arg-type-name (root-type-name arg-def)
                               arg-type (get schema arg-type-name)]
                           (with-exception-context {:argument arg-name}
                             (when (and (= :scalar (:category arg-type))
@@ -995,7 +992,7 @@
         field-definition (if is-typename-metafield?
                            typename-field-definition
                            (get-in type [:fields field]))
-        field-type (schema/root-type-name field-definition)
+        field-type (root-type-name field-definition)
         nested-type (get schema field-type)
         selection (with-exception-context (assoc context :field field)
                     (when (nil? nested-type)
@@ -1095,7 +1092,7 @@
          default-value :default} parsed-var-def
         var-def {:type (construct-var-type-map var-type)}
         ;; Simulate a field definition around the raw type:
-        type-name (schema/root-type-name var-def)
+        type-name (root-type-name var-def)
         schema-type (get schema type-name)]
     (with-exception-context {:var-name var-name
                              :type-name type-name

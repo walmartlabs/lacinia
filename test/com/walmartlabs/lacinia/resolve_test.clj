@@ -72,7 +72,9 @@
     (is (= :human (-> c1 ::graphql/selection :field)))
 
     (is (= {:kind :non-null
+            :root-type :human
             :type {:kind :root
+                   :root-type :human
                    :type :human}}
            (-> c1 ::graphql/selection :field-definition :type)))
 

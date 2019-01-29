@@ -28,7 +28,7 @@
      :refer [map-vals map-kvs filter-vals deep-merge q
              is-internal-type-name? sequential-or-set? as-keyword
              cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag
-             to-message]]
+             expand-type root-type-name to-message]]
     [com.walmartlabs.lacinia.resolve :as resolve :refer [ResolverResult resolve-as combine-results is-resolver-result?]]
     [clojure.string :as str]
     [clojure.set :refer [difference]]
@@ -497,51 +497,6 @@
 
 ;;-------------------------------------------------------------------------------
 ;; ## Types
-
-(defn ^:private expand-type
-  "Compiles a type from the input schema to the format used in the
-  compiled schema."
-  ;; TODO: This nested maps format works, but given the simple modifiers
-  ;; we have, just converting from nested lists to a flattened vector
-  ;; might work just as well. It would also make finding the root type
-  ;; cheap: just use last.
-  [type]
-  (cond
-    (sequential? type)
-    (let [[modifier next-type & anything-else] type
-          kind (get {'list :list
-                     'non-null :non-null} modifier)]
-      (when (or (nil? next-type)
-                (nil? kind)
-                (seq anything-else))
-        (throw (ex-info "Expected (list|non-null <type>)."
-                        {:type type})))
-
-      {:kind kind
-       :type (expand-type next-type)})
-
-    ;; By convention, symbols are used for pre-defined scalar types, and
-    ;; keywords are used for user-defined types, interfaces, unions, enums, etc.
-    (or (keyword? type)
-        (symbol? type))
-    {:kind :root
-     :type (as-keyword type)}
-
-    :else
-    (throw (ex-info "Could not process type."
-                    {:type type}))))
-
-(defn ^:no-doc root-type-name
-  "For a compiled field (or argument) definition, delves down through the :type tag to find
-  the root type name, a keyword."
-  [field-def]
-  ;; In some error scenarios, the query references an unknown field and
-  ;; the field-def is nil. Without this check, this loops endlessly.
-  (when field-def
-    (loop [type-def (:type field-def)]
-      (if (-> type-def :kind (= :root))
-        (:type type-def)
-        (recur (:type type-def))))))
 
 (defn ^:private rewrite-type
   "Rewrites the type tag of a field (or argument) into a nested structure of types.

@@ -18,11 +18,10 @@
     [clojure.edn :as edn]
     [clojure.java.io :as io]
     [com.walmartlabs.lacinia.util :as util]
-    [com.walmartlabs.lacinia.internal-utils :refer [remove-keys is-internal-type-name? cond-let]]
+    [com.walmartlabs.lacinia.internal-utils :refer [remove-keys is-internal-type-name? cond-let expand-type]]
     [com.walmartlabs.lacinia.constants :as constants]
     [clojure.string :as str]
-    [clojure.data.json :as json]
-    [clojure.spec.alpha :as s]))
+    [clojure.data.json :as json]))
 
 (def ^:private category->kind
   {:scalar :SCALAR
@@ -116,9 +115,7 @@
         type-names' (cond-> (set type-names)
                       omit-mutations (disj (:mutation root))
                       omit-subs (disj (:subscription root)))
-        not-null-boolean {:kind :non-null
-                          :type {:kind :root
-                                 :type :Boolean}}]
+        not-null-boolean (expand-type '(non-null :Boolean))]
     (cond-> {:directives [{:name "skip"
                            :description "Skip the selection only when the `if` argument is true."
                            :locations [:INLINE_FRAGMENT :FIELD :FRAGMENT_SPREAD]
