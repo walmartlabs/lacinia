@@ -38,8 +38,8 @@ In the schema, a type can be:
 
 - A keyword corresponding to an object, interface, enum, or union
 - A scalar type (built in, or schema defined)
-- A non-nillable version of any of the above: ``(non-null X)``
-- A list of any of the above: ``(list X)``
+- A non-nillable version of any of the above: ``(non-null X)`` [#non-null]_
+- A list of any of the above: ``(list X)`` [#list]_
 
 The built-in scalar types:
 
@@ -125,3 +125,11 @@ Deprecation
 
 A field may include a ``:deprecation`` key; this identifies that the field
 is :doc:`deprecated <deprecation>`.
+
+
+.. [#non-null] You may use a symbol or keyword for ``non-null``, and may also use
+  ``!`` or ``:!`` as an abbreviation, e.g. ``(! String)``.
+  Keywords make it easier to use the modifier when a schema is expressed
+  inside Clojure code (rather than read from an EDN file), without needing to use quoting.
+
+.. [#list] Likewise, ``list`` may be abbreviated as ``*``.

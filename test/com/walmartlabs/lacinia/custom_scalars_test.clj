@@ -264,8 +264,8 @@
         serialize-date #(.print date-formatter %)
         schema (schema/compile {:scalars {:Date {:parse parse-date
                                                  :serialize serialize-date}}
-                                :queries {:sundays {:type '(list (non-null :Date))
-                                                    :args {:between {:type '(non-null (list (non-null :Date)))}}
+                                :queries {:sundays {:type '(:* (:! :Date))
+                                                    :args {:between {:type '(! (* (! Date)))}}
                                                     :resolve (fn [ctx args v]
                                                                (let [[start end] (:between args)]
                                                                  (sundays start end)))}}})]

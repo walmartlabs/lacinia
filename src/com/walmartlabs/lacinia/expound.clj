@@ -21,7 +21,7 @@
 
 (defmsg ::schema/resolver-type "implement the com.walmartlabs.lacinia.resolve/FieldResolver protocol")
 
-(defmsg ::schema/wrapped-type-modifier "type wrappers should be either (list type) or (non-null type)")
+(defmsg ::schema/wrapped-type-modifier "type wrappers should be (modifier type) where modifier is one of list/:list/*/:* or non-null/:non-null/!/:!")
 
 (defmsg ::schema/graphql-identifier "must be a valid GraphQL identifier: contain only letters, numbers, and underscores")
 

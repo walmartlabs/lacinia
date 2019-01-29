@@ -38,7 +38,7 @@
 
 (deftest correctly-reports-incorrect-type-modifier
   (expect ::schema/field {:type '(something :String)}
-          "type wrappers should be either (list type) or (non-null type)"))
+          "type wrappers should be (modifier type)"))
 
 (deftest can-report-enum-value
   (expect ::schema/enum-value 123 "string?" "simple-symbol?" "simple-keyword?")

@@ -275,7 +275,14 @@
 (s/def ::wrapped-type (s/cat :modifier ::wrapped-type-modifier
                              :type ::type))
 ;; Use of a function here, rather than just the set, is due to https://github.com/bhb/expound/issues/101
-(s/def ::wrapped-type-modifier #(contains? #{'list 'non-null} %))
+(s/def ::wrapped-type-modifier #(contains? #{'list
+                                             :list
+                                             '*
+                                             :*
+                                             'non-null
+                                             :non-null
+                                             '!
+                                             :!} %))
 (s/def ::arg (s/keys :req-un [::type]
                      :opt-un [::description
                               ::directives
@@ -501,20 +508,22 @@
 (defn ^:private expand-type
   "Compiles a type from the input schema to the format used in the
   compiled schema."
-  ;; TODO: This nested maps format works, but given the simple modifiers
-  ;; we have, just converting from nested lists to a flattened vector
-  ;; might work just as well. It would also make finding the root type
-  ;; cheap: just use last.
   [type]
   (cond
     (sequential? type)
     (let [[modifier next-type & anything-else] type
           kind (get {'list :list
-                     'non-null :non-null} modifier)]
+                     :list :list
+                     '* :list
+                     :* :list
+                     'non-null :non-null
+                     :non-null :non-null
+                     '! :non-null
+                     :! :non-null} modifier)]
       (when (or (nil? next-type)
                 (nil? kind)
                 (seq anything-else))
-        (throw (ex-info "Expected (list|non-null <type>)."
+        (throw (ex-info "Expected (list|non-null <type>). Use a symbol or keyword. Alternately, use * for list, or ! for non-null."
                         {:type type})))
 
       {:kind kind
