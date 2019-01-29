@@ -18,7 +18,7 @@
             [com.walmartlabs.lacinia :as lacinia]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.test-schema :refer [test-schema]]
-            [com.walmartlabs.test-utils :refer [is-thrown simplify]]))
+            [com.walmartlabs.test-utils :refer [simplify expect-exception]]))
 
 (def default-schema
   (schema/compile test-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))
@@ -611,8 +611,13 @@
           {:fields
            {:id {:type '(non-null String)
                  :default-value "0001"}}}}}]
-    (is-thrown [e (schema/compile schema-non-nullable-with-defaults)]
-      (is (= (.getMessage e) "Field `id' of type `person' is both non-nullable and has a default value.")))))
+    (expect-exception
+      "Field `person/id' is both non-nullable and has a default value."
+      {:field-name :person/id
+       :type {:kind :non-null
+              :type {:kind :root
+                     :type :String}}}
+      (schema/compile schema-non-nullable-with-defaults))))
 
 (deftest allow-single-value-on-list-type-input
 

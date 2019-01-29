@@ -19,9 +19,8 @@
     [com.walmartlabs.lacinia :refer [execute]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.test-reporting :refer [reporting]]
-    [com.walmartlabs.test-utils :as utils])
+    [com.walmartlabs.test-utils :as utils :refer [expect-exception]])
   (:import
-    (clojure.lang ExceptionInfo)
     (java.util Date)))
 
 (def compiled-schema (schema/compile test-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))
@@ -65,14 +64,12 @@
            first-error))))
 
 (deftest enum-values-must-be-unique
-  (let [e (is (thrown? ExceptionInfo
-                       (schema/compile {:enums {:invalid {:values [:yes 'yes "yes"]}}})))]
-    (is (= (.getMessage e)
-           "Values defined for enum `invalid' must be unique."))
-    (is (= {:enum {:values [:yes 'yes "yes"]
-                   :category :enum
-                   :type-name :invalid}}
-           (ex-data e)))))
+  (expect-exception
+    "Values defined for enum `invalid' must be unique."
+    {:enum {:values [:yes 'yes "yes"]
+            :category :enum
+            :type-name :invalid}}
+    (schema/compile {:enums {:invalid {:values [:yes 'yes "yes"]}}})))
 
 (deftest converts-var-value-from-string-to-enum
   (is (= {:data {:hero {:name "Luke Skywalker"}}}
@@ -81,23 +78,22 @@
 
 (deftest resolver-must-return-defined-enum
   (let [schema (utils/compile-schema "bad-resolver-enum.edn"
-                                     {:query/current-status (constantly :ok)})
-        e (is (thrown-with-msg? ExceptionInfo
-                                #"Field resolver returned an undefined enum value"
-                                (utils/execute schema "{ current_status }")))]
-    (is (= {:enum-values #{:bad
-                           :good}
-            :resolved-value :ok}
-           (ex-data e)))))
+                                     {:query/current-status (constantly :ok)})]
+    (expect-exception
+      "Field resolver returned an undefined enum value."
+      {:enum-values #{:bad
+                      :good}
+       :resolved-value :ok}
+      (utils/execute schema "{ current_status }"))))
 
 (deftest enum-resolver-must-return-named-value
   (let [bad-value (Date.)
         schema (utils/compile-schema "bad-resolver-enum.edn"
-                                     {:query/current-status (constantly bad-value)})
-        e (is (thrown-with-msg? ExceptionInfo #"Can't convert value to keyword"
-                                (utils/execute schema "{ current_status }")))]
-    (is (= {:value bad-value}
-           (ex-data e)))))
+                                     {:query/current-status (constantly bad-value)})]
+    (expect-exception
+      "Can't convert value to keyword."
+      {:value bad-value}
+      (utils/execute schema "{ current_status }"))))
 
 (deftest will-convert-to-keyword
   (let [schema (utils/compile-schema "bad-resolver-enum.edn"

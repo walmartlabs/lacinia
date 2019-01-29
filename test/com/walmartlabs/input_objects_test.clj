@@ -15,7 +15,8 @@
 (ns com.walmartlabs.input-objects-test
   (:require
     [clojure.test :refer [deftest is]]
-    [com.walmartlabs.test-utils :refer [compile-schema execute]]))
+    [com.walmartlabs.lacinia.schema :as schema]
+    [com.walmartlabs.test-utils :refer [compile-schema execute expect-exception]]))
 
 (deftest null-checks-within-nullable-field
   (let [schema (compile-schema "nested-non-nullable-fields-schema.edn"
@@ -105,3 +106,32 @@
                     {:f {:term "lego"
                          :max_count 5}}
                     nil)))))
+
+(deftest field-unknown-type
+  (expect-exception
+    "Field `Insect/legs' references unknown type `Six'."
+    {:field-name :Insect/legs
+     :schema-types {:input-object [:Insect]
+                    :scalar [:Boolean
+                             :Float
+                             :ID
+                             :Int
+                             :String]}}
+    (schema/compile {:input-objects
+                     {:Insect
+                      {:fields
+                       {:legs {:type :Six}}}}})))
+
+(deftest invalid-field-type
+  (expect-exception
+    "Field `Insect/legs' must be a scalar type, an enum, or an input-object."
+    {:field-name :Insect/legs
+     :field-type :Six}
+    (schema/compile {:input-objects
+                     {:Insect
+                      {:fields
+                       {:legs {:type :Six}}}}
+                     :objects
+                     {:Six
+                      {:fields
+                       {:count {:type :Int}}}}})))

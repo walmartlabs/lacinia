@@ -13,10 +13,10 @@
 ; limitations under the License.
 
 (ns com.walmartlabs.lacinia.interfaces-test
-  (:require [clojure.test :as test :refer [deftest is testing]]
+  (:require [clojure.test :refer [deftest is testing]]
             [com.walmartlabs.lacinia :refer [execute]]
             [com.walmartlabs.lacinia.schema :as schema]
-            [com.walmartlabs.test-utils :refer [is-thrown]]))
+            [com.walmartlabs.test-utils :refer [expect-exception]]))
 
 (def starship-data
   (->> [{:id "001"
@@ -120,8 +120,11 @@
                                                  ;; :length field is missing argument :unit
                                                  :length {:type 'Float}
                                                  :class {:type 'String}}}))]
-      (is-thrown [e (schema/compile invalid-schema {:default-field-resolver schema/hyphenating-default-field-resolver})]
-                 (is (= (.getMessage e) "Missing interface field argument in object definition.")))))
+      (expect-exception
+        "Missing interface field argument in object definition."
+        {:field-name :speeder/length
+         :interface-argument :vehicle/length.unit}
+        (schema/compile invalid-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))))
 
   (testing "field argument is not required by the interface and is not present in the object"
     (let [invalid-schema (-> test-schema
@@ -133,8 +136,11 @@
                                                  ;; :length field is missing argument :unit
                                                  :length {:type 'Float}
                                                  :class {:type 'String}}}))]
-      (is-thrown [e (schema/compile invalid-schema {:default-field-resolver schema/hyphenating-default-field-resolver})]
-                 (is (= (.getMessage e) "Missing interface field argument in object definition.")))))
+      (expect-exception
+        "Missing interface field argument in object definition."
+        {:field-name :speeder/length
+         :interface-argument :vehicle/length.unit}
+        (schema/compile invalid-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))))
 
   (testing "field argument in the interface has a different type to field argument in the object"
     (let [invalid-schema (-> test-schema
@@ -146,8 +152,11 @@
                                                           ;; invalid type of :unit arg
                                                           :args {:unit {:type 'String}}}
                                                  :class {:type 'String}}}))]
-      (is-thrown [e (schema/compile invalid-schema {:default-field-resolver schema/hyphenating-default-field-resolver})]
-                 (is (= (.getMessage e) "Object field's argument is not compatible with extended interface's argument type."))))
+      (expect-exception
+        "Object field's argument is not compatible with extended interface's argument type."
+        {:argument-name :speeder/length.unit
+         :interface-name :vehicle}
+        (schema/compile invalid-schema {:default-field-resolver schema/hyphenating-default-field-resolver})))
 
     (let [invalid-schema (-> test-schema
                              (assoc-in [:interfaces :vehicle :fields :length :args :unit :type]
@@ -160,8 +169,11 @@
                                                           ;; invalid type of :unit arg (it's nullable)
                                                           :args {:unit {:type :unit}}}
                                                  :class {:type 'String}}}))]
-      (is-thrown [e (schema/compile invalid-schema {:default-field-resolver schema/hyphenating-default-field-resolver})]
-                 (is (= (.getMessage e) "Object field's argument is not compatible with extended interface's argument type.")))))
+      (expect-exception
+        "Object field's argument is not compatible with extended interface's argument type."
+        {:argument-name :speeder/length.unit
+         :interface-name :vehicle}
+        (schema/compile invalid-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))))
 
   (testing "object includes additional (optional) field arguments that are not defined in the interface field"
     (let [schema (-> test-schema
@@ -174,5 +186,8 @@
     (let [schema (-> test-schema
                      (update-in [:objects :starship :fields :length :args]
                                 #(assoc % :precision {:type '(non-null Int)})))]
-      (is-thrown [e (schema/compile schema {:default-field-resolver schema/hyphenating-default-field-resolver})]
-                 (is (= (.getMessage e) "Additional arguments on an object field that are not defined in extended interface cannot be required."))))))
+      (expect-exception
+        "Additional arguments on an object field that are not defined in extended interface cannot be required."
+        {:argument-name :starship/length.precision
+         :interface-name :vehicle}
+        (schema/compile schema {:default-field-resolver schema/hyphenating-default-field-resolver})))))

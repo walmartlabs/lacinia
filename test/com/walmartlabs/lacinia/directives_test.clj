@@ -15,7 +15,7 @@
 (ns com.walmartlabs.lacinia.directives-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [clojure.spec.alpha :as s]
+    [com.walmartlabs.test-utils :refer [expect-exception]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.test-schema :refer [test-schema]]
     [com.walmartlabs.lacinia :refer [execute]]))
@@ -221,17 +221,21 @@
 
 (defmacro directive-test
   [expected-msg expected-ex-data schema]
-  `(when-let [e# (is (~'thrown? Throwable (schema/compile ~schema)))]
-     (is (= ~expected-msg (.getMessage e#)))
-     (is (= ~expected-ex-data
-            (merge-exception-data e#)))))
-
+  `(expect-exception ~expected-msg ~expected-ex-data (schema/compile ~schema)))
 
 (deftest unknown-argument-type-for-directive
   (directive-test
     "Unknown argument type."
     {:arg-name :date
-     :arg-type-name :Date}
+     :arg-type-name :Date
+     :schema-types {:object [:MutationRoot
+                             :QueryRoot
+                             :SubscriptionRoot]
+                    :scalar [:Boolean
+                             :Float
+                             :ID
+                             :Int
+                             :String]}}
     {:directive-defs
      {:Ebb {:locations #{:enum}
             :args {:date {:type :Date}}}}}))
@@ -240,7 +244,16 @@
   (directive-test
     "Directive argument is not a scalar type."
     {:arg-name :user
-     :arg-type-name :User}
+     :arg-type-name :User
+     :schema-types {:object [:MutationRoot
+                             :QueryRoot
+                             :SubscriptionRoot
+                             :User]
+                    :scalar [:Boolean
+                             :Float
+                             :ID
+                             :Int
+                             :String]}}
     {:directive-defs {:Ebb {:locations #{:enum}
                             :args {:user {:type :User}}}}
      :objects
@@ -345,10 +358,9 @@
 
 (deftest argument-directive-unknown-type
   (directive-test
-    "Argument `ebb' of field `User/id' references unknown directive @Unknown."
-    {:directive-type :Unknown
-     :arg-name :ebb
-     :field-name :User/id}
+    "Argument `User/id.ebb' references unknown directive @Unknown."
+    {:arg-name :User/id.ebb
+     :directive-type :Unknown}
     {:objects
      {:User
       {:fields
@@ -358,11 +370,10 @@
 
 (deftest argument-directive-inapplicable
   (directive-test
-    "Directive @Ebb on argument `format' of field `Flow/id' is not applicable."
+    "Directive @Ebb on argument `Flow/id.format' is not applicable."
     {:allowed-locations #{:enum}
-     :directive-type :Ebb
-     :arg-name :format
-     :field-name :Flow/id}
+     :arg-name :Flow/id.format
+     :directive-type :Ebb}
     {:directive-defs
      {:Ebb {:locations #{:enum}}}
      :objects
@@ -444,8 +455,3 @@
             :red {:enum-value :red}}
            (get-in schema [:Color :values-detail])))))
 
-
-(comment
-  (require '[clojure.test :refer [run-tests]])
-  (run-tests)
-  )

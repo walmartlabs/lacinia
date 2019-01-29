@@ -16,6 +16,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [com.walmartlabs.lacinia :refer [execute]]
             [com.walmartlabs.lacinia.schema :as schema]
+            [com.walmartlabs.test-utils :refer [expect-exception]]
             [com.walmartlabs.test-schema :refer [test-schema]]))
 
 ;;-------------------------------------------------------------------------------
@@ -26,12 +27,12 @@
 (deftest scalar-leafs-validations
   (testing "All leafs are scalar types or enums"
     (let [q "{ hero }"]
-      (is (= {:errors [{:message "Field `hero' (of type `character') must have at least one selection.",
+      (is (= {:errors [{:message "Field `__Queries/hero' must have at least one selection.",
                         :locations [{:line 1
                                      :column 3}]}]}
              (execute compiled-schema q {} nil))))
     (let [q "{ hero { name friends } }"]
-      (is (= {:errors [{:message "Field `friends' (of type `character') must have at least one selection.",
+      (is (= {:errors [{:message "Field `character/friends' must have at least one selection.",
                         :locations [{:line 1
                                      :column 15}]}]}
              (execute compiled-schema q {} nil))))
@@ -45,7 +46,7 @@
                }
              }
             }"]
-      (is (= {:errors [{:message "Field `friends' (of type `character') must have at least one selection.",
+      (is (= {:errors [{:message "Field `character/friends' must have at least one selection.",
                         :locations [{:column 18
                                      :line 7}]}]}
              (execute compiled-schema q {} nil))))
@@ -61,7 +62,7 @@
                }
              }
             }"]
-      (is (= {:errors [{:message "Field `friends' (of type `character') must have at least one selection."
+      (is (= {:errors [{:message "Field `character/friends' must have at least one selection."
                         :locations [{:column 28
                                      :line 8}]}]}
              (execute compiled-schema q {} nil))))
@@ -79,13 +80,13 @@
             }"]
       (is (= {:errors [{:locations [{:column 16
                                      :line 4}]
-                        :message "Field `forceSide' (of type `force') must have at least one selection."}
+                        :message "Field `character/forceSide' must have at least one selection."}
                        {:locations [{:column 18
                                      :line 6}]
-                        :message "Field `friends' (of type `character') must have at least one selection."}
+                        :message "Field `character/friends' must have at least one selection."}
                        {:locations [{:column 18
                                      :line 9}]
-                        :message "Field `forceSide' (of type `force') must have at least one selection."}]}
+                        :message "Field `character/forceSide' must have at least one selection."}]}
              (execute compiled-schema q {} nil))))
     (let [q "query NestedQuery {
              hero {
@@ -103,13 +104,13 @@
             }"]
       (is (= {:errors [{:locations [{:column 16
                                      :line 4}]
-                        :message "Field `forceSide' (of type `force') must have at least one selection."}
+                        :message "Field `character/forceSide' must have at least one selection."}
                        {:locations [{:column 18
                                      :line 6}]
-                        :message "Field `friends' (of type `character') must have at least one selection."}
+                        :message "Field `character/friends' must have at least one selection."}
                        {:locations [{:column 30
                                      :line 10}]
-                        :message "Field `members' (of type `character') must have at least one selection."}]}
+                        :message "Field `force/members' must have at least one selection."}]}
              (execute compiled-schema q {} nil))))
     (let [q "query NestedQuery {
              hero {
@@ -127,10 +128,10 @@
             }"]
       (is (= {:errors [{:locations [{:column 16
                                      :line 4}]
-                        :message "Field `forceSide' (of type `force') must have at least one selection."}
+                        :message "Field `character/forceSide' must have at least one selection."}
                        {:locations [{:column 18
                                      :line 6}]
-                        :message "Field `friends' (of type `character') must have at least one selection."}]}
+                        :message "Field `character/friends' must have at least one selection."}]}
              (execute compiled-schema q {} nil))))
     (let [q "{ hero { name { id } } }"]
       (is (= {:errors [{:extensions {:field :id}
@@ -393,18 +394,16 @@
              (execute compiled-schema q nil nil))))))
 
 (deftest invalid-type-for-query
-  (let [e (is (thrown? Throwable
-                       (schema/compile {:queries {:unknown_type {:type :not_defined
-                                                                 :resolve identity}}})))
-        data (ex-data e)]
-    (is (= "Field `__Queries/unknown_type' references unknown type `not_defined'." (.getMessage e)))
-    (is (= {:field-name :__Queries/unknown_type
-            :schema-types {:object [:MutationRoot
-                                    :QueryRoot
-                                    :SubscriptionRoot]
-                           :scalar [:Boolean
-                                    :Float
-                                    :ID
-                                    :Int
-                                    :String]}}
-           data))))
+  (expect-exception
+    "Field `__Queries/unknown_type' references unknown type `not_defined'."
+    {:field-name :__Queries/unknown_type
+     :schema-types {:object [:MutationRoot
+                             :QueryRoot
+                             :SubscriptionRoot]
+                    :scalar [:Boolean
+                             :Float
+                             :ID
+                             :Int
+                             :String]}}
+    (schema/compile {:queries {:unknown_type {:type :not_defined
+                                              :resolve identity}}})))

@@ -21,7 +21,7 @@
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.executor :as executor]
     [com.walmartlabs.lacinia.util :as util]
-    [com.walmartlabs.test-utils :refer [is-thrown execute]]
+    [com.walmartlabs.test-utils :refer [is-thrown expect-exception execute]]
     [clojure.string :as str]
     [clojure.pprint :as pprint]))
 
@@ -85,17 +85,40 @@
            :resolve :schema-generated-resolver}]))})
 
 (deftest invalid-schemas
-  []
-  (is-thrown [e (schema/compile schema-object-references-unknown-interface)]
-             (let [d (ex-data e)]
-               ;; I like to check individual properties one at a time
-               ;; since the resulting failure is easier to understand.
-               (is (= (.getMessage e) "Object `dino' extends interface `pebbles', which does not exist."))
-               (is (= :dino (-> d :object :type-name)))
-               (is (= [:fred :barney :bam_bam :pebbles] (-> d :object :implements)))))
+  (expect-exception
+    "Object `dino' extends interface `pebbles', which does not exist."
+    {:object {:category :object
+              :fields {}
+              :implements [:fred
+                           :barney
+                           :bam_bam
+                           :pebbles]
+              :type-name :dino}
+     :schema-types {:interface [:barney
+                                :fred]
+                    :object [:dino]
+                    :scalar [:Boolean
+                             :Float
+                             :ID
+                             :Int
+                             :String]}}
+    (schema/compile schema-object-references-unknown-interface))
 
-  (is-thrown [e (schema/compile schema-references-unknown-type)]
-    (is (= (.getMessage e) "Field `dino/dinosaur' references unknown type `raptor'.")))
+  (expect-exception
+    "Field `dino/dinosaur' references unknown type `raptor'."
+    {:field-name :dino/dinosaur
+     :schema-types {:interface [:barney
+                                :fred]
+                    :object [:MutationRoot
+                             :QueryRoot
+                             :SubscriptionRoot
+                             :dino]
+                    :scalar [:Boolean
+                             :Float
+                             :ID
+                             :Int
+                             :String]}}
+    (schema/compile schema-references-unknown-type))
 
   (is (schema/compile
         (util/attach-resolvers

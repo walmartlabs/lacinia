@@ -16,7 +16,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.test-schema :refer [test-schema]]
-            [com.walmartlabs.test-utils :refer [is-thrown execute]]
+            [com.walmartlabs.test-utils :refer [execute]]
             [clojure.java.io :as io]
             [clojure.edn :as edn]
             [com.walmartlabs.lacinia.util :as util]

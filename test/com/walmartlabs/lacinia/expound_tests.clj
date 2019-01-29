@@ -33,7 +33,7 @@
 
 (deftest uses-messages
   (expect ::schema/resolve nil
-          "ifn?"
+          "fn?"
           "implement the com.walmartlabs.lacinia.resolve/FieldResolver protocol"))
 
 (deftest correctly-reports-incorrect-type-modifier
