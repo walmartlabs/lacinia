@@ -50,17 +50,12 @@
   [v]
   (get (meta v) :extension false))
 
-(defn merge-extension
-  [a b]
-  (merge-with merge-extension a b))
-
 (defn ^:private assoc-check
   [m content k v]
   (cond (and (not (contains? m k))
              (is-extension? v))
         (let [locations (keepv meta [(get m k) v])]
-          (throw (ex-info (format "Cannot extend type %s %s because it does not exist in the existing schema"
-                                  content
+          (throw (ex-info (format "Cannot extend type %s because it does not exist in the existing schema."
                                   (q k))
                           (cond-> {:key k}
                                   (seq locations) (assoc :locations locations)))))
@@ -69,7 +64,15 @@
         (assoc m k v)
 
         (is-extension? v)
-        (update m k (fn [org] (merge-extension org v)))
+        (update m k (fn [org]
+                      (doseq [property (keys (get org :fields {}))]
+                        (when (contains? (get v :fields {}) property)
+                          (let [locations (keepv meta [(get m k) v])]
+                            (throw (ex-info (format "Field %s already defined in the existing schema. It cannot also be defined in this type extension."
+                                                    (q (str (name k) "/" (name property))))
+                                            (cond-> {:key k}
+                                                    (seq locations) (assoc :locations locations)))))))
+                      (merge-with merge org v)))
 
         (contains? m k)
         (let [locations (keepv meta [(get m k) v])]

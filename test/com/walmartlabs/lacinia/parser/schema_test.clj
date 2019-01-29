@@ -110,8 +110,12 @@
              :b {:type 'String}}}}}
          (parse-string "extend type Ebb { b: String } \n type Ebb { a: String }"))))
 
+(deftest schema-extend-type-existing-field-fails
+  (is (thrown-with-msg? Throwable #"Field `Ebb/a' already defined in the existing schema. It cannot also be defined in this type extension."
+                        (parse-string "type Ebb { a: String } \n extend type Ebb { a: String } \n "))))
+
 (deftest schema-extend-missing-type-fails
-  (is (thrown-with-msg? Throwable #"Cannot extend type objects `Ebb' because it does not exist in the existing schema"
+  (is (thrown-with-msg? Throwable #"Cannot extend type `Ebb' because it does not exist in the existing schema."
                         (parse-string (str "extend type Ebb { b: String }")))))
 
 (deftest schema-enums
