@@ -100,8 +100,7 @@
            {:fields
             {:a {:type 'String}
              :b {:type 'String}}}}}
-         (parse-string (str "type Ebb { a: String }\n"
-                            "extend type Ebb { b: String }")))))
+         (parse-string "type Ebb { a: String } \n extend type Ebb { b: String }"))))
 
 (deftest schema-extend-type-reverse-order
   (is (= {:objects
@@ -110,6 +109,10 @@
             {:a {:type 'String}
              :b {:type 'String}}}}}
          (parse-string "extend type Ebb { b: String } \n type Ebb { a: String }"))))
+
+(deftest schema-extend-missing-type-fails
+  (is (thrown-with-msg? Throwable #"Cannot extend type objects `Ebb' because it does not exist in the existing schema"
+                        (parse-string (str "extend type Ebb { b: String }")))))
 
 (deftest schema-enums
   (is (= {:enums

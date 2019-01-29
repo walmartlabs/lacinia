@@ -48,7 +48,7 @@
 
 (defn is-extension?
   [v]
-  (and (map? v) (get (meta v) :extension false)))
+  (get (meta v) :extension false))
 
 (defn merge-extension
   [a b]
@@ -56,10 +56,19 @@
 
 (defn ^:private assoc-check
   [m content k v]
-  (cond (not (contains? m k))
+  (cond (and (not (contains? m k))
+             (is-extension? v))
+        (let [locations (keepv meta [(get m k) v])]
+          (throw (ex-info (format "Cannot extend type %s %s because it does not exist in the existing schema"
+                                  content
+                                  (q k))
+                          (cond-> {:key k}
+                                  (seq locations) (assoc :locations locations)))))
+
+        (not (contains? m k))
         (assoc m k v)
 
-        (or (is-extension? v) (is-extension? (get m k)))
+        (is-extension? v)
         (update m k (fn [org] (merge-extension org v)))
 
         (contains? m k)
@@ -213,13 +222,14 @@
 (defmethod xform :typeExtDef
   [prod]
   (let [{:keys [anyName implementationDef fieldDefs description directiveList]} (tag prod)]
-    [[:objects (xform anyName)]
-     (-> {:fields (xform fieldDefs)}
-         (common/copy-meta anyName)
-         (apply-description description)
-         (apply-directives directiveList)
-         (cond-> implementationDef (assoc :implements (xform implementationDef)))
-         (with-meta {:extension true}))]))
+    (with-meta [[:objects (xform anyName)]
+                (-> {:fields (xform fieldDefs)}
+                    (common/copy-meta anyName)
+                    (common/add-meta {:extension true})
+                    (apply-description description)
+                    (apply-directives directiveList)
+                    (cond-> implementationDef (assoc :implements (xform implementationDef))))]
+               {:extension true})))
 
 (defmethod xform :directiveDef
   [prod]
@@ -440,6 +450,7 @@
   (let [schema (->> antlr-tree
                     rest
                     (map xform)
+                    (sort-by (fn [x] (if (is-extension? x) 1 0)))
                     (reduce (fn [schema [path value]]
                               (let [path' (butlast path)
                                     k (last path)]
