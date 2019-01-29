@@ -56,18 +56,19 @@
 
 (defn ^:private assoc-check
   [m content k v]
-  (when (and (contains? m k) (not (is-extension? v)))
+  (cond (not (contains? m k))
+        (assoc m k v)
 
-    (let [locations (keepv meta [(get m k)
-                                 v])]
-      (throw (ex-info (format "Conflicting %s: %s."
-                              content
-                              (q k))
-                      (cond-> {:key k}
-                        (seq locations) (assoc :locations locations))))))
-  (if (is-extension? v)
-    (update m k (fn [org] (merge-extension org v)))
-    (assoc m k v)))
+        (or (is-extension? v) (is-extension? (get m k)))
+        (update m k (fn [org] (merge-extension org v)))
+
+        (contains? m k)
+        (let [locations (keepv meta [(get m k) v])]
+          (throw (ex-info (format "Conflicting %s: %s."
+                                  content
+                                  (q k))
+                          (cond-> {:key k}
+                                  (seq locations) (assoc :locations locations)))))))
 
 (defn ^:private checked-map
   "Given a seq of key/value tuples, assembles a map, checking that keys do not conflict

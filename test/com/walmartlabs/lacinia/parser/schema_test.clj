@@ -103,6 +103,14 @@
          (parse-string (str "type Ebb { a: String }\n"
                             "extend type Ebb { b: String }")))))
 
+(deftest schema-extend-type-reverse-order
+  (is (= {:objects
+          {:Ebb
+           {:fields
+            {:a {:type 'String}
+             :b {:type 'String}}}}}
+         (parse-string "extend type Ebb { b: String } \n type Ebb { a: String }"))))
+
 (deftest schema-enums
   (is (= {:enums
           {:Target
