@@ -46,9 +46,18 @@
           {}
           (rest prod)))
 
+(defn is-extension?
+  [v]
+  (and (map? v) (get (meta v) :extension false)))
+
+(defn merge-extension
+  [a b]
+  (merge-with merge-extension a b))
+
 (defn ^:private assoc-check
   [m content k v]
-  (when (contains? m k)
+  (when (and (contains? m k) (not (is-extension? v)))
+
     (let [locations (keepv meta [(get m k)
                                  v])]
       (throw (ex-info (format "Conflicting %s: %s."
@@ -56,7 +65,9 @@
                               (q k))
                       (cond-> {:key k}
                         (seq locations) (assoc :locations locations))))))
-  (assoc m k v))
+  (if (is-extension? v)
+    (update m k (fn [org] (merge-extension org v)))
+    (assoc m k v)))
 
 (defn ^:private checked-map
   "Given a seq of key/value tuples, assembles a map, checking that keys do not conflict
@@ -197,6 +208,17 @@
          (apply-description description)
          (apply-directives directiveList)
          (cond-> implementationDef (assoc :implements (xform implementationDef))))]))
+
+(defmethod xform :typeExtDef
+  [prod]
+  (let [{:keys [anyName implementationDef fieldDefs description directiveList]} (tag prod)]
+    [[:objects (xform anyName)]
+     (-> {:fields (xform fieldDefs)}
+         (common/copy-meta anyName)
+         (apply-description description)
+         (apply-directives directiveList)
+         (cond-> implementationDef (assoc :implements (xform implementationDef)))
+         (with-meta {:extension true}))]))
 
 (defmethod xform :directiveDef
   [prod]
