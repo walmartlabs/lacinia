@@ -151,6 +151,11 @@
                             "type Ebb { aa: String } "
                             "extend type Ebb implements A { a: String } ")))))
 
+(deftest schema-extend-type-does-not-remove-anything
+  (let [org-type " \"MyDescription\" type Ebb { a: String }"]
+    (is (= (parse-string org-type)
+           (parse-string (str org-type " extend type Ebb"))))))
+
 (deftest schema-extend-type-existing-field-fails
   (is (thrown-with-msg? Throwable #"Field `Ebb/a' already defined in the existing schema. It cannot also be defined in this type extension."
                         (parse-string "type Ebb { a: String } \n extend type Ebb { a: String } \n "))))

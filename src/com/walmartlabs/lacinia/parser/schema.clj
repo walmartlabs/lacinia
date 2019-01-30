@@ -75,7 +75,13 @@
                       (merge {:fields (merge (get org :fields) (get v :fields))}
                              (let [implements (into (get org :implements []) (get v :implements []))]
                                (when (not-empty implements)
-                                 {:implements implements})))))
+                                 {:implements implements}))
+                             (let [description (->> [(get org :description) (get v :description)]
+                                                    (remove nil?)
+                                                    (str/join " "))]
+                               (when (not-empty description)
+                                 {:description description})))))
+
 
         (contains? m k)
         (let [locations (keepv meta [(get m k) v])]
