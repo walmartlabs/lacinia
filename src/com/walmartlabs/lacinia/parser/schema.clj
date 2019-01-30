@@ -72,7 +72,10 @@
                                                     (q (str (name k) "/" (name property))))
                                             (cond-> {:key k}
                                                     (seq locations) (assoc :locations locations)))))))
-                      (merge-with merge org v)))
+                      (merge {:fields (merge (get org :fields) (get v :fields))}
+                             (let [implements (into (get org :implements []) (get v :implements []))]
+                               (when (not-empty implements)
+                                 {:implements implements})))))
 
         (contains? m k)
         (let [locations (keepv meta [(get m k) v])]

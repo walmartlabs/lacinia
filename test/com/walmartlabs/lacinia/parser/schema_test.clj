@@ -110,6 +110,30 @@
              :b {:type 'String}}}}}
          (parse-string "extend type Ebb { b: String } \n type Ebb { a: String }"))))
 
+(deftest schema-type-extend-type-implements
+  (is (= {:interfaces
+          {:A {:fields {:a {:type 'String}}}
+           :B {:fields {:b {:type 'String}}}}
+          :objects
+          {:Ebb
+           {:fields
+            {:a {:type 'String}
+             :b {:type 'String}}
+            :implements [:A :B]}}}
+         (parse-string (str "interface A { a: String } interface B { b: String } "
+                            "       type Ebb implements A { a: String } "
+                            "extend type Ebb implements B { b: String } "))))
+  (is (= {:interfaces
+          {:A {:fields {:a {:type 'String}}}}
+          :objects
+          {:Ebb
+           {:fields {:aa {:type 'String}
+                     :a {:type 'String}}
+            :implements [:A]}}}
+         (parse-string (str "interface A { a: String } "
+                            "type Ebb { aa: String } "
+                            "extend type Ebb implements A { a: String } ")))))
+
 (deftest schema-extend-type-existing-field-fails
   (is (thrown-with-msg? Throwable #"Field `Ebb/a' already defined in the existing schema. It cannot also be defined in this type extension."
                         (parse-string "type Ebb { a: String } \n extend type Ebb { a: String } \n "))))
