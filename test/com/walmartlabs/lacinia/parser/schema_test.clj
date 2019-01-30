@@ -152,7 +152,7 @@
                             "extend type Ebb implements A { a: String } ")))))
 
 (deftest schema-extend-type-does-not-remove-anything
-  (let [org-type " \"MyDescription\" type Ebb { a: String }"]
+  (let [org-type " \"MyDescription\" type Ebb @X { a: String }"]
     (is (= (parse-string org-type)
            (parse-string (str org-type " extend type Ebb"))))))
 

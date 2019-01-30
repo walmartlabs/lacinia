@@ -50,6 +50,31 @@
   [v]
   (get (meta v) :extension false))
 
+(defn ^:private merge-type-extension
+  [k v org]
+  (doseq [property (keys (get org :fields {}))]
+    (when (contains? (get v :fields {}) property)
+      (let [locations (keepv meta [org v])]
+        (throw (ex-info (format "Field %s already defined in the existing schema. It cannot also be defined in this type extension."
+                                (q (str (name k) "/" (name property))))
+                        (cond-> {:key k}
+                                (seq locations) (assoc :locations locations)))))))
+  (reduce merge
+          {}
+          [{:fields (merge (get org :fields) (get v :fields))}
+           (some->> (into (get org :implements []) (get v :implements []))
+                    (distinct)
+                    (#(if (not-empty %) % nil))
+                    (assoc {} :implements))
+           (some->> (into (get org :directives []) (get v :directives []))
+                    (#(if (not-empty %) % nil))
+                    (assoc {} :directives))
+           (some->> [(get org :description) (get v :description)]
+                    (remove nil?)
+                    (str/join " ")
+                    (#(if (not-empty %) % nil))
+                    (assoc {} :description))]))
+
 (defn ^:private assoc-check
   [m content k v]
   (cond (and (not (contains? m k))
@@ -64,24 +89,7 @@
         (assoc m k v)
 
         (is-extension? v)
-        (update m k (fn [org]
-                      (doseq [property (keys (get org :fields {}))]
-                        (when (contains? (get v :fields {}) property)
-                          (let [locations (keepv meta [(get m k) v])]
-                            (throw (ex-info (format "Field %s already defined in the existing schema. It cannot also be defined in this type extension."
-                                                    (q (str (name k) "/" (name property))))
-                                            (cond-> {:key k}
-                                                    (seq locations) (assoc :locations locations)))))))
-                      (merge {:fields (merge (get org :fields) (get v :fields))}
-                             (let [implements (into (get org :implements []) (get v :implements []))]
-                               (when (not-empty implements)
-                                 {:implements implements}))
-                             (let [description (->> [(get org :description) (get v :description)]
-                                                    (remove nil?)
-                                                    (str/join " "))]
-                               (when (not-empty description)
-                                 {:description description})))))
-
+        (update m k (partial merge-type-extension k v))
 
         (contains? m k)
         (let [locations (keepv meta [(get m k) v])]
