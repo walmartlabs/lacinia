@@ -228,7 +228,8 @@
 
 (defmethod xform :typeExtDef
   [prod]
-  (let [{:keys [anyName implementationDef fieldDefs description directiveList]} (tag prod)]
+  (let [{:keys [anyName implementationDef fieldDefs description directiveList]
+         :or   {fieldDefs (list :fieldDefs)}} (tag prod)]
     (with-meta [[:objects (xform anyName)]
                 (-> {:fields (xform fieldDefs)}
                     (common/copy-meta anyName)

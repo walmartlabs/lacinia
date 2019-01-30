@@ -109,6 +109,16 @@
              :b {:type 'String}}}}}
          (parse-string "type Ebb { a: String } \n extend type Ebb { b: String }"))))
 
+(deftest schema-extend-type-empty
+  (is (= {:interfaces
+          {:A {:fields {:a {:type 'String}}}}
+          :objects
+          {:Ebb
+           {:fields
+            {:a {:type 'String}}
+            :implements [:A]}}}
+         (parse-string "interface A { a: String } \n type Ebb { a: String } \n extend type Ebb implements A "))))
+
 (deftest schema-extend-type-reverse-order
   (is (= {:objects
           {:Ebb

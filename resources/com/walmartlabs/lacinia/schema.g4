@@ -74,7 +74,7 @@ typeDef
   ;
 
 typeExtDef
-  : description? K_EXTEND K_TYPE anyName implementationDef? directiveList? fieldDefs
+  : description? K_EXTEND K_TYPE anyName implementationDef? directiveList? fieldDefs?
   ;
 
 fieldDefs
