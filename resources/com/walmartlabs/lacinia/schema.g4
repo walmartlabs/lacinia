@@ -70,7 +70,7 @@ directiveArg
   ;
 
 typeDef
-  : description? K_TYPE anyName implementationDef? directiveList? fieldDefs
+  : description? K_TYPE anyName implementationDef? directiveList? fieldDefs?
   ;
 
 typeExtDef
