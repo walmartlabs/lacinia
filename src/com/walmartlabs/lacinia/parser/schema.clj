@@ -412,7 +412,8 @@
 
 (defmethod xform :inputTypeDef
   [prod]
-  (let [{:keys [anyName fieldDefs description directiveList]} (tag prod)]
+  (let [{:keys [anyName fieldDefs description directiveList]
+         :or   {fieldDefs (list :fieldDefs)}} (tag prod)]
     [[:input-objects (xform anyName)]
      (-> {:fields (xform fieldDefs)}
          (common/copy-meta anyName)

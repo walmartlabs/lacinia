@@ -86,7 +86,7 @@ implementationDef
   ;
 
 inputTypeDef
-  : description? K_INPUT anyName directiveList? fieldDefs
+  : description? K_INPUT anyName directiveList? fieldDefs?
   ;
 
 interfaceDef
