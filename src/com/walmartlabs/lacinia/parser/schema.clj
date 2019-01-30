@@ -64,8 +64,10 @@
           [{:fields (merge (get org :fields) (get v :fields))}
            (some->> (into (get org :implements []) (get v :implements []))
                     (distinct)
+                    (vec)
                     (#(if (not-empty %) % nil))
                     (assoc {} :implements))
+           ; TODO check and/or remove duplicate directives
            (some->> (into (get org :directives []) (get v :directives []))
                     (#(if (not-empty %) % nil))
                     (assoc {} :directives))
