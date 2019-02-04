@@ -1,4 +1,4 @@
-## 0.32.0 -- UNRELEASED
+## 0.32.0 -- 4 Feb 2019
 
 Added a schema compile option, `:promote-nils-to-empty-list?`, which converts
 nils resolved from list fields back into empty lists (use only if you
