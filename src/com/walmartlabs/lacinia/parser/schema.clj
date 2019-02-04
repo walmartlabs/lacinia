@@ -306,8 +306,10 @@
 
 (defmethod xform :implementationDef
   [prod]
-  (let [types (drop 2 prod)]
-    (mapv xform types)))
+  (->> prod
+       rest
+       (filter #(-> % first (= :name)))
+       (mapv xform)))
 
 (defmethod xform :typeSpec
   [prod]

@@ -6,7 +6,7 @@ interface Client {
   ip: String
 }
 
-type User implements Node, Client {
+type User implements Node & Client {
   id: ID!
   ip: String
 }
