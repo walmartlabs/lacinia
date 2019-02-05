@@ -231,7 +231,7 @@ More details are [in the manual](http://lacinia.readthedocs.io/en/latest/clojure
 
 ## License
 
-Copyright © 2017-2018 WalmartLabs
+Copyright © 2017-2019 WalmartLabs
 
 Distributed under the Apache License, Version 2.0.
 
