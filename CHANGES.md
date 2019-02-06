@@ -1,3 +1,7 @@
+## 0.33.0 -- UNRELEASED
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/21?closed=1)
+
 ## 0.32.0 -- 4 Feb 2019
 
 Added a schema compile option, `:promote-nils-to-empty-list?`, which converts
@@ -7,6 +11,8 @@ have existing clients that break when they see those nils).
 The `com.walmartlabs.schema/coercion-failure` function has been deprecated,
 scalar parse and serialize functions can simply throw an exception rather
 than invoke `coercion-failure`.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/20?closed=1)
 
 ## 0.31.0 -- 4 Jan 2019
 
