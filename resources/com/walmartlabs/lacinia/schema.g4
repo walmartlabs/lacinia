@@ -78,7 +78,7 @@ fieldDefs
   ;
 
 implementationDef
-  : K_IMPLEMENTS anyName+
+  : K_IMPLEMENTS '&'? Name ('&' Name)*
   ;
 
 inputTypeDef
