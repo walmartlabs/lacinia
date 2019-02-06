@@ -535,7 +535,7 @@
   "Identifies the qualified field name for a selection node.  May return nil
   for meta-fields such as __typename."
   [node]
-  (-> node :field-definition :qualified-field-name))
+  (-> node :field-definition :qualified-name))
 
 (defn selections-seq
   "A width-first traversal of selections tree, returning a lazy sequence

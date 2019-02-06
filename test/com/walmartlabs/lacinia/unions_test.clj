@@ -18,7 +18,7 @@
     [clojure.test :refer [deftest is testing]]
     [com.walmartlabs.lacinia.schema :refer [compile tag-with-type]]
     [com.walmartlabs.lacinia :as ql]
-    [com.walmartlabs.test-utils :refer [is-thrown]]
+    [com.walmartlabs.test-utils :refer [expect-exception]]
     [com.walmartlabs.test-reporting :refer [reporting]]))
 
 (def base-schema
@@ -70,11 +70,21 @@
   ;; to listing unions, enums, or interface types.
   (let [schema (merge base-schema
                       {:unions {:searchable {:members [:business :account]}}})]
-    (is-thrown [t (compile schema)]
-      (is (= "Union `searchable' references unknown type `account'."
-             (.getMessage t)))
-      (is (= :searchable
-             (-> t ex-data :union :type-name))))))
+    (expect-exception
+      "Union `searchable' references unknown type `account'."
+      {:schema-types {:object [:business
+                               :employee]
+                      :scalar [:Boolean
+                               :Float
+                               :ID
+                               :Int
+                               :String]
+                      :union [:searchable]}
+       :union {:category :union
+               :members [:business
+                         :account]
+               :type-name :searchable}}
+      (compile schema))))
 
 (deftest requires-type-metadata-be-added-for-union-resolves
   (let [schema (-> base-schema

@@ -15,10 +15,9 @@
 (ns com.walmartlabs.lacinia.parser.schema-test
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :refer [resource]]
-            [com.walmartlabs.test-utils :refer [execute]]
+            [com.walmartlabs.test-utils :refer [execute expect-exception]]
             [com.walmartlabs.lacinia.parser.schema :as parser]
-            [com.walmartlabs.lacinia.schema :as schema])
-  (:import [clojure.lang ExceptionInfo]))
+            [com.walmartlabs.lacinia.schema :as schema]))
 
 (defn ^:private in-episode
   [ctx args _]
@@ -145,9 +144,13 @@
          (parse-string "directive @Trace (label : String!) on FIELD_DEFINITION | ARGUMENT_DEFINITION"))))
 
 (deftest directive-args-must-be-unique
-  (when-let [e (is (thrown-with-msg? Throwable #"Conflicting field argument"
-                                     (parse-string "directive @Dupe (a : String, b : String, a : String) on ENUM")))]
-    (is (= :a (-> e ex-data :key)))))
+  (expect-exception "Conflicting field argument: `a'."
+                    {:key :a
+                     :locations [{:column 18
+                                  :line 1}
+                                 {:column 42
+                                  :line 1}]}
+                    (parse-string "directive @Dupe (a : String, b : String, a : String) on ENUM")))
 
 (deftest field-directive
   (is (= '{:directive-defs
@@ -320,11 +323,10 @@
                (execute compiled "mutation { add(character: {name: \"Darth Vader\"}) }" nil {})))))))
 
 (deftest can-identify-unknown-doc
-  (when-let [e (is (thrown-with-msg? ExceptionInfo
-                                     #"Error attaching documentation: type not found"
-                                     (parse-schema "interfaces.sdl" {:documentation {:Agent "Virtual killers."}})))]
-    (is (= {:type-name :Agent}
-           (ex-data e)))))
+  (expect-exception
+    "Error attaching documentation: type not found"
+    {:type-name :Agent}
+    (parse-schema "interfaces.sdl" {:documentation {:Agent "Virtual killers."}})))
 
 (deftest can-attach-doc-to-interfaces
   (is (= '{:interfaces
@@ -361,11 +363,10 @@
                         {:Combatant "Being in the Matrix."}}))))
 
 (deftest can-not-attach-doc-to-union-member
-  (when-let [e (is (thrown-with-msg? ExceptionInfo
-                                     #"Error attaching documentation: union members may not be documented"
-                                     (parse-schema "unions.sdl" {:documentation {:Combatant/Human "Energy Source."}})))]
-    (is (= {:type-name :Combatant}
-           (ex-data e)))))
+  (expect-exception
+    "Error attaching documentation: union members may not be documented"
+    {:type-name :Combatant}
+    (parse-schema "unions.sdl" {:documentation {:Combatant/Human "Energy Source."}})))
 
 (deftest can-attach-doc-to-enums
   (is (= {:enums {:Location {:description "Where a scene takes place."
@@ -382,42 +383,37 @@
                                      :Location/MACHINE_CITY "Where the 'bots hang out."}}))))
 
 (deftest can-not-attach-doc-to-enum-value-args
-  (when-let [e (is (thrown-with-msg? ExceptionInfo
-                                     #"Error attaching documentation: enum values do not contain fields"
-                                     (parse-schema "enums.sdl" {:documentation {:Location/MATRIX.highway "Dangerous."}})))]
-    (is (= {:type-name :Location}
-           (ex-data e)))))
+  (expect-exception
+    "Error attaching documentation: enum values do not contain fields"
+    {:type-name :Location}
+    (parse-schema "enums.sdl" {:documentation {:Location/MATRIX.highway "Dangerous."}})))
 
 (deftest enum-value-must-exist
-  (when-let [e (is (thrown-with-msg? ExceptionInfo
-                                     #"Error attaching documentation: enum value not found"
-                                     (parse-schema "enums.sdl" {:documentation {:Location/FLOOR_13 "Similar."}})))]
-    (is (= {:type-name :Location
-            :enum-value :FLOOR_13}
-           (ex-data e)))))
+  (expect-exception
+    "Error attaching documentation: enum value not found"
+    {:type-name :Location
+     :enum-value :FLOOR_13}
+    (parse-schema "enums.sdl" {:documentation {:Location/FLOOR_13 "Similar."}})))
 
 (deftest schema-validation
-  (when-let [e (is (thrown? ExceptionInfo
-                            (parse-schema "bad_schema.sdl" {})))]
-    (is (= "Conflicting field argument: `episode'."
-           (.getMessage e)))
-    (is (= {:key :episode
-            :locations [{:column 14
-                         :line 28}
-                        {:column 42
-                         :line 28}]}
-           (ex-data e))))
+  (expect-exception
+    "Conflicting field argument: `episode'."
+    {:key :episode
+     :locations [{:column 14
+                  :line 28}
+                 {:column 42
+                  :line 28}]}
+    (parse-schema "bad_schema.sdl" {}))
 
   ;; This is a stand-in for any of the root things that can have a key conflict
-  (when-let [e (is (thrown? ExceptionInfo
-                            (parse-schema "duplicate-type.sdl" {})))]
-    (is (= "Conflicting objects: `Tree'." (.getMessage e)))
-    (is (= {:key :Tree
-            :locations [{:column 1
-                         :line 1}
-                        {:column 1
-                         :line 5}]}
-           (ex-data e)))))
+  (expect-exception
+    "Conflicting objects: `Tree'."
+    {:key :Tree
+     :locations [{:column 1
+                  :line 1}
+                 {:column 1
+                  :line 5}]}
+    (parse-schema "duplicate-type.sdl" {})))
 
 (deftest supports-multiple-inheritance
   (let [schema (-> "mult-inheritance.sdl"

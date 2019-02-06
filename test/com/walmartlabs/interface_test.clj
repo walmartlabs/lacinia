@@ -17,6 +17,7 @@
   (:refer-clojure :exclude [compile])
   (:require
     [clojure.test :refer [deftest is testing]]
+    [com.walmartlabs.test-utils :refer [expect-exception]]
     [com.walmartlabs.lacinia.schema :refer [compile]])
   (:import (clojure.lang ExceptionInfo)))
 
@@ -52,43 +53,31 @@
 ;; tests.
 
 (deftest object-must-implement-interface-fields
-  (when-let [^Throwable t (is (thrown? ExceptionInfo
-                                       (compile field-not-implemented)))]
-    (is (= "Missing interface field in object definition."
-           (.getMessage t)))
-    (is (= {:object :person
-            :field-name :first_name
-            :interface-name :named}
-           (ex-data t)))))
+  (expect-exception
+    "Missing interface field in object definition."
+    {:object :person
+     :field-name :first_name
+     :interface-name :named}
+    (compile field-not-implemented)))
 
 (deftest field-must-be-compatible
   (testing "field type"
-    (when-let [^Throwable t (is (thrown? ExceptionInfo
-                                         (compile incompatible-field-type)))]
-      (is (= "Object field is not compatible with extended interface type."
-             (.getMessage t)))
-      (is (= {:object :person
-              :interface-name :named
-              :field-name :last_name}
-             (ex-data t)))))
+    (expect-exception "Object field is not compatible with extended interface type."
+                      {:field-name :person/last_name
+                       :interface-name :named}
+                      (compile incompatible-field-type)))
 
   (testing "field multiplicity"
-    (when-let [^Throwable t (is (thrown? ExceptionInfo
-                                         (compile incompatible-field-multiplicity)))]
-      (is (= "Object field is not compatible with extended interface type."
-             (.getMessage t)))
-      (is (= {:object :person
-              :interface-name :named
-              :field-name :last_name}
-             (ex-data t)))))
+    (expect-exception
+      "Object field is not compatible with extended interface type."
+      {:field-name :person/last_name
+       :interface-name :named}
+      (compile incompatible-field-multiplicity)))
 
   (testing "field nullability"
-    (when-let [^Throwable t (is (thrown? ExceptionInfo
-                                         (compile incompatible-field-nullability)))]
-      (is (= "Object field is not compatible with extended interface type."
-             (.getMessage t)))
-      (is (= {:object :person
-              :interface-name :named
-              :field-name :first_name}
-             (ex-data t))))))
+    (expect-exception
+      "Object field is not compatible with extended interface type."
+      {:field-name :person/first_name
+       :interface-name :named}
+      (compile incompatible-field-nullability))))
 

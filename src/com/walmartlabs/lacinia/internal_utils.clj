@@ -352,3 +352,15 @@
     :else
     (assoc-in! schema (conj base :args (keyword arg-name) :description) description)))
 
+(defn qualified-name
+  "Builds a keyword that is the qualified name, e.g. :MyObject/myfield or :MyObject/myfield.myarg.
+
+  For directives, there is no namespace, so :MyDirective.myarg."
+  ([type-name field-name]
+   (if (some? type-name)
+     (keyword (name type-name)
+              (name field-name))
+     (keyword field-name)))
+  ([type-name field-name arg-name]
+   (qualified-name type-name (str (name field-name) "." (name arg-name)))))
+

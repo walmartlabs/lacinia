@@ -77,3 +77,9 @@
    (execute compiled-schema query vars context nil))
   ([compiled-schema query vars context options]
    (simplify (lacinia/execute compiled-schema query vars context options))))
+
+(defmacro expect-exception
+  [expected-message expected-data form]
+  `(when-let [e# (is (~'thrown? Throwable ~form))]
+     (is (= ~expected-message (.getMessage e#)))
+     (is (= ~expected-data (ex-data e#)))))

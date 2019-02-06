@@ -39,10 +39,6 @@
   "Performs validation of the parsed and prepared query against
   a set of default rules.
 
-  Returns an sequence of error maps, which will be empty if there are no errors.
-
-  Note: the 3 argument version is deprecated and will be removed in a future release."
-  ([prepared-query]
-   (mapcat #(% prepared-query) default-rules))
-  ([_ prepared-query _]
-    (validate prepared-query)))
+  Returns an sequence of error maps, which will be empty if there are no errors."
+  [prepared-query]
+  (mapcat #(% prepared-query) default-rules))

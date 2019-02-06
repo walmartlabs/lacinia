@@ -41,9 +41,8 @@
     (mapcat validate-selection (:selections selection))
 
     :else
-    [{:message (format "Field %s (of type %s) must have at least one selection."
-                       (-> selection :field (q))
-                       (-> selection :field-definition schema/root-type-name q))
+    [{:message (format "Field %s must have at least one selection."
+                       (-> selection :field-definition :qualified-name q))
       :locations [(:location selection)]}]))
 
 (defn ^:private validate-fragment
