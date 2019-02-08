@@ -17,7 +17,7 @@
   {:added "0.22.0"}
   (:require
     #_ [io.pedestal.log :as log]
-    [com.walmartlabs.lacinia.internal-utils :refer [remove-vals keepv q]]
+    [com.walmartlabs.lacinia.internal-utils :refer [remove-vals keepv q qualified-name]]
     [com.walmartlabs.lacinia.parser.common :as common]
     [com.walmartlabs.lacinia.util :refer [inject-descriptions]]
     [com.walmartlabs.lacinia.schema :as schema]
@@ -56,7 +56,7 @@
     (when (contains? (get v :fields {}) property)
       (let [locations (keepv meta [org v])]
         (throw (ex-info (format "Field %s already defined in the existing schema. It cannot also be defined in this type extension."
-                                (q (str (name k) "/" (name property))))
+                                (q (qualified-name k property)))
                         (cond-> {:key k}
                                 (seq locations) (assoc :locations locations)))))))
   (reduce merge
