@@ -86,6 +86,13 @@
              {:type 'String}}}}}
          (parse-string "type Ebb { flow: String }"))))
 
+(deftest schema-empty-type
+  (is (= {:objects
+          {:Ebb
+           {:fields
+            {}}}}
+         (parse-string "type Ebb"))))
+
 (deftest schema-type-2
   (is (= {:objects
           {:Ebb
@@ -93,6 +100,69 @@
             {:type
              {:type 'String}}}}}
          (parse-string "type Ebb { type: String }"))))
+
+(deftest schema-extend-type
+  (is (= {:objects
+          {:Ebb
+           {:fields
+            {:a {:type 'String}
+             :b {:type 'String}}}}}
+         (parse-string "type Ebb { a: String } \n extend type Ebb { b: String }"))))
+
+(deftest schema-extend-type-empty
+  (is (= {:interfaces
+          {:A {:fields {:a {:type 'String}}}}
+          :objects
+          {:Ebb
+           {:fields
+            {:a {:type 'String}}
+            :implements [:A]}}}
+         (parse-string "interface A { a: String } \n type Ebb { a: String } \n extend type Ebb implements A "))))
+
+(deftest schema-extend-type-reverse-order
+  (is (= {:objects
+          {:Ebb
+           {:fields
+            {:a {:type 'String}
+             :b {:type 'String}}}}}
+         (parse-string "extend type Ebb { b: String } \n type Ebb { a: String }"))))
+
+(deftest schema-type-extend-type-implements
+  (is (= {:interfaces
+          {:A {:fields {:a {:type 'String}}}
+           :B {:fields {:b {:type 'String}}}}
+          :objects
+          {:Ebb
+           {:fields
+            {:a {:type 'String}
+             :b {:type 'String}}
+            :implements [:A :B]}}}
+         (parse-string (str "interface A { a: String } interface B { b: String } "
+                            "       type Ebb implements A { a: String } "
+                            "extend type Ebb implements B { b: String } "))))
+  (is (= {:interfaces
+          {:A {:fields {:a {:type 'String}}}}
+          :objects
+          {:Ebb
+           {:fields {:aa {:type 'String}
+                     :a {:type 'String}}
+            :implements [:A]}}}
+         (parse-string (str "interface A { a: String } "
+                            "type Ebb { aa: String } "
+                            "extend type Ebb implements A { a: String } ")))))
+
+(deftest schema-extend-type-does-not-remove-anything
+  (let [org-type " \"MyDescription\" type Ebb @X { a: String }"]
+    (is (= (parse-string org-type)
+           (parse-string (str org-type " extend type Ebb"))))))
+
+(deftest schema-extend-type-existing-field-fails
+  (is (thrown-with-msg? Throwable #"Field `Ebb/a' already defined in the existing schema. It cannot also be defined in this type extension."
+                        (parse-string "type Ebb { a: String } \n extend type Ebb { a: String } \n "))))
+
+(deftest schema-extend-missing-type-fails
+  (is (thrown-with-msg? Throwable #"Cannot extend type `Ebb' because it does not exist in the existing schema."
+                        (parse-string (str "extend type Ebb { b: String }")))))
 
 (deftest schema-enums
   (is (= {:enums

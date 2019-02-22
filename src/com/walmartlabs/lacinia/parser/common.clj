@@ -97,6 +97,11 @@
   [to from]
   (with-meta to (meta from)))
 
+(defn add-meta
+  "Add metadata to object"
+  [to more-metadata]
+  (with-meta to (merge (meta to) more-metadata)))
+
 (defn blockstringvalue->String
   "Transform an ANTLR multi-line block string value into a Clojure string."
   [^String s]

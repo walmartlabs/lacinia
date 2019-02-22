@@ -17,7 +17,7 @@
   {:added "0.22.0"}
   (:require
     #_ [io.pedestal.log :as log]
-    [com.walmartlabs.lacinia.internal-utils :refer [remove-vals keepv q]]
+    [com.walmartlabs.lacinia.internal-utils :refer [remove-vals keepv q qualified-name]]
     [com.walmartlabs.lacinia.parser.common :as common]
     [com.walmartlabs.lacinia.util :refer [inject-descriptions]]
     [com.walmartlabs.lacinia.schema :as schema]
@@ -46,17 +46,60 @@
           {}
           (rest prod)))
 
+(defn is-extension?
+  [v]
+  (get (meta v) :extension false))
+
+(defn ^:private merge-type-extension
+  [k v org]
+  (doseq [property (keys (get org :fields {}))]
+    (when (contains? (get v :fields {}) property)
+      (let [locations (keepv meta [org v])]
+        (throw (ex-info (format "Field %s already defined in the existing schema. It cannot also be defined in this type extension."
+                                (q (qualified-name k property)))
+                        (cond-> {:key k}
+                                (seq locations) (assoc :locations locations)))))))
+  (reduce merge
+          {}
+          [{:fields (merge (get org :fields) (get v :fields))}
+           (some->> (into (get org :implements []) (get v :implements []))
+                    (distinct)
+                    (vec)
+                    (#(if (not-empty %) % nil))
+                    (assoc {} :implements))
+           ; TODO check and/or remove duplicate directives
+           (some->> (into (get org :directives []) (get v :directives []))
+                    (#(if (not-empty %) % nil))
+                    (assoc {} :directives))
+           (some->> [(get org :description) (get v :description)]
+                    (remove nil?)
+                    (str/join " ")
+                    (#(if (not-empty %) % nil))
+                    (assoc {} :description))]))
+
 (defn ^:private assoc-check
   [m content k v]
-  (when (contains? m k)
-    (let [locations (keepv meta [(get m k)
-                                 v])]
-      (throw (ex-info (format "Conflicting %s: %s."
-                              content
-                              (q k))
-                      (cond-> {:key k}
-                        (seq locations) (assoc :locations locations))))))
-  (assoc m k v))
+  (cond (and (not (contains? m k))
+             (is-extension? v))
+        (let [locations (keepv meta [(get m k) v])]
+          (throw (ex-info (format "Cannot extend type %s because it does not exist in the existing schema."
+                                  (q k))
+                          (cond-> {:key k}
+                                  (seq locations) (assoc :locations locations)))))
+
+        (not (contains? m k))
+        (assoc m k v)
+
+        (is-extension? v)
+        (update m k (partial merge-type-extension k v))
+
+        (contains? m k)
+        (let [locations (keepv meta [(get m k) v])]
+          (throw (ex-info (format "Conflicting %s: %s."
+                                  content
+                                  (q k))
+                          (cond-> {:key k}
+                                  (seq locations) (assoc :locations locations)))))))
 
 (defn ^:private checked-map
   "Given a seq of key/value tuples, assembles a map, checking that keys do not conflict
@@ -190,13 +233,27 @@
 
 (defmethod xform :typeDef
   [prod]
-  (let [{:keys [anyName implementationDef fieldDefs description directiveList]} (tag prod)]
+  (let [{:keys [anyName implementationDef fieldDefs description directiveList]
+         :or   {fieldDefs (list :fieldDefs)}} (tag prod)]
     [[:objects (xform anyName)]
      (-> {:fields (xform fieldDefs)}
          (common/copy-meta anyName)
          (apply-description description)
          (apply-directives directiveList)
          (cond-> implementationDef (assoc :implements (xform implementationDef))))]))
+
+(defmethod xform :typeExtDef
+  [prod]
+  (let [{:keys [anyName implementationDef fieldDefs description directiveList]
+         :or   {fieldDefs (list :fieldDefs)}} (tag prod)]
+    (with-meta [[:objects (xform anyName)]
+                (-> {:fields (xform fieldDefs)}
+                    (common/copy-meta anyName)
+                    (common/add-meta {:extension true})
+                    (apply-description description)
+                    (apply-directives directiveList)
+                    (cond-> implementationDef (assoc :implements (xform implementationDef))))]
+               {:extension true})))
 
 (defmethod xform :directiveDef
   [prod]
@@ -325,7 +382,8 @@
 
 (defmethod xform :interfaceDef
   [prod]
-  (let [{:keys [anyName fieldDefs description directiveList]} (tag prod)]
+  (let [{:keys [anyName fieldDefs description directiveList]
+         :or   {fieldDefs (list :fieldDefs)}} (tag prod)]
     [[:interfaces (xform anyName)]
      (-> {:fields (xform fieldDefs)}
          (common/copy-meta anyName)
@@ -371,7 +429,8 @@
 
 (defmethod xform :inputTypeDef
   [prod]
-  (let [{:keys [anyName fieldDefs description directiveList]} (tag prod)]
+  (let [{:keys [anyName fieldDefs description directiveList]
+         :or   {fieldDefs (list :fieldDefs)}} (tag prod)]
     [[:input-objects (xform anyName)]
      (-> {:fields (xform fieldDefs)}
          (common/copy-meta anyName)
@@ -417,6 +476,7 @@
   (let [schema (->> antlr-tree
                     rest
                     (map xform)
+                    (sort-by (fn [x] (if (is-extension? x) 1 0)))
                     (reduce (fn [schema [path value]]
                               (let [path' (butlast path)
                                     k (last path)]

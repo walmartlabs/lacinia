@@ -1,7 +1,7 @@
 grammar GraphqlSchema;
 
 graphqlSchema
-  : (schemaDef|typeDef|inputTypeDef|unionDef|enumDef|interfaceDef|scalarDef|directiveDef)*
+  : (schemaDef|typeDef|typeExtDef|inputTypeDef|unionDef|enumDef|interfaceDef|scalarDef|directiveDef)*
   ;
 
 description
@@ -70,7 +70,11 @@ directiveArg
   ;
 
 typeDef
-  : description? K_TYPE anyName implementationDef? directiveList? fieldDefs
+  : description? K_TYPE anyName implementationDef? directiveList? fieldDefs?
+  ;
+
+typeExtDef
+  : description? K_EXTEND K_TYPE anyName implementationDef? directiveList? fieldDefs?
   ;
 
 fieldDefs
@@ -82,11 +86,11 @@ implementationDef
   ;
 
 inputTypeDef
-  : description? K_INPUT anyName directiveList? fieldDefs
+  : description? K_INPUT anyName directiveList? fieldDefs?
   ;
 
 interfaceDef
-  : description? K_INTERFACE anyName directiveList? fieldDefs
+  : description? K_INTERFACE anyName directiveList? fieldDefs?
   ;
 
 scalarDef
