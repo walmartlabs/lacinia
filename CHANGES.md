@@ -1,5 +1,8 @@
 ## 0.33.0 -- UNRELEASED
 
+GraphQL Schema Definition Language documents can now contain empty types, and use
+`extend type`.
+
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/21?closed=1)
 
 ## 0.32.0 -- 4 Feb 2019
