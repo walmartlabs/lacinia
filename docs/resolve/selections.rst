@@ -132,12 +132,20 @@ For the above query, it would return the following structure:
 .. literalinclude:: ../_examples/selections-tree.edn
    :language: clojure
 
+Each key in the map identifies a specific field by the qualified field name, such as
+``:character/friends``.
+The value is a vector of how that field is used; it is a vector because the same field
+may appear in the selection multiple times, using aliases.
+
 This shows, for example, that ``:character/name`` is used in two different ways (inside the
 ``hero`` query itself, and within the ``friends`` field).
 
 For fields with arguments, an ``:args`` key is present, with the exact values which will be
 supplied to the the nested field's resolver.
 
-Fields with neither arguments nor sub-selections are represented as nil.
+For fields with an alias, an ``:alias`` key will be present; the value is a keyword for the alias
+(as provided in the client query).
+
+Fields without arguments, sub-selections, on an alias are represented as nil.
 
 
