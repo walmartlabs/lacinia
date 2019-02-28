@@ -135,3 +135,28 @@
                      {:Six
                       {:fields
                        {:count {:type :Int}}}}})))
+
+(deftest input-object-not-allowed-as-normal-field
+  (expect-exception
+    "Field `Web/spider' is type `Creepy', input objects may only be used as field arguments."
+    {:field-name :Web/spider
+     :schema-types {:input-object [:Creepy]
+                    :object [:MutationRoot
+                             :QueryRoot
+                             :SubscriptionRoot
+                             :Web]
+                    :scalar [:Boolean
+                             :Float
+                             :ID
+                             :Int
+                             :String]}}
+    (schema/compile
+      {:input-objects
+       {:Creepy
+        {:fields
+         {:legs {:type :Int}}}}
+       :objects
+       {:Web
+        {:fields
+         {:spider {:type :Creepy}}}}})))
+

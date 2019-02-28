@@ -188,7 +188,7 @@
     :echoArgs
     {:fields {:integer {:type 'Int}
               :integerArray {:type '(list Int)}
-              :inputObject {:type :testInputObject}}}
+              :inputObject {:type 'String}}}
 
     :galaxy_date
     {:fields {:date {:type :Date}}}
@@ -312,7 +312,7 @@
                       :integerArray {:type '(list Int)}
                       :inputObject {:type :testInputObject}}
                :resolve (fn [ctx args v]
-                          args)}
+                          (update args :inputObject pr-str))}
     :now {:type :galaxy_date
           :resolve (fn [ctx args v]
                      {:date (java.util.Date.)})}

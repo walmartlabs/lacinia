@@ -1142,14 +1142,24 @@
   "Verifies that the type of every field and every field argument is valid."
   [schema object-def]
   (let [directive-defs (::directive-defs schema)
-        location (if (= :input-object (:category object-def))
+        input-object? (= :input-object (:category object-def))
+        location (if input-object?
                    :input-field-definition
                    :field-definition)]
     (doseq [field-def (-> object-def :fields vals)
             :let [field-type-name (extract-type-name (:type field-def))
-                  qualified-field-name (:qualified-name field-def)]]
-      (when-not (get schema field-type-name)
+                  qualified-field-name (:qualified-name field-def)
+                  field-type (get schema field-type-name)]]
+      (when (nil? field-type)
         (throw (ex-info (format "Field %s references unknown type %s."
+                                (q qualified-field-name)
+                                (q field-type-name))
+                        {:field-name qualified-field-name
+                         :schema-types (type-map schema)})))
+
+      (when (and (not input-object?)
+                 (= :input-object (:category field-type)))
+        (throw (ex-info (format "Field %s is type %s, input objects may only be used as field arguments."
                                 (q qualified-field-name)
                                 (q field-type-name))
                         {:field-name qualified-field-name

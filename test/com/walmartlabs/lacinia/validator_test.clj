@@ -310,27 +310,6 @@
 
              (execute compiled-schema q {} nil)))))
 
-  (testing "valid deeply nested input-object property of type list but of single value"
-    (let [q "{ echoArgs(integer: 1,
-                        integerArray: [2, 3],
-                        inputObject: {integer: 4,
-                                      string: \"five\",
-                                      nestedInputObject: {integerArray: 6,
-                                                          date: \"1983-08-13\"}}) {
-                integer,
-                inputObject {
-                   integer
-                   nestedInputObject {
-                      integerArray
-                   }
-                }
-              }
-            }"]
-      (is (= {:data {:echoArgs {:integer 1,
-                                :inputObject {:integer 4,
-                                              :nestedInputObject {:integerArray [6]}}}}}
-             (execute compiled-schema q {} nil)))))
-
   (testing "invalid array element"
     (let [q "{echoArgs(integer: 3, integerArray: [1, 2, \"foo\"]) { integer }}"]
       (is (= {:errors [{:extensions {:argument :integerArray
@@ -341,33 +320,6 @@
                                      :line 1}]
                         :message "Exception applying arguments to field `echoArgs': For argument `integerArray', unable to convert \"foo\" to scalar type `Int'."}]}
 
-             (execute compiled-schema q {} nil)))))
-
-  (testing "valid arguments"
-    (let [q "{ echoArgs(integer: 1,
-                        integerArray: [2, 3],
-                        inputObject: {integer: 4,
-                                      string: \"five\",
-                                      nestedInputObject: {integerArray: [6, 7],
-                                                          date: \"1983-08-13\"}}) {
-                 integer
-                 integerArray
-                 inputObject {
-                   integer
-                   string
-                   nestedInputObject {
-                     integerArray
-                     date
-                   }
-                 }
-               }
-             }"]
-      (is (= {:data {:echoArgs {:integer 1
-                                :integerArray [2, 3]
-                                :inputObject {:integer 4
-                                              :string "five"
-                                              :nestedInputObject {:integerArray [6, 7]
-                                                                  :date "A long time ago"}}}}}
              (execute compiled-schema q {} nil)))))
 
   (testing "Non-nullable arguments"

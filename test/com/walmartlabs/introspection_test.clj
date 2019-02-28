@@ -1015,8 +1015,8 @@
                                :description nil
                                :isDeprecated false
                                :name "inputObject"
-                               :type {:kind :INPUT_OBJECT
-                                      :name "testInputObject"
+                               :type {:kind :SCALAR
+                                      :name "String"
                                       :ofType nil}}
                               {:args []
                                :deprecationReason nil
