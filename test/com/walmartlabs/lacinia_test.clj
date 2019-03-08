@@ -108,17 +108,17 @@
         (is (= {:data {:changeHeroHomePlanet {:name "Leia Organa" :homePlanet "Alderaan"}}}
                (execute default-schema q {:id "1003"} nil)))))
     (testing "nested object element values"
-      (let [q "query { echoArgs (integerArray: [1 null 3], inputObject: {string: \"yes\", nestedInputObject: {integerArray: [4 5 6]}}) { integerArray inputObject { string nestedInputObject {integerArray} } } }"]
-        (is (= {:data {:echoArgs {:integerArray [1 nil 3] :inputObject {:string "yes" :nestedInputObject {:integerArray [4 5 6]}}}}}
+      (let [q "query { echoArgs (integerArray: [1 null 3], inputObject: {string: \"yes\", nestedInputObject: {integerArray: [4 5 6]}}) { integerArray inputObject } }"]
+        (is (= {:data {:echoArgs {:integerArray [1 nil 3] :inputObject (pr-str {:string "yes" :nestedInputObject {:integerArray [4 5 6]}})}}}
                (execute default-schema q {} nil)))))
     (testing "null list/object element values"
-      (let [q "query { echoArgs (integerArray: [1 null 3], inputObject: {string: null}) { integerArray inputObject { string } } }"]
-        (is (= {:data {:echoArgs {:integerArray [1 nil 3] :inputObject {:string nil}}}}
+      (let [q "query { echoArgs (integerArray: [1 null 3], inputObject: {string: null}) { integerArray inputObject  } }"]
+        (is (= {:data {:echoArgs {:integerArray [1 nil 3] :inputObject (pr-str {:string nil})}}}
                (execute default-schema q {} nil)))))
     (testing "null list/object values become null-ish"
-      (let [q "query { echoArgs (integerArray: null, inputObject: null) { integerArray inputObject { string } } }"]
+      (let [q "query { echoArgs (integerArray: null, inputObject: null) { integerArray inputObject } }"]
         (is (= {:data {:echoArgs {:integerArray []
-                                  :inputObject nil}}}
+                                  :inputObject "nil"}}}
                (execute default-schema q {} nil)))))))
 
 (deftest nested-query
@@ -241,13 +241,6 @@
                                    :line 2}]
                       :message "No value was provided for variable `someId', which is non-nullable."}]}
            (execute default-schema q {} nil)))))
-
-(deftest nested-variable-query
-  (let [q "query EchoArgs($inputObject: testInputObject) { echoArgs (inputObject: $inputObject) {  inputObject { string nestedInputObject {date name} } } }"
-        inputObject {:string "yes",
-                     :nestedInputObject {:date "2017-05-11T08:53:19.184-00:00" :name "Test"}}]
-    (is (= {:data {:echoArgs {:inputObject {:string "yes" :nestedInputObject {:date "A long time ago" :name "Test"}}}}}
-           (execute default-schema q {:inputObject inputObject} nil)))))
 
 (deftest aliased-query
   (let [q "query FetchLukeAliased {
@@ -640,14 +633,10 @@
 
   (testing "field argument of a list type of an input object is a single integer"
     (let [q "{ echoArgs (inputObject: { nestedInputObject: { integerArray: 6 }}) {
-                  inputObject {
-                    nestedInputObject {
-                      integerArray
-                    }
-                  }
+                  inputObject
                 }
              }"]
-      (is (= {:data {:echoArgs {:inputObject {:nestedInputObject {:integerArray [6]}}}}}
+      (is (= {:data {:echoArgs {:inputObject (pr-str {:nestedInputObject {:integerArray [6]}})}}}
              (execute default-schema q {} nil))
           "should accept single value and coerce it to a list of size one")))
 
