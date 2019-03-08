@@ -11,14 +11,14 @@
   :source-paths ["src"
                  "vendor-src"]
   :profiles {:dev {:dependencies [[criterium "0.4.4"]
-                                  [expound "0.7.1"]
-                                  [joda-time "2.10"]
+                                  [expound "0.7.2"]
+                                  [joda-time "2.10.1"]
                                   [com.walmartlabs/test-reporting "0.1.0"]
                                   [io.aviso/logging "0.3.1"]
-                                  [io.pedestal/pedestal.log "0.5.4"]
+                                  [io.pedestal/pedestal.log "0.5.5"]
                                   [org.clojure/test.check "0.9.0"]
                                   [org.clojure/data.csv "0.1.4"]
-                                  [org.clojure/tools.cli "0.3.7"]]}}
+                                  [org.clojure/tools.cli "0.4.1"]]}}
   :aliases {"benchmarks" ["run" "-m" "perf"]}
   :jvm-opts ["-Xmx1g" "-XX:-OmitStackTraceInFastThrow"]
   :test2junit-output-dir ~(or (System/getenv "CIRCLE_TEST_REPORTS") "target/test2junit")

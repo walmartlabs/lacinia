@@ -3,6 +3,13 @@
 GraphQL Schema Definition Language documents can now contain empty types, and use
 `extend type`.
 
+### **Breaking Change**: com.walmartlabs.lacinia.executor/selections-tree
+
+`selections-tree` has changed; the value for a key is now a vector of nodes
+(each possibly nil) rather than just a single node; this is to account for
+the fact that a selection set may reference the same field, using different
+aliases (and different arguments and sub-selections).
+
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/21?closed=1)
 
 ## 0.32.0 -- 4 Feb 2019

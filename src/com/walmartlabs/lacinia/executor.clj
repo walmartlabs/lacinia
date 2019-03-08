@@ -566,6 +566,18 @@
   [context field-name]
   (boolean (some #(= field-name %) (selections-seq context))))
 
+(defn ^:private conjv
+  [coll v]
+  (if (nil? coll)
+    (vector v)
+    (conj coll v)))
+
+(defn ^:private intov
+  [coll v]
+  (if (nil? coll)
+    v
+    (into coll v)))
+
 (defn ^:private build-selections-map
   "Builds the selections map for a field selection node."
   [parsed-query selections]
@@ -574,21 +586,23 @@
 
               :field
               (if-some [field-name (to-field-name selection)]
-                (assoc m field-name
-                       (let [arguments (:arguments selection)
-                             nested-map (build-selections-map parsed-query (:selections selection))]
-                         (cond-> nil
-                           (not (empty? arguments)) (assoc :args arguments)
-                           (not (empty? nested-map)) (assoc :selections nested-map))))
+                (let [{:keys [field alias selections]} selection
+                      arguments (:arguments selection)
+                      selections-map (build-selections-map parsed-query selections)
+                      nested-map (cond-> nil
+                                   (not (= field alias)) (assoc :alias alias)
+                                   (seq arguments) (assoc :args arguments)
+                                   (seq selections-map) (assoc :selections selections-map))]
+                  (update m field-name conjv nested-map))
                 m)
 
               :inline-fragment
-              (merge m (build-selections-map parsed-query (:selections selection)))
+              (merge-with intov m (build-selections-map parsed-query (:selections selection)))
 
               :fragment-spread
               (let [{:keys [fragment-name]} selection
                     fragment-selections (get-in parsed-query [:fragments fragment-name :selections])]
-                (merge m (build-selections-map parsed-query fragment-selections)))))
+                (merge-with intov m (build-selections-map parsed-query fragment-selections)))))
           {}
           selections))
 
@@ -596,12 +610,16 @@
   "Constructs a tree of the selections below the current field.
 
    Returns a map where the keys are qualified field names (the selections for this field).
-   For each such field is a map with two optional keys; :args and :selections.
+   The value is a vector of maps with three optional keys; :args, :alias, and :selections.
    :args is the arguments that will be passed to that field's resolver.
    :selections is the nested selection tree.
+   :alias is the alias for the field (most fields do not have aliases).
 
-   Each key is present only if value is provided; for scalar fields with no arguments, the
-   value will be nil.
+   A vector is returned because the selection for an outer field may, via aliases, reference
+   the same inner field multiple times (with different arguments and/or sub-selections).
+
+   Each key of a nested map is present only if a value is provided; for scalar fields with no arguments, the
+   nested map will be nil.
 
    Fragments are flattened into containing fields, as with `selections-seq`."
   {:added "0.17.0"}

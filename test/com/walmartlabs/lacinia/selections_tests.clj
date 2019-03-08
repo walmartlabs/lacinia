@@ -27,10 +27,12 @@
   (schema/compile test-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))
 
 (defn ^:private app-context
-  [query]
-  (let [parsed-query (parser/parse-query default-schema query)]
-    {constants/parsed-query-key parsed-query
-     constants/selection-key (-> parsed-query :selections first)}))
+  ([query]
+   (app-context default-schema query))
+  ([schema query]
+   (let [parsed-query (parser/parse-query schema query)]
+     {constants/parsed-query-key parsed-query
+      constants/selection-key (-> parsed-query :selections first)})))
 
 
 (defn ^:private root-selections
@@ -40,10 +42,12 @@
       executor/selections-seq))
 
 (defn ^:private tree
-  [query]
-  (-> query
-      app-context
-      executor/selections-tree))
+  ([query]
+   (tree default-schema query))
+  ([schema query]
+   (->> query
+        (app-context schema)
+        executor/selections-tree)))
 
 (deftest simple-cases
   (is (= [:character/name]
@@ -63,7 +67,7 @@
          (root-selections "{ hero { __typename }}")))
   (is (= [:character/name]
          (root-selections "{ hero { name __typename }}")))
-  (is (= {:character/name nil}
+  (is (= {:character/name [nil]}
          (tree "{ hero { name __typename }}"))))
 
 (deftest mutations
@@ -117,19 +121,20 @@
     (is (not (executor/selects-field? context :character/name)))))
 
 (deftest basic-tree
-  (is (= {:human/name nil}
+  (is (= {:human/name [nil]}
          (tree "{ human { name }}")))
 
-  (is (= {:droid/appears_in nil
-          :droid/friends {:selections {:character/name nil}}
-          :droid/name nil}
-         (tree "{ droid { name appears_in friends { name }}}"))))
+  (is (= {:droid/appears_in [{:alias :appears}]
+          :droid/friends [{:selections {:character/name [nil]}}]
+          :droid/name [nil]}
+         (tree "{ droid { name appears: appears_in friends { name }}}"))))
+
 
 (deftest inline-fragments-are-flattened-in-tree
-  (is (= {:character/name nil
-          :droid/primary_function nil
-          :human/friends {:selections {:character/name nil}}
-          :human/homePlanet nil}
+  (is (= {:character/name [nil]
+          :droid/primary_function [nil]
+          :human/friends [{:selections {:character/name [nil]}}]
+          :human/homePlanet [nil]}
          (tree "{
               hero {
                 name
@@ -141,20 +146,25 @@
             }"))))
 
 (deftest named-fragments-are-flattened-in-tree
-  (is (= {:character/name nil
-          :character/friends {:selections {:character/name nil
-                                           :droid/primary_function nil
-                                           :human/homePlanet nil}}}
+  (is (= {:character/name [nil]
+          :character/friends [{:selections {:character/name [nil {:alias :character_name}]
+                                            :droid/primary_function [nil]
+                                            :human/homePlanet [nil]}}]}
          (tree "query {
               hero {
               name
                 friends {
                   name
 
+                  ... characterDetails
                   ... ifHuman
                   ... ifDroid
                 }
               }
+            }
+
+            fragment characterDetails on character {
+              character_name: name
             }
 
             fragment ifHuman on human { homePlanet }
@@ -176,9 +186,9 @@
       edn/read-string))
 
 (deftest captures-arguments
-  (is (= {:Root/detail {:args {:int_arg 5
-                               :string_arg "frodo"}}
-          :Root/tree nil}
+  (is (= {:Root/detail [{:args {:int_arg 5
+                                :string_arg "frodo"}}]
+          :Root/tree [nil]}
          (extract-tree "{ root: get_root {
               tree
               detail(int_arg: 5, string_arg: \"frodo\")
@@ -186,12 +196,23 @@
           }"
                        nil))))
 
+(deftest tree-with-aliases
+  (is (= {:Root/detail [{:args {:int_arg 1}}
+                        {:alias :d5
+                         :args {:int_arg 5}}]}
+         (tree selections-schema
+               "{ get_root {
+                    detail(int_arg: 1)
+                    d5: detail(int_arg: 5)
+                  }
+                }"))))
+
 (deftest captures-arguments-from-vars
   ;; Because the tree is prepared, the actual values are visible
   ;; even for variable-driven fields.
-  (is (= {:Root/detail {:args {:int_arg 42
-                               :string_arg "samwise"}}
-          :Root/tree nil}
+  (is (= {:Root/detail [{:args {:int_arg 42
+                                :string_arg "samwise"}}]
+          :Root/tree [nil]}
          (extract-tree "query($int_var: Int, $string_var: String) {
            root: get_root {
              tree

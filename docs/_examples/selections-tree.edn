@@ -1,4 +1,4 @@
-{:character/friends {:selections
-                     {:character/name nil}}
- :human/home_planet nil
- :character/name nil}
+{:character/friends [{:selections
+                      {:character/name [nil]}}]
+ :human/home_planet [nil]
+ :character/name [nil]}
