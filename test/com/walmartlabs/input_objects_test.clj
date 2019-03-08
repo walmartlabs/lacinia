@@ -122,34 +122,13 @@
                       {:fields
                        {:legs {:type :Six}}}}})))
 
-(deftest invalid-field-type
-  (expect-exception
-    "Field `Insect/legs' must be a scalar type, an enum, or an input-object."
-    {:field-name :Insect/legs
-     :field-type :Six}
-    (schema/compile {:input-objects
-                     {:Insect
-                      {:fields
-                       {:legs {:type :Six}}}}
-                     :objects
-                     {:Six
-                      {:fields
-                       {:count {:type :Int}}}}})))
-
 (deftest input-object-not-allowed-as-normal-field
   (expect-exception
     "Field `Web/spider' is type `Creepy', input objects may only be used as field arguments."
     {:field-name :Web/spider
-     :schema-types {:input-object [:Creepy]
-                    :object [:MutationRoot
-                             :QueryRoot
-                             :SubscriptionRoot
-                             :Web]
-                    :scalar [:Boolean
-                             :Float
-                             :ID
-                             :Int
-                             :String]}}
+     :schema-types {:scalar [:Boolean :Float :ID :Int :String],
+                    :object [:MutationRoot :QueryRoot :SubscriptionRoot :Web],
+                    :input-object [:Creepy]}}
     (schema/compile
       {:input-objects
        {:Creepy
@@ -159,4 +138,19 @@
        {:Web
         {:fields
          {:spider {:type :Creepy}}}}})))
+
+(deftest object-fields-must-be-scalar-enum-or-input-object
+  (expect-exception
+    "Field `Turtle/friend' is type `Hare', input objects may only contain fields that are scalar, enum, or input object."
+    {:field-name :Turtle/friend
+     :schema-types  {:scalar [:Boolean :Float :ID :Int :String],
+                     :object [:Hare :MutationRoot :QueryRoot :SubscriptionRoot],
+                     :input-object [:Turtle]}}
+    (schema/compile
+      {:input-objects
+       {:Turtle {:fields {:friend {:type :Hare}}}}
+       :objects
+       {:Hare
+        {:fields
+         {:speed {:type :Int}}}}})))
 

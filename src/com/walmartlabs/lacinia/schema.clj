@@ -1081,15 +1081,7 @@
                                 (q qualified-field-name)
                                 (q field-type-name))
                         {:field-name qualified-field-name
-                         :schema-types (type-map schema)})))
-
-      ;; Per 3.1.6, each field of an input object must be either a scalar, an enum,
-      ;; or an input object.
-      (when-not (#{:input-object :scalar :enum} category)
-        (throw (ex-info (format "Field %s must be a scalar type, an enum, or an input-object."
-                                (q qualified-field-name))
-                        {:field-name qualified-field-name
-                         :field-type field-type-name}))))
+                         :schema-types (type-map schema)}))))
     input-object'))
 
 (defmethod compile-type :interface
@@ -1149,7 +1141,8 @@
     (doseq [field-def (-> object-def :fields vals)
             :let [field-type-name (extract-type-name (:type field-def))
                   qualified-field-name (:qualified-name field-def)
-                  field-type (get schema field-type-name)]]
+                  field-type (get schema field-type-name)
+                  field-category (:category field-type)]]
       (when (nil? field-type)
         (throw (ex-info (format "Field %s references unknown type %s."
                                 (q qualified-field-name)
@@ -1158,8 +1151,16 @@
                          :schema-types (type-map schema)})))
 
       (when (and (not input-object?)
-                 (= :input-object (:category field-type)))
+                 (= :input-object field-category))
         (throw (ex-info (format "Field %s is type %s, input objects may only be used as field arguments."
+                                (q qualified-field-name)
+                                (q field-type-name))
+                        {:field-name qualified-field-name
+                         :schema-types (type-map schema)})))
+
+      (when (and input-object?
+                 (not (#{:scalar :enum :input-object} field-category)))
+        (throw (ex-info (format "Field %s is type %s, input objects may only contain fields that are scalar, enum, or input object."
                                 (q qualified-field-name)
                                 (q field-type-name))
                         {:field-name qualified-field-name
