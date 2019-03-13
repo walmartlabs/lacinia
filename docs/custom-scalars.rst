@@ -64,13 +64,18 @@ Handling Invalid Values
 Especially when parsing an input string into a value, there can be problems, especially included
 invalid data sent in the request.
 
-The parse and serialize callback functions should **not** throw an exception; instead, to indicate a parsing or
-serializing problem, they may return nil, or create a coercion failure result by invoking the function :api:`schema/coercion-failure`.
+Values may not always be parsable or serializable: a faulty client may pass incorrect data into Lacinia to be parsed, or a programming
+error may cause a mismatch when serializing.
 
-Returning nil results in a generic error message (as in the example above).
-By creating a coercion failure result, a specific error message can be provided, as well as additional data.
+The simplest way to indicate a parse or serialize failure is to simply return nil.
+Lacinia will create a generic error map and add that to the response.
 
-In either case, the parse or serialization failure will result in an error being added to the result map.
+Alternately, a parse or serialize callback can throw an exception; the message of the exception can provided more details
+about what failed,
+and the ``ex-data`` of the exception will be merged into the error map.
+
+For example, a ``Date`` scalar may use a ``java.time.format.DateTimeFormatter`` to parse a string, and
+may catch an exception from the call to ``parse`` and supply a more user-friendly exception detailing the expected format.
 
 Scalars and Variables
 ---------------------
