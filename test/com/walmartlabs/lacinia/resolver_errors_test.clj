@@ -28,6 +28,12 @@
                    (resolve-as nil {:message "Exception in error_field resolver."}))
    :exception (fn [_ _ _]
                 (throw failure-exception))
+   :with-extensions (fn [_ _ _]
+                      ;; Previously, the :extensions here would be nested within a new :extensions map,
+                      ;; want to show that it is merged into the top-level extensions instead.
+                      (resolve-as nil {:message "Exception with extensions."
+                                       :top-level :data
+                                       :extensions {:nested :data}}))
    :multiple-errors (fn [_ _ _]
                       (resolve-as "Value"
                                   [{:message "1" :other-key 100}
@@ -77,6 +83,17 @@
          (->> (execute default-schema "{ root { multiple_errors_field }}")
               :errors
               (sort-by :message)))))
+
+(deftest extensions-are-merged
+  (is (= {:data {:root {:with_extensions nil}}
+          :errors [{:extensions {:nested :data
+                                 :top-level :data}
+                    :locations [{:column 10
+                                 :line 1}]
+                    :message "Exception with extensions."
+                    :path [:root
+                           :with_extensions]}]}
+         (execute default-schema "{ root { with_extensions } }"))))
 
 (deftest errors-are-propagated
   (testing "errors are propagated from sub-selectors even when no data is returned"

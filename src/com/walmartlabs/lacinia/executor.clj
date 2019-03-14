@@ -60,14 +60,15 @@
   correct format:  top level keys :message, :path, and :location, and anything else
   under a :extensions key."
   [error-map extra-data]
-  (let [{:keys [message]} error-map
+  (let [{:keys [message extensions]} error-map
         {:keys [locations path]} extra-data
-        extensions (merge (dissoc error-map :message)
-                          (dissoc extra-data :locations :path))]
+        extensions' (merge (dissoc error-map :message :extensions)
+                           (dissoc extra-data :locations :path)
+                           extensions)]
     (cond-> {:message message
              :locations locations
              :path path}
-      (seq extensions) (assoc :extensions extensions))))
+      (seq extensions') (assoc :extensions extensions'))))
 
 (defn ^:private enhance-errors
   "From an error map, or a collection of error maps, add additional data to
