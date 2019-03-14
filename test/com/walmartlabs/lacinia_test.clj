@@ -411,61 +411,6 @@
                                    :column 22}]}]}
            executed))))
 
-(deftest int-coercion
-  (let [overflow (reduce * (repeat 20 (bigint 1000)))
-        schema {:objects
-                {:tester
-                 {:fields {:int {:type 'Int}
-                           :string_int {:type 'Int}
-                           :float_int {:type 'Int}
-                           :string {:type 'String}
-                           :bool {:type 'Boolean}
-                           :float {:type 'Float}
-                           :string_float {:type 'Float}
-                           :id {:type 'ID}}}}
-
-                :queries
-                {:test {:type :tester
-                        :resolve (fn [& _]
-                                   {:int overflow
-                                    :string-int "20"
-                                    :float-int 3.0
-                                    :string 400
-                                    :bool "false"
-                                    :float 4
-                                    :string-float "3.0"
-                                    :id "500"})}}}
-        compiled-schema (schema/compile schema {:default-field-resolver schema/hyphenating-default-field-resolver})
-        q "{ test { int string bool float id string_int float_int string_float}}"
-        query-result (execute compiled-schema q nil nil)]
-    (is (= clojure.lang.BigInt
-           (class overflow)))
-    (is (= java.lang.Integer
-           (class (get-in query-result [:data :test :float_int]))))
-    (is (= java.lang.Integer
-           (class (get-in query-result [:data :test :string_int]))))
-    ;; Values out of range are are dropped with an error:
-    (is (nil? (get-in query-result [:data :test :int])))
-    ;; TODO: It would be nice to capture some of the details provided in the exception thrown by a failed coercion
-    (is (= [{:locations [{:column 10
-                          :line 1}]
-             :message "Coercion error serializing value: Int value outside of allowed 32 bit integer range."
-             :path [:test :int]
-             :extensions {:type-name :Int
-                          ;; This is the pr-str of the value:
-                          :value "1000000000000000000000000000000000000000000000000000000000000N"}}]
-           (:errors query-result)))
-    (is (= java.lang.Double
-           (class (get-in query-result [:data :test :float]))))
-    (is (= java.lang.Double
-           (class (get-in query-result [:data :test :string_float]))))
-    (is (= java.lang.String
-           (class (get-in query-result [:data :test :string]))))
-    (is (= java.lang.String
-           (class (get-in query-result [:data :test :id]))))
-    (is (= java.lang.Boolean
-           (class (get-in query-result [:data :test :bool]))))))
-
 (deftest non-nullable
   ;; human's type is (non-null :character), but is null because the id does not exist.
   ;; This triggers the non-nullable field error.

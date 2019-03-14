@@ -161,80 +161,62 @@
             (coercion-failure message (ex-data e))
             ::s/invalid))))))
 
-(defmacro ^:private catch-as-coercion-failure
-  [& body]
-  `(try
-     ~@body
-     (catch Throwable _#
-       nil)))
+(defn ^:private parse-int
+  [v]
+  ;; The serialized is a little more forgiving about converting non-integers to integers.
+  ;; On the parse side, we're a little more picky.
+  (when (integer? v)
+    (if (<= Integer/MIN_VALUE v Integer/MAX_VALUE)
+      (int v)
+      (coercion-failure "Int value outside of allowed 32 bit integer range." {:value (pr-str v)}))))
 
-(defn ^:private int-parse
+(defn ^:private serialize-int
   [v]
   (cond
-    ;; The serialized is a little more forgiving about converting non-integers to integers.
-    ;; On the parse side, we're a little more picky.
     (integer? v)
     (if (<= Integer/MIN_VALUE v Integer/MAX_VALUE)
       (int v)
       (coercion-failure "Int value outside of allowed 32 bit integer range." {:value (pr-str v)}))
 
-    (string? v)
-    (catch-as-coercion-failure
-      (Integer/parseInt v))))
+    ;; Per spec; floats are allowed only if they are a whole number.
+    (float? v)
+    (when (= v (Math/floor (double v)))
+      (let [long-v (long v)]
+        (if (<= Integer/MIN_VALUE long-v Integer/MAX_VALUE)
+          (int long-v)
+          (coercion-failure "Int value outside of allowed 32 bit integer range." {:value (pr-str v)}))))))
 
-(defn ^:private int-serialize
-  [v]
-  (cond
-    (string? v)
-    (catch-as-coercion-failure (Integer/parseInt v))
-
-    ;; Per the spec, if it's in range, we just truncate it to an int.
-    ;; Note that we should be rejecting floats that have a non-zero decimal amount.
-    (number? v)
-    (if (<= Integer/MIN_VALUE v Integer/MAX_VALUE)
-      (int v)
-      (coercion-failure "Int value outside of allowed 32 bit integer range." {:value (pr-str v)}))))
-
-(defn ^:private coerce-to-float
+(defn ^:private parse-float
   [v]
   (cond
     (instance? Double v)
     v
 
     ;; Spec: should coerce non-floating-point raw values as result coercion and for input coercion
-    (and (number? v))
+    (number? v)
+    (double v)))
+
+(defn ^:private seralize-float
+  [v]
+  (cond
+    (instance? Double v)
+    v
+
+    (number? v)
     (double v)
 
     (string? v)
-    (catch-as-coercion-failure (Double/parseDouble v))))
-
-(defn ^:private string->boolean
-  [^String s]
-  (case s
-    "true" true
-    "false" false
-    (coercion-failure "Boolean string must be `true' or `false'." {:value s})))
+    (try
+      ;; Per the spec, if a string can be parsed to a double, that's allowed
+      (Double/parseDouble v)
+      (catch Throwable _
+        nil))))
 
 (defn ^:private parse-boolean
   [v]
-  (cond
+  (when
     (instance? Boolean v)
-    v
-
-    (string? v)
-    (string->boolean v)))
-
-(defn ^:private serialize-boolean
-  [v]
-  (cond
-    (instance? Boolean v)
-    v
-
-    ;; coerce non-boolean raw values to Boolean when possible
-    (number? v)
-    (not (zero? v))
-
-    (string? v) (string->boolean v)))
+    v))
 
 (defn ^:private parse-id
   [v]
@@ -252,15 +234,20 @@
   (when (string? v)
     v))
 
+(defn ^:private parse-string
+  [v]
+  (when (string? v)
+    v))
+
 (def default-scalar-transformers
-  {:String {:parse str
+  {:String {:parse parse-string
             :serialize str}
-   :Float {:parse coerce-to-float
-           :serialize coerce-to-float}
-   :Int {:parse int-parse
-         :serialize int-serialize}
+   :Float {:parse parse-float
+           :serialize seralize-float}
+   :Int {:parse parse-int
+         :serialize serialize-int}
    :Boolean {:parse parse-boolean
-             :serialize serialize-boolean}
+             :serialize parse-boolean}
    :ID {:parse parse-id
         :serialize serialize-id}})
 
