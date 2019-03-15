@@ -236,6 +236,22 @@
 
     (string? v) (string->boolean v)))
 
+(defn ^:private parse-id
+  [v]
+  (cond
+    (string? v)
+    v
+
+    (integer? v)
+    (str v)))
+
+(defn ^:private serialize-id
+  [v]
+  ;; Although the spec discusses serializing the ID type "as appropriate", that would be a case
+  ;; of overriding this default implementation.
+  (when (string? v)
+    v))
+
 (def default-scalar-transformers
   {:String {:parse str
             :serialize str}
@@ -245,8 +261,8 @@
          :serialize int-serialize}
    :Boolean {:parse parse-boolean
              :serialize serialize-boolean}
-   :ID {:parse str
-        :serialize str}})
+   :ID {:parse parse-id
+        :serialize serialize-id}})
 
 (defn ^:private error
   ([message]

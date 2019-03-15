@@ -434,7 +434,7 @@
                                     :bool "false"
                                     :float 4
                                     :string-float "3.0"
-                                    :id 500})}}}
+                                    :id "500"})}}}
         compiled-schema (schema/compile schema {:default-field-resolver schema/hyphenating-default-field-resolver})
         q "{ test { int string bool float id string_int float_int string_float}}"
         query-result (execute compiled-schema q nil nil)]
@@ -642,7 +642,7 @@
 
   (testing "variable of a list type is a single integer"
     (let [q "query QueryWithVariable($intArray: [Int]) {
-                echoArgs(integerArray: $intArray) {
+                 echoArgs(integerArray: $intArray) {
                    integerArray
                 }
              }"
