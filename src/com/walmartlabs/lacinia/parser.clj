@@ -570,8 +570,7 @@
                        {:argument-type (summarize-type argument-definition)
                         :variable-type (summarize-type variable-def)}))
 
-    (let [non-nullable? (non-null-kind? argument-definition)
-          var-non-nullable? (non-null-kind? variable-def)]
+    (let [var-non-nullable? (non-null-kind? variable-def)]
 
       (fn [variables]
         (with-exception-context captured-context
@@ -586,29 +585,33 @@
             (some? result)
             (substitute-variable schema result (:type argument-definition) arg-value)
 
-            ;; TODO: This is only triggered if a variable is referenced, omitting a non-nillable
-            ;; variable should be an error, regardless.
+            :let [supplied? (contains? variables arg-value)
+                  omitted? (not supplied?)]
+
+            (and omitted?
+                 (contains? variable-def :default-value))
+            (:default-value variable-def)
+
+            ;; Either the variable was not specified OR an explicit null was specified
             var-non-nullable?
             (throw-exception (format "No value was provided for variable %s, which is non-nullable."
                                      (q arg-value))
                              {:variable-name arg-value})
 
-            ;; variable has a default value that could be NULL
-            (contains? variable-def :default-value)
-            (:default-value variable-def)
-
-            ;; argument has a default value that could be NULL
-            (contains? argument-definition :default-value)
+            (and omitted?
+                 (contains? argument-definition :default-value))
             (:default-value argument-definition)
 
-            ;; variable value is set to NULL
-            (contains? variables arg-value)
-            result
+            ;; At this point, the argument is known to be nullable (if the argument is non-nullable,
+            ;; then the type check ensures that the variable is non-nullable as well)
+            ;; So if an explicit null was supplied we can just use that, because the argument
+            ;; has no default, and is nullable.
 
-            non-nullable?
-            (throw-exception (format "Variable %s is null, but supplies the value for a non-nullable argument."
-                                     (q arg-value))
-                             {:variable-name arg-value})
+            supplied?
+            nil
+
+            ;; No value or default is supplied (or needed); the resolver will simply not
+            ;; see the argument in its argument map. It can decide what to do.
 
             :else
             ::omit-argument))))))

@@ -207,9 +207,7 @@
         (is (= {:data {:villain {:name "Darth Vader"}}}
                (execute-parsed-query q nil nil))
             "should return default value when variable is not provided")
-        (is (= {:data {:villain {:name "Darth Vader"}}}
-               (execute-parsed-query q {:episode nil} nil))
-            "should return default value when variable is null")
+
         (is (= {:data {:villain {:name "Wilhuff Tarkin"}}}
                (execute-parsed-query q {:episode "NEW HOPE"} nil))
             "should return a villain")))
