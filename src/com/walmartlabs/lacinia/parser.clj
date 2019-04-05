@@ -585,10 +585,9 @@
             (some? result)
             (substitute-variable schema result (:type argument-definition) arg-value)
 
-            :let [supplied? (contains? variables arg-value)
-                  omitted? (not supplied?)]
+            :let [supplied? (contains? variables arg-value)]
 
-            (and omitted?
+            (and (not supplied?)
                  (contains? variable-def :default-value))
             (:default-value variable-def)
 
@@ -598,10 +597,6 @@
                                      (q arg-value))
                              {:variable-name arg-value})
 
-            (and omitted?
-                 (contains? argument-definition :default-value))
-            (:default-value argument-definition)
-
             ;; At this point, the argument is known to be nullable (if the argument is non-nullable,
             ;; then the type check ensures that the variable is non-nullable as well)
             ;; So if an explicit null was supplied we can just use that, because the argument
@@ -609,6 +604,9 @@
 
             supplied?
             nil
+
+            (contains? argument-definition :default-value)
+            (:default-value argument-definition)
 
             ;; No value or default is supplied (or needed); the resolver will simply not
             ;; see the argument in its argument map. It can decide what to do.
