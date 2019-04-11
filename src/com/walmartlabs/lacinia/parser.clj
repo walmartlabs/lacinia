@@ -668,6 +668,11 @@
   [set ks]
   (apply disj set ks))
 
+(defn ^:private required-argument?
+  [arg-def]
+  (and (non-null-kind? arg-def)
+       (not (contains? arg-def :default-value))))
+
 (defn ^:private process-arguments
   "Processes arguments to a field or a directive, doing some organizing and some
    validation.
@@ -679,7 +684,7 @@
         literal-argument-values (construct-literal-arguments schema argument-definitions literal-args)
         dynamic-extractor (construct-dynamic-arguments-extractor schema argument-definitions dynamic-args)
         missing-keys (-> argument-definitions
-                         (as-> $ (filter-vals non-null-kind? $))
+                         (as-> $ (filter-vals required-argument? $))
                          keys
                          set
                          (disj* (keys literal-args))

@@ -83,3 +83,17 @@
     ;; (the argument is omitted)
     (is (= {:data {:contains false}}
            (execute schema "query($s: String) { contains(input: $s) }" nil nil)))))
+
+(deftest default-value-is-used-for-non-null-argument-when-not-provided
+  (let [schema (schema/compile {:queries
+                                {:echo
+                                 {:type :String
+                                  :args {:input {:type '(non-null String)
+                                                 :default-value "Default"}}
+                                  :resolve (fn [_ args _]
+                                             (str "Echo: " (:input args)))}}})]
+    (is (= {:data {:echo "Echo: whatever"}}
+           (execute schema "{ echo(input: \"whatever\") }")))
+
+    (is (= {:data {:echo "Echo: Default"}}
+           (execute schema "{ echo }")))))
