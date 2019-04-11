@@ -96,4 +96,22 @@
            (execute schema "{ echo(input: \"whatever\") }")))
 
     (is (= {:data {:echo "Echo: Default"}}
-           (execute schema "{ echo }")))))
+           (execute schema "{ echo }")))
+
+    (is (= {:data {:echo "Echo: Default"}}
+           (execute schema "query($s : String) { echo(input: $s) }" nil nil)))
+
+    (is (= {:errors [{:extensions {:argument :input
+                                   :field :echo
+                                   :variable-name :s}
+                      :locations [{:column 23
+                                   :line 1}]
+                      :message "No value was provided for variable `s', which is non-nullable."}]}
+           (execute schema "query($s : String!) { echo(input: $s) }" nil nil)))
+
+    (is (= {:errors [{:extensions {:argument :__Queries/echo.input
+                                   :field :echo}
+                      :locations [{:column 22
+                                   :line 1}]
+                      :message "Argument `s' is required, but no value was provided."}]}
+           (execute schema "query($s : String) { echo(input: $s) }" {:s nil} nil)))))

@@ -404,7 +404,7 @@
             with-defaults))))))
 
 (defn ^:private compatible-types?
-  [var-type arg-type var-has-default?]
+  [var-type arg-type]
   (let [v-kind (:kind var-type)
         a-kind (:kind arg-type)
         v-type (:type var-type)
@@ -415,14 +415,13 @@
       ;; then it's ok to continue; use the next type of the variable.
       (and (= v-kind :non-null)
            (not= a-kind :non-null))
-      (recur v-type arg-type var-has-default?)
+      (recur v-type arg-type)
 
       ;; The opposite: the argument is non-null but the variable might be null, BUT
       ;; there's a default, then strip off a layer of argument type and continue.
       (and (= a-kind :non-null)
-           (not= v-kind :non-null)
-           var-has-default?)
-      (recur var-type a-type var-has-default?)
+           (not= v-kind :non-null))
+      (recur var-type a-type)
 
       ;; This is the special case where a single value variable may be promoted
       ;; for assignment to a list argument.
@@ -431,7 +430,7 @@
            (not= v-kind :list))
       ;; Check if the type of the list argument is compatible, by stripping the :list qualifier
       ;; from the argument type.
-      (recur var-type a-type var-has-default?)
+      (recur var-type a-type)
 
       ;; At this point we've stripped off non-null on the arg or var side.  We should
       ;; be at a meeting point, either both :list or both :root.
@@ -441,7 +440,7 @@
       ;; Then :list, strip that off to see if the element type of the list is compatible.
       ;; The default, if any, applied to the list, not the values inside the list.
       (not= :root a-kind)
-      (recur v-type a-type false)
+      (recur v-type a-type)
 
       ;; Because arguments and variables are always scalars, enums, or input-objects, the
       ;; more complicated checks for unions and interfaces are not necessary.
@@ -455,8 +454,7 @@
   related to arguments."
   [var-def arg-def]
   (compatible-types? (:type var-def)
-                     (:type arg-def)
-                     (-> var-def :default-value some?)))
+                     (:type arg-def)))
 
 (defn ^:private build-type-summary
   "Converts nested type maps into the format used in a GraphQL query."
@@ -570,7 +568,10 @@
                        {:argument-type (summarize-type argument-definition)
                         :variable-type (summarize-type variable-def)}))
 
-    (let [var-non-nullable? (non-null-kind? variable-def)]
+    (let [var-non-nullable? (non-null-kind? variable-def)
+          arg-non-nullable? (non-null-kind? argument-definition)
+          var-has-default? (contains? variable-def :default-value)
+          var-default (:default-value variable-def)]
 
       (fn [variables]
         (with-exception-context captured-context
@@ -588,8 +589,9 @@
             :let [supplied? (contains? variables arg-value)]
 
             (and (not supplied?)
-                 (contains? variable-def :default-value))
-            (:default-value variable-def)
+                 var-has-default?)
+            ;; There might just be an issue when the default is explicitly nil
+            var-default
 
             ;; Either the variable was not specified OR an explicit null was specified
             var-non-nullable?
@@ -597,13 +599,13 @@
                                      (q arg-value))
                              {:variable-name arg-value})
 
-            ;; At this point, the argument is known to be nullable (if the argument is non-nullable,
-            ;; then the type check ensures that the variable is non-nullable as well)
-            ;; So if an explicit null was supplied we can just use that, because the argument
-            ;; has no default, and is nullable.
-
+            ;; An explicit nil was supplied for the variable, which may be a problem if the
+            ;; argument doesn't accept nulls.
             supplied?
-            nil
+            (when arg-non-nullable?
+              (throw-exception (format "Argument %s is required, but no value was provided."
+                                       (q arg-value))
+                               {:argument (:qualified-name argument-definition)}))
 
             (contains? argument-definition :default-value)
             (:default-value argument-definition)
