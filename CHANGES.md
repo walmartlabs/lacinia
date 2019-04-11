@@ -16,6 +16,17 @@ query execution.
 the fact that a selection set may reference the same field, using different
 aliases (and different arguments and sub-selections).
 
+### **Breaking Change**: Scalars
+
+The built-in scalar types have been tightened up to more closely match the
+spec; this means that some previously allowed input values (in a request)
+or raw values (as provided by field resolvers) may now generate an error; for
+example, previously, the `Int` scalar could parse a string value into an integer.
+
+Remember it is possible to override built-in scalar types; if you
+have clients that provide unsupported data (such as strings for `Int` fields),
+you can provide an override of any built-in scalar to be more forgiving.
+
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/21?closed=1)
 
 ## 0.32.0 -- 4 Feb 2019

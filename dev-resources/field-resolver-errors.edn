@@ -11,6 +11,10 @@
      {:range {:type Int}}
      :resolve :exception}
 
+    :with_extensions
+    {:type String
+     :resolve :with-extensions}
+
     :multiple_errors_field
     {:type String
      :resolve :multiple-errors}}}}
