@@ -219,6 +219,5 @@
              detail(int_arg: $int_var, string_arg: $string_var)
            }
          }"
-                       ;; Should be able to specify the int value as 42, not string
-                       {:int_var "42"                       ; bug!
+                       {:int_var 42
                         :string_var "samwise"}))))
