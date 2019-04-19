@@ -15,7 +15,8 @@
 (ns com.walmartlabs.lacinia.arguments-test
   (:require
     [clojure.test :refer [deftest is]]
-    [com.walmartlabs.test-utils :refer [compile-schema expect-exception]]))
+    [com.walmartlabs.test-utils :refer [compile-schema expect-exception execute]]
+    [com.walmartlabs.lacinia.schema :as schema]))
 
 (deftest reports-unknown-argument-type
   (expect-exception
@@ -25,3 +26,92 @@
                     :object [:MutationRoot :QueryRoot :SubscriptionRoot]}}
     (compile-schema "unknown-argument-type-schema.edn"
                     {:example identity})))
+
+(def echo-schema (schema/compile {:queries
+                                  {:echo
+                                   {:type :String
+                                    :args {:input {:type :String
+                                                   :default-value "Excelsior!"}}
+                                    :resolve (fn [_ {:keys [input]} _] input)}}}))
+
+(deftest explicit-argument-overrides-default
+  (is (= {:data {:echo "Shazam!"}}
+         (execute echo-schema "{ echo(input: \"Shazam!\") }")))
+
+  (is (= {:data {:echo "Bravo!"}}
+         (execute echo-schema "query($s: String) { echo(input: $s) }" {:s "Bravo!"} nil))))
+
+(deftest variable-default-used-when-arg-omitted
+  (is (= {:data {:echo "Spoon!"}}
+         (execute echo-schema "query($s: String = \"Whazzup!\") { echo(input: $s) }" {:s "Spoon!"} nil)))
+
+  (is (= {:data {:echo "Whazzup!"}}
+         (execute echo-schema "query($s: String = \"Whazzup!\") { echo(input: $s) }"))))
+
+(deftest omitted-argument-uses-default
+  (is (= {:data {:echo "Excelsior!"}}
+         (execute echo-schema "{ echo }"))))
+
+(deftest explicit-null-is-passed-through-even-when-default-is-present
+  (is (= {:data {:echo nil}}
+         (execute echo-schema "{ echo(input: null) }")))
+
+  (is (= {:data {:echo nil}}
+         (execute echo-schema "query($s : String) { echo(input: $s) }" {:s nil} nil))))
+
+(deftest argument-is-omitted-if-no-default
+  (let [schema (schema/compile {:queries
+                                {:contains
+                                 {:type :Boolean
+                                  :args {:input {:type :String}}
+                                  :resolve (fn [_ args _]
+                                             (contains? args :input))}}})]
+    (is (= {:data {:contains true}}
+           (execute schema "{ contains(input: \"whatever\") }")))
+
+    (is (= {:data {:contains true}}
+           (execute schema "{ contains(input: null) }")))
+
+    (is (= {:data {:contains false}}
+           (execute schema "{ contains }")))
+
+    ;; Providing an actual nil is passed through, as with a null literal
+    (is (= {:data {:contains true}}
+           (execute schema "query($s: String) { contains(input: $s) }" {:s nil} nil)))
+
+    ;; Not providing the variable ends up the same as not providing any value at all
+    ;; (the argument is omitted)
+    (is (= {:data {:contains false}}
+           (execute schema "query($s: String) { contains(input: $s) }" nil nil)))))
+
+(deftest default-value-is-used-for-non-null-argument-when-not-provided
+  (let [schema (schema/compile {:queries
+                                {:echo
+                                 {:type :String
+                                  :args {:input {:type '(non-null String)
+                                                 :default-value "Default"}}
+                                  :resolve (fn [_ args _]
+                                             (str "Echo: " (:input args)))}}})]
+    (is (= {:data {:echo "Echo: whatever"}}
+           (execute schema "{ echo(input: \"whatever\") }")))
+
+    (is (= {:data {:echo "Echo: Default"}}
+           (execute schema "{ echo }")))
+
+    (is (= {:data {:echo "Echo: Default"}}
+           (execute schema "query($s : String) { echo(input: $s) }" nil nil)))
+
+    (is (= {:errors [{:extensions {:argument :input
+                                   :field :echo
+                                   :variable-name :s}
+                      :locations [{:column 23
+                                   :line 1}]
+                      :message "No value was provided for variable `s', which is non-nullable."}]}
+           (execute schema "query($s : String!) { echo(input: $s) }" nil nil)))
+
+    (is (= {:errors [{:extensions {:argument :__Queries/echo.input
+                                   :field :echo}
+                      :locations [{:column 22
+                                   :line 1}]
+                      :message "Argument `s' is required, but no value was provided."}]}
+           (execute schema "query($s : String) { echo(input: $s) }" {:s nil} nil)))))

@@ -446,19 +446,6 @@
                       {:words [["foo"]]}
                       nil))
           "should return an error")
-      (is (= {:errors [{:message "Exception applying arguments to field `shout': For argument `words', variable and argument are not compatible types.",
-                        :locations [{:column 31
-                                     :line 2}]
-                        :extensions {:field :shout
-                                     :argument :words
-                                     :argument-type "[[[CustomType!]]]"
-                                     :variable-type "[[[CustomType]]]"}}]}
-             (execute schema "query ($words: [[[CustomType]]]) {
-                              shout(words: $words)
-                            }"
-                      {:words [["foo"]]}
-                      nil))
-          "should return an error")
       (is (= {:data {:shout [[["FOO"]]]}}
              (execute schema "query ($words: [[[CustomType!]]]) {
                               shout(words: $words)

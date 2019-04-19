@@ -404,7 +404,7 @@
             with-defaults))))))
 
 (defn ^:private compatible-types?
-  [var-type arg-type var-has-default?]
+  [var-type arg-type]
   (let [v-kind (:kind var-type)
         a-kind (:kind arg-type)
         v-type (:type var-type)
@@ -415,14 +415,13 @@
       ;; then it's ok to continue; use the next type of the variable.
       (and (= v-kind :non-null)
            (not= a-kind :non-null))
-      (recur v-type arg-type var-has-default?)
+      (recur v-type arg-type)
 
       ;; The opposite: the argument is non-null but the variable might be null, BUT
       ;; there's a default, then strip off a layer of argument type and continue.
       (and (= a-kind :non-null)
-           (not= v-kind :non-null)
-           var-has-default?)
-      (recur var-type a-type var-has-default?)
+           (not= v-kind :non-null))
+      (recur var-type a-type)
 
       ;; This is the special case where a single value variable may be promoted
       ;; for assignment to a list argument.
@@ -431,7 +430,7 @@
            (not= v-kind :list))
       ;; Check if the type of the list argument is compatible, by stripping the :list qualifier
       ;; from the argument type.
-      (recur var-type a-type var-has-default?)
+      (recur var-type a-type)
 
       ;; At this point we've stripped off non-null on the arg or var side.  We should
       ;; be at a meeting point, either both :list or both :root.
@@ -441,7 +440,7 @@
       ;; Then :list, strip that off to see if the element type of the list is compatible.
       ;; The default, if any, applied to the list, not the values inside the list.
       (not= :root a-kind)
-      (recur v-type a-type false)
+      (recur v-type a-type)
 
       ;; Because arguments and variables are always scalars, enums, or input-objects, the
       ;; more complicated checks for unions and interfaces are not necessary.
@@ -455,8 +454,7 @@
   related to arguments."
   [var-def arg-def]
   (compatible-types? (:type var-def)
-                     (:type arg-def)
-                     (-> var-def :default-value some?)))
+                     (:type arg-def)))
 
 (defn ^:private build-type-summary
   "Converts nested type maps into the format used in a GraphQL query."
@@ -570,8 +568,10 @@
                        {:argument-type (summarize-type argument-definition)
                         :variable-type (summarize-type variable-def)}))
 
-    (let [non-nullable? (non-null-kind? argument-definition)
-          var-non-nullable? (non-null-kind? variable-def)]
+    (let [var-non-nullable? (non-null-kind? variable-def)
+          arg-non-nullable? (non-null-kind? argument-definition)
+          var-has-default? (contains? variable-def :default-value)
+          var-default (:default-value variable-def)]
 
       (fn [variables]
         (with-exception-context captured-context
@@ -586,29 +586,32 @@
             (some? result)
             (substitute-variable schema result (:type argument-definition) arg-value)
 
-            ;; TODO: This is only triggered if a variable is referenced, omitting a non-nillable
-            ;; variable should be an error, regardless.
+            :let [supplied? (contains? variables arg-value)]
+
+            (and (not supplied?)
+                 var-has-default?)
+            ;; There might just be an issue when the default is explicitly nil
+            var-default
+
+            ;; Either the variable was not specified OR an explicit null was specified
             var-non-nullable?
             (throw-exception (format "No value was provided for variable %s, which is non-nullable."
                                      (q arg-value))
                              {:variable-name arg-value})
 
-            ;; variable has a default value that could be NULL
-            (contains? variable-def :default-value)
-            (:default-value variable-def)
+            ;; An explicit nil was supplied for the variable, which may be a problem if the
+            ;; argument doesn't accept nulls.
+            supplied?
+            (when arg-non-nullable?
+              (throw-exception (format "Argument %s is required, but no value was provided."
+                                       (q arg-value))
+                               {:argument (:qualified-name argument-definition)}))
 
-            ;; argument has a default value that could be NULL
             (contains? argument-definition :default-value)
             (:default-value argument-definition)
 
-            ;; variable value is set to NULL
-            (contains? variables arg-value)
-            result
-
-            non-nullable?
-            (throw-exception (format "Variable %s is null, but supplies the value for a non-nullable argument."
-                                     (q arg-value))
-                             {:variable-name arg-value})
+            ;; No value or default is supplied (or needed); the resolver will simply not
+            ;; see the argument in its argument map. It can decide what to do.
 
             :else
             ::omit-argument))))))
@@ -667,6 +670,11 @@
   [set ks]
   (apply disj set ks))
 
+(defn ^:private required-argument?
+  [arg-def]
+  (and (non-null-kind? arg-def)
+       (not (contains? arg-def :default-value))))
+
 (defn ^:private process-arguments
   "Processes arguments to a field or a directive, doing some organizing and some
    validation.
@@ -678,7 +686,7 @@
         literal-argument-values (construct-literal-arguments schema argument-definitions literal-args)
         dynamic-extractor (construct-dynamic-arguments-extractor schema argument-definitions dynamic-args)
         missing-keys (-> argument-definitions
-                         (as-> $ (filter-vals non-null-kind? $))
+                         (as-> $ (filter-vals required-argument? $))
                          keys
                          set
                          (disj* (keys literal-args))

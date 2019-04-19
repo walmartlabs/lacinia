@@ -3,6 +3,12 @@
 GraphQL Schema Definition Language documents can now contain empty types, and use
 `extend type`.
 
+The handling of nulls, omitted variables and arguments, and default values
+has changed to adhere to the latest version of the specification.
+Non-null arguments may now have defaults, and nullable variables may be provided
+to non-null arguments (though a null value will cause an exception prior to
+query execution.
+
 ### **Breaking Change**: com.walmartlabs.lacinia.executor/selections-tree
 
 `selections-tree` has changed; the value for a key is now a vector of nodes
