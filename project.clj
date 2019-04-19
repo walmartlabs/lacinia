@@ -1,4 +1,4 @@
-(defproject com.walmartlabs/lacinia "0.33.0-alpha-1"
+(defproject com.walmartlabs/lacinia "0.33.0-alpha-2"
   :description "A GraphQL server implementation in Clojure"
   :url "https://github.com/walmartlabs/lacinia"
   :license {:name "Apache, Version 2.0"
@@ -10,7 +10,7 @@
                  [org.clojure/data.json "0.2.6"]]
   :source-paths ["src"
                  "vendor-src"]
-  :profiles {:dev {:dependencies [[criterium "0.4.4"]
+  :profiles {:dev {:dependencies [[criterium "0.4.5"]
                                   [expound "0.7.2"]
                                   [joda-time "2.10.1"]
                                   [com.walmartlabs/test-reporting "0.1.0"]
@@ -18,7 +18,7 @@
                                   [io.pedestal/pedestal.log "0.5.5"]
                                   [org.clojure/test.check "0.9.0"]
                                   [org.clojure/data.csv "0.1.4"]
-                                  [org.clojure/tools.cli "0.4.1"]]}}
+                                  [org.clojure/tools.cli "0.4.2"]]}}
   :aliases {"benchmarks" ["run" "-m" "perf"]}
   :jvm-opts ["-Xmx1g" "-XX:-OmitStackTraceInFastThrow"]
   :test2junit-output-dir ~(or (System/getenv "CIRCLE_TEST_REPORTS") "target/test2junit")

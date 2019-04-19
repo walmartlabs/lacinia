@@ -7,7 +7,7 @@ The handling of nulls, omitted variables and arguments, and default values
 has changed to adhere to the latest version of the specification.
 Non-null arguments may now have defaults, and nullable variables may be provided
 to non-null arguments (though a null value will cause an exception prior to
-query execution.
+query execution).
 
 ### **Breaking Change**: com.walmartlabs.lacinia.executor/selections-tree
 
