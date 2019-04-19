@@ -39,6 +39,10 @@
   "Performs validation of the parsed and prepared query against
   a set of default rules.
 
+  The 3-arity version is for compatibility (especially w.r.t. lacinia-pedestal).
+
   Returns an sequence of error maps, which will be empty if there are no errors."
-  [prepared-query]
-  (mapcat #(% prepared-query) default-rules))
+  ([prepared-query]
+   (mapcat #(% prepared-query) default-rules))
+  ([_schema prepared-query _opts]
+    (validate prepared-query)))
