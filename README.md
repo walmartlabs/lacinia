@@ -48,6 +48,9 @@ This library can be plugged into any Clojure HTTP pipeline.
 The companion library [lacinia-pedestal](https://github.com/walmartlabs/lacinia-pedestal) provides
 full HTTP support, including GraphQL subscriptions, for [Pedestal](https://github.com/pedestal/pedestal).
 
+An externally developed library, [duct-lacinia](https://github.com/kakao/duct-lacinia), provides similar capability
+for [Duct](https://github.com/duct-framework/duct).
+
 ## Getting Started
 
 For more detailed documentation, [read the manual](http://lacinia.readthedocs.io/en/latest/).
