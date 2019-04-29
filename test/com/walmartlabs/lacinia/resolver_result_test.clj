@@ -15,7 +15,8 @@
 (ns com.walmartlabs.lacinia.resolver-result-test
   (:require
     [clojure.test :refer [deftest is]]
-    [com.walmartlabs.lacinia.resolve :as r :refer [FieldResolver]])
+    [com.walmartlabs.lacinia.resolve :as r :refer [FieldResolver]]
+    [com.walmartlabs.lacinia.selector-context :as sc])
   (:import (java.util.concurrent Executor)))
 
 (deftest resolve-as-returns-resolver-result
@@ -94,12 +95,12 @@
     (r/on-deliver! resolver-result #(deliver p %))
     p))
 
-(defn ^:private apply-resolve-command
+(defn ^:private apply-wrapped-values
   [selection-context value]
-  (if (satisfies? r/ResolveCommand value)
-    (apply-resolve-command
-      (r/apply-command value selection-context)
-      (r/nested-value value))
+  (if (r/is-wrapped-value? value)
+    (apply-wrapped-values
+      (sc/apply-wrapped-value selection-context value)
+      (:value value))
     [selection-context value]))
 
 (deftest wrapper-invoked-for-raw-value
@@ -132,7 +133,7 @@
         wrapped (r/wrap-resolver-result resolver-fn inc-wrapper)
         *result (as-promise (wrapped nil nil nil))
         *extensions (atom {})
-        [sc final-value] (apply-resolve-command {:execution-context {:*extensions *extensions}} @*result)]
+        [sc final-value] (apply-wrapped-values {:execution-context {:*extensions *extensions}} @*result)]
     (is (= 301 final-value))
     (is (= {:fie {:fie {:foe :fum}}}
            @*extensions))

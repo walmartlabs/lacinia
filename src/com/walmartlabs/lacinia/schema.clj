@@ -29,14 +29,15 @@
              is-internal-type-name? sequential-or-set? as-keyword
              cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag
              to-message qualified-name]]
-    [com.walmartlabs.lacinia.resolve :as resolve :refer [ResolverResult resolve-as combine-results is-resolver-result?]]
+    [com.walmartlabs.lacinia.resolve :as resolve
+     :refer [ResolverResult resolve-as combine-results is-resolver-result? is-wrapped-value?]]
     [clojure.string :as str]
     [clojure.set :refer [difference]]
-    [clojure.pprint :as pprint])
+    [clojure.pprint :as pprint]
+    [com.walmartlabs.lacinia.selector-context :as sc])
   (:import
     (clojure.lang IObj)
-    (java.io Writer)
-    (com.walmartlabs.lacinia.resolve ResolveCommand)))
+    (java.io Writer)))
 
 ;; When using Clojure 1.8, the dependency on clojure-future-spec must be included,
 ;; and this code will trigger
@@ -827,13 +828,13 @@
           ;; So we have some privileged knowledge here: the callback returns a ResolverResult containing
           ;; the value. So we need to combine those together into a new ResolverResult.
           (let [unwrapper (fn [{:keys [resolved-value] :as selector-context}]
-                            (if-not (instance? ResolveCommand resolved-value)
+                            (if-not (is-wrapped-value? resolved-value)
                               (next-selector selector-context)
                               (loop [v resolved-value
                                      sc selector-context]
-                                (let [next-v (resolve/nested-value v)
-                                      next-sc (resolve/apply-command v sc)]
-                                  (if (instance? ResolveCommand next-v)
+                                (let [next-v (:value v)
+                                      next-sc (sc/apply-wrapped-value sc v)]
+                                  (if (is-wrapped-value? next-v)
                                     (recur next-v next-sc)
                                     (next-selector (assoc next-sc :resolved-value next-v)))))))]
             (reduce #(combine-results conj %1 %2)

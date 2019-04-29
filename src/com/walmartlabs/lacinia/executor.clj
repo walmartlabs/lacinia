@@ -20,11 +20,11 @@
     [com.walmartlabs.lacinia.vendor.ordered.map :refer [ordered-map]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :as resolve
-     :refer [resolve-as combine-results]]
+     :refer [resolve-as combine-results is-wrapped-value?]]
+    [com.walmartlabs.lacinia.selector-context :as sc]
     [com.walmartlabs.lacinia.constants :as constants])
   (:import
-    (clojure.lang PersistentQueue)
-    (com.walmartlabs.lacinia.resolve ResolveCommand)))
+    (clojure.lang PersistentQueue)))
 
 (defn ^:private ex-info-map
   [field-selection execution-context]
@@ -341,8 +341,6 @@
           (resolve-as (ordered-map))
           sub-selections))
 
-(defrecord ^:private SelectorContext [execution-context callback resolved-value resolved-type])
-
 (defn ^:private resolve-and-select
   "Recursive resolution of a field within a containing field's resolved value.
 
@@ -404,16 +402,13 @@
 
         process-resolved-value (fn [resolved-value]
                                  (loop [resolved-value resolved-value
-                                        selector-context (->SelectorContext execution-context'
-                                                                            selector-callback
-                                                                            nil
-                                                                            nil)]
-                                   ;; Using satisfies? is a huge performance hit. ResolveCommand is not
-                                   ;; intended as a general extension point, so we don't need to worry about
-                                   ;; it being extended to existing types.
-                                   (if (instance? ResolveCommand resolved-value)
-                                     (recur (resolve/nested-value resolved-value)
-                                            (resolve/apply-command resolved-value selector-context))
+                                        selector-context (sc/->SelectorContext execution-context'
+                                                                               selector-callback
+                                                                               nil
+                                                                               nil)]
+                                   (if (is-wrapped-value? resolved-value)
+                                     (recur (:value resolved-value)
+                                            (sc/apply-wrapped-value selector-context resolved-value))
                                      ;; Finally to a real value, not a wrapper.  The commands may have
                                      ;; modified the :errors or :execution-context keys, and the pipeline
                                      ;; will do the rest. Errors will be dealt with in the callback.
@@ -429,10 +424,10 @@
     (cond
 
       is-fragment?
-      (selector (->SelectorContext execution-context'
-                                   selector-callback
-                                   (:resolved-value execution-context')
-                                   resolved-type))
+      (selector (sc/->SelectorContext execution-context'
+                                      selector-callback
+                                      (:resolved-value execution-context')
+                                      resolved-type))
 
       ;; Optimization: for simple fields there may be direct function.
       ;; This is a function that synchronously provides the value from the container resolved value.
