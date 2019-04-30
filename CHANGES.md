@@ -9,6 +9,10 @@ Non-null arguments may now have defaults, and nullable variables may be provided
 to non-null arguments (though a null value will cause an exception prior to
 query execution).
 
+It is now possible to compile a schema with introspection disabled; this may
+be useful in production in some cases (though it prevents tools such as
+GraphiQL from operation).
+
 ### **Breaking Change**: com.walmartlabs.lacinia.executor/selections-tree
 
 `selections-tree` has changed; the value for a key is now a vector of nodes
