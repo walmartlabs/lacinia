@@ -30,7 +30,7 @@
              cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag
              to-message qualified-name]]
     [com.walmartlabs.lacinia.resolve :as resolve
-     :refer [ResolverResult resolve-as combine-results is-resolver-result? is-wrapped-value?]]
+     :refer [ResolverResult resolve-as combine-results is-resolver-result?]]
     [clojure.string :as str]
     [clojure.set :refer [difference]]
     [clojure.pprint :as pprint]
@@ -828,13 +828,13 @@
           ;; So we have some privileged knowledge here: the callback returns a ResolverResult containing
           ;; the value. So we need to combine those together into a new ResolverResult.
           (let [unwrapper (fn [{:keys [resolved-value] :as selector-context}]
-                            (if-not (is-wrapped-value? resolved-value)
+                            (if-not (sc/is-wrapped-value? resolved-value)
                               (next-selector selector-context)
                               (loop [v resolved-value
                                      sc selector-context]
                                 (let [next-v (:value v)
                                       next-sc (sc/apply-wrapped-value sc v)]
-                                  (if (is-wrapped-value? next-v)
+                                  (if (sc/is-wrapped-value? next-v)
                                     (recur next-v next-sc)
                                     (next-selector (assoc next-sc :resolved-value next-v)))))))]
             (reduce #(combine-results conj %1 %2)

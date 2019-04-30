@@ -12,11 +12,17 @@
 ; See the License for the specific language governing permissions and
 ; limitations under the License.
 (ns ^:no-doc com.walmartlabs.lacinia.selector-context
-  "Some code factored out of executor and schema."
-  (:require
-    [com.walmartlabs.lacinia.resolve :as resolve]))
+  "Some code factored out of executor and schema.")
 
 (defrecord SelectorContext [execution-context callback resolved-value resolved-type])
+
+(defrecord WrappedValue [value behavior data])
+
+(defn is-wrapped-value?
+  [value]
+  (instance? WrappedValue value))
+
+(def wrap-value ->WrappedValue)
 
 (defn apply-wrapped-value
   "Modifies the selection context based on the behavior and data in the wrapped value."
@@ -24,17 +30,17 @@
   ;; data is different for each behavior
   (case behavior
     ;; data is an error map to add
-    ::resolve/error (update selection-context :errors conj data)
+    :error (update selection-context :errors conj data)
 
     ;; data is a map of values to merge into the context, consumed by resolves further
     ;; down (closer to the leaves).
-    ::resolve/context (update-in selection-context [:execution-context :context] merge data)
+    :context (update-in selection-context [:execution-context :context] merge data)
 
-    ::resolve/extensions (let [[f args] data
+    :extensions (let [[f args] data
                                *extensions (get-in selection-context [:execution-context :*extensions])]
                            (apply swap! *extensions f args)
                            selection-context)
 
     ;; data is an error map to be added to the warnings
-    ::resolve/warning (update selection-context :warnings conj data)))
+    :warning (update selection-context :warnings conj data)))
 

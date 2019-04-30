@@ -30,6 +30,8 @@
   A value or wrapped value may be returned asynchronously using a [[ResolverResultPromise]].
 
   The [[FieldResolver]] protocol allows a Clojure record to act as a field resolver function."
+  (:require
+    [com.walmartlabs.lacinia.selector-context :refer [is-wrapped-value? wrap-value]])
   (:import (java.util.concurrent Executor)))
 
 (def ^{:dynamic true
@@ -44,12 +46,6 @@
     "The analog of a field resolver function, this method is passed the instance, and the standard
     context, field arguments, and container value, and returns a resolved value."))
 
-(defrecord ^:no-doc WrappedValue [value behavior data])
-
-(defn ^:no-doc is-wrapped-value?
-  [value]
-  (instance? WrappedValue value))
-
 (defn with-error
   "Wraps a value, modifiying it to include an error map (or seq of error maps).
 
@@ -62,7 +58,7 @@
   and must be a string) will be added to an embedded :extensions map."
   {:added "0.19.0"}
   [value error]
-  (->WrappedValue value ::error error))
+  (wrap-value value :error error))
 
 (defn with-context
   "Wraps a value so that when nested fields (at any depth) are executed, the provided values will be in the context.
@@ -70,7 +66,7 @@
    The provided context-map is merged onto the application context."
   {:added "0.19.0"}
   [value context-map]
-  (->WrappedValue value ::context context-map))
+  (wrap-value value :context context-map))
 
 (defprotocol ResolverResult
   "A special type returned from a field resolver that can contain a resolved value,
@@ -272,7 +268,7 @@
   extensions map and the arguments, and returns the new value of the extensions map."
   {:added "0.31.0"}
   [value f & args]
-  (->WrappedValue value ::extensions [f args]))
+  (wrap-value value :extensions [f args]))
 
 (defn with-warning
   "As with [[with-error]], but the error map will be added to the :warnings
@@ -282,4 +278,4 @@
   for an error and what call for a warning."
   {:added "0.31.0"}
   [value warning]
-  (->WrappedValue value ::warning warning))
+  (wrap-value value :warning warning))

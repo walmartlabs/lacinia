@@ -97,7 +97,7 @@
 
 (defn ^:private apply-wrapped-values
   [selection-context value]
-  (if (r/is-wrapped-value? value)
+  (if (sc/is-wrapped-value? value)
     (apply-wrapped-values
       (sc/apply-wrapped-value selection-context value)
       (:value value))

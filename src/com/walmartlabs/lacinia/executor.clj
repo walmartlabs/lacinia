@@ -20,7 +20,7 @@
     [com.walmartlabs.lacinia.vendor.ordered.map :refer [ordered-map]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :as resolve
-     :refer [resolve-as combine-results is-wrapped-value?]]
+     :refer [resolve-as combine-results]]
     [com.walmartlabs.lacinia.selector-context :as sc]
     [com.walmartlabs.lacinia.constants :as constants])
   (:import
@@ -406,7 +406,7 @@
                                                                                selector-callback
                                                                                nil
                                                                                nil)]
-                                   (if (is-wrapped-value? resolved-value)
+                                   (if (sc/is-wrapped-value? resolved-value)
                                      (recur (:value resolved-value)
                                             (sc/apply-wrapped-value selector-context resolved-value))
                                      ;; Finally to a real value, not a wrapper.  The commands may have
