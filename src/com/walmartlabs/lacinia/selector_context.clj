@@ -37,9 +37,9 @@
     :context (update-in selection-context [:execution-context :context] merge data)
 
     :extensions (let [[f args] data
-                               *extensions (get-in selection-context [:execution-context :*extensions])]
-                           (apply swap! *extensions f args)
-                           selection-context)
+                      *extensions (get-in selection-context [:execution-context :*extensions])]
+                  (apply swap! *extensions f args)
+                  selection-context)
 
     ;; data is an error map to be added to the warnings
     :warning (update selection-context :warnings conj data)))
