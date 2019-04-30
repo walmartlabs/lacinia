@@ -22,8 +22,10 @@
 (def compiled-schema (schema/compile test-schema))
 
 (defn ^:private execute
-  [query]
-  (simplify (lacinia/execute compiled-schema query {} nil)))
+  ([query]
+   (execute compiled-schema query))
+  ([schema query]
+   (simplify (lacinia/execute schema query {} nil))))
 
 (deftest simple-introspection-query
   (let [q "{ __type(name: \"human\") { kind name fields { name }}}"]
@@ -1469,3 +1471,13 @@
            (utils/execute schema "{
              __type(name: \"Filter\") { inputFields { name defaultValue } }
            }")))))
+
+(deftest query-with-introspection-disabled
+  (let [schema (schema/compile test-schema {:enable-introspection? false})
+        q "{ __type(name: \"human\") { kind name fields { name }}}"]
+    (is (= {:errors [{:extensions {:field :__type
+                                   :type :QueryRoot}
+                      :locations [{:column 3
+                                   :line 1}]
+                      :message "Cannot query field `__type' on type `QueryRoot'."}]}
+           (execute schema q)))))

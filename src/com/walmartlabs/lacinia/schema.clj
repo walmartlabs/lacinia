@@ -425,8 +425,11 @@
 
 (s/def ::promote-nils-to-empty-list? boolean?)
 
+(s/def ::enable-introspection? boolean?)
+
 (s/def ::compile-options (s/keys :opt-un [::default-field-resolver
-                                          ::promote-nils-to-empty-list?]))
+                                          ::promote-nils-to-empty-list?
+                                          ::enable-introspection?]))
 
 (defmulti ^:private check-compatible
   "Given two type definitions, dispatches on a vector of the category of the two types.
@@ -1505,7 +1508,9 @@
       default-field-resolver))
 
 (def ^:private default-compile-opts
-  {:default-field-resolver default-field-resolver})
+  {:default-field-resolver default-field-resolver
+   :promote-nils-to-empty-list? false
+   :enable-introspection? true})
 
 (s/def ::compile-args
   (s/cat :schema ::schema-object
@@ -1531,6 +1536,10 @@
     would be \"promoted\" to an empty list. This may be necessary when existing clients
     rely on the incorrect behavior, which was fixed in 0.31.0.
 
+  :enable-introspection?
+  : If true (the default), then Schema introspection is enabled. Some applications
+    may disable introspection in production.
+
   Produces a form ready for use in executing a query."
   ([schema]
    (compile schema nil))
@@ -1542,7 +1551,9 @@
              (str "Arguments to compile do not conform to spec:\n" (with-out-str (s/explain-out ed)))
              ed)))
    (let [options' (merge default-compile-opts options)
-         introspection-schema (introspection/introspection-schema)]
+         {:keys [enable-introspection?]} options'
+         introspection-schema (when enable-introspection?
+                                (introspection/introspection-schema))]
      (-> schema
          (deep-merge introspection-schema)
          (construct-compiled-schema options')))))
