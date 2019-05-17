@@ -146,6 +146,6 @@ supplied to the the nested field's resolver.
 For fields with an alias, an ``:alias`` key will be present; the value is a keyword for the alias
 (as provided in the client query).
 
-Fields without arguments, sub-selections, on an alias are represented as nil.
+Fields without arguments, sub-selections, or an alias are represented as nil.
 
 
