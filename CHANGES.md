@@ -1,4 +1,4 @@
-## 0.33.0 -- UNRELEASED
+## 0.33.0 -- 23 May 2019
 
 GraphQL Schema Definition Language documents can now contain empty types, and use
 `extend type`.
@@ -11,7 +11,7 @@ query execution).
 
 It is now possible to compile a schema with introspection disabled; this may
 be useful in production in some cases (though it prevents tools such as
-GraphiQL from operation).
+GraphiQL from operating).
 
 ### **Breaking Change**: com.walmartlabs.lacinia.executor/selections-tree
 
