@@ -1,0 +1,10 @@
+{:input-objects
+ {:root_input
+  {:fields {:name {:type String}}}}
+
+ :queries
+ {:print_input
+  {:type String
+   :args
+   {:input {:type :root_input}}
+   :resolve :query/print-input}}}
