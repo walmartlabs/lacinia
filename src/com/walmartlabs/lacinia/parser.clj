@@ -326,7 +326,7 @@
                                                               (q k))
                                                       {:schema-type type-name})))
             object-value (reduce-kv process-object-field
-                                    nil
+                                    {}
                                     arg-value)
             with-defaults (merge default-values object-value)]
         (doseq [k required-keys]

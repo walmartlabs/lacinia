@@ -18,6 +18,13 @@
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.test-utils :refer [compile-schema execute expect-exception]]))
 
+(deftest coerce-empty-input-objects-to-empty-hashmaps
+  (let [schema (compile-schema "empty-input-objects.edn"
+                               {:query/print-input (fn [_ args _]
+                                                     (pr-str args))})]
+    (is (= {:data {:print_input "{:input {}}"}}
+           (execute schema "query { print_input (input: {})}")))))
+
 (deftest null-checks-within-nullable-field
   (let [schema (compile-schema "nested-non-nullable-fields-schema.edn"
                                {:mutation/create-game (fn [_ args _]
