@@ -1,4 +1,4 @@
-(defproject com.walmartlabs/lacinia "0.33.0"
+(defproject com.walmartlabs/lacinia "0.34.0-SNAPSHOT"
   :description "A GraphQL server implementation in Clojure"
   :url "https://github.com/walmartlabs/lacinia"
   :license {:name "Apache, Version 2.0"
@@ -12,9 +12,9 @@
                  "vendor-src"]
   :profiles {:dev {:dependencies [[criterium "0.4.5"]
                                   [expound "0.7.2"]
-                                  [joda-time "2.10.1"]
+                                  [joda-time "2.10.2"]
                                   [com.walmartlabs/test-reporting "0.1.0"]
-                                  [io.aviso/logging "0.3.1"]
+                                  [io.aviso/logging "0.3.2"]
                                   [io.pedestal/pedestal.log "0.5.5"]
                                   [org.clojure/test.check "0.9.0"]
                                   [org.clojure/data.csv "0.1.4"]

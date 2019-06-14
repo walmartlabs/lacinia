@@ -12,6 +12,7 @@
     [com.walmartlabs.lacinia.util :as util]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :refer [resolve-as]]
+    [com.walmartlabs.lacinia.executor :as executor]
     [clojure.java.io :as io]
     [clojure.pprint :as pprint]
     [com.walmartlabs.test-utils :refer [simplify]]
@@ -330,9 +331,36 @@
       :else
       (run-benchmarks options))))
 
+
+(defn ^:private selection-tree->field-tuples
+  "Converts a selection tree, recursively, into lazy seq of field tuples.
+
+  Each tuple is a field name the arguments to the field (usually nil)."
+  [tree]
+  (mapcat (fn [[field-name instances]]
+            (let [fields (->> instances
+                              (mapv #(vector field-name (:args %))))
+                  sub-selections (->> instances
+                                      (map :selections)
+                                      (mapcat selection-tree->field-tuples))]
+              (into fields sub-selections)))
+          tree))
+
+
 (comment
 
   (test-benchmarks)
+
+  ;; Some shims used when investigating the performance of the preview API:
+
+  (let [parsed-query (parser/parse-query planets-schema introspection-query-raw)
+        context (executor/parsed-query->context parsed-query)]
+    (c/quick-bench
+      (-> context
+          executor/selections-seq
+          doall))
+
+    nil)
 
   )
 

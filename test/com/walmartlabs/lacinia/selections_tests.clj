@@ -18,7 +18,6 @@
    [com.walmartlabs.lacinia.parser :as parser]
    [com.walmartlabs.lacinia.executor :as executor]
    [com.walmartlabs.test-utils :refer [compile-schema execute]]
-   [com.walmartlabs.lacinia.constants :as constants]
    [clojure.edn :as edn]
    [com.walmartlabs.test-schema :refer [test-schema]]
    [com.walmartlabs.lacinia.schema :as schema]))
@@ -26,52 +25,89 @@
 (def default-schema
   (schema/compile test-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))
 
-(defn ^:private app-context
+(defn ^:private parse-and-wrap
   ([query]
-   (app-context default-schema query))
+   (parse-and-wrap default-schema query))
   ([schema query]
    (let [parsed-query (parser/parse-query schema query)]
-     {constants/parsed-query-key parsed-query
-      constants/selection-key (-> parsed-query :selections first)})))
+     (executor/parsed-query->context parsed-query))))
 
 
 (defn ^:private root-selections
   [query]
   (-> query
-      app-context
+      parse-and-wrap
       executor/selections-seq))
+
+(defn ^:private root-selections2
+  [query]
+  (-> query
+      parse-and-wrap
+      executor/selections-seq2))
 
 (defn ^:private tree
   ([query]
    (tree default-schema query))
   ([schema query]
    (->> query
-        (app-context schema)
+        (parse-and-wrap schema)
         executor/selections-tree)))
 
 (deftest simple-cases
-  (is (= [:character/name]
+  (is (= [:__Queries/hero :character/name]
          (root-selections "{ hero { name }}")))
 
-  (is (= [:human/name :human/homePlanet]
+  (is (= [:__Queries/human :human/name :human/homePlanet]
          (root-selections "{ human { name homePlanet }}")))
 
-  (is (= [:human/name :human/friends :human/enemies
+  (is (= [:__Queries/human
+          :human/name :human/friends :human/enemies
           :character/name                                   ; friends
           :character/appears_in
           :character/name]                                  ; enemies
          (root-selections "{ human { name friends { name appears_in } enemies { name }}}"))))
 
+(deftest multiple-roots
+  ;; This only really applies when getting the selections from the parsed query
+  ;; rather than normally, from within a resolver function.
+  (let [q "
+         { human { name }
+           r2: droid { id }
+         }"]
+    (is (= [:__Queries/human
+            :__Queries/droid
+            :human/name
+            :droid/id]
+           (root-selections q)))
+
+    (is (= {:__Queries/droid [{:args {:id "2001"}
+                               :alias :r2
+                               :selections {:droid/id [nil]}}]
+            :__Queries/human [{:args {:id "1001"}
+                               :selections {:human/name [nil]}}]}
+           (tree q)))
+
+    (is (= [{:name :__Queries/human
+             :args {:id "1001"}}
+            {:name :__Queries/droid
+             :alias :r2
+             :args {:id "2001"}}
+            {:name :human/name}
+            {:name :droid/id}]
+           (root-selections2 q)))))
+
 (deftest introspection-cases
-  (is (= []
+  (is (= [:__Queries/hero]
          (root-selections "{ hero { __typename }}")))
-  (is (= [:character/name]
+  (is (= [:__Queries/hero :character/name]
          (root-selections "{ hero { name __typename }}")))
-  (is (= {:character/name [nil]}
+  (is (= {:__Queries/hero
+          [{:selections {:character/name [nil]}}]}
          (tree "{ hero { name __typename }}"))))
 
 (deftest mutations
-  (is (= [:human/name :human/homePlanet]
+  (is (= [:__Mutations/changeHeroHomePlanet
+          :human/name :human/homePlanet]
          (root-selections "mutation { changeHeroHomePlanet (id: \"123\",
             newHomePlanet: \"Venus\") {
             name homePlanet
@@ -79,7 +115,8 @@
          }"))))
 
 (deftest inline-fragments
-  (is (= [:character/name
+  (is (= [:__Queries/hero
+          :character/name
           :human/homePlanet
           :droid/primary_function]
          (root-selections
@@ -94,7 +131,8 @@
             }"))))
 
 (deftest named-fragments
-  (is (= [:character/name
+  (is (= [:__Queries/hero
+          :character/name
           :human/homePlanet
           :droid/primary_function]
          (root-selections
@@ -113,7 +151,7 @@
             "))))
 
 (deftest is-selected
-  (let [context (app-context "{ human { name homePlanet }}")]
+  (let [context (parse-and-wrap "{ human { name homePlanet }}")]
     (is (executor/selects-field? context
                                  :human/name))
     (is (executor/selects-field? context :human/homePlanet))
@@ -121,20 +159,22 @@
     (is (not (executor/selects-field? context :character/name)))))
 
 (deftest basic-tree
-  (is (= {:human/name [nil]}
+  (is (= {:__Queries/human [{:args {:id "1001"}
+                             :selections {:human/name [nil]}}]}
          (tree "{ human { name }}")))
 
-  (is (= {:droid/appears_in [{:alias :appears}]
-          :droid/friends [{:selections {:character/name [nil]}}]
-          :droid/name [nil]}
+  (is (= {:__Queries/droid [{:args {:id "2001"}
+                             :selections {:droid/appears_in [{:alias :appears}]
+                                          :droid/friends [{:selections {:character/name [nil]}}]
+                                          :droid/name [nil]}}]}
          (tree "{ droid { name appears: appears_in friends { name }}}"))))
 
 
 (deftest inline-fragments-are-flattened-in-tree
-  (is (= {:character/name [nil]
-          :droid/primary_function [nil]
-          :human/friends [{:selections {:character/name [nil]}}]
-          :human/homePlanet [nil]}
+  (is (= {:__Queries/hero [{:selections {:character/name [nil]
+                                         :droid/primary_function [nil]
+                                         :human/friends [{:selections {:character/name [nil]}}]
+                                         :human/homePlanet [nil]}}]}
          (tree "{
               hero {
                 name
@@ -146,10 +186,11 @@
             }"))))
 
 (deftest named-fragments-are-flattened-in-tree
-  (is (= {:character/name [nil]
-          :character/friends [{:selections {:character/name [nil {:alias :character_name}]
-                                            :droid/primary_function [nil]
-                                            :human/homePlanet [nil]}}]}
+  (is (= {:__Queries/hero
+          [{:selections {:character/name [nil]
+                         :character/friends [{:selections {:character/name [nil {:alias :character_name}]
+                                                           :droid/primary_function [nil]
+                                                           :human/homePlanet [nil]}}]}}]}
          (tree "query {
               hero {
               name
@@ -197,9 +238,10 @@
                        nil))))
 
 (deftest tree-with-aliases
-  (is (= {:Root/detail [{:args {:int_arg 1}}
-                        {:alias :d5
-                         :args {:int_arg 5}}]}
+  (is (= {:__Queries/get_root
+          [{:selections {:Root/detail [{:args {:int_arg 1}}
+                                       {:alias :d5
+                                        :args {:int_arg 5}}]}}]}
          (tree selections-schema
                "{ get_root {
                     detail(int_arg: 1)
