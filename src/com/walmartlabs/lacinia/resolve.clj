@@ -30,6 +30,8 @@
   A value or wrapped value may be returned asynchronously using a [[ResolverResultPromise]].
 
   The [[FieldResolver]] protocol allows a Clojure record to act as a field resolver function."
+  (:require
+    [com.walmartlabs.lacinia.selector-context :refer [is-wrapped-value? wrap-value]])
   (:import (java.util.concurrent Executor)))
 
 (def ^{:dynamic true
@@ -44,20 +46,6 @@
     "The analog of a field resolver function, this method is passed the instance, and the standard
     context, field arguments, and container value, and returns a resolved value."))
 
-(defprotocol ^:no-doc ResolveCommand
-  "Used to define special wrappers around resolved values, such as [[with-error]].
-
-  This is not intended for use by applications, as the structure of the selection-context
-  is not part of Lacinia's public API."
-  (^:no-doc apply-command [this selection-context]
-    "Applies changes to the selection context, which is returned.")
-
-  (^:no-doc nested-value [this]
-    "Returns the value wrapped by this command, which may be another command or a final result.")
-
-  (^:no-doc replace-nested-value [this new-value]
-    "Returns a new instance of the same command, but wrapped around a different nested value."))
-
 (defn with-error
   "Wraps a value, modifiying it to include an error map (or seq of error maps).
 
@@ -70,16 +58,7 @@
   and must be a string) will be added to an embedded :extensions map."
   {:added "0.19.0"}
   [value error]
-  (reify
-    ResolveCommand
-
-    (apply-command [_ selection-context]
-      (update selection-context :errors conj error))
-
-    (nested-value [_] value)
-
-    (replace-nested-value [_ new-value]
-      (with-error new-value error))))
+  (wrap-value value :error error))
 
 (defn with-context
   "Wraps a value so that when nested fields (at any depth) are executed, the provided values will be in the context.
@@ -87,16 +66,7 @@
    The provided context-map is merged onto the application context."
   {:added "0.19.0"}
   [value context-map]
-  (reify
-    ResolveCommand
-
-    (apply-command [_ selection-context]
-      (update-in selection-context [:execution-context :context] merge context-map))
-
-    (nested-value [_] value)
-
-    (replace-nested-value [_ new-value]
-      (with-context new-value context-map))))
+  (wrap-value value :context context-map))
 
 (defprotocol ResolverResult
   "A special type returned from a field resolver that can contain a resolved value,
@@ -260,47 +230,35 @@
     (fn [context args value]
       (let [resolved-value (resolver-fn context args value)
             final-result (resolve-promise)
-            deliver-final-result (fn [commands new-value]
+            deliver-final-result (fn [wrapped-values new-value]
                                    (deliver! final-result
-                                             (if-not (seq commands)
+                                             (if-not (seq wrapped-values)
                                                new-value
-                                               (reduce #(replace-nested-value %2 %1)
+                                               ;; Rebuild the stack of wrapped values
+                                               ;; last to first
+                                               (reduce #(assoc %2 :value %1)
                                                        new-value
-                                                       commands))))
+                                                       wrapped-values))))
             invoke-wrapper (fn invoke-wrapper
                              ([value]
                               (invoke-wrapper nil value))
-                             ([commands value]
+                             ([wrapped-values value]
                                ;; Wait, did someone just say "monad"?
-                              (if (satisfies? ResolveCommand value)
-                                (recur (cons value commands)
-                                       (nested-value value))
+                              (if (is-wrapped-value? value)
+                                ;; Unpack the wrapped value, and push the wrapper onto the stack
+                                ;; of wrapped values.
+                                (recur (cons value wrapped-values)
+                                       (:value value))
                                 (let [new-value (wrapper-fn context args value value)]
                                   (if (is-resolver-result? new-value)
-                                    (on-deliver! new-value #(deliver-final-result commands %))
-                                    (deliver-final-result commands new-value))))))]
+                                    (on-deliver! new-value #(deliver-final-result wrapped-values %))
+                                    (deliver-final-result wrapped-values new-value))))))]
 
         (if (is-resolver-result? resolved-value)
           (on-deliver! resolved-value invoke-wrapper)
           (invoke-wrapper resolved-value))
 
         final-result))))
-
-(defn ^:private with-extensions*
-  [value f args]
-  (reify
-    ResolveCommand
-
-    (apply-command [_ selection-context]
-      (apply swap! (get-in selection-context [:execution-context :*extensions])
-             f args)
-
-      selection-context)
-
-    (nested-value [_] value)
-
-    (replace-nested-value [_ new-value]
-      (with-extensions* new-value f args))))
 
 (defn with-extensions
   "Wraps a value with an update to the extensions for the request.
@@ -310,8 +268,7 @@
   extensions map and the arguments, and returns the new value of the extensions map."
   {:added "0.31.0"}
   [value f & args]
-  (with-extensions* value f args))
-
+  (wrap-value value :extensions [f args]))
 
 (defn with-warning
   "As with [[with-error]], but the error map will be added to the :warnings
@@ -321,13 +278,4 @@
   for an error and what call for a warning."
   {:added "0.31.0"}
   [value warning]
-  (reify
-    ResolveCommand
-
-    (apply-command [_ selection-context]
-      (update selection-context :warnings conj warning))
-
-    (nested-value [_] value)
-
-    (replace-nested-value [_ new-value]
-      (with-warning new-value warning))))
+  (wrap-value value :warning warning))
