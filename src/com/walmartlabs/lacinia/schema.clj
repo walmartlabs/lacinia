@@ -288,9 +288,8 @@
 ;; Defining these callbacks in spec has been a challenge. At some point,
 ;; we can expand this to capture a bit more about what a field resolver
 ;; is passed and should return.
-(s/def ::resolve (s/or :function ::resolver-fn
+(s/def ::resolve (s/or :function ::function-or-var
                        :protocol ::resolver-type))
-(s/def ::resolver-fn fn?)
 (s/def ::resolver-type #(satisfies? resolve/FieldResolver %))
 (s/def ::field (s/keys :opt-un [::description
                                 ::resolve
@@ -356,7 +355,9 @@
 ;; have been updated.
 (s/def ::not-a-conformer #(not (s/spec? %)))
 (s/def ::parse-or-serialize-fn (s/and ::not-a-conformer
-                                      ifn?))
+                                      ::function-or-var))
+(s/def ::function-or-var (s/or :function fn?
+                               :var var?))
 (s/def ::parse ::parse-or-serialize-fn)
 (s/def ::serialize ::parse-or-serialize-fn)
 (s/def ::scalar (s/keys :opt-un [::description

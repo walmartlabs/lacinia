@@ -542,7 +542,8 @@
                   streamers
                   documentation)))
 
-(s/def ::field-fn (s/map-of simple-keyword? (s/or :function fn? :keyword simple-keyword?)))
+(s/def ::field-fn (s/map-of simple-keyword? (s/or :function ::schema/function-or-var
+                                                  :keyword simple-keyword?)))
 (s/def ::fn-map (s/map-of simple-keyword? ::field-fn))
 (s/def ::parse ::schema/parse-or-serialize-fn)
 (s/def ::serialize ::schema/parse-or-serialize-fn)
