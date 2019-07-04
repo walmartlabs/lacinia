@@ -30,7 +30,7 @@ make sure that ``tag-with-type`` is the last thing a field resolver does.
 Using record types
 ------------------
 
-As an alternative to ``type-with-tag``, it is possible to associate an object with a Java class; typically
+As an alternative to ``tag-with-type``, it is possible to associate an object with a Java class; typically
 this is a record type created using ``defrecord``.
 
 The ``:tag`` key of the object definition must be set to the the class name (as a symbol).
