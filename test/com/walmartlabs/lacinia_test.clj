@@ -458,7 +458,15 @@
               :errors [{:message "Non-nullable field was null."
                         :locations [{:line 1
                                      :column 20}]
-                        :path [:hero :friends :arch_enemy]}]}
+                        :path [:hero :friends 0 :arch_enemy]}
+                       {:message "Non-nullable field was null."
+                        :locations [{:line 1
+                                     :column 20}]
+                        :path [:hero :friends 1 :arch_enemy]}
+                       {:message "Non-nullable field was null."
+                        :locations [{:line 1
+                                     :column 20}]
+                        :path [:hero :friends 2 :arch_enemy]}]}
              executed)
           "nulls the first nullable object after a non-nullable field returns null")))
   (testing "nullable list of nullable objects (friends) with nullable selections containing non-nullable field"
@@ -468,7 +476,15 @@
               :errors [{:message "Non-nullable field was null."
                         :locations [{:line 1
                                      :column 34}]
-                        :path [:hero :friends :best_friend :foo]}]}
+                        :path [:hero :friends 0 :best_friend :foo]}
+                       {:message "Non-nullable field was null."
+                        :locations [{:line 1
+                                     :column 34}]
+                        :path [:hero :friends 1 :best_friend :foo]}
+                       {:message "Non-nullable field was null."
+                        :locations [{:line 1
+                                     :column 34}]
+                        :path [:hero :friends 2 :best_friend :foo]}]}
              executed)
           "nulls the first nullable object after a non-nullable field returns null")))
   (testing "non-nullable list of nullable objects (family) with non-nullable selections"
@@ -478,7 +494,15 @@
               :errors [{:message "Non-nullable field was null."
                         :locations [{:line 1
                                      :column 19}]
-                        :path [:hero :family :arch_enemy]}]}
+                        :path [:hero :family 0 :arch_enemy]}
+                       {:message "Non-nullable field was null."
+                        :locations [{:line 1
+                                     :column 19}]
+                        :path [:hero :family 1 :arch_enemy]}
+                       {:message "Non-nullable field was null."
+                        :locations [{:line 1
+                                     :column 19}]
+                        :path [:hero :family 2 :arch_enemy]}]}
              executed)
           "nulls the first nullable object after a non-nullable field returns null"))))
 
