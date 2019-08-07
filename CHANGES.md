@@ -1,3 +1,14 @@
+## 0.34.0 -- UNRELEASED
+
+The new function `com.walmartlabs.lacinia.executor/parsed-query->context`
+makes it possible to use the preview API functions in the executor
+namespace even before the query is executed, for example, from 
+a Pedestal interceptor.
+
+New preview API function `com.walmartlabs.lacinia.executor/selections-seq2`
+improves on `selections-seq`, returning the name, alias, and arguments of
+each selected field.
+
 ## 0.33.0 -- 23 May 2019
 
 GraphQL Schema Definition Language documents can now contain empty types, and use

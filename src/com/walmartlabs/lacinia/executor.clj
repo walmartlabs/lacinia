@@ -531,14 +531,10 @@
   "Identifies the qualified field name for a selection node.  May return nil
   for meta-fields such as __typename."
   [node]
-  (-> node :field-definition :qualified-name))
+  (get-in node [:field-definition :qualified-name]))
 
-(defn selections-seq
-  "A width-first traversal of selections tree, returning a lazy sequence
-  of qualified field names.  A qualified field name is a namespaced keyword,
-  the namespace is the containing type, e.g. :User/name."
-  {:added "0.17.0"}
-  [context]
+(defn ^:private walk-selections
+  [context node-xform]
   (let [parsed-query (get context constants/parsed-query-key)
         selection (get context constants/selection-key)
         step (fn step [queue]
@@ -553,7 +549,39 @@
          ;; in what's beneath the selection
          next
          (filter #(= :field (:selection-type %)))
-         (keep to-field-name))))
+         (keep node-xform))))
+
+(defn selections-seq
+  "A width-first traversal of the selections tree, returning a lazy sequence
+  of qualified field names.  A qualified field name is a namespaced keyword,
+  the namespace is the containing type, e.g. :User/name.
+
+  Fragments are flattened (as if always selected)."
+  {:added "0.17.0"}
+  [context]
+  (walk-selections context to-field-name))
+
+(defn ^:private to-field-data
+  [node]
+  (let [{:keys [field alias arguments]} node]
+    (cond-> {:name (to-field-name node)}
+      (not (= field alias)) (assoc :alias alias)
+      (seq arguments) (assoc :args arguments))))
+
+(defn selections-seq2
+  "An enhancement of [[selections-seq]] that returns a map for each node:
+
+  :name
+  : The qualified field name
+
+  :args
+  : The arguments of the field (if any)
+
+  :alias
+  : The alias for the field, if any"
+  {:added "0.34.0"}
+  [context]
+  (walk-selections context to-field-data))
 
 (defn selects-field?
   "Invoked by a field resolver to determine if a particular field is selected anywhere within the selection
@@ -612,7 +640,7 @@
    :alias is the alias for the field (most fields do not have aliases).
 
    A vector is returned because the selection for an outer field may, via aliases, reference
-   the same inner field multiple times (with different arguments and/or sub-selections).
+   the same inner field multiple times (with different arguments, aliases, and/or sub-selections).
 
    Each key of a nested map is present only if a value is provided; for scalar fields with no arguments, the
    nested map will be nil.
@@ -623,4 +651,20 @@
   (let [parsed-query (get context constants/parsed-query-key)
         selection (get context constants/selection-key)]
     (build-selections-map parsed-query (:selections selection))))
+
+(defn parsed-query->context
+  "Converts a parsed query, prior to execution, into a context compatible with preview API:
+
+  * [[selections-tree]]
+  * [[selects-field?]]
+  * [[selections-seq]]
+
+  This is used to preview the execution of the query prior to execution."
+  {:added "0.34.0"}
+  [parsed-query]
+  (let [{:keys [root selections]} parsed-query]
+    {constants/parsed-query-key parsed-query
+     constants/selection-key {:selection-type :field
+                              :field-definition root
+                              :selections selections}}))
 
