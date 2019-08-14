@@ -379,7 +379,7 @@
 (s/def ::arguments (s/nilable (s/map-of ::schema-key any?)))
 
 ;; Same issue as with ::resolve.
-(s/def ::stream fn?)
+(s/def ::stream ::function-or-var)
 
 (s/def ::queries (s/map-of ::schema-key ::operation))
 (s/def ::mutations (s/map-of ::schema-key ::operation))
@@ -423,7 +423,7 @@
 
 ;; Again, this can be fleshed out once we have a handle on defining specs for
 ;; functions:
-(s/def ::default-field-resolver fn?)
+(s/def ::default-field-resolver ::function-or-var)
 
 (s/def ::promote-nils-to-empty-list? boolean?)
 
