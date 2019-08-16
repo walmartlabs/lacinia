@@ -1,4 +1,4 @@
-## 0.34.0 -- UNRELEASED
+## 0.34.0 -- 16 Aug 2019
 
 The new function `com.walmartlabs.lacinia.executor/parsed-query->context`
 makes it possible to use the preview API functions in the executor
@@ -8,6 +8,8 @@ a Pedestal interceptor.
 New preview API function `com.walmartlabs.lacinia.executor/selections-seq2`
 improves on `selections-seq`, returning the name, alias, and arguments of
 each selected field.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/22?closed=1)
 
 ## 0.33.0 -- 23 May 2019
 
