@@ -25,3 +25,6 @@ Sample Projects
   Also part of the project is a `frontend <https://github.com/openweb-nl/open-bank-mark/tree/master/frontend>`_
   using `re-graph <https://github.com/oliyh/re-graph>`_.
   Users can login, transfer money, and get an overview of all the bank accounts.
+  
+`Fullstack Learning Project <https://promesante.github.io/2019/08/14/clojure_graphql_fullstack_learning_project_part_1.html>`_
+  A port of `The Fullstack Tutorial for GraphQL <https://www.howtographql.com/>`_, ported to Clojure and Lacinia.
