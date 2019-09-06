@@ -35,6 +35,36 @@
     (is (= {:data {:droid {:name "C-3PO"}}}
            (execute-parsed-query q {:id "2000"} nil)))))
 
+(deftest references-missing-variable
+  (let [compiled-schema (schema/compile {:queries {:echo {:type :String
+                                                          :args {:input {:type '(non-null String)}}
+                                                          :resolve (fn [_ {:keys [input]} _]
+                                                                     (when-not input
+                                                                       (throw (NullPointerException.)))
+
+                                                                     input)}}})
+        q (parser/parse-query compiled-schema
+                              "query ($i : String) {
+                                 echo (input : $i)
+                               }")]
+
+    ;; Double check the success case:
+
+    (is (= {:data {:echo "foo"}}
+             (execute-parsed-query q {:i "foo"} nil)))
+
+    ;; Should not get as far as the resolver function:
+
+    (is (= {:errors
+            [{:message "No variable `i' was supplied for argument `__Queries/echo.input', which is required."
+              :locations [{:line 2
+                           :column 34}]
+              :extensions
+              {:argument :__Queries/echo.input
+               :field :__Queries/echo
+               :variable-name :i}}]}
+           (execute-parsed-query q nil nil)))))
+
 (deftest fragments-can-reference-variables
   (let [q (parser/parse-query compiled-schema
                               "

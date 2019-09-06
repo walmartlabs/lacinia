@@ -73,8 +73,9 @@
                        :order "asc"}))))
 
 (deftest var-nested-in-map-not-allowed
-  (is (= {:errors [{:extensions {:argument :input
-                                 :field :echo}
+  (is (= {:errors [{:extensions {:argument :__Queries/echo.input
+                                 :field :__Queries/echo
+                                 :variable-name :input}
                     :locations [{:column 21
                                  :line 1}]
                     :message "Exception applying arguments to field `echo': Argument `input' contains a scalar argument with nested variables, which is not allowed."}]}

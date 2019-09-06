@@ -101,8 +101,8 @@
     (is (= {:data {:echo "Echo: Default"}}
            (execute schema "query($s : String) { echo(input: $s) }" nil nil)))
 
-    (is (= {:errors [{:extensions {:argument :input
-                                   :field :echo
+    (is (= {:errors [{:extensions {:argument :__Queries/echo.input
+                                   :field :__Queries/echo
                                    :variable-name :s}
                       :locations [{:column 23
                                    :line 1}]
@@ -110,7 +110,7 @@
            (execute schema "query($s : String!) { echo(input: $s) }" nil nil)))
 
     (is (= {:errors [{:extensions {:argument :__Queries/echo.input
-                                   :field :echo}
+                                   :field :__Queries/echo}
                       :locations [{:column 22
                                    :line 1}]
                       :message "Argument `s' is required, but no value was provided."}]}
