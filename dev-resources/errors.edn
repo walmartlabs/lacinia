@@ -125,7 +125,304 @@
  :errors
  [{:message "This base has been destroyed.",
    :locations [{:line 1, :column 39}],
-   :path [:planets :moons :bases :name]}
+   :path [:planets 4 :moons 0 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 1 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 2 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 3 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 4 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 5 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 6 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 7 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 8 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 9 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 10 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 11 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 12 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 13 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 14 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 15 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 16 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 17 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 18 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 19 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 20 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 21 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 22 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 23 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 24 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 25 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 26 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 27 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 28 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 29 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 30 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 31 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 32 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 33 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 34 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 35 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 36 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 37 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 38 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 39 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 40 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 41 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 42 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 43 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 44 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 45 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 46 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 47 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 48 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 49 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 50 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 51 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 52 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 53 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 54 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 55 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 56 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 57 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 58 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 59 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 60 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 61 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 62 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 63 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 64 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 65 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 66 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 67 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 68 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 69 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 70 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 71 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 72 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 73 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 74 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 75 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 76 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 77 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 78 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 79 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 80 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 81 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 82 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 83 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 84 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 85 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 86 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 87 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 88 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 89 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 90 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 91 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 92 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 93 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 94 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 95 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 96 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 97 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 98 :bases 0 :name]}
+  {:message "This base has been destroyed.",
+   :locations [{:line 1, :column 39}],
+   :path [:planets 4 :moons 99 :bases 0 :name]}
   {:message "Europa is forbidden. Attempt no landing there.",
    :locations [{:line 1, :column 39}],
-   :path [:planets :moons :bases :name]}]}
+   :path [:planets 5 :moons 0 :bases 0 :name]}]}

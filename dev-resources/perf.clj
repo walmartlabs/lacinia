@@ -212,6 +212,8 @@
    :errors
    ;; Test how long it take when a single deeply nested resolver resolves an error.
    ;; Also shows the cost of the call to distinct
+   ;; This probably has gotten more expensive because the number of error maps has increased
+   ;; due to the fix that put indexes into the path
    {:query "{ planets { name moons { name bases { name }}}}"
     :schema planets-schema
     :expected (read-edn "errors.edn")}})
