@@ -3,6 +3,8 @@
 Lacinia now uses the fully qualified field and argument name as `:extension` data
 when reporting errors in fields, field arguments, and variables.
 
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/23?closed=1)
+
 ## 0.34.0 -- 16 Aug 2019
 
 The new function `com.walmartlabs.lacinia.executor/parsed-query->context`
