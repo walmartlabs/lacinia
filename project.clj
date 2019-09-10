@@ -6,17 +6,17 @@
   :plugins [[lein-codox "0.10.3"]
             [test2junit "1.2.5"]]
   :dependencies [[org.clojure/clojure "1.9.0"]
-                 [clj-antlr "0.2.4"]
+                 [clj-antlr "0.2.5"]
                  [org.clojure/data.json "0.2.6"]]
   :source-paths ["src"
                  "vendor-src"]
   :profiles {:dev {:dependencies [[criterium "0.4.5"]
                                   [expound "0.7.2"]
-                                  [joda-time "2.10.2"]
+                                  [joda-time "2.10.3"]
                                   [com.walmartlabs/test-reporting "0.1.0"]
                                   [io.aviso/logging "0.3.2"]
                                   [io.pedestal/pedestal.log "0.5.5"]
-                                  [org.clojure/test.check "0.9.0"]
+                                  [org.clojure/test.check "0.10.0"]
                                   [org.clojure/data.csv "0.1.4"]
                                   [org.clojure/tools.cli "0.4.2"]]}}
   :aliases {"benchmarks" ["run" "-m" "perf"]}
