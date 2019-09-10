@@ -379,21 +379,20 @@
     (if (empty? arguments)
       default-values
       (let [process-arg (fn [arg-name arg-value]
-                          (with-exception-context {:argument arg-name}
                             (let [arg-def (get argument-defs arg-name)]
-
                               (when-not arg-def
                                 (throw-exception (format "Unknown argument %s."
                                                          (q arg-name))
                                                  {:defined-arguments (keys argument-defs)}))
                               (try
-                                (process-literal-argument schema arg-def arg-value)
+                                (with-exception-context {:argument (:qualified-name arg-def)}
+                                  (process-literal-argument schema arg-def arg-value))
                                 (catch Exception e
                                   (throw-exception (format "For argument %s, %s"
                                                            (q arg-name)
                                                            (decapitalize (to-message e)))
                                                    nil
-                                                   e))))))]
+                                                   e)))))]
         (let [static-args (reduce-kv (fn [m k v]
                                        (assoc m k (process-arg k v)))
                                      nil
@@ -553,9 +552,9 @@
 
 (defmethod process-dynamic-argument :variable
   [schema argument-definition arg]
-  ;; ::variables is stashed into schema by xform-query
   (let [[_ arg-value] arg
         captured-context *exception-context*
+        ;; ::variables is stashed into schema by xform-query
         variable-def (get-in schema [::variables arg-value])]
     (when (nil? variable-def)
       (throw-exception (format "Argument references undeclared variable %s."
@@ -604,11 +603,16 @@
             supplied?
             (when arg-non-nullable?
               (throw-exception (format "Argument %s is required, but no value was provided."
-                                       (q arg-value))
-                               {:argument (:qualified-name argument-definition)}))
+                                       (q arg-value))))
 
             (contains? argument-definition :default-value)
             (:default-value argument-definition)
+
+            arg-non-nullable?
+            (throw-exception (format "No variable %s was supplied for argument %s, which is required."
+                                     (q arg-value)
+                                     (-> argument-definition :qualified-name q))
+                             {:variable-name arg-value})
 
             ;; No value or default is supplied (or needed); the resolver will simply not
             ;; see the argument in its argument map. It can decide what to do.
@@ -633,25 +637,26 @@
                         (let [arg-def (get argument-definitions arg-name)
                               arg-type-name (schema/root-type-name arg-def)
                               arg-type (get schema arg-type-name)]
-                          (with-exception-context {:argument arg-name}
-                            (when (and (= :scalar (:category arg-type))
-                                       (= :object (first arg-value)))
-                              (throw-exception (format "Argument %s contains a scalar argument with nested variables, which is not allowed."
-                                                       (q arg-name))
-                                               nil))
+                          (when (and (= :scalar (:category arg-type))
+                                     (= :object (first arg-value)))
+                            (throw-exception (format "Argument %s contains a scalar argument with nested variables, which is not allowed."
+                                                     (q arg-name))
+                                             {:argument (:qualified-name arg-def)
+                                              :variable-name arg-name}))
 
-                            (when-not arg-def
-                              (throw-exception (format "Unknown argument %s."
-                                                       (q arg-name))
-                                               {:field-arguments (keys argument-definitions)}))
-                            (try
-                              (process-dynamic-argument schema arg-def arg-value)
-                              (catch Exception e
-                                (throw-exception (format "For argument %s, %s"
-                                                         (q arg-name)
-                                                         (decapitalize (to-message e)))
-                                                 nil
-                                                 e))))))
+                          (when-not arg-def
+                            (throw-exception (format "Unknown argument %s."
+                                                     (q arg-name))
+                                             {:field-arguments (keys argument-definitions)}))
+                          (try
+                            (with-exception-context {:argument (:qualified-name arg-def)}
+                              (process-dynamic-argument schema arg-def arg-value))
+                            (catch Exception e
+                              (throw-exception (format "For argument %s, %s"
+                                                       (q arg-name)
+                                                       (decapitalize (to-message e)))
+                                               nil
+                                               e)))))
           dynamic-args (reduce-kv (fn [m k v]
                                     (assoc m k (process-arg k v)))
                                   nil
@@ -1004,17 +1009,22 @@
                            (get-in type [:fields field]))
         field-type (schema/root-type-name field-definition)
         nested-type (get schema field-type)
-        selection (with-exception-context (assoc context :field field)
+        field-name (:qualified-name field-definition)
+        context' (cond-> context
+                   field-name (assoc :field field-name))
+        selection (with-exception-context context'
                     (when (nil? nested-type)
                       (if (scalar? type)
-                        (throw-exception "Path de-references through a scalar type.")
+                        (throw-exception "Path de-references through a scalar type."
+                                         {:field field})
                         (let [type-name (:type-name type)]
                           (throw-exception (format "Cannot query field %s on type %s."
                                                    (q field)
                                                    (if type-name
                                                      (q type-name)
                                                      "UNKNOWN"))
-                                           {:type type-name}))))
+                                           {:type type-name
+                                            :field field}))))
                     (let [[literal-arguments dynamic-arguments-extractor]
                           (try
                             (process-arguments schema

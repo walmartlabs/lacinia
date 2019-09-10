@@ -53,11 +53,11 @@
     (is (= {:extensions {:allowed-values #{:EMPIRE
                                            :JEDI
                                            :NEWHOPE}
-                         :argument :episode
+                         :argument :__Queries/hero.episode
                          :enum-type :episode
                          :value :CLONES
-                         ;; TODO: This is the location of 'hero', should be location of 'episode' or 'CLONES'.
-                         :field :hero}
+                         :field :__Queries/hero}
+            ;; TODO: This is the location of 'hero', should be location of 'episode' or 'CLONES'.
             :locations [{:column 3
                          :line 1}]
             :message "Exception applying arguments to field `hero': For argument `episode', provided argument value `CLONES' is not member of enum type."}

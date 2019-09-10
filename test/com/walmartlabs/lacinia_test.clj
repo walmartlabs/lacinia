@@ -234,9 +234,9 @@
            (execute default-schema q {:someId luke-id} nil)))
     (is (= {:data {:human {:name "Han Solo"}}}
            (execute default-schema q {:someId han-id} nil)))
-    (is (= {:errors [{:extensions {:argument :id
+    (is (= {:errors [{:extensions {:argument :__Queries/human.id
                                    :variable-name :someId
-                                   :field :human}
+                                   :field :__Queries/human}
                       :locations [{:column 14
                                    :line 2}]
                       :message "No value was provided for variable `someId', which is non-nullable."}]}

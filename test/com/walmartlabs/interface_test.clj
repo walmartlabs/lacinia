@@ -18,8 +18,7 @@
   (:require
     [clojure.test :refer [deftest is testing]]
     [com.walmartlabs.test-utils :refer [expect-exception]]
-    [com.walmartlabs.lacinia.schema :refer [compile]])
-  (:import (clojure.lang ExceptionInfo)))
+    [com.walmartlabs.lacinia.schema :refer [compile]]))
 
 (def field-not-implemented
   '{:interfaces {:named {:fields {:first_name {:type String}

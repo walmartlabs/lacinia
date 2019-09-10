@@ -36,8 +36,8 @@
     (is (= {:data {:create_game "nil"}}
            (execute schema "mutation { create_game }")))
 
-    (is (= {:errors [{:extensions {:argument :game_data
-                                   :field :create_game
+    (is (= {:errors [{:extensions {:argument :__Mutations/create_game.game_data
+                                   :field :__Mutations/create_game
                                    :missing-key :id
                                    :required-keys [:id]
                                    :schema-type :game_template}
@@ -48,8 +48,8 @@
 
     ;; TODO: Missing some needed context from above
 
-    (is (= {:errors [{:extensions {:argument :game_data
-                                   :field :create_game
+    (is (= {:errors [{:extensions {:argument :__Mutations/create_game.game_data
+                                   :field :__Mutations/create_game
                                    :missing-key :id
                                    :required-keys [:id]
                                    :schema-type :game_template}
@@ -88,8 +88,8 @@
            (execute schema
                     "{ search(filter: {terms: \"lego\", max_count: 5}) }")))
 
-    (is (= {:errors [{:extensions {:argument :filter
-                                   :field :search
+    (is (= {:errors [{:extensions {:argument :__Queries/search.filter
+                                   :field :__Queries/search
                                    :schema-type :Filter}
                       :locations [{:column 3
                                    :line 1}]
@@ -97,8 +97,8 @@
            (execute schema
                     "{ search(filter: {term: \"lego\", max_count: 5}) }")))
 
-    (is (= {:errors [{:extensions {:argument :filter
-                                   :field :search
+    (is (= {:errors [{:extensions {:argument :__Queries/search.filter
+                                   :field :__Queries/search
                                    :field-name :term
                                    :input-object-fields [:max_count
                                                          :terms]
