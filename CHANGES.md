@@ -1,4 +1,4 @@
-## 0.35.0 -- UNRELEASED
+## 0.35.0 -- 12 Sep 2019
 
 Lacinia now uses the fully qualified field and argument name as `:extension` data
 when reporting errors in fields, field arguments, and variables.
