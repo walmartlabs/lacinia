@@ -15,7 +15,7 @@
                          {:name "R2-D2"}]}
         :leia {:name "Leia Organa"}}
  :extensions
-u {:timings
+ {:timings
   [{:start 1493245557504 :finish 1493245557514 :elapsed 10 :path [:luke]}
    {:start 1493245557507 :finish 1493245557519 :elapsed 12 :path [:leia]}
    [:start 1493245557515 :finish 1493245557555 :elapsed 40 :path [:luke :friends]]]}}
