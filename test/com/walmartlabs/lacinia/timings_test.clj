@@ -58,6 +58,14 @@
    (-> (execute compiled-schema query nil context)
        simplify)))
 
+(defn ^:private timing-for
+  [result path]
+  (->> result
+       :extensions
+       :timings
+       (filter #(= path (:path %)))
+       first))
+
 (deftest timings-are-off-by-default
   (is (= {:data {:root {:simple "fast!"
                         :slow {:simple "slow!!"}}}}
@@ -65,25 +73,24 @@
 
 (deftest timing-is-collected-when-enabled
   (let [result (q "{ root(delay: 50) { simple slow { simple }}}" enable-timing)]
-    (is (-> result :extensions :timing empty? not)
+    (is (-> result :extensions :timings seq)
         "Some timings were collected.")))
 
 (deftest does-not-collect-timing-for-default-resolvers
   (let [result (q "{ root(delay: 50) { simple slow { simple }}}" enable-timing)]
-    (is (= nil (-> result :extensions :timing :root :simple))
-        "Some timings were collected.")))
+    (reporting result
+      (is (= nil (timing-for result [:root]))))))
 
 (deftest collects-timing-for-provided-resolvers
   (doseq [delay [25 50 75]
           :let [result (q (str "{ root(delay: " delay ") { slow { simple }}}") enable-timing)
-                timings (get-in result [:extensions :timing :root :slow :execution/timings])
-                elapsed-time (-> timings first :elapsed)]]
-    ;; Allow for a bit of overhead; Thread/sleep is quite inexact.
-    (is (<= delay elapsed-time (* delay 10)))
-    ;; Check that :start and :finish are both present and add up
-    (is (= elapsed-time
-           (- (-> timings first :finish)
-              (-> timings first :start))))))
+                slow-timing (timing-for result [:root :slow])
+                {:keys [start finish elapsed]} slow-timing]]
+    (reporting result
+      ;; Allow for a bit of overhead; Thread/sleep is quite inexact.
+      (is (<= delay elapsed (* delay 10)))
+      ;; Check that :start and :finish are both present and add up
+      (is (= elapsed (- finish start))))))
 
 (deftest collects-timing-for-each-execution
   (let [result (q "{ hare: root(delay: 5) { slow { simple }}
@@ -91,8 +98,9 @@
                    }"
                   enable-timing)]
     (reporting result
-      (let [elapsed-times (->> (get-in result [:extensions :timing :hare :slow :execution/timings])
+      (let [elapsed-times (->> (get-in result [:extensions :timings])
                                (mapv :elapsed))]
-        (is (= 1 (count elapsed-times)))
-        (is (<= 5 (elapsed-times 0)))))))
+        (is (= 2 (count elapsed-times)))
+        (is (<= 5 (elapsed-times 0)))
+        (is (<= 50 (elapsed-times 1)))))))
 

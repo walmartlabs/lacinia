@@ -145,19 +145,14 @@
         (resolve/on-deliver! resolver-result
                              (fn [resolved-value]
                                (let [finish-ms (System/currentTimeMillis)
-                                     elapsed-ms (- finish-ms start-ms)
-                                     timing {:start start-ms
-                                             :finish finish-ms
-                                             ;; This is just a convenience:
-                                             :elapsed elapsed-ms}]
-                                 ;; The extra key is to handle a case where we time, say, [:hero] and [:hero :friends]
-                                 ;; That will leave :friends as one child of :hero, and :execution/timings as another.
-                                 ;; The timings are always a list; we don't know if the field is resolved once,
-                                 ;; resolved multiple times because it is inside a nested value, or resolved multiple
-                                 ;; times because of multiple top-level operations.
-                                 (swap! *timings
-                                        update-in (conj (:path execution-context) :execution/timings)
-                                        (fnil conj []) timing))
+                                     elapsed-ms (- finish-ms start-ms)]
+                                 ;; Discard 0 and 1 ms results
+                                 (when (<= 2 elapsed-ms)
+                                   (swap! *timings conj {:start start-ms
+                                                         :finish finish-ms
+                                                         :path (:path execution-context)
+                                                         ;; This is just a convenience:
+                                                         :elapsed elapsed-ms})))
                                (resolve/deliver! final-result resolved-value)))
         final-result))))
 
@@ -471,7 +466,7 @@
         *warnings (atom [])
         *extensions (atom {})
         *timings (when (:com.walmartlabs.lacinia/enable-timing? context)
-                  (atom {}))
+                  (atom []))
         context' (assoc context constants/schema-key
                         (get parsed-query constants/schema-key))
         ;; Outside of subscriptions, the ::resolved-value is nil.
@@ -498,7 +493,7 @@
                                (resolve/deliver! result-promise
                                                  (cond-> {:data data}
                                                    (seq extensions) (assoc :extensions extensions)
-                                                   *timings (assoc-in [:extensions :timing] @*timings)
+                                                   *timings (assoc-in [:extensions :timings] @*timings)
                                                    errors (assoc :errors (distinct errors))
                                                    warnings (assoc-in [:extensions :warnings] (distinct warnings))))))))
     result-promise))
