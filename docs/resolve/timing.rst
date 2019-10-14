@@ -21,19 +21,28 @@ Timing collection is enabled using the key, ``:com.walmartlabs.lacinia/enable-ti
    described in :spec:`the spec <Response-Format>`.
    It exists just for this kind of extra information in the response.
 
-Timings are returned in a tree structure below the ``:extensions`` key of the result.
-The tree structure reflects the structure of the *query* (not the schema).
-
-We can see here that the ``human`` query operation's resolver was invoked twice, and the ``friends`` field's
-resolver was invoked just once.
-Only explicitly added resolve functions are timed; default resolve functions are trivial and not included.
-
-For each invocation, values are identified for the start and finish time (in standard format, milliseconds since the epoch),
-and elapsed time (also in milliseconds).
-
-Since our sample data is all in-memory, execution is instantaneous, so the elapsed time is 0.
-In real applications, making requests to a database or accessing other resources, there would be some amount of elapsed time.
+The ``:timings`` extension key is a list of timing records.
 
 When the field resolvers are :doc:`asynchronous <async>`, you'll often see start and finish times for each
 invocation overlap.  The finish time is calculated not when the resolver function returns, but
 when it produces a value (that is, when the ResolverResult is realized).
+
+By carefully looking at the start and end times, we can see that
+the ``luke`` and ``leia`` fields ran simultaneously, and that
+the ``friends`` field (under ``luke``) executed only after ``luke`` completed.
+
+Although the total elapsed time across the three fields was 62 ms, some of that time overlapped, and the overall
+request processing time was approximately 51ms.
+
+Timing information is only collected for fields with an explicit field resolver,
+and when the elapsed time is less than 2ms, the tracking data is discarded.
+This allows you to focus on non-trivial resolvers.
+
+The start and finish times are in a standard format, milliseconds since the epoch.
+
+As with errors and warnings, the path reflects the query path, using aliases provided
+by the client query when appropriate.
+
+Generally, timing records are added to the list in order of completion, but the exact order is
+not guaranteed.
+

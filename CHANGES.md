@@ -1,3 +1,8 @@
+## 0.36.0 -- UNRELEASED
+
+Capturing of lacinia resolver execution times has been significantly
+changed (this feature is still experimental).
+
 ## 0.35.0 -- 12 Sep 2019
 
 Lacinia now uses the fully qualified field and argument name as `:extension` data
