@@ -126,7 +126,7 @@
   ([resolved-value resolver-errors]
    (->ResolverResultImpl (with-error resolved-value resolver-errors))))
 
-(def ^:private promise-id (AtomicLong. 0))
+(def ^:private promise-ids (AtomicLong. 0))
 
 (defn resolve-promise
   "Returns a [[ResolverResultPromise]].
@@ -134,47 +134,42 @@
    A value must be resolved and ultimately provided via [[deliver!]]."
   []
   (let [*state (atom {})
-        promise-id (.incrementAndGet promise-id)]
+        promise-id (.incrementAndGet promise-ids)]
     (reify
       ResolverResult
 
       (on-deliver! [this callback]
-        (let [f (locking this
-                  (let [state @*state]
-                    (cond
-                      (contains? state :resolved-value)
-                      #(callback (:resolved-value state))
+        (loop []
+          (let [state @*state]
+            (cond
+              (contains? state :resolved-value)
+              (callback (:resolved-value state))
 
-                      (contains? state :callback)
-                      (throw (IllegalStateException. "ResolverResultPromise callback may only be set once."))
+              (contains? state :callback)
+              (throw (IllegalStateException. "ResolverResultPromise callback may only be set once."))
 
-                      :else
-                      (do
-                        (swap! *state assoc :callback callback)
-                        nil))))]
+              (compare-and-set! *state state (assoc state :callback callback))
+              nil
 
-          (when f
-            (f)))
+              :else
+              (recur))))
 
         this)
 
       ResolverResultPromise
 
       (deliver! [this resolved-value]
-        (let [callback (locking this
-                         (let [state @*state]
-                           (when (contains? state :resolved-value)
-                             (throw (IllegalStateException. "May only realize a ResolverResultPromise once.")))
+        (loop []
+          (let [state @*state]
+            (when (contains? state :resolved-value)
+              (throw (IllegalStateException. "May only realize a ResolverResultPromise once.")))
 
-                           (swap! *state assoc :resolved-value resolved-value)
-
-                           (:callback state)))]
-          ;; Execute the callback outside the lock and since it's an async callback
-          ;; do so inside an executor, if possible.
-          (when callback
-            (if-some [^Executor executor *callback-executor*]
-              (.execute executor (bound-fn [] (callback resolved-value)))
-              (callback resolved-value))))
+            (if (compare-and-set! *state state (assoc state :resolved-value resolved-value))
+              (when-let [callback (:callback state)]
+                (if-some [^Executor executor *callback-executor*]
+                  (.execute executor (bound-fn [] (callback resolved-value)))
+                  (callback resolved-value)))
+              (recur))))
 
         this)
 

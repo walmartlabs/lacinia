@@ -92,7 +92,7 @@
 
 (defn ^:private as-promise [resolver-result]
   (let [p (promise)]
-    (r/on-deliver! resolver-result #(deliver p %))
+    (r/on-deliver! resolver-result p)
     p))
 
 (defn ^:private apply-wrapped-values
