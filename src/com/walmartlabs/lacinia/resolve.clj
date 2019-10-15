@@ -32,7 +32,9 @@
   The [[FieldResolver]] protocol allows a Clojure record to act as a field resolver function."
   (:require
     [com.walmartlabs.lacinia.selector-context :refer [is-wrapped-value? wrap-value]])
-  (:import (java.util.concurrent Executor)))
+  (:import
+    (java.util.concurrent Executor)
+    (java.util.concurrent.atomic AtomicLong)))
 
 (def ^{:dynamic true
        :added "0.20.0"} *callback-executor*
@@ -124,53 +126,65 @@
   ([resolved-value resolver-errors]
    (->ResolverResultImpl (with-error resolved-value resolver-errors))))
 
+(def ^:private promise-id (AtomicLong. 0))
+
 (defn resolve-promise
   "Returns a [[ResolverResultPromise]].
 
    A value must be resolved and ultimately provided via [[deliver!]]."
   []
-  (let [callback-and-result (atom {})]
+  (let [*state (atom {})
+        promise-id (.incrementAndGet promise-id)]
     (reify
       ResolverResult
 
       (on-deliver! [this callback]
-        (loop []
-          (let [cr @callback-and-result]
-            (cond
-             ;; If the value arrives before the callback, invoke the callback immediately.
-             (contains? cr :result)
-             (callback (:result cr))
+        (let [f (locking *state
+                  (let [state @*state]
+                    (cond
+                      (contains? state :result)
+                      #(callback (:result state))
 
-             (contains? cr :callback)
-             (throw (IllegalStateException. "ResolverResultPromise callback may only be set once."))
+                      (contains? state :callback)
+                      (throw (IllegalStateException. "ResolverResultPromise callback may only be set once."))
 
-             (compare-and-set! callback-and-result cr (assoc cr :callback callback))
-             true
+                      :else
+                      (do
+                        (swap! *state assoc :callback callback)
+                        nil))))]
 
-             :else
-             (recur))))
+          (when f
+            (f)))
 
         this)
 
       ResolverResultPromise
 
       (deliver! [this resolved-value]
-        (loop []
-          (let [cr @callback-and-result]
-            (when (contains? cr :result)
-              (throw (IllegalStateException. "May only realize a ResolverResultPromise once.")))
+        (let [callback (locking *state
+                         (let [state @*state]
+                           (when (contains? state :result)
+                             (throw (IllegalStateException. "May only realize a ResolverResultPromise once.")))
 
-            (if (compare-and-set! callback-and-result cr (assoc cr :result resolved-value))
-              (when-let [callback (:callback cr)]
-                (if-some [^Executor executor *callback-executor*]
-                  (.execute executor (bound-fn [] (callback resolved-value)))
-                  (callback resolved-value)))
-              (recur))))
+                           (swap! *state assoc :result resolved-value)
+
+                           (:callback state)))]
+          ;; Execute the callback outside the lock and since it's an async callback
+          ;; do so inside an executor, if possible.
+          (when callback
+            (if-some [^Executor executor *callback-executor*]
+              (.execute executor (bound-fn [] (callback resolved-value)))
+              (callback resolved-value))))
 
         this)
 
       (deliver! [this resolved-value error]
-        (deliver! this (with-error resolved-value error))))))
+        (deliver! this (with-error resolved-value error)))
+
+      Object
+
+      (toString [_]
+        (str "ResolverResultPromise[" promise-id "]")))))
 
 (defn ^:no-doc combine-results
   "Given a left and a right ResolverResult, returns a new ResolverResult that combines

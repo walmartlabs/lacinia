@@ -150,3 +150,7 @@
         *result (as-promise (wrapped nil nil nil))]
     (r/deliver! resolver-promise 500)
     (is (= 501 (deref *result 100 ::no-value)))))
+
+(deftest resolver-result-promise-has-to-string
+  (let [p (r/resolve-promise)]
+    (is (re-matches #"ResolverResultPromise\[\d+\]" (str p)))))
