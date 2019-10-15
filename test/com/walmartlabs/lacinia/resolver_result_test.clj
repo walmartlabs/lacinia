@@ -153,4 +153,12 @@
 
 (deftest resolver-result-promise-has-to-string
   (let [p (r/resolve-promise)]
-    (is (re-matches #"ResolverResultPromise\[\d+\]" (str p)))))
+    (is (re-matches #"ResolverResultPromise\[\d+\]" (str p)))
+
+    (r/on-deliver! p identity)
+
+    (is (re-matches #"ResolverResultPromise\[\d+\, callback]" (str p)))
+
+    (r/deliver! p :anything)
+
+    (is (re-matches #"ResolverResultPromise\[\d+\, callback, resolved]" (str p)))))

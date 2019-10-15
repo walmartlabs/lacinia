@@ -142,8 +142,8 @@
         (let [f (locking *state
                   (let [state @*state]
                     (cond
-                      (contains? state :result)
-                      #(callback (:result state))
+                      (contains? state :resolved-value)
+                      #(callback (:resolved-value state))
 
                       (contains? state :callback)
                       (throw (IllegalStateException. "ResolverResultPromise callback may only be set once."))
@@ -163,10 +163,10 @@
       (deliver! [this resolved-value]
         (let [callback (locking *state
                          (let [state @*state]
-                           (when (contains? state :result)
+                           (when (contains? state :resolved-value)
                              (throw (IllegalStateException. "May only realize a ResolverResultPromise once.")))
 
-                           (swap! *state assoc :result resolved-value)
+                           (swap! *state assoc :resolved-value resolved-value)
 
                            (:callback state)))]
           ;; Execute the callback outside the lock and since it's an async callback
@@ -184,7 +184,15 @@
       Object
 
       (toString [_]
-        (str "ResolverResultPromise[" promise-id "]")))))
+        (str "ResolverResultPromise[" promise-id
+
+             (when (contains? @*state :callback)
+               ", callback")
+
+             (when (contains? @*state :resolved-value)
+               ", resolved")
+
+             "]")))))
 
 (defn ^:no-doc combine-results
   "Given a left and a right ResolverResult, returns a new ResolverResult that combines
