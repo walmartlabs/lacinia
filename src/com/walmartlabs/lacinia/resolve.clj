@@ -244,8 +244,8 @@
   [resolver wrapper-fn]
   (let [resolver-fn (as-resolver-fn resolver)]
     ^ResolverResult
-    (fn [context args value]
-      (let [resolved-value (resolver-fn context args value)
+    (fn [context args initial-value]
+      (let [resolved-value (resolver-fn context args initial-value)
             final-result (resolve-promise)
             deliver-final-result (fn [wrapped-values new-value]
                                    (deliver! final-result
@@ -266,7 +266,7 @@
                                 ;; of wrapped values.
                                 (recur (cons value wrapped-values)
                                        (:value value))
-                                (let [new-value (wrapper-fn context args value value)]
+                                (let [new-value (wrapper-fn context args initial-value value)]
                                   (if (is-resolver-result? new-value)
                                     (on-deliver! new-value #(deliver-final-result wrapped-values %))
                                     (deliver-final-result wrapped-values new-value))))))]
