@@ -113,10 +113,11 @@
   : Identifies which operation to execute, when the query specifies more than one.
 
   :timeout-ms
-  : Timeout for the operation.  Defaults to 0, for no error.
+  : Timeout for the operation.  Defaults to 0, for no timeout at all.
 
   :timeout-error
   : Error map used if a timeout occurs.
+  : Default is `{:message \"Query execution timed out.\"}`.
 
   This function parses the query and invokes [[execute-parsed-query]].
 
