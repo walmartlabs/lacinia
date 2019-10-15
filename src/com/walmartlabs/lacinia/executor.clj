@@ -466,7 +466,7 @@
         *warnings (atom [])
         *extensions (atom {})
         *timings (when (:com.walmartlabs.lacinia/enable-timing? context)
-                  (atom []))
+                   (atom []))
         context' (assoc context constants/schema-key
                         (get parsed-query constants/schema-key))
         ;; Outside of subscriptions, the ::resolved-value is nil.
@@ -480,22 +480,32 @@
                                                   :path []
                                                   :resolved-type (get-in parsed-query [:root :type-name])
                                                   :resolved-value (::resolved-value context)})
-        operation-result (if (= :mutation operation-type)
-                           (execute-nested-selections-sync execution-context enabled-selections)
-                           (execute-nested-selections execution-context enabled-selections))
-        result-promise (resolve/resolve-promise)]
-    (resolve/on-deliver! operation-result
-                         (fn [selected-data]
-                           (let [data (propogate-nulls false selected-data)]
-                             (let [errors (seq @*errors)
-                                   warnings (seq @*warnings)
-                                   extensions @*extensions]
-                               (resolve/deliver! result-promise
-                                                 (cond-> {:data data}
-                                                   (seq extensions) (assoc :extensions extensions)
-                                                   *timings (assoc-in [:extensions :timings] @*timings)
-                                                   errors (assoc :errors (distinct errors))
-                                                   warnings (assoc-in [:extensions :warnings] (distinct warnings))))))))
+        result-promise (resolve/resolve-promise)
+        executor resolve/*callback-executor*
+        f (bound-fn []
+            (try
+              (let [operation-result (if (= :mutation operation-type)
+                                       (execute-nested-selections-sync execution-context enabled-selections)
+                                       (execute-nested-selections execution-context enabled-selections))]
+                (resolve/on-deliver! operation-result
+                                     (fn [selected-data]
+                                       (let [data (propogate-nulls false selected-data)]
+                                         (let [errors (seq @*errors)
+                                               warnings (seq @*warnings)
+                                               extensions @*extensions]
+                                           (resolve/deliver! result-promise
+                                                             (cond-> {:data data}
+                                                               (seq extensions) (assoc :extensions extensions)
+                                                               *timings (assoc-in [:extensions :timings] @*timings)
+                                                               errors (assoc :errors (distinct errors))
+                                                               warnings (assoc-in [:extensions :warnings] (distinct warnings)))))))))
+              (catch Throwable t
+                (resolve/deliver! result-promise t))))]
+
+    (if executor
+      (.execute executor f)
+      (future (f)))
+
     result-promise))
 
 (defn invoke-streamer

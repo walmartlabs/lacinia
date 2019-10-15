@@ -37,7 +37,7 @@
     (java.util.concurrent.atomic AtomicLong)))
 
 (def ^{:dynamic true
-       :added "0.20.0"} *callback-executor*
+       :added "0.20.0"} ^Executor *callback-executor*
   "If non-nil, then specifies a java.util.concurrent.Executor (typically, a thread pool of some form) used to invoke callbacks
   when ResolveResultPromises are delivered."
   nil)
@@ -139,7 +139,7 @@
       ResolverResult
 
       (on-deliver! [this callback]
-        (let [f (locking *state
+        (let [f (locking this
                   (let [state @*state]
                     (cond
                       (contains? state :resolved-value)
@@ -161,7 +161,7 @@
       ResolverResultPromise
 
       (deliver! [this resolved-value]
-        (let [callback (locking *state
+        (let [callback (locking this
                          (let [state @*state]
                            (when (contains? state :resolved-value)
                              (throw (IllegalStateException. "May only realize a ResolverResultPromise once.")))
