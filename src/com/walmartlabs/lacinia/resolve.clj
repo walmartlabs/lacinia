@@ -42,6 +42,8 @@
   when ResolveResultPromises are delivered."
   nil)
 
+(def ^:private ^:dynamic *in-callback-thread false)
+
 (defprotocol ^{:added "0.24.0"} FieldResolver
   "Allows a Clojure record to operate as a field resolver."
   (resolve-value [this context args value]
@@ -166,9 +168,11 @@
 
             (if (compare-and-set! *state state (assoc state :resolved-value resolved-value))
               (when-let [callback (:callback state)]
-                (if-some [^Executor executor *callback-executor*]
-                  (.execute executor (bound-fn [] (callback resolved-value)))
-                  (callback resolved-value)))
+                (let [^Executor executor *callback-executor*]
+                  (if (or (nil? executor)
+                          *in-callback-thread)
+                    (callback resolved-value)
+                    (.execute executor (bound-fn [] (callback resolved-value))))))
               (recur))))
 
         this)
