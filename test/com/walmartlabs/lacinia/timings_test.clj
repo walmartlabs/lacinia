@@ -90,7 +90,7 @@
       ;; Allow for a bit of overhead; Thread/sleep is quite inexact.
       (is (<= delay elapsed (* delay 10)))
       ;; Check that :start and :finish are both present and add up
-      (is (= elapsed (- finish start))))))
+      (is (= elapsed (- (Long/parseLong finish) (Long/parseLong start)))))))
 
 (deftest collects-timing-for-each-execution
   (let [result (q "{ hare: root(delay: 5) { slow { simple }}
