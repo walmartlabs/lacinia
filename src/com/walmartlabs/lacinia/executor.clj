@@ -148,8 +148,8 @@
                                      elapsed-ms (- finish-ms start-ms)]
                                  ;; Discard 0 and 1 ms results
                                  (when (<= 2 elapsed-ms)
-                                   (swap! *timings conj {:start start-ms
-                                                         :finish finish-ms
+                                   (swap! *timings conj {:start (str start-ms)
+                                                         :finish (str finish-ms)
                                                          :path (:path execution-context)
                                                          ;; This is just a convenience:
                                                          :elapsed elapsed-ms})))
