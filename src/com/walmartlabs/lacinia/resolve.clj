@@ -171,7 +171,14 @@
                   (if (or (nil? executor)
                           *in-callback-thread*)
                     (callback resolved-value)
-                    (.execute executor (bound-fn [] (callback resolved-value))))))
+                    (let [bindings (assoc (get-thread-bindings)
+                                          #'*in-callback-thread* true)]
+                      (.execute executor (fn []
+                                           (push-thread-bindings bindings)
+                                           (try
+                                             (callback resolved-value)
+                                             (finally
+                                               (pop-thread-bindings)))))))))
               (recur))))
 
         this)
