@@ -32,10 +32,12 @@
   The [[FieldResolver]] protocol allows a Clojure record to act as a field resolver function."
   (:require
     [com.walmartlabs.lacinia.selector-context :refer [is-wrapped-value? wrap-value]])
-  (:import (java.util.concurrent Executor)))
+  (:import
+    (java.util.concurrent Executor)
+    (java.util.concurrent.atomic AtomicLong)))
 
 (def ^{:dynamic true
-       :added "0.20.0"} *callback-executor*
+       :added "0.20.0"} ^Executor *callback-executor*
   "If non-nil, then specifies a java.util.concurrent.Executor (typically, a thread pool of some form) used to invoke callbacks
   when ResolveResultPromises are delivered."
   nil)
@@ -124,31 +126,33 @@
   ([resolved-value resolver-errors]
    (->ResolverResultImpl (with-error resolved-value resolver-errors))))
 
+(def ^:private *promise-id-allocator (atom 0))
+
 (defn resolve-promise
   "Returns a [[ResolverResultPromise]].
 
    A value must be resolved and ultimately provided via [[deliver!]]."
   []
-  (let [callback-and-result (atom {})]
+  (let [*state (atom {})
+        promise-id (swap! *promise-id-allocator inc)]
     (reify
       ResolverResult
 
       (on-deliver! [this callback]
         (loop []
-          (let [cr @callback-and-result]
+          (let [state @*state]
             (cond
-             ;; If the value arrives before the callback, invoke the callback immediately.
-             (contains? cr :result)
-             (callback (:result cr))
+              (contains? state :resolved-value)
+              (callback (:resolved-value state))
 
-             (contains? cr :callback)
-             (throw (IllegalStateException. "ResolverResultPromise callback may only be set once."))
+              (contains? state :callback)
+              (throw (IllegalStateException. "ResolverResultPromise callback may only be set once."))
 
-             (compare-and-set! callback-and-result cr (assoc cr :callback callback))
-             true
+              (compare-and-set! *state state (assoc state :callback callback))
+              nil
 
-             :else
-             (recur))))
+              :else
+              (recur))))
 
         this)
 
@@ -156,12 +160,12 @@
 
       (deliver! [this resolved-value]
         (loop []
-          (let [cr @callback-and-result]
-            (when (contains? cr :result)
+          (let [state @*state]
+            (when (contains? state :resolved-value)
               (throw (IllegalStateException. "May only realize a ResolverResultPromise once.")))
 
-            (if (compare-and-set! callback-and-result cr (assoc cr :result resolved-value))
-              (when-let [callback (:callback cr)]
+            (if (compare-and-set! *state state (assoc state :resolved-value resolved-value))
+              (when-let [callback (:callback state)]
                 (if-some [^Executor executor *callback-executor*]
                   (.execute executor (bound-fn [] (callback resolved-value)))
                   (callback resolved-value)))
@@ -170,7 +174,20 @@
         this)
 
       (deliver! [this resolved-value error]
-        (deliver! this (with-error resolved-value error))))))
+        (deliver! this (with-error resolved-value error)))
+
+      Object
+
+      (toString [_]
+        (str "ResolverResultPromise[" promise-id
+
+             (when (contains? @*state :callback)
+               ", callback")
+
+             (when (contains? @*state :resolved-value)
+               ", resolved")
+
+             "]")))))
 
 (defn ^:no-doc combine-results
   "Given a left and a right ResolverResult, returns a new ResolverResult that combines
@@ -227,8 +244,8 @@
   [resolver wrapper-fn]
   (let [resolver-fn (as-resolver-fn resolver)]
     ^ResolverResult
-    (fn [context args value]
-      (let [resolved-value (resolver-fn context args value)
+    (fn [context args initial-value]
+      (let [resolved-value (resolver-fn context args initial-value)
             final-result (resolve-promise)
             deliver-final-result (fn [wrapped-values new-value]
                                    (deliver! final-result
@@ -249,7 +266,7 @@
                                 ;; of wrapped values.
                                 (recur (cons value wrapped-values)
                                        (:value value))
-                                (let [new-value (wrapper-fn context args value value)]
+                                (let [new-value (wrapper-fn context args initial-value value)]
                                   (if (is-resolver-result? new-value)
                                     (on-deliver! new-value #(deliver-final-result wrapped-values %))
                                     (deliver-final-result wrapped-values new-value))))))]

@@ -30,7 +30,7 @@
   "Prepares a query, by applying query variables to it, resulting in a prepared
   query which is then executed.
 
-  Returns a [[ResolverResult]] that will deliver the result map."
+  Returns a [[ResolverResult]] that will deliver the result map, or an exception."
   {:added "0.16.0"}
   [parsed-query variables context]
   {:pre [(map? parsed-query)
@@ -57,15 +57,30 @@
   "Prepares a query, by applying query variables to it, resulting in a prepared
   query which is then executed.
 
-  Returns a result map (with :data and/or :errors keys)."
-  [parsed-query variables context]
-  (let [result-promise (promise)
-        execution-result (execute-parsed-query-async parsed-query variables context)]
-    (resolve/on-deliver! execution-result
-                         (fn [result]
-                           (deliver result-promise result)))
-    ;; Block on that deliver, then return the final result.
-    @result-promise))
+  Returns a result map (with :data and/or :errors keys), or an exception if
+  execution failed.
+
+  Options as per [[execute]]."
+  ([parsed-query variables context]
+   (execute-parsed-query parsed-query variables context nil))
+  ([parsed-query variables context options]
+   (let [*result (promise)
+         {:keys [timeout-ms timeout-error]
+          :or {timeout-ms 0
+               timeout-error {:message "Query execution timed out."}}} options
+         execution-result (execute-parsed-query-async parsed-query variables context)
+         result (do
+                  (resolve/on-deliver! execution-result *result)
+                  ;; Block on that deliver, then return the final result.
+                  (if (pos? timeout-ms)
+                    (deref *result
+                           timeout-ms
+                           {:errors [timeout-error]})
+                    @*result))]
+     (when (instance? Throwable result)
+       (throw result))
+
+     result)))
 
 (defn execute
   "Given a compiled schema and a query string, attempts to execute it.
@@ -90,8 +105,19 @@
   : Additional data that will ultimately be passed to resolver functions.
 
   options (optional)
-  : The only option currently is `:operation-name`, used to identify which
-    operation to execute, when the query specifies more than one.
+  : Additional options to control execution.
+
+  Options:
+
+  :operation-name
+  : Identifies which operation to execute, when the query specifies more than one.
+
+  :timeout-ms
+  : Timeout for the operation.  Defaults to 0, for no timeout at all.
+
+  :timeout-error
+  : Error map used if a timeout occurs.
+  : Default is `{:message \"Query execution timed out.\"}`.
 
   This function parses the query and invokes [[execute-parsed-query]].
 
@@ -118,4 +144,4 @@
                                    [nil (as-errors e)]))]
      (if (some? error-result)
        error-result
-       (execute-parsed-query parsed variables context)))))
+       (execute-parsed-query parsed variables context options)))))

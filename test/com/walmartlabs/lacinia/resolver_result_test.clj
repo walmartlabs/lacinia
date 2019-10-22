@@ -92,7 +92,7 @@
 
 (defn ^:private as-promise [resolver-result]
   (let [p (promise)]
-    (r/on-deliver! resolver-result #(deliver p %))
+    (r/on-deliver! resolver-result p)
     p))
 
 (defn ^:private apply-wrapped-values
@@ -150,3 +150,15 @@
         *result (as-promise (wrapped nil nil nil))]
     (r/deliver! resolver-promise 500)
     (is (= 501 (deref *result 100 ::no-value)))))
+
+(deftest resolver-result-promise-has-to-string
+  (let [p (r/resolve-promise)]
+    (is (re-matches #"ResolverResultPromise\[\d+\]" (str p)))
+
+    (r/on-deliver! p identity)
+
+    (is (re-matches #"ResolverResultPromise\[\d+\, callback]" (str p)))
+
+    (r/deliver! p :anything)
+
+    (is (re-matches #"ResolverResultPromise\[\d+\, callback, resolved]" (str p)))))

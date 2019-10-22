@@ -3,6 +3,11 @@
 Capturing of lacinia resolver execution times has been significantly
 changed (this feature is still experimental).
 
+The Lacinia execution model has changed slightly to support setting a timeout
+on execution; most of the work now executes in a different thread.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/24?closed=1)
+
 ## 0.35.0 -- 12 Sep 2019
 
 Lacinia now uses the fully qualified field and argument name as `:extension` data
