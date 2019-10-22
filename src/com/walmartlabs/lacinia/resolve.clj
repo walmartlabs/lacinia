@@ -126,7 +126,7 @@
   ([resolved-value resolver-errors]
    (->ResolverResultImpl (with-error resolved-value resolver-errors))))
 
-(def ^:private promise-ids (AtomicLong. 0))
+(def ^:private *promise-id-allocator (atom 0))
 
 (defn resolve-promise
   "Returns a [[ResolverResultPromise]].
@@ -134,7 +134,7 @@
    A value must be resolved and ultimately provided via [[deliver!]]."
   []
   (let [*state (atom {})
-        promise-id (.incrementAndGet promise-ids)]
+        promise-id (swap! *promise-id-allocator inc)]
     (reify
       ResolverResult
 
