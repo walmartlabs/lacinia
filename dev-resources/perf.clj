@@ -24,6 +24,10 @@
 ;; Be aware that any change to this schema will invalidate any gathered
 ;; performance data.
 
+(defn -defeat-linter
+  []
+  executor/selections-seq)
+
 (def compiled-schema (star-wars-schema))
 
 ;; A schema to measure the performance of errors

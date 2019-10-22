@@ -33,8 +33,7 @@
   (:require
     [com.walmartlabs.lacinia.selector-context :refer [is-wrapped-value? wrap-value]])
   (:import
-    (java.util.concurrent Executor)
-    (java.util.concurrent.atomic AtomicLong)))
+    (java.util.concurrent Executor)))
 
 (def ^{:dynamic true
        :added "0.20.0"} ^Executor *callback-executor*
@@ -42,7 +41,7 @@
   when ResolveResultPromises are delivered."
   nil)
 
-(def ^:private ^:dynamic *in-callback-thread false)
+(def ^:private ^:dynamic *in-callback-thread* false)
 
 (defprotocol ^{:added "0.24.0"} FieldResolver
   "Allows a Clojure record to operate as a field resolver."
@@ -170,7 +169,7 @@
               (when-let [callback (:callback state)]
                 (let [^Executor executor *callback-executor*]
                   (if (or (nil? executor)
-                          *in-callback-thread)
+                          *in-callback-thread*)
                     (callback resolved-value)
                     (.execute executor (bound-fn [] (callback resolved-value))))))
               (recur))))
