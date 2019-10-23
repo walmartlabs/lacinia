@@ -202,23 +202,9 @@
     :else
     (map-vals null-to-nil selected-value)))
 
-(defmulti ^:private apply-selection
-  "Applies a selection on a resolved value.
-
-   The execution context contains the resolved value as key :resolved-value.
-
-   Runs the selection, returning a ResolverResult of a map of key/values to add
-   to the container value.
-   For a field, the map will be a single key and value.
-   For a fragment, the map will contain multiple keys and values.
-
-   May return nil for a disabled selection."
-  (fn [execution-context selection]
-    (:selection-type selection)))
-
 (defrecord ^:private ResultTuple [alias value])
 
-(defmethod apply-selection :field
+(defn ^:private apply-field-selection
   [execution-context field-selection]
   (let [{:keys [alias]} field-selection
         non-nullable-field? (-> field-selection :field-definition :type :kind (= :non-null))
@@ -255,13 +241,13 @@
     (when (contains? concrete-types actual-type)
       (resolve-and-select execution-context fragment-selection))))
 
-(defmethod apply-selection :inline-fragment
+(defn ^:private apply-inline-fragment
   [execution-context inline-fragment-selection]
   (maybe-apply-fragment execution-context
                         inline-fragment-selection
                         (:concrete-types inline-fragment-selection)))
 
-(defmethod apply-selection :fragment-spread
+(defn ^:private apply-fragment-spread
   [execution-context fragment-spread-selection]
   (let [{:keys [fragment-name]} fragment-spread-selection
         fragment-def (get-in execution-context [:context constants/parsed-query-key :fragments fragment-name])]
@@ -271,6 +257,14 @@
                                  :selections (:selections fragment-def))
                           (:concrete-types fragment-def))))
 
+(defn ^:private apply-selection
+  [execution-context selection]
+  (case (:selection-type selection)
+    :field (apply-field-selection execution-context selection)
+
+    :inline-fragment (apply-inline-fragment execution-context selection)
+
+    :fragment-spread (apply-fragment-spread execution-context selection)))
 
 (defn ^:private maybe-apply-selection
   [execution-context selection]
