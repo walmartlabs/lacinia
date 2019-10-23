@@ -199,18 +199,6 @@
 
              "]")))))
 
-(defn ^:no-doc combine-results
-  "Given a left and a right ResolverResult, returns a new ResolverResult that combines
-  the realized values using the provided function."
-  [f left-result right-result]
-  (let [combined-result (resolve-promise)]
-    (on-deliver! left-result
-                 (fn receive-left-value [left-value]
-                   (on-deliver! right-result
-                                (fn receive-right-value [right-value]
-                                  (deliver! combined-result (f left-value right-value))))))
-    combined-result))
-
 (defn is-resolver-result?
   "Is the provided value actually a [[ResolverResult]]?"
   {:added "0.23.0"}

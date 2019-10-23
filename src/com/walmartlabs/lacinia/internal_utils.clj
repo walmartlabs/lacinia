@@ -369,49 +369,63 @@
 
 (defn aggregate-results
   "Combines a seq of ResolverResults into a single ResolverResult(Promise) that resolves
-   to a seq of values."
-  [resolver-results]
-  (cond-let
-    :let [results (vec resolver-results)
-          n (count results)]
+   to a seq of values.
 
-    (= 0 n)
-    (resolve/resolve-as [])
+   An optional transform function, fx, is passed the resolved seq of values.
+   The default xf is identity."
+  ([resolver-results]
+   (aggregate-results resolver-results identity))
+  ([resolver-results xf]
+   (cond-let
+     :let [results (vec resolver-results)
+           n (count results)]
 
-    :let [solo (when (= 1 n)
-                 (first results))]
+     (= 0 n)
+     (resolve/resolve-as (xf []))
 
-    (and solo
-         (instance? ResolverResultImpl solo))
-    (resolve/resolve-as [(:resolved-value solo)])
+     :let [solo (when (= 1 n)
+                  (first results))]
 
-    solo
-    (let [aggregate (resolve/resolve-promise)]
-      (resolve/on-deliver! solo (fn [value]
-                                  (resolve/deliver! aggregate [value])))
-      aggregate)
+     (and solo
+          (instance? ResolverResultImpl solo))
+     (resolve/resolve-as (xf [(:resolved-value solo)]))
 
-    :let [buffer (object-array n)
-          *wait-count (atom 1)
-          aggregate (resolve/resolve-promise)
-          _ (loop [i 0]
-              (when (< i n)
-                (let [result (get results i)]
-                  (if (instance? ResolverResultImpl result)
-                    (aset buffer i (:resolved-value result))
-                    (do
-                      (swap! *wait-count inc)
-                      (resolve/on-deliver! result
-                                           (fn [value]
-                                             (aset buffer i value)
-                                             (when (zero? (swap! *wait-count dec))
-                                               (resolve/deliver! aggregate (vec buffer))))))))
-                (recur (inc i))))
-          _ (swap! *wait-count dec)]
+     solo
+     (let [aggregate (resolve/resolve-promise)]
+       (resolve/on-deliver! solo (fn [value]
+                                   (resolve/deliver! aggregate (xf [value]))))
+       aggregate)
 
-    (zero? @*wait-count)
-    (resolve/resolve-as (vec buffer))
+     :let [buffer (object-array n)
+           *wait-count (atom 1)
+           aggregate (resolve/resolve-promise)
+           _ (loop [i 0]
+               (when (< i n)
+                 (let [result (get results i)]
+                   (if (instance? ResolverResultImpl result)
+                     (aset buffer i (:resolved-value result))
+                     (do
+                       (swap! *wait-count inc)
+                       (resolve/on-deliver! result
+                                            (fn [value]
+                                              (aset buffer i value)
+                                              (when (zero? (swap! *wait-count dec))
+                                                (resolve/deliver! aggregate (-> buffer vec xf))))))))
+                 (recur (inc i))))
+           _ (swap! *wait-count dec)]
 
-    :else
-    aggregate))
+     (zero? @*wait-count)
+     (resolve/resolve-as (-> buffer vec xf))
 
+     :else
+     aggregate)))
+
+(defn transform-result
+  [resolver-result xf]
+  (if (instance? ResolverResultImpl resolver-result)
+    (resolve/resolve-as (-> resolver-result :resolved-value xf))
+    (let [xformed (resolve/resolve-promise)]
+      (resolve/on-deliver! resolver-result
+                           (fn [value]
+                             (resolve/deliver! xformed (xf value))))
+      xformed)))

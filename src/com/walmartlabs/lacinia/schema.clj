@@ -30,7 +30,7 @@
              cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag
              to-message qualified-name aggregate-results]]
     [com.walmartlabs.lacinia.resolve :as resolve
-     :refer [ResolverResult resolve-as combine-results is-resolver-result?]]
+     :refer [ResolverResult resolve-as  is-resolver-result?]]
     [clojure.string :as str]
     [clojure.set :refer [difference]]
     [clojure.pprint :as pprint]
