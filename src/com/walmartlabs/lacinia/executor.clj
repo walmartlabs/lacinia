@@ -259,19 +259,13 @@
 
 (defn ^:private apply-selection
   [execution-context selection]
-  (case (:selection-type selection)
-    :field (apply-field-selection execution-context selection)
+  (when-not (:disabled? selection)
+    (case (:selection-type selection)
+      :field (apply-field-selection execution-context selection)
 
     :inline-fragment (apply-inline-fragment execution-context selection)
 
-    :fragment-spread (apply-fragment-spread execution-context selection)))
-
-(defn ^:private maybe-apply-selection
-  [execution-context selection]
-  ;; :disabled? may be set by a directive
-  (when-not (:disabled? selection)
-    (apply-selection execution-context selection)))
-
+      :fragment-spread (apply-fragment-spread execution-context selection))))
 
 (defn ^:private merge-selected-values
   "Merges the left and right values, with a special case for when the right value
@@ -294,7 +288,7 @@
   ;; First step is easy: convert the selections into ResolverResults.
   ;; Then a cascade of intermediate results that combine the individual results
   ;; in the correct order.
-  (let [selection-results (keep #(maybe-apply-selection execution-context %) sub-selections)]
+  (let [selection-results (keep #(apply-selection execution-context %) sub-selections)]
     (reduce combine-selection-results
             (resolve-as (ordered-map))
             selection-results)))
