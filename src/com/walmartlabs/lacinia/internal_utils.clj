@@ -16,8 +16,11 @@
   "Internal utilities used in the implementation, subject to change without notice."
   {:no-doc true}
   (:require
-    [clojure.string :as str])
-  (:import (clojure.lang Named)))
+    [clojure.string :as str]
+    [com.walmartlabs.lacinia.resolve :as resolve])
+  (:import
+    (clojure.lang Named)
+    (com.walmartlabs.lacinia.resolve ResolverResultImpl)))
 
 (when (-> *clojure-version* :minor (< 9))
   (require '[clojure.future :refer [simple-keyword? boolean?]]))
@@ -363,4 +366,52 @@
      (keyword field-name)))
   ([type-name field-name arg-name]
    (qualified-name type-name (str (name field-name) "." (name arg-name)))))
+
+(defn aggregate-results
+  "Combines a seq of ResolverResults into a single ResolverResult(Promise) that resolves
+   to a seq of values."
+  [resolver-results]
+  (cond-let
+    :let [results (vec resolver-results)
+          n (count results)]
+
+    (= 0 n)
+    (resolve/resolve-as [])
+
+    :let [solo (when (= 1 n)
+                 (first results))]
+
+    (and solo
+         (instance? ResolverResultImpl solo))
+    (resolve/resolve-as [(:resolved-value solo)])
+
+    solo
+    (let [aggregate (resolve/resolve-promise)]
+      (resolve/on-deliver! solo (fn [value]
+                                  (resolve/deliver! aggregate [value])))
+      aggregate)
+
+    :let [buffer (object-array n)
+          *wait-count (atom 1)
+          aggregate (resolve/resolve-promise)
+          _ (loop [i 0]
+              (when (< i n)
+                (let [result (get results i)]
+                  (if (instance? ResolverResultImpl result)
+                    (aset buffer i (:resolved-value result))
+                    (do
+                      (swap! *wait-count inc)
+                      (resolve/on-deliver! result
+                                           (fn [value]
+                                             (aset buffer i value)
+                                             (when (zero? (swap! *wait-count dec))
+                                               (resolve/deliver! aggregate (vec buffer))))))))
+                (recur (inc i))))
+          _ (swap! *wait-count dec)]
+
+    (zero? @*wait-count)
+    (resolve/resolve-as (vec buffer))
+
+    :else
+    aggregate))
 

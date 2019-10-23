@@ -263,7 +263,7 @@
     (case (:selection-type selection)
       :field (apply-field-selection execution-context selection)
 
-    :inline-fragment (apply-inline-fragment execution-context selection)
+      :inline-fragment (apply-inline-fragment execution-context selection)
 
       :fragment-spread (apply-fragment-spread execution-context selection))))
 

@@ -211,7 +211,6 @@
                                   (deliver! combined-result (f left-value right-value))))))
     combined-result))
 
-
 (defn is-resolver-result?
   "Is the provided value actually a [[ResolverResult]]?"
   {:added "0.23.0"}
