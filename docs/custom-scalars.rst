@@ -88,10 +88,8 @@ When using variables, the scalar parser will be provided not with a string per-s
 with a Clojure value: a native Long, Double, or Boolean. In this case, the parser
 is, not so much parsing, as validating and transforming.
 
-For example, the built-in ``Int`` parser handles strings and all kinds of numbers
-(including non-integers). It also ensures that ``Int`` values are, as identified in
-the :spec:`specification <Int>`, limited to signed
-32 bit numbers.
+For example, the built-in ``Int`` parser ensures that ``Int`` values are, as identified in
+the :spec:`specification <Int>`, limited to signed 32 bit numbers.
 
 Attaching Scalar Transformers
 -----------------------------
