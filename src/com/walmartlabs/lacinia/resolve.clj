@@ -33,14 +33,15 @@
   (:require
     [com.walmartlabs.lacinia.selector-context :refer [is-wrapped-value? wrap-value]])
   (:import
-    (java.util.concurrent Executor)
-    (java.util.concurrent.atomic AtomicLong)))
+    (java.util.concurrent Executor)))
 
 (def ^{:dynamic true
        :added "0.20.0"} ^Executor *callback-executor*
   "If non-nil, then specifies a java.util.concurrent.Executor (typically, a thread pool of some form) used to invoke callbacks
   when ResolveResultPromises are delivered."
   nil)
+
+(def ^:private ^:dynamic *in-callback-thread* false)
 
 (defprotocol ^{:added "0.24.0"} FieldResolver
   "Allows a Clojure record to operate as a field resolver."
@@ -86,7 +87,9 @@
 
     For a [[ResolverResultPromise]], the callback may be invoked on another thread.
 
-    The callback is invoked for side-effects; its result is ignored."))
+    The callback is invoked for side-effects; its result is ignored.
+
+    If per-thread bindings are relevant to the callback, it should make use of clojure.core/bound-fn."))
 
 (defprotocol ResolverResultPromise
   "A specialization of ResolverResult that supports asynchronous delivery of the resolved value and errors."
@@ -166,9 +169,12 @@
 
             (if (compare-and-set! *state state (assoc state :resolved-value resolved-value))
               (when-let [callback (:callback state)]
-                (if-some [^Executor executor *callback-executor*]
-                  (.execute executor (bound-fn [] (callback resolved-value)))
-                  (callback resolved-value)))
+                (let [^Executor executor *callback-executor*]
+                  (if (or (nil? executor)
+                          *in-callback-thread*)
+                    (callback resolved-value)
+                    (.execute executor #(binding [*in-callback-thread* true]
+                                          (callback resolved-value))))))
               (recur))))
 
         this)
