@@ -277,8 +277,7 @@
   Returns a ResolverResult whose value is a map of keys and selected values."
   [execution-context sub-selections]
   ;; First step is easy: convert the selections into ResolverResults.
-  ;; Then a cascade of intermediate results that combine the individual results
-  ;; in the correct order.
+  ;; Then once all the individual results are ready, combine them in the correct order.
   (let [selection-results (keep #(apply-selection execution-context %) sub-selections)]
     (aggregate-results selection-results
                        (fn [values]

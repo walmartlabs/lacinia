@@ -421,6 +421,11 @@
      aggregate)))
 
 (defn transform-result
+  "Passes the resolved value of an existing ResolverResult thrown a transforming
+   function, resulting in a new ResolveResult.
+
+   Optimizes the case for a ResolverResult (pre-realized) vs.
+   a ResolverResultPromise."
   [resolver-result xf]
   (if (instance? ResolverResultImpl resolver-result)
     (resolve/resolve-as (-> resolver-result :resolved-value xf))
