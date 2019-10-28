@@ -87,7 +87,9 @@
 
     For a [[ResolverResultPromise]], the callback may be invoked on another thread.
 
-    The callback is invoked for side-effects; its result is ignored."))
+    The callback is invoked for side-effects; its result is ignored.
+
+    If per-thread bindings are relevant to the callback, it should make use of clojure.core/bound-fn."))
 
 (defprotocol ResolverResultPromise
   "A specialization of ResolverResult that supports asynchronous delivery of the resolved value and errors."
@@ -171,14 +173,8 @@
                   (if (or (nil? executor)
                           *in-callback-thread*)
                     (callback resolved-value)
-                    (let [bindings (assoc (get-thread-bindings)
-                                          #'*in-callback-thread* true)]
-                      (.execute executor (fn []
-                                           (push-thread-bindings bindings)
-                                           (try
-                                             (callback resolved-value)
-                                             (finally
-                                               (pop-thread-bindings)))))))))
+                    (.execute executor #(binding [*in-callback-thread* true]
+                                          (callback resolved-value))))))
               (recur))))
 
         this)
