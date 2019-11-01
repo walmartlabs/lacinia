@@ -390,15 +390,16 @@
           (instance? ResolverResultImpl solo))
      (resolve/resolve-as (xf [(:resolved-value solo)]))
 
+     :let [aggregate (resolve/resolve-promise)]
+
      solo
-     (let [aggregate (resolve/resolve-promise)]
+     (do
        (resolve/on-deliver! solo (fn [value]
                                    (resolve/deliver! aggregate (xf [value]))))
        aggregate)
 
      :let [buffer (object-array n)
            *wait-count (atom 1)
-           aggregate (resolve/resolve-promise)
            _ (loop [i 0]
                (when (< i n)
                  (let [result (get results i)]
@@ -411,10 +412,11 @@
                                               (aset buffer i value)
                                               (when (zero? (swap! *wait-count dec))
                                                 (resolve/deliver! aggregate (-> buffer vec xf))))))))
-                 (recur (inc i))))
-           _ (swap! *wait-count dec)]
+                 (recur (inc i))))]
 
-     (zero? @*wait-count)
+     ;; Started count at 1, if it dec's to 0 now, that means all the
+     ;; ResolverResults were immediate (not promises)
+     (zero? (swap! *wait-count dec))
      (resolve/resolve-as (-> buffer vec xf))
 
      :else
