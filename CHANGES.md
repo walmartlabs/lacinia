@@ -5,6 +5,11 @@ changed (this feature is still experimental).
 
 The Lacinia execution model has changed slightly to support setting a timeout
 on execution; most of the work now executes in a different thread.
+We've also increased Lacinia's ability to split work across multiple threads, along
+with some tiny performance improvements.
+
+There's been an incompatible change to the way that timing data is reported
+(this feature is still considered experimental).
 
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/24?closed=1)
 
