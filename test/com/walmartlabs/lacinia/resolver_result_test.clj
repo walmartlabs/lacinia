@@ -16,7 +16,9 @@
   (:require
     [clojure.test :refer [deftest is]]
     [com.walmartlabs.lacinia.resolve :as r :refer [FieldResolver]]
-    [com.walmartlabs.lacinia.selector-context :as sc])
+    [com.walmartlabs.lacinia.selector-context :as sc]
+    [com.walmartlabs.lacinia.internal-utils :refer [aggregate-results]]
+    [com.walmartlabs.lacinia.resolve :as resolve])
   (:import (java.util.concurrent Executor)))
 
 (deftest resolve-as-returns-resolver-result
@@ -162,3 +164,102 @@
     (r/deliver! p :anything)
 
     (is (re-matches #"ResolverResultPromise\[\d+\, callback, resolved]" (str p)))))
+
+(deftest aggregate-with-promises
+  ;; The test schemas don't fully exercise aggregate-results because the aggregate data
+  ;; is always already resolved.  This checks behavior when the ResolverResults are RRPromises
+  ;; that aren't yet realized.
+  (let [values (range 20 40)
+        n (count values)
+        *final (promise)
+        results (repeatedly n resolve/resolve-promise)
+        agg (aggregate-results results)]
+
+    (resolve/on-deliver! agg *final)
+
+    (is (not (realized? *final)))
+
+    ;; Do it for side-effects
+
+    (doall
+      (map #(resolve/deliver! %1 %2)
+           results
+           values))
+
+    (is (= values
+           (deref *final 100 ::timeout)))))
+
+(deftest aggregate-with-transform
+  (let [values [:moe :larry :curly :moe :curly :larry :shemp :moe]
+        n (count values)
+        *final (promise)
+        results (repeatedly n resolve/resolve-promise)
+        agg (aggregate-results results frequencies)]
+
+    (resolve/on-deliver! agg *final)
+
+    (is (not (realized? *final)))
+
+    ;; Do it for side-effects
+
+    (doall
+      (map #(resolve/deliver! %1 %2)
+           results
+           values))
+
+    (is (= {:curly 2
+            :larry 2
+            :moe 3
+            :shemp 1}
+           (deref *final 100 ::timeout)))))
+
+(deftest aggreate-with-transform-mixed
+  (let [*final (promise)
+        rp (resolve/resolve-promise)
+        results [(resolve/resolve-as :moe)
+                 (resolve/resolve-as :larry)
+                 rp]
+        agg (aggregate-results results frequencies)]
+
+    (resolve/on-deliver! agg *final)
+
+    (is (not (realized? *final)))
+
+    (resolve/deliver! rp :moe)
+
+    (is (= {:moe 2 :larry 1}
+           (deref *final 100 ::timeout)))))
+
+(deftest aggregate-solo-with-transform
+  (let [*final (promise)
+        rp (resolve/resolve-promise)
+        results [rp]
+        agg (aggregate-results results frequencies)]
+
+    (resolve/on-deliver! agg *final)
+
+    (is (not (realized? *final)))
+
+    (resolve/deliver! rp :moe)
+
+    (is (= {:moe 1}
+           (deref *final 100 ::timeout)))))
+
+(deftest aggregate-solo-resolved-with-transform
+  (let [*final (promise)
+        results [(resolve/resolve-as :curly)]
+        agg (aggregate-results results frequencies)]
+
+    (resolve/on-deliver! agg *final)
+
+    (is (realized? *final))
+
+    (is (= {:curly 1}
+           (deref *final 100 ::timeout)))))
+
+(deftest aggregate-empty-with-xform
+  (let [*final (promise)
+        agg (aggregate-results [] frequencies)]
+    (resolve/on-deliver! agg *final)
+    (is (= {}
+           (deref *final 100 ::timeout)))))

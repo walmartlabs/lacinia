@@ -28,9 +28,9 @@
      :refer [map-vals map-kvs filter-vals deep-merge q
              is-internal-type-name? sequential-or-set? as-keyword
              cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag
-             to-message qualified-name]]
+             to-message qualified-name aggregate-results]]
     [com.walmartlabs.lacinia.resolve :as resolve
-     :refer [ResolverResult resolve-as combine-results is-resolver-result?]]
+     :refer [ResolverResult resolve-as  is-resolver-result?]]
     [clojure.string :as str]
     [clojure.set :refer [difference]]
     [clojure.pprint :as pprint]
@@ -841,14 +841,13 @@
                                   (if (sc/is-wrapped-value? next-v)
                                     (recur next-v next-sc)
                                     (next-selector (assoc next-sc :resolved-value next-v)))))))]
-            (reduce #(combine-results conj %1 %2)
-                    (resolve-as [])
-                    (map-indexed
-                      (fn [i v]
-                        (unwrapper (-> selector-context
-                                       (assoc :resolved-value v)
-                                       (update-in [:execution-context :path] conj i))))
-                      resolved-value))))))
+            (aggregate-results
+              (map-indexed
+                (fn [i v]
+                  (unwrapper (-> selector-context
+                                 (assoc :resolved-value v)
+                                 (update-in [:execution-context :path] conj i))))
+                resolved-value))))))
 
     :non-null
     (let [next-selector (assemble-selector schema object-type field (:type type))]

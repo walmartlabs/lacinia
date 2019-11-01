@@ -16,11 +16,11 @@
   "Mechanisms for executing parsed queries against compiled schemas."
   (:require
     [com.walmartlabs.lacinia.internal-utils
-     :refer [cond-let map-vals remove-vals q]]
+     :refer [cond-let map-vals remove-vals q aggregate-results transform-result]]
     [com.walmartlabs.lacinia.vendor.ordered.map :refer [ordered-map]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :as resolve
-     :refer [resolve-as combine-results]]
+     :refer [resolve-as resolve-promise]]
     [com.walmartlabs.lacinia.selector-context :as sc]
     [com.walmartlabs.lacinia.constants :as constants])
   (:import
@@ -141,20 +141,18 @@
     ;; that collecting timing information affects timing.
     (if-not start-ms
       resolver-result
-      (let [final-result (resolve/resolve-promise)]
-        (resolve/on-deliver! resolver-result
-                             (fn [resolved-value]
-                               (let [finish-ms (System/currentTimeMillis)
-                                     elapsed-ms (- finish-ms start-ms)]
-                                 ;; Discard 0 and 1 ms results
-                                 (when (<= 2 elapsed-ms)
-                                   (swap! *timings conj {:start (str start-ms)
-                                                         :finish (str finish-ms)
-                                                         :path (:path execution-context)
-                                                         ;; This is just a convenience:
-                                                         :elapsed elapsed-ms})))
-                               (resolve/deliver! final-result resolved-value)))
-        final-result))))
+      (transform-result resolver-result
+                        (fn [resolved-value]
+                          (let [finish-ms (System/currentTimeMillis)
+                                elapsed-ms (- finish-ms start-ms)]
+                            ;; Discard 0 and 1 ms results
+                            (when (<= 2 elapsed-ms)
+                              (swap! *timings conj {:start (str start-ms)
+                                                    :finish (str finish-ms)
+                                                    :path (:path execution-context)
+                                                    ;; This is just a convenience:
+                                                    :elapsed elapsed-ms})))
+                          resolved-value)))))
 
 (declare ^:private resolve-and-select)
 
@@ -202,30 +200,15 @@
     :else
     (map-vals null-to-nil selected-value)))
 
-(defmulti ^:private apply-selection
-  "Applies a selection on a resolved value.
-
-   The execution context contains the resolved value as key :resolved-value.
-
-   Runs the selection, returning a ResolverResult of a map of key/values to add
-   to the container value.
-   For a field, the map will be a single key and value.
-   For a fragment, the map will contain multiple keys and values.
-
-   May return nil for a disabled selection."
-  (fn [execution-context selection]
-    (:selection-type selection)))
-
 (defrecord ^:private ResultTuple [alias value])
 
-(defmethod apply-selection :field
+(defn ^:private apply-field-selection
   [execution-context field-selection]
   (let [{:keys [alias]} field-selection
         non-nullable-field? (-> field-selection :field-definition :type :kind (= :non-null))
-        resolver-result (resolve-and-select execution-context field-selection)
-        final-result (resolve/resolve-promise)]
-    (resolve/on-deliver! resolver-result
-                         (fn [resolved-field-value]
+        resolver-result (resolve-and-select execution-context field-selection)]
+    (transform-result resolver-result
+                      (fn [resolved-field-value]
                            (let [sub-selection (cond
                                                  (and non-nullable-field?
                                                       (nil? resolved-field-value))
@@ -246,8 +229,7 @@
 
                                                  :else
                                                  resolved-field-value)]
-                             (resolve/deliver! final-result (->ResultTuple alias sub-selection)))))
-    final-result))
+                             (->ResultTuple alias sub-selection))))))
 
 (defn ^:private maybe-apply-fragment
   [execution-context fragment-selection concrete-types]
@@ -255,13 +237,13 @@
     (when (contains? concrete-types actual-type)
       (resolve-and-select execution-context fragment-selection))))
 
-(defmethod apply-selection :inline-fragment
+(defn ^:private apply-inline-fragment
   [execution-context inline-fragment-selection]
   (maybe-apply-fragment execution-context
                         inline-fragment-selection
                         (:concrete-types inline-fragment-selection)))
 
-(defmethod apply-selection :fragment-spread
+(defn ^:private apply-fragment-spread
   [execution-context fragment-spread-selection]
   (let [{:keys [fragment-name]} fragment-spread-selection
         fragment-def (get-in execution-context [:context constants/parsed-query-key :fragments fragment-name])]
@@ -271,13 +253,15 @@
                                  :selections (:selections fragment-def))
                           (:concrete-types fragment-def))))
 
-
-(defn ^:private maybe-apply-selection
+(defn ^:private apply-selection
   [execution-context selection]
-  ;; :disabled? may be set by a directive
   (when-not (:disabled? selection)
-    (apply-selection execution-context selection)))
+    (case (:selection-type selection)
+      :field (apply-field-selection execution-context selection)
 
+      :inline-fragment (apply-inline-fragment execution-context selection)
+
+      :fragment-spread (apply-fragment-spread execution-context selection))))
 
 (defn ^:private merge-selected-values
   "Merges the left and right values, with a special case for when the right value
@@ -287,29 +271,23 @@
     (assoc left-value (:alias right-value) (:value right-value))
     (merge left-value right-value)))
 
-(defn ^:private combine-selection-results
-  "Left associative resolution of results, combined using merge."
-  [left-result right-result]
-  (combine-results merge-selected-values left-result right-result))
-
 (defn ^:private execute-nested-selections
   "Executes nested sub-selections once a value is resolved.
 
   Returns a ResolverResult whose value is a map of keys and selected values."
   [execution-context sub-selections]
   ;; First step is easy: convert the selections into ResolverResults.
-  ;; Then a cascade of intermediate results that combine the individual results
-  ;; in the correct order.
-  (let [selection-results (keep #(maybe-apply-selection execution-context %) sub-selections)]
-    (reduce combine-selection-results
-            (resolve-as (ordered-map))
-            selection-results)))
+  ;; Then once all the individual results are ready, combine them in the correct order.
+  (let [selection-results (keep #(apply-selection execution-context %) sub-selections)]
+    (aggregate-results selection-results
+                       (fn [values]
+                         (reduce merge-selected-values (ordered-map) values)))))
 
 (defn ^:private combine-selection-results-sync
   [execution-context previous-resolved-result sub-selection]
   ;; Let's just call the previous result "left" and the sub-selection's result "right".
   ;; However, sometimes a selection is disabled and returns nil instead of a ResolverResult.
-  (let [next-result (resolve/resolve-promise)]
+  (let [next-result (resolve-promise)]
     (resolve/on-deliver! previous-resolved-result
                          (fn [left-value]
                            ;; This is what makes it sync: we don't kick off the evaluation of the selection
@@ -374,7 +352,7 @@
                      :resolved-value resolved-value
                      :resolved-type resolved-type)
               sub-selections)
-            (resolve/resolve-as resolved-value)))
+            (resolve-as resolved-value)))
         ;; In a concrete type, we know the selector from the field definition
         ;; (a field definition on a concrete object type).  Otherwise, we need
         ;; to use the type of the parent node's resolved value, just
@@ -442,7 +420,7 @@
       ;; and recurse down a level.  The result is a map or a list of maps.
 
       :else
-      (let [final-result (resolve/resolve-promise)]
+      (let [final-result (resolve-promise)]
         (resolve/on-deliver! (invoke-resolver-for-field execution-context' selection)
                              (fn receive-resolved-value-from-field [resolved-value]
                                (resolve/on-deliver! (process-resolved-value resolved-value)
@@ -480,7 +458,7 @@
                                                   :path []
                                                   :resolved-type (get-in parsed-query [:root :type-name])
                                                   :resolved-value (::resolved-value context)})
-        result-promise (resolve/resolve-promise)
+        result-promise (resolve-promise)
         executor resolve/*callback-executor*
         f (bound-fn []
             (try
