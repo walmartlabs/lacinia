@@ -701,9 +701,9 @@
                                          :as selector-context}]
                        (cond-let
                          ;; The resolver function can return a value that makes sense from
-                         ;; the server-side model (for example, a namespace keyword or even a string)
+                         ;; the application's model (for example, a namespaced keyword or even a string)
                          ;; and the enum's serializer converts that to a keyword, which is then
-                         ;; validated to match a known value for the Enum.
+                         ;; validated to match a known value for the enum.
                          :let [serialized (serializer resolved-value)]
 
                          (nil? resolved-value)
