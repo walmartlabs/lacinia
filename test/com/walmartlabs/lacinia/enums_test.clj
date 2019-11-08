@@ -145,7 +145,6 @@
 (deftest enum-parse-and-serialize
   (let [external->internal {:good :a/ok
                             :bad :fu/bar
-
                             :indifferent :not/found}
         internal->external (set/map-invert external->internal)
         parse #(external->internal % %)
