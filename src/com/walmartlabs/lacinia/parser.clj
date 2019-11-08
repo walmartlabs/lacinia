@@ -24,10 +24,9 @@
              keepv as-keyword *exception-context*]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.constants :as constants]
-    [clojure.spec.alpha :as s]
     [com.walmartlabs.lacinia.resolve :as resolve]
     [com.walmartlabs.lacinia.parser.query :as qp]
-    [com.walmartlabs.lacinia.vendor.ordered.map :refer [ordered-map]])
+    [flatland.ordered.map :refer [ordered-map]])
   (:import
     (clojure.lang ExceptionInfo)))
 

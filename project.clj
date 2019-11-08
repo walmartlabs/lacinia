@@ -7,6 +7,8 @@
             [test2junit "1.2.5"]]
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [clj-antlr "0.2.5"]
+                 [org.flatland/ordered "1.5.7"
+                  :exclusions [org.clojure/tools.macro]]
                  [org.clojure/data.json "0.2.6"]]
   :source-paths ["src"
                  "vendor-src"]

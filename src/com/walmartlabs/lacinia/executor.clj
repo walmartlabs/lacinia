@@ -17,7 +17,7 @@
   (:require
     [com.walmartlabs.lacinia.internal-utils
      :refer [cond-let map-vals remove-vals q aggregate-results transform-result]]
-    [com.walmartlabs.lacinia.vendor.ordered.map :refer [ordered-map]]
+    [flatland.ordered.map :refer [ordered-map]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :as resolve
      :refer [resolve-as resolve-promise]]

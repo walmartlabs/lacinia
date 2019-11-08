@@ -17,4 +17,5 @@ build.xml
 .Rapp.history
 .settings
 .project
+.classpath
 
