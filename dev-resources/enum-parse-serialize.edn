@@ -1,0 +1,19 @@
+{:enums
+ {:status
+  {:values [:good :bad]}}
+
+ :objects
+ {:Result
+  {:fields
+   {:input {:type String}
+    :output {:type :status}}}}
+
+ :queries
+ {:echo
+  {:type :Result
+   :args {:in {:type :status}}
+   :resolve :queries/echo}
+
+  :fail
+  {:type :Result
+   :resolve :queries/fail}}}
