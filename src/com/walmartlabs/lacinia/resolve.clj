@@ -114,21 +114,6 @@
     (callback resolved-value)
     this))
 
-(defn resolve-as
-  "Invoked by field resolvers to wrap a simple return value as a ResolverResult.
-
-  The two-arguments version is a convienience around using [[with-error]].
-
-  This is an immediately realized ResolverResult.
-
-  Use [[resolve-promise]] and [[deliver!]] for an asynchronous result.
-
-  When [[on-deliver!]] is invoked, the provided callback is immediately invoked (in the same thread)."
-  ([resolved-value]
-   (->ResolverResultImpl resolved-value))
-  ([resolved-value resolver-errors]
-   (->ResolverResultImpl (with-error resolved-value resolver-errors))))
-
 (def ^:private *promise-id-allocator (atom 0))
 
 (defn resolve-promise
@@ -194,6 +179,22 @@
                ", resolved")
 
              "]")))))
+
+(defn resolve-as
+  "Invoked by field resolvers to wrap a simple return value as a ResolverResult.
+
+  The two-arguments version is a convienience around using [[with-error]].
+
+  This is an immediately realized ResolverResult.
+
+  Use [[resolve-promise]] and [[deliver!]] for an asynchronous result.
+
+  When [[on-deliver!]] is invoked, the provided callback is immediately invoked (in the same thread)."
+  ([resolved-value]
+   (doto (resolve-promise)
+     (deliver! resolved-value)))
+  ([resolved-value resolver-errors]
+   (resolve-as (with-error resolved-value resolver-errors))))
 
 (defn is-resolver-result?
   "Is the provided value actually a [[ResolverResult]]?"
