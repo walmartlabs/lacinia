@@ -16,7 +16,8 @@
     [clojure.java.io :as io]
     [clojure.pprint :as pprint]
     [com.walmartlabs.test-utils :refer [simplify]]
-    [clojure.edn :as edn])
+    [clojure.edn :as edn]
+    [com.walmartlabs.lacinia.resolve :as resolve])
   (:import
     (java.util Date)
     (java.util.concurrent ThreadPoolExecutor TimeUnit SynchronousQueue)))
@@ -299,25 +300,26 @@
 (defn ^:private run-benchmarks
   [options]
   (let [executor (ThreadPoolExecutor. 0 10 5 TimeUnit/SECONDS (SynchronousQueue.))]
-    (try
-      (test-benchmarks)
-      (let [prefix [(format "%tY%<tm%<td" (Date.))
-                    (or (:commit options) (git-commit))]
-            new-benchmarks (->> (map run-benchmark (keys benchmark-queries))
-                                (map #(into prefix %)))
-            dataset (into (read-dataset) new-benchmarks)]
+    (binding [resolve/*callback-executor* executor]
+      (try
+        (test-benchmarks)
+        (let [prefix [(format "%tY%<tm%<td" (Date.))
+                      (or (:commit options) (git-commit))]
+              new-benchmarks (->> (map run-benchmark (keys benchmark-queries))
+                                  (map #(into prefix %)))
+              dataset (into (read-dataset) new-benchmarks)]
 
-        (when (:print options)
-          (pprint/write dataset :right-margin 100)
-          println
-          (flush))
+          (when (:print options)
+            (pprint/write dataset :right-margin 100)
+            println
+            (flush))
 
-        (with-open [w (-> dataset-file io/file io/writer)]
-          (csv/write-csv w dataset))
+          (with-open [w (-> dataset-file io/file io/writer)]
+            (csv/write-csv w dataset))
 
-        (println "Updated" dataset-file))
-      (finally
-        (.shutdownNow executor)))))
+          (println "Updated" dataset-file))
+        (finally
+          (.shutdownNow executor))))))
 
 (def ^:private cli-opts
   [["-p" "--print" "Print the table of benchmark data used to generate charts."]

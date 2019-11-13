@@ -106,90 +106,75 @@
 
     Returns `this`."))
 
-(defrecord ^:private ResolverResultImpl [resolved-value]
+(def ^:private *promise-id-allocator (atom 0))
+
+(defrecord ^:private ResolverResultPromiseImpl [promise-id *state]
 
   ResolverResult
 
   (on-deliver! [this callback]
-    (callback resolved-value)
-    this))
+    (loop []
+      (let [state @*state]
+        (cond
+          (contains? state :resolved-value)
+          (callback (:resolved-value state))
 
-(def ^:private *promise-id-allocator (atom 0))
+          (contains? state :callback)
+          (throw (IllegalStateException. "ResolverResultPromise callback may only be set once."))
+
+          (compare-and-set! *state state (assoc state :callback callback))
+          nil
+
+          :else
+          (recur))))
+
+    this)
+
+  ResolverResultPromise
+
+  (deliver! [this resolved-value]
+    (loop []
+      (let [state @*state]
+        (when (contains? state :resolved-value)
+          (throw (IllegalStateException. "May only realize a ResolverResultPromise once.")))
+
+        (if (compare-and-set! *state state (assoc state :resolved-value resolved-value))
+          (when-let [callback (:callback state)]
+            (let [^Executor executor *callback-executor*]
+              (if (or (nil? executor)
+                      *in-callback-thread*)
+                (callback resolved-value)
+                (.execute executor #(binding [*in-callback-thread* true]
+                                      (callback resolved-value))))))
+          (recur))))
+
+    this)
+
+  (deliver! [this resolved-value error]
+    (deliver! this (with-error resolved-value error)))
+
+  Object
+
+  (toString [_]
+    (str "ResolverResultPromise[" promise-id
+
+         (when (contains? @*state :callback)
+           ", callback")
+
+         (when (contains? @*state :resolved-value)
+           ", resolved")
+
+         "]")))
 
 (defn resolve-promise
   "Returns a [[ResolverResultPromise]].
 
    A value must be resolved and ultimately provided via [[deliver!]]."
   []
-  (let [*state (atom {})
-        promise-id (swap! *promise-id-allocator inc)]
-    (reify
-      ResolverResult
-
-      (on-deliver! [this callback]
-        (loop []
-          (let [state @*state]
-            (cond
-              (contains? state :resolved-value)
-              (callback (:resolved-value state))
-
-              (contains? state :callback)
-              (throw (IllegalStateException. "ResolverResultPromise callback may only be set once."))
-
-              (compare-and-set! *state state (assoc state :callback callback))
-              nil
-
-              :else
-              (recur))))
-
-        this)
-
-      ResolverResultPromise
-
-      (deliver! [this resolved-value]
-        (loop []
-          (let [state @*state]
-            (when (contains? state :resolved-value)
-              (throw (IllegalStateException. "May only realize a ResolverResultPromise once.")))
-
-            (if (compare-and-set! *state state (assoc state :resolved-value resolved-value))
-              (when-let [callback (:callback state)]
-                (let [^Executor executor *callback-executor*]
-                  (if (or (nil? executor)
-                          *in-callback-thread*)
-                    (callback resolved-value)
-                    (.execute executor #(binding [*in-callback-thread* true]
-                                          (callback resolved-value))))))
-              (recur))))
-
-        this)
-
-      (deliver! [this resolved-value error]
-        (deliver! this (with-error resolved-value error)))
-
-      Object
-
-      (toString [_]
-        (str "ResolverResultPromise[" promise-id
-
-             (when (contains? @*state :callback)
-               ", callback")
-
-             (when (contains? @*state :resolved-value)
-               ", resolved")
-
-             "]")))))
+  (->ResolverResultPromiseImpl (swap! *promise-id-allocator inc) (atom {})))
 
 (defn resolve-as
-  "Invoked by field resolvers to wrap a simple return value as a ResolverResult.
-
-  The two-arguments version is a convienience around using [[with-error]].
-
-  This is an immediately realized ResolverResult.
-
-  Use [[resolve-promise]] and [[deliver!]] for an asynchronous result.
-
-  When [[on-deliver!]] is invoked, the provided callback is immediately invoked (in the same thread)."
+  "Creates a ResolverResult promise and immediately delivers the value to it."
   ([resolved-value]
    (doto (resolve-promise)
      (deliver! resolved-value)))
@@ -203,7 +188,7 @@
   (when value
     ;; This is a little bit of optimization; satisfies? can
     ;; be a bit expensive.
-    (or (instance? ResolverResultImpl value)
+    (or (instance? ResolverResultPromiseImpl value)
         (satisfies? ResolverResult value))))
 
 (defn as-resolver-fn

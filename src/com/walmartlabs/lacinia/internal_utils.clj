@@ -19,8 +19,7 @@
     [clojure.string :as str]
     [com.walmartlabs.lacinia.resolve :as resolve])
   (:import
-    (clojure.lang Named)
-    (com.walmartlabs.lacinia.resolve ResolverResultImpl)))
+    (clojure.lang Named)))
 
 (when (-> *clojure-version* :minor (< 9))
   (require '[clojure.future :refer [simple-keyword? boolean?]]))
@@ -386,10 +385,6 @@
      :let [solo (when (= 1 n)
                   (first results))]
 
-     (and solo
-          (instance? ResolverResultImpl solo))
-     (resolve/resolve-as (xf [(:resolved-value solo)]))
-
      :let [aggregate (resolve/resolve-promise)]
 
      solo
@@ -398,41 +393,27 @@
                                    (resolve/deliver! aggregate (xf [value]))))
        aggregate)
 
-     :let [buffer (object-array n)
-           *wait-count (atom 1)
-           _ (loop [i 0]
-               (when (< i n)
-                 (let [result (get results i)]
-                   (if (instance? ResolverResultImpl result)
-                     (aset buffer i (:resolved-value result))
-                     (do
-                       (swap! *wait-count inc)
-                       (resolve/on-deliver! result
-                                            (fn [value]
-                                              (aset buffer i value)
-                                              (when (zero? (swap! *wait-count dec))
-                                                (resolve/deliver! aggregate (-> buffer vec xf))))))))
-                 (recur (inc i))))]
-
-     ;; Started count at 1, if it dec's to 0 now, that means all the
-     ;; ResolverResults were immediate (not promises)
-     (zero? (swap! *wait-count dec))
-     (resolve/resolve-as (-> buffer vec xf))
-
      :else
-     aggregate)))
+     (let [buffer (object-array n)
+           *wait-count (atom n)]
+       (loop [i 0]
+         (when (< i n)
+           (let [result (get results i)]
+             (resolve/on-deliver! result
+                                  (fn [value]
+                                    (aset buffer i value)
+                                    (when (zero? (swap! *wait-count dec))
+                                      (resolve/deliver! aggregate (-> buffer vec xf))))))
+           (recur (inc i))))
+
+       aggregate))))
 
 (defn transform-result
   "Passes the resolved value of an existing ResolverResult thrown a transforming
-   function, resulting in a new ResolveResult.
-
-   Optimizes the case for a ResolverResult (pre-realized) vs.
-   a ResolverResultPromise."
+   function, resulting in a new ResolveResult."
   [resolver-result xf]
-  (if (instance? ResolverResultImpl resolver-result)
-    (resolve/resolve-as (-> resolver-result :resolved-value xf))
-    (let [xformed (resolve/resolve-promise)]
-      (resolve/on-deliver! resolver-result
-                           (fn [value]
-                             (resolve/deliver! xformed (xf value))))
-      xformed)))
+  (let [xformed (resolve/resolve-promise)]
+    (resolve/on-deliver! resolver-result
+                         (fn [value]
+                           (resolve/deliver! xformed (xf value))))
+    xformed))
