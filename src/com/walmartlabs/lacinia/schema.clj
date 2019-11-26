@@ -660,7 +660,7 @@
 
         selector (if (= :scalar category)
                    (let [serializer (:serialize field-type)]
-                     (fn select-coerion [selector-context]
+                     (fn select-coercion [selector-context]
                        (cond-let
 
                          :let [{:keys [resolved-value]} selector-context]
