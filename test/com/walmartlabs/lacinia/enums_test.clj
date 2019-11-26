@@ -84,13 +84,15 @@
 (deftest resolver-must-return-defined-enum
   (let [schema (utils/compile-schema "bad-resolver-enum.edn"
                                      {:query/current-status (constantly :ok)})]
-    (expect-exception
-      "Field resolver returned an undefined enum value."
-      {:enum-values #{:bad
-                      :good}
-       :resolved-value :ok
-       :serialized-value :ok}
-      (utils/execute schema "{ current_status }"))))
+    (is (= {:data   {:current_status nil}
+            :errors [{:locations  [{:column 3 :line 1}]
+                      :message    "Field resolver returned an undefined enum value."
+                      :path       [:current_status]
+                      :extensions {:enum-values      #{:bad
+                                                       :good}
+                                   :resolved-value   :ok
+                                   :serialized-value :ok}}]}
+           (utils/execute schema "{ current_status }")))))
 
 (deftest enum-resolver-must-return-named-value
   (let [bad-value (Date.)
@@ -189,10 +191,14 @@
                                 nil)
                utils/simplify)))
 
-    (expect-exception
-      "Field resolver returned an undefined enum value."
-      {:enum-values #{:bad
-                      :good}
-       :resolved-value :not/found
-       :serialized-value :indifferent}
-      (utils/execute schema "{ fail { output } }"))))
+    (is (= {:data   {:fail {:output nil}}
+            :errors [{:extensions {:enum-values      #{:bad
+                                                       :good}
+                                   :resolved-value   :not/found
+                                   :serialized-value :indifferent}
+                      :locations  [{:column 10
+                                    :line   1}]
+                      :message    "Field resolver returned an undefined enum value."
+                      :path       [:fail
+                                   :output]}]}
+           (utils/execute schema "{ fail { output } }")))))

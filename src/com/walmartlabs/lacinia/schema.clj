@@ -711,10 +711,10 @@
                          :let [serialized (serializer resolved-value)]
 
                          (not (possible-values serialized))
-                         (throw (ex-info "Field resolver returned an undefined enum value."
-                                         {:resolved-value resolved-value
-                                          :serialized-value serialized
-                                          :enum-values possible-values}))
+                         (selector-error selector-context (error "Field resolver returned an undefined enum value."
+                                                                 {:resolved-value resolved-value
+                                                                  :serialized-value serialized
+                                                                  :enum-values possible-values}))
 
                          :else
                          (selector (assoc selector-context :resolved-value serialized)))))
