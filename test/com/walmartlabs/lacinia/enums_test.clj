@@ -107,6 +107,18 @@
     (is (= {:data {:current_status :good}}
            (utils/execute schema "{ current_status }")))))
 
+(deftest nil-passes-through-as-is
+  (let [schema (utils/compile-schema "opt-req-enum.edn"
+                                     {:null (constantly nil)})]
+    (is (= {:data {:bad nil
+                   :ok nil}
+            :errors [{:locations [{:column 6
+                                   :line 1}]
+                      :message "Non-nullable field was null."
+                      :path [:bad]}]}
+           (utils/execute schema
+                          "{ ok bad }")))))
+
 (deftest deprecated-enum-values
   (let [schema (utils/compile-schema "deprecated-enums-schema.edn" {})]
     (is (= {:data {:__type {:enumValues [{:deprecationReason "Should use happy."

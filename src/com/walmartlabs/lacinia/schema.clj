@@ -704,10 +704,11 @@
                          ;; the application's model (for example, a namespaced keyword or even a string)
                          ;; and the enum's serializer converts that to a keyword, which is then
                          ;; validated to match a known value for the enum.
-                         :let [serialized (serializer resolved-value)]
 
                          (nil? resolved-value)
                          (selector selector-context)
+
+                         :let [serialized (serializer resolved-value)]
 
                          (not (possible-values serialized))
                          (throw (ex-info "Field resolver returned an undefined enum value."
