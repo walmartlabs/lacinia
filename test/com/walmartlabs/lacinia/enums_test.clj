@@ -19,7 +19,12 @@
     [com.walmartlabs.lacinia :refer [execute]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.test-reporting :refer [reporting]]
-    [com.walmartlabs.test-utils :as utils :refer [expect-exception]])
+    [com.walmartlabs.test-utils :as utils :refer [expect-exception]]
+    [clojure.set :as set]
+    [clojure.java.io :as io]
+    [clojure.edn :as edn]
+    [com.walmartlabs.lacinia.util :as util]
+    [com.walmartlabs.lacinia :as lacinia])
   (:import
     (java.util Date)))
 
@@ -83,7 +88,8 @@
       "Field resolver returned an undefined enum value."
       {:enum-values #{:bad
                       :good}
-       :resolved-value :ok}
+       :resolved-value :ok
+       :serialized-value :ok}
       (utils/execute schema "{ current_status }"))))
 
 (deftest enum-resolver-must-return-named-value
@@ -100,6 +106,18 @@
                                      {:query/current-status (constantly "good")})]
     (is (= {:data {:current_status :good}}
            (utils/execute schema "{ current_status }")))))
+
+(deftest nil-passes-through-as-is
+  (let [schema (utils/compile-schema "opt-req-enum.edn"
+                                     {:null (constantly nil)})]
+    (is (= {:data {:bad nil
+                   :ok nil}
+            :errors [{:locations [{:column 6
+                                   :line 1}]
+                      :message "Non-nullable field was null."
+                      :path [:bad]}]}
+           (utils/execute schema
+                          "{ ok bad }")))))
 
 (deftest deprecated-enum-values
   (let [schema (utils/compile-schema "deprecated-enums-schema.edn" {})]
@@ -135,3 +153,46 @@
                                 }
                               }
                            }")))))
+
+(deftest enum-parse-and-serialize
+  (let [external->internal {:good :a/ok
+                            :bad :fu/bar
+                            :indifferent :not/found}
+        internal->external (set/map-invert external->internal)
+        parse #(external->internal % %)
+        serialize #(internal->external % %)
+        resolver-fn (fn [_ {:keys [in]} _]
+                      {:input (pr-str in)
+                       :output in})
+        schema (-> "enum-parse-serialize.edn"
+                   io/resource
+                   slurp
+                   edn/read-string
+                   (util/attach-resolvers {:queries/echo resolver-fn
+                                           :queries/fail (constantly {:output :not/found})})
+                   (util/inject-enum-transformers {:status {:parse parse
+                                                            :serialize serialize}})
+                   schema/compile)]
+    (is (= {:data {:echo {:input ":a/ok"
+                          :output :good}}}
+           (utils/execute schema
+                          "{ echo(in: good) { input output }}")))
+
+
+    (is (= {:data {:echo {:input ":fu/bar"
+                          :output :bad}}}
+           (-> (lacinia/execute schema
+                                "query ($in : status) {
+                                  echo(in: $in) { input output }
+                                }"
+                                {:in "bad"}
+                                nil)
+               utils/simplify)))
+
+    (expect-exception
+      "Field resolver returned an undefined enum value."
+      {:enum-values #{:bad
+                      :good}
+       :resolved-value :not/found
+       :serialized-value :indifferent}
+      (utils/execute schema "{ fail { output } }"))))

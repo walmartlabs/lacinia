@@ -15,6 +15,7 @@
 (ns com.walmartlabs.lacinia.util-test
   "Utility functions tests."
   (:require [clojure.test :refer [deftest is]]
+            [com.walmartlabs.test-utils :refer [expect-exception]]
             [com.walmartlabs.lacinia.util :as util])
   (:import (clojure.lang ExceptionInfo)))
 
@@ -153,3 +154,29 @@
                                :deprecated "just use error"
                                :description "blew up real good"}]}}
            (:enums schema')))))
+
+
+(deftest can-inject-enum-transformers
+  (is (= {:enums {:Foo {:parse 1}
+                  :Bar {:serialize 2}
+                  :Baz {:parse 3
+                        :serialize 4}}}
+         (util/inject-enum-transformers {:enums {:Foo nil
+                                                 :Bar nil
+                                                 :Baz nil}}
+                                        {:Foo {:parse 1}
+                                         :Bar {:serialize 2}
+                                         :Baz {:parse 3
+                                               :serialize 4
+                                               :ignored 5}}))))
+
+(deftest inject-enum-transformers-throws-if-not-found
+  (expect-exception "Undefined enum when injecting enum transformer."
+                    {:enum :Blatt
+                     :enums [:Bar
+                             :Baz
+                             :Foo]}
+                    (util/inject-enum-transformers {:enums {:Foo nil
+                                                            :Bar nil
+                                                            :Baz nil}}
+                                                   {:Blatt nil})))

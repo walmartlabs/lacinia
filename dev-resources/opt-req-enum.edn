@@ -1,0 +1,9 @@
+{:enums
+ {:Result
+  {:values [OK FAIL]}}
+
+ :queries
+ {:ok {:type :Result
+       :resolve :null}
+  :bad {:type (non-null :Result)
+        :resolve :null}}}

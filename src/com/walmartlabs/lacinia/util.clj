@@ -101,6 +101,25 @@
                              (update :serialize transform)))
                        %))))
 
+(defn ^{:added "0.36.0"} inject-enum-transformers
+  "Given a GraphQL schema, injects transformers for enums into the schema.
+
+  transform-m maps from the scalar name (a keyword) to a map with keys :parse
+  and/or :serialize; these are applied to the Enum.
+
+  Each enum must exist, or an exception is thrown."
+  [schema transform-m]
+  (let [f (fn [enums enum m]
+            (when-not (contains? enums enum)
+              (throw (ex-info "Undefined enum when injecting enum transformer."
+                              {:enum enum
+                               :enums (-> enums keys sort vec)})))
+            (let [{:keys [parse serialize]} m]
+              (update enums enum #(cond-> %
+                                    parse (assoc :parse parse)
+                                    serialize (assoc :serialize serialize)))))]
+    (update schema :enums #(reduce-kv f % transform-m))))
+
 (defn as-error-map
   "Converts an exception into an error map, including a :message key, plus
   any additional keys and values via `ex-data`.
@@ -158,7 +177,7 @@
   The key identifies where the resolver should be added, in the form `:Type/field`.
 
   Alternately, the key may be of the format `:queries/name` (or `:mutations/name` or
-  `subscriptions/name`).
+  `:subscriptions/name`).
 
   Throws an exception if the target of the resolver can't be found.
 

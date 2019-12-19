@@ -291,17 +291,22 @@
   [schema argument-definition [_ arg-value]]
   ;; First, make sure the category is an enum
   (let [enum-type-name (schema/root-type-name argument-definition)
-        type-def (get schema enum-type-name)]
+        type-def (get schema enum-type-name)
+        {:keys [values-set category]
+         parser :parse} type-def]
     (with-exception-context {:value arg-value}
-      (when-not (= :enum (:category type-def))
+      (when-not (= :enum category)
         (throw-exception "Enum value supplied for argument whose type is not an enum."
                          {:argument-type enum-type-name}))
 
-      (or (get (:values-set type-def) arg-value)
-          (throw-exception (format "Provided argument value %s is not member of enum type."
-                                   (q arg-value))
-                           {:allowed-values (:values-set type-def)
-                            :enum-type enum-type-name})))))
+      (let [external-value (or (get values-set arg-value)
+                               (throw-exception (format "Provided argument value %s is not member of enum type."
+                                                        (q arg-value))
+                                                {:allowed-values values-set
+                                                 :enum-type enum-type-name}))]
+        ;; Pass the GraphQL value (a keyword) through the parser to get
+        ;; the application value (usually, also a keyword, but maybe namespaced).
+        (parser external-value)))))
 
 (defmethod process-literal-argument :object
   [schema argument-definition arg-tuple]
