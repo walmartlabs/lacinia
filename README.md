@@ -168,7 +168,7 @@ requests; this typically occurs inside a Ring handler function:
    :headers {"Content-Type" "application/json"}
    :body (let [query (get-in request [:query-params :query])
                result (execute star-wars-schema query nil nil)]
-           (json/write-str result)})
+           (json/write-str result))})
 ```
 
 Lacinia doesn't know about the web tier at all, it just knows about
