@@ -34,7 +34,7 @@
                 (var? reference)
                 field
 
-                :let [factory? (not (keyword? reference))
+                :let [factory? (sequential? reference)
                       callback-source (get callbacks-map
                                            (if factory?
                                              (first reference)
@@ -56,15 +56,16 @@
   "Given a GraphQL schema and a map of keywords to resolver fns, replace
   each placeholder keyword in the schema with the actual resolver fn.
 
-  resolver-m is a map from keyword to resolver function or resolver factory.
+  resolver-m is a map from of resolver functions and resolver function factories.
+  The keys are usually keywords, but may be any value including string or symbol.
 
-  When the value in the :resolve key is a keyword, it is simply replaced
+  When the value in the :resolve key is a simjple value, it is simply replaced
   with the corresponding resolver function from resolver-m.
 
   Alternately, the :resolve value may be a seq, indicating a resolver factory.
 
-  The first value in the seq is used to select the resolver factory function, which applied
-  with the remaining values in the seq."
+  The first value in the seq is used to select the resolver factory function, which
+  is then invoked, via `apply`, with the remaining values in the seq."
   [schema resolver-m]
   (let [f (fn [field-container]
             (attach-callbacks field-container resolver-m :resolve "Resolver"))
