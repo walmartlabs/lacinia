@@ -344,7 +344,7 @@
           (apply-errors selection-context :errors :*errors)
           (apply-errors selection-context :warnings :*warnings)
 
-          (if (and (some? resolved-value)
+          (if (and (or (= [] (:path execution-context)) (some? resolved-value))
                    resolved-type
                    (seq sub-selections))
             (execute-nested-selections

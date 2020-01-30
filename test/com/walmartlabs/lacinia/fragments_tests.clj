@@ -43,6 +43,20 @@
            }
            }"))))
 
+(deftest query-root-fragment
+  (is (= {:data {:characters [{:name "R2-D2"
+                               :power "AC"}
+                              {:name "Luke"
+                               :home_world "Tatooine"}]}}
+         (q "{ ... on QueryRoot {
+           characters {
+           name
+           ... on droid { power }
+           ... on human { home_world }
+           }
+           }
+           }"))))
+
 (deftest named-fragments
   (is (= {:data {:characters [{:name "R2-D2"
                                :power "AC"}
