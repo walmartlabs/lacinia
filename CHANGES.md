@@ -1,4 +1,4 @@
-## 0.36.0 -- UNRELEASED
+## 0.36.0 -- 13 Feb 2020
 
 It is now possible to provide `:parse` and `:serialize` functions for
 enum types, allowing a mapping between your application's model and
