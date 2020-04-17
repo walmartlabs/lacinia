@@ -1,3 +1,7 @@
+## 0.37.0 -- UNRELEASED
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/25?closed=1)
+
 ## 0.36.0 -- 13 Feb 2020
 
 It is now possible to provide `:parse` and `:serialize` functions for
