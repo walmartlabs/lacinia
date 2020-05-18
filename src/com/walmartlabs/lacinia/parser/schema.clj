@@ -16,7 +16,7 @@
   "Parse a Schema Definition Language document into a Lacinia input schema."
   {:added "0.22.0"}
   (:require
-    #_ [io.pedestal.log :as log]
+    #_[io.pedestal.log :as log]
     [com.walmartlabs.lacinia.internal-utils :refer [remove-vals keepv q qualified-name]]
     [com.walmartlabs.lacinia.parser.common :as common]
     [com.walmartlabs.lacinia.util :refer [inject-descriptions]]
@@ -33,6 +33,8 @@
 
 (def ^:private grammar
   (common/compile-grammar "com/walmartlabs/lacinia/schema.g4"))
+
+(def ^:private extension-meta {:extension true})
 
 (defn ^:private tag
   "Returns a map of the nested productions in a production.
@@ -139,18 +141,18 @@
 ;; Perhaps at some point we can merge it all into a single, unified grammar.
 
 (defmulti ^:private xform
-  "Transform an Antlr production into a result.
+          "Transform an Antlr production into a result.
 
-  Antlr productions are recursive lists; the first element is a type
-  (from the grammar), and the rest of the list are nested productions.
+          Antlr productions are recursive lists; the first element is a type
+          (from the grammar), and the rest of the list are nested productions.
 
-  Meta data on the production is the location (line, column) of the production."
-  first
-  ;; When debugging/developing, this is incredibly useful:
-  #_(fn [prod]
-      (log/trace :dispatch prod)
-      (first prod))
-  :default ::default)
+          Meta data on the production is the location (line, column) of the production."
+          first
+          ;; When debugging/developing, this is incredibly useful:
+          #_(fn [prod]
+              (log/trace :dispatch prod)
+              (first prod))
+          :default ::default)
 
 (defn ^:private xform-second
   [prod]
@@ -159,7 +161,7 @@
 (defn ^:private apply-description
   [parsed descripion-prod]
   (cond-> parsed
-    descripion-prod (assoc :description (xform descripion-prod))))
+          descripion-prod (assoc :description (xform descripion-prod))))
 
 (defn ^:private apply-directives
   [element directiveList]
@@ -234,7 +236,7 @@
 (defmethod xform :typeDef
   [prod]
   (let [{:keys [anyName implementationDef fieldDefs description directiveList]
-         :or   {fieldDefs (list :fieldDefs)}} (tag prod)]
+         :or {fieldDefs (list :fieldDefs)}} (tag prod)]
     [[:objects (xform anyName)]
      (-> {:fields (xform fieldDefs)}
          (common/copy-meta anyName)
@@ -245,15 +247,15 @@
 (defmethod xform :typeExtDef
   [prod]
   (let [{:keys [anyName implementationDef fieldDefs description directiveList]
-         :or   {fieldDefs (list :fieldDefs)}} (tag prod)]
+         :or {fieldDefs (list :fieldDefs)}} (tag prod)]
     (with-meta [[:objects (xform anyName)]
                 (-> {:fields (xform fieldDefs)}
                     (common/copy-meta anyName)
-                    (common/add-meta {:extension true})
+                    (common/add-meta extension-meta)
                     (apply-description description)
                     (apply-directives directiveList)
                     (cond-> implementationDef (assoc :implements (xform implementationDef))))]
-               {:extension true})))
+               extension-meta)))
 
 (defmethod xform :directiveDef
   [prod]
@@ -383,7 +385,7 @@
 (defmethod xform :interfaceDef
   [prod]
   (let [{:keys [anyName fieldDefs description directiveList]
-         :or   {fieldDefs (list :fieldDefs)}} (tag prod)]
+         :or {fieldDefs (list :fieldDefs)}} (tag prod)]
     [[:interfaces (xform anyName)]
      (-> {:fields (xform fieldDefs)}
          (common/copy-meta anyName)
@@ -429,13 +431,41 @@
 
 (defmethod xform :inputTypeDef
   [prod]
-  (let [{:keys [anyName fieldDefs description directiveList]
-         :or   {fieldDefs (list :fieldDefs)}} (tag prod)]
+  (let [{:keys [anyName inputValueDefs description directiveList]
+         :or {inputValueDefs (list :inputValueDef)}} (tag prod)]
     [[:input-objects (xform anyName)]
-     (-> {:fields (xform fieldDefs)}
+     (-> {:fields (xform inputValueDefs)}
          (common/copy-meta anyName)
          (apply-description description)
          (apply-directives directiveList))]))
+
+(defmethod xform :inputTypeExtDef
+  [prod]
+  (let [{:keys [anyName inputValueDefs description directiveList]
+         :or {inputValueDefs (list :inputValueDefs)}} (tag prod)]
+    (with-meta [[:input-objects (xform anyName)]
+                (-> {:fields (xform inputValueDefs)}
+                    (common/copy-meta anyName)
+                    (common/add-meta extension-meta)
+                    (apply-description description)
+                    (apply-directives directiveList))]
+               extension-meta)))
+
+
+(defmethod xform :inputValueDefs
+  [prod]
+  (checked-map "input value" (map xform (rest prod))))
+
+(defmethod xform :inputValueDef
+  [prod]
+  (let [{:keys [anyName typeSpec defaultValue description directiveList]} (tag prod)]
+    [(xform anyName)
+     (-> {:type (xform typeSpec)}
+         (common/copy-meta anyName)
+         (apply-description description)
+         (apply-directives directiveList)
+         (cond-> defaultValue (assoc :default-value (xform-second defaultValue))))]))
+
 
 (defmethod xform :scalarDef
   [prod]
@@ -505,6 +535,11 @@
   Directives may be declared and used, but validation of directives is
   also deferred downstream.
 
+  The `attach` map is deprecated, but still supported.
+  Documentation can now be provided inline in the schema document,
+  and directives, streamers, and etc. can be added as needed via
+  functions in the [[com.walmartlabs.lacinia.util]] namespace.
+
   `attach` should be a map consisting of the following keys:
 
   `:resolvers` is expected to be a map of:
@@ -525,22 +560,24 @@
   {:type-name doc-str
    :type-name/field-name doc-str
    :type-name/field-name.arg-name doc-str}"
-  [schema-string attach]
-  (when-let [ed (s/explain-data ::parse-schema-args [schema-string attach])]
-    (throw (ex-info (str "Arguments to parse-schema do not conform to spec:\n" (with-out-str (s/explain-out ed)))
-                    ed)))
+  ([schema-string]
+   (parse-schema schema-string {}))
+  ([schema-string attach]
+   (when-let [ed (s/explain-data ::parse-schema-args [schema-string attach])]
+     (throw (ex-info (str "Arguments to parse-schema do not conform to spec:\n" (with-out-str (s/explain-out ed)))
+                     ed)))
 
-  (let [{:keys [resolvers scalars streamers documentation]} attach]
-    (xform-schema (try
-                    (common/antlr-parse grammar schema-string)
-                    (catch ParseError e
-                      (let [failures (common/parse-failures e)]
-                        (throw (ex-info "Failed to parse GraphQL schema."
-                                        {:errors failures})))))
-                  resolvers
-                  scalars
-                  streamers
-                  documentation)))
+   (let [{:keys [resolvers scalars streamers documentation]} attach]
+     (xform-schema (try
+                     (common/antlr-parse grammar schema-string)
+                     (catch ParseError e
+                       (let [failures (common/parse-failures e)]
+                         (throw (ex-info "Failed to parse GraphQL schema."
+                                         {:errors failures})))))
+                   resolvers
+                   scalars
+                   streamers
+                   documentation))))
 
 (s/def ::field-fn (s/map-of simple-keyword? (s/or :function ::schema/function-or-var
                                                   :keyword simple-keyword?)))
@@ -556,8 +593,10 @@
 (s/def ::resolvers ::fn-map)
 (s/def ::streamers ::fn-map)
 
-(s/def ::parse-schema-args (s/cat :schema-string string?
-                                  :attachments (s/keys :opt-un [::resolvers
-                                                                ::streamers
-                                                                ::scalars
-                                                                ::documentation])))
+(s/def ::parse-schema-args (s/or
+                             :supported string?
+                             :deprecated (s/cat :schema-string string?
+                                                :attachments (s/keys :opt-un [::resolvers
+                                                                              ::streamers
+                                                                              ::scalars
+                                                                              ::documentation]))))

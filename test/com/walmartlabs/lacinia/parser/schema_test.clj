@@ -53,15 +53,15 @@
 
 (def ^:private streamer-map {:Subscription {:new_character new-character}})
 
-(defn ^:private parse-schema [path options]
+(defn ^:private parse-schema [path attach]
   (-> path
       resource
       slurp
-      (parser/parse-schema options)))
+      (parser/parse-schema attach)))
 
 (defn ^:private parse-string
   [s]
-  (parser/parse-schema s {}))
+  (parser/parse-schema s))
 
 ;; Warm up with some very targeted parser tests
 ;; (these are invaluable after any large changes to the grammar).
@@ -265,10 +265,8 @@
            {:Ebb
             {:directives [{:directive-type :InputObject}]
              :fields {:flow {:type String
-                             :args {:direction {:directives [{:directive-type :Arg}]
-                                                :type String}}
                              :directives [{:directive-type :Field}]}}}}}
-         (parse-string "input Ebb @InputObject { flow(direction : String @Arg) : String @Field }"))))
+         (parse-string "input Ebb @InputObject { flow : String @Field }"))))
 
 (deftest object-directives
   (is (= '{:objects
@@ -316,6 +314,36 @@
                                     :default-value 10
                                     :directives [{:directive-type :Flow}]}}}}}}}
          (parse-string "type Ebb { flow(direction: String @Trace, level : Int = 10 @Flow) : String }"))))
+
+(deftest input-object-field-with-default-value
+  (is (= '{:input-objects
+           {:Animal
+            {:fields
+             {:name {:type (non-null String)}
+              :weight {:type (non-null Int)}
+              :category {:type String :default-value "feline"}}}}}
+         (parse-string "input Animal {
+	name: String!
+	weight: Int!
+	category: String  = \"feline\"
+}"))))
+
+(deftest extend-input-object
+  (is (= '{:input-objects
+           {:Animal
+            {:fields
+             {:name {:type (non-null String)}
+              :weight {:type (non-null Int)}
+              :category {:type String :default-value "feline"}}}}}
+         (parse-string "input Animal {
+	  name: String!
+	  weight: Int!
+	}
+
+	extend input Animal {
+	  category: String  = \"feline\"
+  }"))))
+
 
 (deftest schema-directives
   (is (= {:roots {:query :Query}
