@@ -13,7 +13,7 @@
                  "vendor-src"]
   :profiles {:dev {:dependencies [[criterium "0.4.5"]
                                   [expound "0.8.4"]
-                                  [joda-time "2.10.5"]
+                                  [joda-time "2.10.6"]
                                   [com.walmartlabs/test-reporting "0.1.0"]
                                   [io.aviso/logging "0.3.2"]
                                   [io.pedestal/pedestal.log "0.5.5"]

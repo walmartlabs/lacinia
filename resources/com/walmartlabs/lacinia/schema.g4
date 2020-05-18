@@ -86,7 +86,15 @@ implementationDef
   ;
 
 inputTypeDef
-  : description? K_INPUT anyName directiveList? fieldDefs?
+  : description? K_INPUT anyName directiveList? inputValueDefs?
+  ;
+
+inputValueDefs
+  : '{' inputValueDef+ '}'
+  ;
+
+inputValueDef
+  : description? anyName ':' typeSpec defaultValue? directiveList?
   ;
 
 interfaceDef
