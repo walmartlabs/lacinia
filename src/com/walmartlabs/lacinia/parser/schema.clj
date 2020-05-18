@@ -16,7 +16,7 @@
   "Parse a Schema Definition Language document into a Lacinia input schema."
   {:added "0.22.0"}
   (:require
-    #_ [io.pedestal.log :as log]
+    #_[io.pedestal.log :as log]
     [com.walmartlabs.lacinia.internal-utils :refer [remove-vals keepv q qualified-name]]
     [com.walmartlabs.lacinia.parser.common :as common]
     [com.walmartlabs.lacinia.util :refer [inject-descriptions]]
@@ -33,6 +33,8 @@
 
 (def ^:private grammar
   (common/compile-grammar "com/walmartlabs/lacinia/schema.g4"))
+
+(def ^:private extension-meta {:extension true})
 
 (defn ^:private tag
   "Returns a map of the nested productions in a production.
@@ -139,18 +141,18 @@
 ;; Perhaps at some point we can merge it all into a single, unified grammar.
 
 (defmulti ^:private xform
-  "Transform an Antlr production into a result.
+          "Transform an Antlr production into a result.
 
-  Antlr productions are recursive lists; the first element is a type
-  (from the grammar), and the rest of the list are nested productions.
+          Antlr productions are recursive lists; the first element is a type
+          (from the grammar), and the rest of the list are nested productions.
 
-  Meta data on the production is the location (line, column) of the production."
-  first
-  ;; When debugging/developing, this is incredibly useful:
-  #_(fn [prod]
-      (log/trace :dispatch prod)
-      (first prod))
-  :default ::default)
+          Meta data on the production is the location (line, column) of the production."
+          first
+          ;; When debugging/developing, this is incredibly useful:
+          #_(fn [prod]
+              (log/trace :dispatch prod)
+              (first prod))
+          :default ::default)
 
 (defn ^:private xform-second
   [prod]
@@ -159,7 +161,7 @@
 (defn ^:private apply-description
   [parsed descripion-prod]
   (cond-> parsed
-    descripion-prod (assoc :description (xform descripion-prod))))
+          descripion-prod (assoc :description (xform descripion-prod))))
 
 (defn ^:private apply-directives
   [element directiveList]
@@ -249,11 +251,11 @@
     (with-meta [[:objects (xform anyName)]
                 (-> {:fields (xform fieldDefs)}
                     (common/copy-meta anyName)
-                    (common/add-meta {:extension true})
+                    (common/add-meta extension-meta)
                     (apply-description description)
                     (apply-directives directiveList)
                     (cond-> implementationDef (assoc :implements (xform implementationDef))))]
-               {:extension true})))
+               extension-meta)))
 
 (defmethod xform :directiveDef
   [prod]
@@ -436,6 +438,19 @@
          (common/copy-meta anyName)
          (apply-description description)
          (apply-directives directiveList))]))
+
+(defmethod xform :inputTypeExtDef
+  [prod]
+  (let [{:keys [anyName inputValueDefs description directiveList]
+         :or {inputValueDefs (list :inputValueDefs)}} (tag prod)]
+    (with-meta [[:input-objects (xform anyName)]
+                (-> {:fields (xform inputValueDefs)}
+                    (common/copy-meta anyName)
+                    (common/add-meta extension-meta)
+                    (apply-description description)
+                    (apply-directives directiveList))]
+               extension-meta)))
+
 
 (defmethod xform :inputValueDefs
   [prod]

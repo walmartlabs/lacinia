@@ -265,10 +265,8 @@
            {:Ebb
             {:directives [{:directive-type :InputObject}]
              :fields {:flow {:type String
-                             :args {:direction {:directives [{:directive-type :Arg}]
-                                                :type String}}
                              :directives [{:directive-type :Field}]}}}}}
-         (parse-string "input Ebb @InputObject { flow(direction : String @Arg) : String @Field }"))))
+         (parse-string "input Ebb @InputObject { flow : String @Field }"))))
 
 (deftest object-directives
   (is (= '{:objects
@@ -329,6 +327,23 @@
 	weight: Int!
 	category: String  = \"feline\"
 }"))))
+
+(deftest extend-input-object
+  (is (= '{:input-objects
+           {:Animal
+            {:fields
+             {:name {:type (non-null String)}
+              :weight {:type (non-null Int)}
+              :category {:type String :default-value "feline"}}}}}
+         (parse-string "input Animal {
+	  name: String!
+	  weight: Int!
+	}
+
+	extend input Animal {
+	  category: String  = \"feline\"
+  }"))))
+
 
 (deftest schema-directives
   (is (= {:roots {:query :Query}
