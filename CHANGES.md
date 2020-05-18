@@ -1,5 +1,8 @@
 ## 0.37.0 -- UNRELEASED
 
+The schema parser has been updated, to allow input values (within input types)
+to specify defaults, and to support extending input types.
+
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/25?closed=1)
 
 ## 0.36.0 -- 13 Feb 2020
