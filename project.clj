@@ -3,7 +3,7 @@
   :url "https://github.com/walmartlabs/lacinia"
   :license {:name "Apache, Version 2.0"
             :url "http://www.apache.org/licenses/LICENSE-2.0"}
-  :plugins [[lein-codox "0.10.3"]
+  :plugins [[lein-codox "0.10.7"]
             [test2junit "1.2.5"]]
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [clj-antlr "0.2.5"]
