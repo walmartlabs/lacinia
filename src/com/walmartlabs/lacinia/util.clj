@@ -16,8 +16,9 @@
   "Useful utility functions."
   (:require
     [com.walmartlabs.lacinia.internal-utils
+     :as internal
      :refer [to-message map-vals cond-let update? apply-description
-             resolver-path assoc-in!]]))
+             name->path assoc-in!]]))
 
 (defn ^:private attach-callbacks
   [field-container callbacks-map callback-kw error-name]
@@ -117,9 +118,46 @@
                                :enums (-> enums keys sort vec)})))
             (let [{:keys [parse serialize]} m]
               (update enums enum #(cond-> %
-                                    parse (assoc :parse parse)
-                                    serialize (assoc :serialize serialize)))))]
+                                          parse (assoc :parse parse)
+                                          serialize (assoc :serialize serialize)))))]
     (update schema :enums #(reduce-kv f % transform-m))))
+
+(defn ^{:added "0.36.0"} inject-enum-transformers
+  "Given a GraphQL schema, injects transformers for enums into the schema.
+
+  transform-m maps from the scalar name (a keyword) to a map with keys :parse
+  and/or :serialize; these are applied to the Enum.
+
+  Each enum must exist, or an exception is thrown."
+  [schema transform-m]
+  (let [f (fn [enums enum m]
+            (when-not (contains? enums enum)
+              (throw (ex-info "Undefined enum when injecting enum transformer."
+                              {:enum enum
+                               :enums (-> enums keys sort vec)})))
+            (let [{:keys [parse serialize]} m]
+              (update enums enum #(cond-> %
+                                          parse (assoc :parse parse)
+                                          serialize (assoc :serialize serialize)))))]
+    (update schema :enums #(reduce-kv f % transform-m))))
+
+(defn inject-scalar-transformers
+  "Given a GraphQL schema, injects transformers for scalars into the schema.
+
+  transform-m maps from the scalar name (a keyword) to a map with keys :parse
+  and :serialize; these are applied to the Enum.
+
+  Each scalar must exist, or an exception is thrown."
+  {:added "0.37.0"}
+  [schema transform-m]
+  (let [f (fn [scalars scalar m]
+            (when-not (contains? scalars scalar)
+              (throw (ex-info "Undefined scalar when injecting scalar transformer"
+                              {:scalar scalar
+                               :scalars (-> scalars keys sort vec)})))
+            (let [{:keys [parse serialize]} m]
+              (update scalars scalar assoc :parse parse :serialize serialize)))]
+    (update schema :scalars #(reduce-kv f % transform-m))))
 
 (defn as-error-map
   "Converts an exception into an error map, including a :message key, plus
@@ -135,8 +173,8 @@
          locations (:locations extension-data)
          remaining-data (dissoc extension-data :locations)]
      (cond-> {:message (to-message t)}
-       locations (assoc :locations locations)
-       (seq remaining-data) (assoc :extensions remaining-data)))))
+             locations (assoc :locations locations)
+             (seq remaining-data) (assoc :extensions remaining-data)))))
 
 (defn inject-descriptions
   "Injects documentation into a schema, as `:description` keys on various elements
@@ -187,6 +225,16 @@
   {:added "0.27.0"}
   [schema resolvers]
   (reduce-kv (fn [schema' k resolver]
-               (assoc-in! schema' (resolver-path schema' k) resolver))
+               (assoc-in! schema' (name->path schema' k :resolve) resolver))
              schema
              resolvers))
+
+(defn inject-streamers
+  "As [[inject-resolvers]] but the updated key is :stream, thereby supplying a subscription
+  streamer function."
+  {:added "0.37.0"}
+  [schema streamers]
+  (reduce-kv (fn [schema' k streamer]
+               (assoc-in! schema' (name->path schema' k :stream) streamer))
+             schema
+             streamers))

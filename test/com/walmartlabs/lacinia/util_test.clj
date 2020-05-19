@@ -102,7 +102,7 @@
                                    :queries/get_person :get-person})))))
 
 (deftest inject-resolver-not-found
-  (when-let [e (is (thrown? ExceptionInfo #"inject resolvers error: not found"
+  (when-let [e (is (thrown? ExceptionInfo #"inject error: not found"
                             (util/inject-resolvers {} {:NotFound/my_field :whatever})
                             ))]
     (is (= {:key :NotFound/my_field}
@@ -180,3 +180,28 @@
                                                             :Bar nil
                                                             :Baz nil}}
                                                    {:Blatt nil})))
+(deftest inject-streamer
+  (let [schema '{:subscriptions
+                 {:example {:type String}}}]
+    (is (= {:subscriptions {:example {:stream ::streamer
+                                      :type 'String}}}
+           (util/inject-streamers schema
+                                  {:subscriptions/example ::streamer})))))
+
+(deftest inject-scalar-xf
+  (let [schema '{:scalars {:Temperature {:description "How hot?"}}}]
+    (is (= {:scalars {:Temperature {:parse ::parse
+                                    :serialize ::serialize
+                                    :description "How hot?"}}}
+           (util/inject-scalar-transformers schema
+                                            {:Temperature {:parse ::parse
+                                                           :serialize ::serialize}})))))
+
+(deftest scalar-not-found-on-inject
+  (expect-exception "Undefined scalar when injecting scalar transformer"
+                    {:scalar :Wilma
+                     :scalars [:Barney
+                               :Fred]}
+                    (util/inject-scalar-transformers {:scalars {:Fred nil
+                                                                :Barney nil}}
+                                                     {:Wilma nil})))

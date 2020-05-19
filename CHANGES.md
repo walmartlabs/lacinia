@@ -1,5 +1,13 @@
 ## 0.37.0 -- UNRELEASED
 
+Added new function `com.walmartlabs.lacinia.util/inject-streamers`, used to
+add streamers to a schema (typically, one parsed from a GraphQL schema document).
+Likewise, `inject-scalar-transformers` injects :parse and :serialize keys into a
+scalar (complementing the `inject-enum-transformers` function added in 0.36.0).
+
+Combined, these functions (plus `inject-descriptions`) replace the `attach` argument
+to `com.walmartlabs.lacinia.parser.schema/parse-schema` which is now deprecated.
+
 The schema parser has been updated, to allow input values (within input types)
 to specify defaults, and to support extending input types.
 
