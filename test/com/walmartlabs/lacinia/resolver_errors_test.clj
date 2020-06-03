@@ -19,21 +19,26 @@
     [com.walmartlabs.lacinia.resolve :refer [resolve-as]]
     [com.walmartlabs.test-utils :refer [execute] :as utils]
     [com.walmartlabs.lacinia.schema :as schema])
-  (:import (clojure.lang ExceptionInfo)))
+  (:import (clojure.lang ExceptionInfo)
+           (java.awt Color)))
 
-(def ^:private failure-exception (ex-info "Fail!" {:reason :testing}))
+(defn ^:private resolve-exception
+  [_ _ _]
+  (throw (ex-info "Fail!" {:reason :testing})))
 
 (def ^:private resolver-map
   {:single-error (fn [_ _ _]
                    (resolve-as nil {:message "Exception in error_field resolver."}))
-   :exception (fn [_ _ _]
-                (throw failure-exception))
+   :exception resolve-exception
    :with-extensions (fn [_ _ _]
                       ;; Previously, the :extensions here would be nested within a new :extensions map,
                       ;; want to show that it is merged into the top-level extensions instead.
                       (resolve-as nil {:message "Exception with extensions."
                                        :top-level :data
                                        :extensions {:nested :data}}))
+   :color (fn [_ _ _]
+            ;; We could add a serializer that converts this to :BLUE, but we haven't.
+            Color/BLUE)
    :multiple-errors (fn [_ _ _]
                       (resolve-as "Value"
                                   [{:message "1" :other-key 100}
@@ -46,12 +51,38 @@
   (utils/compile-schema "field-resolver-errors.edn"
                         resolver-map))
 
-;; This now bubbles up and out with no special handling or reporting.
 (deftest exception-inside-resolver
-  (when-let [e (is (thrown? ExceptionInfo
-                            (execute default-schema
-                                     "{ root { exception (range: 5) }}")))]
-    (is (identical? failure-exception e))))
+  (let [e (is (thrown? ExceptionInfo
+                       (execute default-schema
+                                "{ root { exception (range: 5) }}")))
+        cause (ex-cause e)]
+    ;; Specifically, despite the recursion, there isn't an exception for
+    ;; QueryRoot/root, just for MyObject/exception.
+    (is (= "Exception in resolver for `MyObject/exception': Fail!" (ex-message e)))
+    (is (= {:field-name :MyObject/exception
+            :location {:column 10 :line 1}
+            :arguments {:range 5}
+            :path [:root :exception]}
+           (ex-data e)))
+    (is (= "Fail!" (ex-message cause)))
+    (is (= {:reason :testing} (ex-data cause)))
+    (is (= nil (ex-cause cause)))))
+
+(deftest exception-during-selection
+  (let [e (is (thrown? ExceptionInfo
+                       (execute default-schema
+                                "{ root { color }}")))
+        cause (ex-cause e)]
+    (is (= "Exception processing resolved value for `MyObject/color': Can't convert value to keyword."
+           (ex-message e)))
+    (is (= {:arguments nil
+            :field-name :MyObject/color
+            :location {:column 10 :line 1}
+            :path [:root :color]}
+           (ex-data e)))
+    (is (= "Can't convert value to keyword." (ex-message cause)))
+    (is (= {:value Color/BLUE} (ex-data cause)))
+    (is (= nil (ex-cause cause)))))
 
 (deftest field-with-single-error
   (is (= {:data {:root {:error_field nil}}
@@ -108,8 +139,8 @@
                                              :contents {:type '(list :item)
                                                         :resolve (fn [ctx args v]
                                                                    (resolve-as
-                                                                    (:contents v)
-                                                                    [{:message "Some error"}]))}}}}
+                                                                     (:contents v)
+                                                                     [{:message "Some error"}]))}}}}
                                   :queries
                                   {:container {:type :container
                                                :args {:id {:type 'String}}

@@ -24,9 +24,7 @@
     [clojure.java.io :as io]
     [clojure.edn :as edn]
     [com.walmartlabs.lacinia.util :as util]
-    [com.walmartlabs.lacinia :as lacinia])
-  (:import
-    (java.util Date)))
+    [com.walmartlabs.lacinia :as lacinia]))
 
 (def compiled-schema (schema/compile test-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))
 
@@ -93,15 +91,6 @@
                                    :resolved-value   :ok
                                    :serialized-value :ok}}]}
            (utils/execute schema "{ current_status }")))))
-
-(deftest enum-resolver-must-return-named-value
-  (let [bad-value (Date.)
-        schema (utils/compile-schema "bad-resolver-enum.edn"
-                                     {:query/current-status (constantly bad-value)})]
-    (expect-exception
-      "Can't convert value to keyword."
-      {:value bad-value}
-      (utils/execute schema "{ current_status }"))))
 
 (deftest will-convert-to-keyword
   (let [schema (utils/compile-schema "bad-resolver-enum.edn"
