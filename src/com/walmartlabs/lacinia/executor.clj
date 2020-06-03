@@ -1,30 +1,30 @@
-; Copyright (c) 2017-present Walmart, Inc.
-;
-; Licensed under the Apache License, Version 2.0 (the "License")
-; you may not use this file except in compliance with the License.
-; You may obtain a copy of the License at
-;
-;     http://www.apache.org/licenses/LICENSE-2.0
-;
-; Unless required by applicable law or agreed to in writing, software
-; distributed under the License is distributed on an "AS IS" BASIS,
-; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-; See the License for the specific language governing permissions and
-; limitations under the License.
+;; Copyright (c) 2017-present Walmart, Inc.
+;;
+;; Licensed under the Apache License, Version 2.0 (the "License")
+;; you may not use this file except in compliance with the License.
+;; You may obtain a copy of the License at
+;;
+;;     http://www.apache.org/licenses/LICENSE-2.0
+;;
+;; Unless required by applicable law or agreed to in writing, software
+;; distributed under the License is distributed on an "AS IS" BASIS,
+;; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+;; See the License for the specific language governing permissions and
+;; limitations under the License.
 
 (ns com.walmartlabs.lacinia.executor
   "Mechanisms for executing parsed queries against compiled schemas."
   (:require
-    [com.walmartlabs.lacinia.internal-utils
-     :refer [cond-let map-vals remove-vals q aggregate-results transform-result to-message]]
-    [flatland.ordered.map :refer [ordered-map]]
-    [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.lacinia.resolve :as resolve
-     :refer [resolve-as resolve-promise]]
-    [com.walmartlabs.lacinia.selector-context :as sc]
-    [com.walmartlabs.lacinia.constants :as constants])
+   [com.walmartlabs.lacinia.internal-utils
+    :refer [cond-let map-vals remove-vals q aggregate-results transform-result to-message]]
+   [flatland.ordered.map :refer [ordered-map]]
+   [com.walmartlabs.lacinia.schema :as schema]
+   [com.walmartlabs.lacinia.resolve :as resolve
+    :refer [resolve-as resolve-promise]]
+   [com.walmartlabs.lacinia.selector-context :as sc]
+   [com.walmartlabs.lacinia.constants :as constants])
   (:import
-    (clojure.lang PersistentQueue)))
+   (clojure.lang PersistentQueue)))
 
 (defn ^:private ex-info-map
   [field-selection execution-context]
@@ -68,7 +68,7 @@
     (cond-> {:message message
              :locations locations
              :path path}
-            (seq extensions') (assoc :extensions extensions'))))
+      (seq extensions') (assoc :extensions extensions'))))
 
 (defn ^:private enhance-errors
   "From an error map, or a collection of error maps, add additional data to
@@ -90,27 +90,27 @@
   field of the concrete type is used as the source for the field resolver."
   [schema field-selection resolved-type value]
   (cond-let
-    (:concrete-type? field-selection)
-    (-> field-selection :field-definition :resolve)
+   (:concrete-type? field-selection)
+   (-> field-selection :field-definition :resolve)
 
-    :let [{:keys [field]} field-selection]
+   :let [{:keys [field]} field-selection]
 
-    (nil? resolved-type)
-    (throw (ex-info "Sanity check: value type tag is nil on abstract type."
-                    {:value value}))
+   (nil? resolved-type)
+   (throw (ex-info "Sanity check: value type tag is nil on abstract type."
+                   {:value value}))
 
-    :let [type (get schema resolved-type)]
+   :let [type (get schema resolved-type)]
 
-    (nil? type)
-    (throw (ex-info "Sanity check: invalid type tag on value."
-                    {:type-name resolved-type
-                     :value value}))
+   (nil? type)
+   (throw (ex-info "Sanity check: invalid type tag on value."
+                   {:type-name resolved-type
+                    :value value}))
 
-    :else
-    (or (get-in type [:fields field :resolve])
-        (throw (ex-info "Sanity check: field not present."
-                        {:type resolved-type
-                         :value value})))))
+   :else
+   (or (get-in type [:fields field :resolve])
+       (throw (ex-info "Sanity check: field not present."
+                       {:type resolved-type
+                        :value value})))))
 
 (defn ^:private invoke-resolver-for-field
   "Resolves the value for a field selection node.
@@ -129,8 +129,8 @@
           schema (get context constants/schema-key)
           resolved-type (:resolved-type execution-context)
           resolve-context (assoc context
-                            :com.walmartlabs.lacinia/container-type-name resolved-type
-                            constants/selection-key field-selection)
+                                 :com.walmartlabs.lacinia/container-type-name resolved-type
+                                 constants/selection-key field-selection)
           field-resolver (field-selection-resolver schema field-selection resolved-type container-value)
           start-ms (when (and (some? *timings)
                               (not (-> field-resolver meta ::schema/default-resolver?)))
@@ -143,22 +143,22 @@
       (if-not start-ms
         resolver-result
         (transform-result resolver-result
-          (fn [resolved-value]
-            (let [finish-ms (System/currentTimeMillis)
-                  elapsed-ms (- finish-ms start-ms)]
-              ;; Discard 0 and 1 ms results
-              (when (<= 2 elapsed-ms)
-                (swap! *timings conj {:start (str start-ms)
-                                      :finish (str finish-ms)
-                                      :path (:path execution-context)
-                                      ;; This is just a convenience:
-                                      :elapsed elapsed-ms})))
-            resolved-value))))
+                          (fn [resolved-value]
+                            (let [finish-ms (System/currentTimeMillis)
+                                  elapsed-ms (- finish-ms start-ms)]
+                              ;; Discard 0 and 1 ms results
+                              (when (<= 2 elapsed-ms)
+                                (swap! *timings conj {:start (str start-ms)
+                                                      :finish (str finish-ms)
+                                                      :path (:path execution-context)
+                                                      ;; This is just a convenience:
+                                                      :elapsed elapsed-ms})))
+                            resolved-value))))
     (catch Throwable t
       (let [field-name (get-in field-selection [:field-definition :qualified-name])
             {:keys [location arguments]} field-selection]
         (throw (ex-info (str "Exception in resolver for "
-                              (q field-name)
+                             (q field-name)
                              ": "
                              (to-message t))
                         {:field-name field-name
@@ -170,16 +170,16 @@
 (declare ^:private resolve-and-select)
 
 (defrecord ExecutionContext
-  ;; context, resolved-value, and resolved-type change constantly during the process
-  ;; *errors is an Atom containing a vector, which accumulates
-  ;; error-maps during execution.
-  ;; *warnings is an Atom containing a vector of warnings (error maps that
-  ;; appear in the result as [:extensions :warnings].
-  ;; *timings is usually nil, or may be an Atom containing an empty map, which
-  ;; *extensions is an atom containing a map, if non-empty, it is added to the result map as :extensions
-  ;; accumulates timing data during execution.
-  ;; path is used when reporting errors
-  [context resolved-value resolved-type *errors *warnings *extensions *timings path])
+    ;; context, resolved-value, and resolved-type change constantly during the process
+    ;; *errors is an Atom containing a vector, which accumulates
+    ;; error-maps during execution.
+    ;; *warnings is an Atom containing a vector of warnings (error maps that
+    ;; appear in the result as [:extensions :warnings].
+    ;; *timings is usually nil, or may be an Atom containing an empty map, which
+    ;; *extensions is an atom containing a map, if non-empty, it is added to the result map as :extensions
+    ;; accumulates timing data during execution.
+    ;; path is used when reporting errors
+    [context resolved-value resolved-type *errors *warnings *extensions *timings path])
 
 (defn ^:private null-to-nil
   [v]
@@ -263,7 +263,7 @@
     (maybe-apply-fragment execution-context
                           ;; A bit of a hack:
                           (assoc fragment-spread-selection
-                            :selections (:selections fragment-def))
+                                 :selections (:selections fragment-def))
                           (:concrete-types fragment-def))))
 
 (defn ^:private apply-selection
@@ -367,10 +367,10 @@
                    resolved-type
                    (seq sub-selections))
             (execute-nested-selections
-              (assoc execution-context
-                :resolved-value resolved-value
-                :resolved-type resolved-type)
-              sub-selections)
+             (assoc execution-context
+                    :resolved-value resolved-value
+                    :resolved-type resolved-type)
+             sub-selections)
             (resolve-as resolved-value)))
         ;; In a concrete type, we know the selector from the field definition
         ;; (a field definition on a concrete object type).  Otherwise, we need
@@ -480,7 +480,7 @@
         *timings (when (:com.walmartlabs.lacinia/enable-timing? context)
                    (atom []))
         context' (assoc context constants/schema-key
-                                (get parsed-query constants/schema-key))
+                        (get parsed-query constants/schema-key))
         ;; Outside of subscriptions, the ::resolved-value is nil.
         ;; For subscriptions, the :resolved-value will be set to a non-nil value before
         ;; executing the query.
@@ -507,10 +507,10 @@
                                                extensions @*extensions]
                                            (resolve/deliver! result-promise
                                                              (cond-> {:data data}
-                                                                     (seq extensions) (assoc :extensions extensions)
-                                                                     *timings (assoc-in [:extensions :timings] @*timings)
-                                                                     errors (assoc :errors (distinct errors))
-                                                                     warnings (assoc-in [:extensions :warnings] (distinct warnings)))))))))
+                                                               (seq extensions) (assoc :extensions extensions)
+                                                               *timings (assoc-in [:extensions :timings] @*timings)
+                                                               errors (assoc :errors (distinct errors))
+                                                               warnings (assoc-in [:extensions :warnings] (distinct warnings)))))))))
               (catch Throwable t
                 (resolve/deliver! result-promise t))))]
 
@@ -582,8 +582,8 @@
   [node]
   (let [{:keys [field alias arguments]} node]
     (cond-> {:name (to-field-name node)}
-            (not (= field alias)) (assoc :alias alias)
-            (seq arguments) (assoc :args arguments))))
+      (not (= field alias)) (assoc :alias alias)
+      (seq arguments) (assoc :args arguments))))
 
 (defn selections-seq2
   "An enhancement of [[selections-seq]] that returns a map for each node:
@@ -631,9 +631,9 @@
                       arguments (:arguments selection)
                       selections-map (build-selections-map parsed-query selections)
                       nested-map (cond-> nil
-                                         (not (= field alias)) (assoc :alias alias)
-                                         (seq arguments) (assoc :args arguments)
-                                         (seq selections-map) (assoc :selections selections-map))]
+                                   (not (= field alias)) (assoc :alias alias)
+                                   (seq arguments) (assoc :args arguments)
+                                   (seq selections-map) (assoc :selections selections-map))]
                   (update m field-name conjv nested-map))
                 m)
 
