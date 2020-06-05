@@ -11,6 +11,11 @@ to `com.walmartlabs.lacinia.parser.schema/parse-schema` which is now deprecated.
 The schema parser has been updated, to allow input values (within input types)
 to specify defaults, and to support extending input types.
 
+Exceptions thrown by resolver functions are now caught and wrapped as new exceptions
+that identify the field, query location and path, and field arguments.
+This also applies to exceptions thrown when processing the result, such as an invalid
+enum value returned from a resolver function.
+
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/25?closed=1)
 
 ## 0.36.0 -- 13 Feb 2020

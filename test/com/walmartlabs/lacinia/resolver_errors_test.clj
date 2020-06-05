@@ -1,39 +1,44 @@
-; Copyright (c) 2017-present Walmart, Inc.
-;
-; Licensed under the Apache License, Version 2.0 (the "License")
-; you may not use this file except in compliance with the License.
-; You may obtain a copy of the License at
-;
-;     http://www.apache.org/licenses/LICENSE-2.0
-;
-; Unless required by applicable law or agreed to in writing, software
-; distributed under the License is distributed on an "AS IS" BASIS,
-; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-; See the License for the specific language governing permissions and
-; limitations under the License.
+;; Copyright (c) 2017-present Walmart, Inc.
+;;
+;; Licensed under the Apache License, Version 2.0 (the "License")
+;; you may not use this file except in compliance with the License.
+;; You may obtain a copy of the License at
+;;
+;;     http://www.apache.org/licenses/LICENSE-2.0
+;;
+;; Unless required by applicable law or agreed to in writing, software
+;; distributed under the License is distributed on an "AS IS" BASIS,
+;; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+;; See the License for the specific language governing permissions and
+;; limitations under the License.
 
 (ns com.walmartlabs.lacinia.resolver-errors-test
   "Tests for errors and exceptions inside field resolvers, and for the exception converter."
   (:require
-    [clojure.test :refer [deftest is testing]]
-    [com.walmartlabs.lacinia.resolve :refer [resolve-as]]
-    [com.walmartlabs.test-utils :refer [execute] :as utils]
-    [com.walmartlabs.lacinia.schema :as schema])
-  (:import (clojure.lang ExceptionInfo)))
+   [clojure.test :refer [deftest is testing]]
+   [com.walmartlabs.lacinia.resolve :refer [resolve-as]]
+   [com.walmartlabs.test-utils :refer [execute] :as utils]
+   [com.walmartlabs.lacinia.schema :as schema])
+  (:import (clojure.lang ExceptionInfo)
+           (java.awt Color)))
 
-(def ^:private failure-exception (ex-info "Fail!" {:reason :testing}))
+(defn ^:private resolve-exception
+  [_ _ _]
+  (throw (ex-info "Fail!" {:reason :testing})))
 
 (def ^:private resolver-map
   {:single-error (fn [_ _ _]
                    (resolve-as nil {:message "Exception in error_field resolver."}))
-   :exception (fn [_ _ _]
-                (throw failure-exception))
+   :exception resolve-exception
    :with-extensions (fn [_ _ _]
                       ;; Previously, the :extensions here would be nested within a new :extensions map,
                       ;; want to show that it is merged into the top-level extensions instead.
                       (resolve-as nil {:message "Exception with extensions."
                                        :top-level :data
                                        :extensions {:nested :data}}))
+   :color (fn [_ _ _]
+            ;; We could add a serializer that converts this to :BLUE, but we haven't.
+            Color/BLUE)
    :multiple-errors (fn [_ _ _]
                       (resolve-as "Value"
                                   [{:message "1" :other-key 100}
@@ -46,12 +51,38 @@
   (utils/compile-schema "field-resolver-errors.edn"
                         resolver-map))
 
-;; This now bubbles up and out with no special handling or reporting.
 (deftest exception-inside-resolver
-  (when-let [e (is (thrown? ExceptionInfo
-                            (execute default-schema
-                                     "{ root { exception (range: 5) }}")))]
-    (is (identical? failure-exception e))))
+  (let [e (is (thrown? ExceptionInfo
+                       (execute default-schema
+                                "{ root { exception (range: 5) }}")))
+        cause (ex-cause e)]
+    ;; Specifically, despite the recursion, there isn't an exception for
+    ;; QueryRoot/root, just for MyObject/exception.
+    (is (= "Exception in resolver for `MyObject/exception': Fail!" (ex-message e)))
+    (is (= {:field-name :MyObject/exception
+            :location {:column 10 :line 1}
+            :arguments {:range 5}
+            :path [:root :exception]}
+           (ex-data e)))
+    (is (= "Fail!" (ex-message cause)))
+    (is (= {:reason :testing} (ex-data cause)))
+    (is (= nil (ex-cause cause)))))
+
+(deftest exception-during-selection
+  (let [e (is (thrown? ExceptionInfo
+                       (execute default-schema
+                                "{ root { color }}")))
+        cause (ex-cause e)]
+    (is (= "Exception processing resolved value for `MyObject/color': Can't convert value to keyword."
+           (ex-message e)))
+    (is (= {:arguments nil
+            :field-name :MyObject/color
+            :location {:column 10 :line 1}
+            :path [:root :color]}
+           (ex-data e)))
+    (is (= "Can't convert value to keyword." (ex-message cause)))
+    (is (= {:value Color/BLUE} (ex-data cause)))
+    (is (= nil (ex-cause cause)))))
 
 (deftest field-with-single-error
   (is (= {:data {:root {:error_field nil}}
