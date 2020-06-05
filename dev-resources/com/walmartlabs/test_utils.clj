@@ -81,5 +81,5 @@
 (defmacro expect-exception
   [expected-message expected-data form]
   `(when-let [e# (is (~'thrown? Throwable ~form))]
-     (is (= ~expected-message (.getMessage e#)))
+     (is (= ~expected-message (ex-message e#)))
      (is (= ~expected-data (ex-data e#)))))

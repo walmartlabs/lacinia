@@ -504,7 +504,7 @@
   [parsed-query node]
   (case (:selection-type node)
 
-    (:field :inline-fragment) (:selections node)
+    (:field :inline-fragment) (remove :disabled? (:selections node))
 
     :fragment-spread
     (let [{:keys [fragment-name]} node]
@@ -525,14 +525,20 @@
                  (let [node (peek queue)]
                    (cons node
                          (step (into (pop queue)
-                                     (node-selections parsed-query node)))))))]
+                                     (node-selections parsed-query node)))))))
+        ;; Filter and transform the node
+        f (fn [node]
+            (when (and (= :field (:selection-type node))
+                       ;; Nodes are disabled by the @Skip and @Include directives, but
+                       ;; that only takes place after the query has been prepared.
+                       (not (:disabled? node)))
+              (node-xform node)))]
     (->> (conj PersistentQueue/EMPTY selection)
          step
          ;; remove the first node (the selection); just interested
          ;; in what's beneath the selection
          next
-         (filter #(= :field (:selection-type %)))
-         (keep node-xform))))
+         (keep f))))
 
 (defn selections-seq
   "A width-first traversal of the selections tree, returning a lazy sequence
@@ -589,27 +595,29 @@
   "Builds the selections map for a field selection node."
   [parsed-query selections]
   (reduce (fn [m selection]
-            (case (:selection-type selection)
+            (if (:disabled? selection)
+              m
+              (case (:selection-type selection)
 
-              :field
-              (if-some [field-name (to-field-name selection)]
-                (let [{:keys [field alias selections]} selection
-                      arguments (:arguments selection)
-                      selections-map (build-selections-map parsed-query selections)
-                      nested-map (cond-> nil
-                                   (not (= field alias)) (assoc :alias alias)
-                                   (seq arguments) (assoc :args arguments)
-                                   (seq selections-map) (assoc :selections selections-map))]
-                  (update m field-name conjv nested-map))
-                m)
+                :field
+                (if-some [field-name (to-field-name selection)]
+                  (let [{:keys [field alias selections]} selection
+                        arguments (:arguments selection)
+                        selections-map (build-selections-map parsed-query selections)
+                        nested-map (cond-> nil
+                                           (not (= field alias)) (assoc :alias alias)
+                                           (seq arguments) (assoc :args arguments)
+                                           (seq selections-map) (assoc :selections selections-map))]
+                    (update m field-name conjv nested-map))
+                  m)
 
-              :inline-fragment
-              (merge-with intov m (build-selections-map parsed-query (:selections selection)))
+                :inline-fragment
+                (merge-with intov m (build-selections-map parsed-query (:selections selection)))
 
-              :fragment-spread
-              (let [{:keys [fragment-name]} selection
-                    fragment-selections (get-in parsed-query [:fragments fragment-name :selections])]
-                (merge-with intov m (build-selections-map parsed-query fragment-selections)))))
+                :fragment-spread
+                (let [{:keys [fragment-name]} selection
+                      fragment-selections (get-in parsed-query [:fragments fragment-name :selections])]
+                  (merge-with intov m (build-selections-map parsed-query fragment-selections))))))
           {}
           selections))
 
@@ -641,6 +649,11 @@
   * [[selections-tree]]
   * [[selects-field?]]
   * [[selections-seq]]
+
+  Fields annotated with @skip and @include directives may be omitted if the parsed query
+  has also been passed through [[prepare-with-query-variables]], which normally happens
+  just before query execution.
+  If the query has not been prepared, then the directives are ignored.
 
   This is used to preview the execution of the query prior to execution."
   {:added "0.34.0"}

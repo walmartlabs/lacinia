@@ -1200,7 +1200,7 @@
 
 (defn prepare-with-query-variables
   "Given a parsed query data structure and a map of variables,
-  update the query, calculating field arguments and applying directives."
+  update the query, calculating field arguments and applying @skip and @include directives."
   [parsed-query variables]
   (let [prepare #(prepare-node % variables)]
     (-> (prepare-nested-selections parsed-query variables)

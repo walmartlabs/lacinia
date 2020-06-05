@@ -11,6 +11,9 @@ to `com.walmartlabs.lacinia.parser.schema/parse-schema` which is now deprecated.
 The schema parser has been updated, to allow input values (within input types)
 to specify defaults, and to support extending input types.
 
+The preview API (`selections-seq2`, etc.) now recognize the `@include` and
+`@skip` directives.
+
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/25?closed=1)
 
 ## 0.36.0 -- 13 Feb 2020

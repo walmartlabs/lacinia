@@ -9,8 +9,7 @@
                  [clj-antlr "0.2.5"]
                  [org.flatland/ordered "1.5.9"]
                  [org.clojure/data.json "1.0.0"]]
-  :source-paths ["src"
-                 "vendor-src"]
+  :source-paths ["src"]
   :profiles {:dev {:dependencies [[criterium "0.4.5"]
                                   [expound "0.8.4"]
                                   [joda-time "2.10.6"]
