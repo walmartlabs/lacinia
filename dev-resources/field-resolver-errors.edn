@@ -1,10 +1,14 @@
-{:objects
+{:enums
+ {:Color {:values [RED GREEN BLUE]}}
+ :objects
  {:MyObject
   {:fields
    {:error_field
     {:type String
      :resolve :single-error}
 
+    :color {:type :Color
+            :resolve :color}
     :exception
     {:type String
      :args

@@ -1,38 +1,36 @@
-; Copyright (c) 2017-present Walmart, Inc.
-;
-; Licensed under the Apache License, Version 2.0 (the "License")
-; you may not use this file except in compliance with the License.
-; You may obtain a copy of the License at
-;
-;     http://www.apache.org/licenses/LICENSE-2.0
-;
-; Unless required by applicable law or agreed to in writing, software
-; distributed under the License is distributed on an "AS IS" BASIS,
-; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-; See the License for the specific language governing permissions and
-; limitations under the License.
+;; Copyright (c) 2017-present Walmart, Inc.
+;;
+;; Licensed under the Apache License, Version 2.0 (the "License")
+;; you may not use this file except in compliance with the License.
+;; You may obtain a copy of the License at
+;;
+;;     http://www.apache.org/licenses/LICENSE-2.0
+;;
+;; Unless required by applicable law or agreed to in writing, software
+;; distributed under the License is distributed on an "AS IS" BASIS,
+;; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+;; See the License for the specific language governing permissions and
+;; limitations under the License.
 
 (ns com.walmartlabs.lacinia.enums-test
   (:require
-    [clojure.test :refer [deftest is]]
-    [com.walmartlabs.test-schema :refer [test-schema]]
-    [com.walmartlabs.lacinia :refer [execute]]
-    [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.test-reporting :refer [reporting]]
-    [com.walmartlabs.test-utils :as utils :refer [expect-exception]]
-    [clojure.set :as set]
-    [clojure.java.io :as io]
-    [clojure.edn :as edn]
-    [com.walmartlabs.lacinia.util :as util]
-    [com.walmartlabs.lacinia :as lacinia])
-  (:import
-    (java.util Date)))
+   [clojure.test :refer [deftest is]]
+   [com.walmartlabs.test-schema :refer [test-schema]]
+   [com.walmartlabs.lacinia :refer [execute]]
+   [com.walmartlabs.lacinia.schema :as schema]
+   [com.walmartlabs.test-reporting :refer [reporting]]
+   [com.walmartlabs.test-utils :as utils :refer [expect-exception]]
+   [clojure.set :as set]
+   [clojure.java.io :as io]
+   [clojure.edn :as edn]
+   [com.walmartlabs.lacinia.util :as util]
+   [com.walmartlabs.lacinia :as lacinia]))
 
 (def compiled-schema (schema/compile test-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))
 
 (defn q
   ([query]
-    (q query nil))
+   (q query nil))
   ([query vars]
    (utils/simplify (execute compiled-schema query vars nil))))
 
@@ -47,7 +45,7 @@
   (let [result (q "{ hero(episode: NEWHOPE) { name }}")
         hero-name (-> result :data :hero :name)]
     (reporting result
-      (is (= "Luke Skywalker" hero-name)))))
+               (is (= "Luke Skywalker" hero-name)))))
 
 (deftest handling-of-invalid-enum-value
   (let [result (q "{ hero (episode: CLONES) { name }}")
@@ -70,11 +68,11 @@
 
 (deftest enum-values-must-be-unique
   (expect-exception
-    "Values defined for enum `invalid' must be unique."
-    {:enum {:values [:yes 'yes "yes"]
-            :category :enum
-            :type-name :invalid}}
-    (schema/compile {:enums {:invalid {:values [:yes 'yes "yes"]}}})))
+   "Values defined for enum `invalid' must be unique."
+   {:enum {:values [:yes 'yes "yes"]
+           :category :enum
+           :type-name :invalid}}
+   (schema/compile {:enums {:invalid {:values [:yes 'yes "yes"]}}})))
 
 (deftest converts-var-value-from-string-to-enum
   (is (= {:data {:hero {:name "Luke Skywalker"}}}
@@ -93,15 +91,6 @@
                                    :resolved-value   :ok
                                    :serialized-value :ok}}]}
            (utils/execute schema "{ current_status }")))))
-
-(deftest enum-resolver-must-return-named-value
-  (let [bad-value (Date.)
-        schema (utils/compile-schema "bad-resolver-enum.edn"
-                                     {:query/current-status (constantly bad-value)})]
-    (expect-exception
-      "Can't convert value to keyword."
-      {:value bad-value}
-      (utils/execute schema "{ current_status }"))))
 
 (deftest will-convert-to-keyword
   (let [schema (utils/compile-schema "bad-resolver-enum.edn"
@@ -183,12 +172,12 @@
 
     (is (= {:data {:echo {:input ":fu/bar"
                           :output :bad}}}
-           (-> (lacinia/execute schema
-                                "query ($in : status) {
+           (-> (execute schema
+                        "query ($in : status) {
                                   echo(in: $in) { input output }
                                 }"
-                                {:in "bad"}
-                                nil)
+                        {:in "bad"}
+                        nil)
                utils/simplify)))
 
     (is (= {:data   {:fail {:output nil}}
