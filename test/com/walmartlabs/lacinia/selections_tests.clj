@@ -14,13 +14,13 @@
 
 (ns com.walmartlabs.lacinia.selections-tests
   (:require
-   [clojure.test :refer [deftest is]]
-   [com.walmartlabs.lacinia.parser :as parser]
-   [com.walmartlabs.lacinia.executor :as executor]
-   [com.walmartlabs.test-utils :refer [compile-schema execute]]
-   [clojure.edn :as edn]
-   [com.walmartlabs.test-schema :refer [test-schema]]
-   [com.walmartlabs.lacinia.schema :as schema]))
+    [clojure.test :refer [deftest is]]
+    [com.walmartlabs.lacinia.parser :as parser]
+    [com.walmartlabs.lacinia.executor :as executor]
+    [com.walmartlabs.test-utils :refer [compile-schema execute]]
+    [clojure.edn :as edn]
+    [com.walmartlabs.test-schema :refer [test-schema]]
+    [com.walmartlabs.lacinia.schema :as schema]))
 
 (def default-schema
   (schema/compile test-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))
@@ -29,7 +29,8 @@
   ([query]
    (parse-and-wrap default-schema query))
   ([schema query]
-   (let [parsed-query (parser/parse-query schema query)]
+   (let [parsed-query (-> (parser/parse-query schema query)
+                          (parser/prepare-with-query-variables nil))]
      (executor/parsed-query->context parsed-query))))
 
 
@@ -66,6 +67,33 @@
           :character/appears_in
           :character/name]                                  ; enemies
          (root-selections "{ human { name friends { name appears_in } enemies { name }}}"))))
+
+(deftest selections-account-for-directives
+
+  (is (= [:__Queries/human
+          :human/name :human/friends
+          ;; :human/enemies and nested :character/name omitted
+          :character/name
+          :character/appears_in]
+         (root-selections "{ human { name friends { name appears_in } enemies @skip(if: true) { name }}}")))
+
+  (is (= [:__Queries/human
+          :human/friends
+          :human/enemies
+          :character/name
+          :character/appears_in
+          :character/name
+          :character/appears_in
+          ;; Next two are skipped because the enemies/fcharacter fragment is skipped:
+          ; :character/name
+          ; :character/appears_in
+          ]
+         (root-selections "
+         { human { ... fcharacter
+                       friends { ... fcharacter }
+                       enemies { ... fcharacter @skip(if:true) }}}
+
+         fragment fcharacter on character { name appears_in }"))))
 
 (deftest multiple-roots
   ;; This only really applies when getting the selections from the parsed query
@@ -168,6 +196,26 @@
                                           :droid/friends [{:selections {:character/name [nil]}}]
                                           :droid/name [nil]}}]}
          (tree "{ droid { name appears: appears_in friends { name }}}"))))
+
+(deftest directives-in-tree
+  (is (= {:__Queries/droid [{:args {:id "2001"}
+                             :selections {:droid/appears_in [{:alias :appears}]
+                                          :droid/name [nil]}}]}
+         (tree "{ droid { name appears: appears_in friends @include(if: false) { name }}}")))
+
+  (is (= {:__Queries/human [{:args {:id "1001"}
+                              :selections {:character/appears_in [nil]
+                                           :character/name [nil]
+                                           :human/enemies [nil]
+                                           :human/friends [{:selections #:character{:appears_in [nil]
+                                                                                    :name [nil]}}]}}]}
+         (tree
+           "
+         { human { ... fcharacter
+                       friends { ... fcharacter }
+                       enemies { ... fcharacter @skip(if:true) }}}
+
+         fragment fcharacter on character { name appears_in }"))))
 
 
 (deftest inline-fragments-are-flattened-in-tree
