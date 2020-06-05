@@ -563,6 +563,8 @@
         ;; Filter and transform the node
         f (fn [node]
             (when (and (= :field (:selection-type node))
+                       ;; Skip the __typename psuedo-field
+                       (some? (to-field-name node))
                        ;; Nodes are disabled by the @Skip and @Include directives, but
                        ;; that only takes place after the query has been prepared.
                        (not (:disabled? node)))
@@ -634,6 +636,7 @@
               (case (:selection-type selection)
 
                 :field
+                ;; to-field-name returns nil for pseudo-fields, which are skipped
                 (if-some [field-name (to-field-name selection)]
                   (let [{:keys [field alias selections]} selection
                         arguments (:arguments selection)

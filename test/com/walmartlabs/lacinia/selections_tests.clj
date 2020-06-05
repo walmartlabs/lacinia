@@ -68,6 +68,10 @@
           :character/name]                                  ; enemies
          (root-selections "{ human { name friends { name appears_in } enemies { name }}}"))))
 
+(deftest skips-psuedo-field-in-selections
+  (is (= [:__Queries/human :human/name :human/homePlanet]
+         (root-selections "{ human { name __typename homePlanet }}"))))
+
 (deftest selections-account-for-directives
 
   (is (= [:__Queries/human
@@ -203,12 +207,13 @@
                                           :droid/name [nil]}}]}
          (tree "{ droid { name appears: appears_in friends @include(if: false) { name }}}")))
 
+
   (is (= {:__Queries/human [{:args {:id "1001"}
-                              :selections {:character/appears_in [nil]
-                                           :character/name [nil]
-                                           :human/enemies [nil]
-                                           :human/friends [{:selections #:character{:appears_in [nil]
-                                                                                    :name [nil]}}]}}]}
+                             :selections {:character/appears_in [nil]
+                                          :character/name [nil]
+                                          :human/enemies [nil]
+                                          :human/friends [{:selections #:character{:appears_in [nil]
+                                                                                   :name [nil]}}]}}]}
          (tree
            "
          { human { ... fcharacter
@@ -216,6 +221,21 @@
                        enemies { ... fcharacter @skip(if:true) }}}
 
          fragment fcharacter on character { name appears_in }"))))
+
+(deftest skips-psuedo-field-in-tree
+  (is (= {:__Queries/human [{:args {:id "1001"}
+                             :selections {:character/appears_in [nil]
+                                          :character/name [nil]
+                                          :human/enemies [nil]
+                                          :human/friends [{:selections #:character{:appears_in [nil]
+                                                                                   :name [nil]}}]}}]}
+         (tree
+           "
+         { human { ... fcharacter
+                       friends { ... fcharacter }
+                       enemies { ... fcharacter @skip(if:true) }}}
+
+         fragment fcharacter on character { __typename name appears_in }"))))
 
 
 (deftest inline-fragments-are-flattened-in-tree
