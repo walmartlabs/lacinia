@@ -234,7 +234,8 @@
   the parsed value."
 
   (fn [_schema argument-definition [arg-type _]]
-    (if (contains-modifier? :list argument-definition)
+    (if (or (contains-modifier? :list argument-definition)
+            (contains-modifier? :non-empty-list argument-definition))
       ;; list types allow a single value on input
       :array
       arg-type)))
@@ -355,7 +356,7 @@
 (defmethod process-literal-argument :array
   [schema argument-definition arg-tuple]
   (let [kind (-> argument-definition :type :kind)
-       [_ arg-value :as arg-tuple*] (coerce-to-multiple-if-list-type argument-definition arg-tuple)]
+        [_ arg-value :as arg-tuple*] (coerce-to-multiple-if-list-type argument-definition arg-tuple)]
     (case kind
       :non-null
       (recur schema (use-nested-type argument-definition) arg-tuple*)
@@ -363,7 +364,7 @@
       :root
       (throw-exception "Provided argument value is an array, but the argument is not a list.")
 
-      :list
+      (:list :non-empty-list)
       (let [fake-argument-def (use-nested-type argument-definition)]
         (mapv #(process-literal-argument schema fake-argument-def %) arg-value)))))
 
@@ -435,6 +436,12 @@
       ;; from the argument type.
       (recur var-type a-type)
 
+      (and (= a-kind :non-empty-list)
+           (not= v-kind :non-empty-list))
+      ;; Check if the type of the list argument is compatible, by stripping the :list qualifier
+      ;; from the argument type.
+      (recur var-type a-type)
+
       ;; At this point we've stripped off non-null on the arg or var side.  We should
       ;; be at a meeting point, either both :list or both :root.
       (not= a-kind v-kind)
@@ -464,7 +471,7 @@
   [type-map]
   (let [nested (:type type-map)]
     (case (:kind type-map)
-      :list
+      (:list :non-empty-list)
       (str "["
            (build-type-summary nested)
            "]")
@@ -498,7 +505,7 @@
                              (q arg-value))
                      {:variable-name arg-value})
 
-    (= :list kind)
+    (= kind :list)
     (cond
       (and (= :list (:kind nested-type))
            (not (sequential? (first result))))
@@ -1100,6 +1107,10 @@
 
     :list
     {:kind :list
+     :type (-> parsed :of-type construct-var-type-map)}
+
+    :non-empty-list
+    {:kinf :non-empty-list
      :type (-> parsed :of-type construct-var-type-map)}
 
     :non-null

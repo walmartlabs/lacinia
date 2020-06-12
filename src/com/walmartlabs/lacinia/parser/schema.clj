@@ -378,6 +378,10 @@
       (list 'non-null base-type)
       base-type)))
 
+(defmethod xform :nonEmptyListType
+  [prod]
+  (list 'non-empty-list (xform-second prod)))
+
 (defmethod xform :listType
   [prod]
   (list 'list (xform-second prod)))

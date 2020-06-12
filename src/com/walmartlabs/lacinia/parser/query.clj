@@ -83,6 +83,11 @@
   {:type :non-null
    :of-type (-> prod second xform)})
 
+(defmethod xform :nonEmptyListType
+  [prod]
+  {:type :non-empty-list
+   :of-type (-> prod second xform)})
+
 (defmethod xform :listType
   [prod]
   {:type :list
