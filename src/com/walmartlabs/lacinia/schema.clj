@@ -279,7 +279,7 @@
 (s/def ::wrapped-type (s/cat :modifier ::wrapped-type-modifier
                              :type ::type))
 ;; Use of a function here, rather than just the set, is due to https://github.com/bhb/expound/issues/101
-(s/def ::wrapped-type-modifier #(contains? #{'list 'non-null} %))
+(s/def ::wrapped-type-modifier #(contains? #{'list 'non-null 'non-empty-list} %))
 (s/def ::arg (s/keys :req-un [::type]
                      :opt-un [::description
                               ::directives
@@ -488,8 +488,8 @@
       (not= o-kind i-kind)
       false
 
-      ;; For :list and :non-null, they match, move down a level, towards :root
-      (#{:list :non-null} o-kind)
+      ;; For :list, :non-null and :non-empty-list, they match, move down a level, towards :root
+      (#{:list :non-null :non-empty-list} o-kind)
       (recur schema i-type o-type)
 
       ;; Shortcut the compatible type check if the exact same type
@@ -523,11 +523,12 @@
     (sequential? type)
     (let [[modifier next-type & anything-else] type
           kind (get {'list :list
-                     'non-null :non-null} modifier)]
+                     'non-null :non-null
+                     'non-empty-list :non-empty-list} modifier)]
       (when (or (nil? next-type)
                 (nil? kind)
                 (seq anything-else))
-        (throw (ex-info "Expected (list|non-null <type>)."
+        (throw (ex-info "Expected (list|non-null|non-empty-list <type>)."
                         {:type type})))
 
       {:kind kind
@@ -699,6 +700,7 @@
                          serializer (:serialize field-type)]
                      (fn validate-enum [{:keys [resolved-value]
                                          :as selector-context}]
+                       (prn :d resolved-value)
                        (cond-let
                          ;; The resolver function can return a value that makes sense from
                          ;; the application's model (for example, a namespaced keyword or even a string)
@@ -826,6 +828,50 @@
       (fn select-list [{:keys [resolved-value callback]
                         :as selector-context}]
         (cond
+          (and allow-nil? (nil? resolved-value))
+          (callback (assoc selector-context
+                           :resolved-value nil
+                           :resolved-type nil))
+
+          (and allow-nil? (not (sequential-or-set? resolved-value)))
+          (selector-error selector-context
+                          (error "Field resolver returned a single value, expected a collection of values."))
+
+          (not (seq resolved-value))
+          (callback (assoc selector-context
+                           :resolved-value []
+                           :resolved-type nil))
+
+          :else
+          ;; So we have some privileged knowledge here: the callback returns a ResolverResult containing
+          ;; the value. So we need to combine those together into a new ResolverResult.
+          (let [unwrapper (fn [{:keys [resolved-value] :as selector-context}]
+                            (if-not (sc/is-wrapped-value? resolved-value)
+                              (next-selector selector-context)
+                              (loop [v resolved-value
+                                     sc selector-context]
+                                (let [next-v (:value v)
+                                      next-sc (sc/apply-wrapped-value sc v)]
+                                  (if (sc/is-wrapped-value? next-v)
+                                    (recur next-v next-sc)
+                                    (next-selector (assoc next-sc :resolved-value next-v)))))))]
+            (aggregate-results
+              (map-indexed
+                (fn [i v]
+                  (unwrapper (-> selector-context
+                                 (assoc :resolved-value v)
+                                 (update-in [:execution-context :path] conj i))))
+                resolved-value))))))
+
+    :non-empty-list
+    (let [next-selector (assemble-selector schema object-type field (:type type))
+          allow-nil? (not (get-in schema [::options :promote-nils-to-empty-list?]))]
+      (fn select-list [{:keys [resolved-value callback]
+                        :as selector-context}]
+        (cond
+          (empty? resolved-value)
+          (selector-error selector-context (error "Non-empty list field was empty."))
+
           (and allow-nil? (nil? resolved-value))
           (callback (assoc selector-context
                            :resolved-value nil
