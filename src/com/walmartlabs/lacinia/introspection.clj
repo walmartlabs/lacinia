@@ -195,6 +195,10 @@
       {:kind :LIST
        ::type-map type}
 
+      :non-empty-list
+      {:kind :NON_EMPTY_LIST
+       ::type-map type}
+
       :non-null
       {:kind :NON_NULL
        ::type-map type}
@@ -230,6 +234,15 @@
 (defmethod emit-default-value :non-null
   [schema type-map value]
   (emit-default-value schema (:type type-map) value))
+
+(defmethod emit-default-value :non-empty-list
+  [schema type-map value]
+  (let [nested (:type type-map)]
+    (str "["
+         (->> value
+              (map #(emit-default-value schema nested %))
+              (str/join ","))
+         "]")))
 
 (defmethod emit-default-value :scalar
   [schema type-map value]
