@@ -101,7 +101,8 @@
   (let [schema (schema/compile {:objects {:movie {:fields {:release_year {:type 'Int}
                                                            :sequel {:type :movie}
                                                            :title {:type '(non-null String)}
-                                                           :actors {:type '(list (non-null String))}}}}})
+                                                           :actors {:type '(list (non-null String))}
+                                                           :ganres {:type '(non-empty-list String)}}}}})
         q "
         { __type(name: \"movie\") {
           fields {
@@ -127,6 +128,11 @@
                                                       :name nil
                                                       :ofType {:kind :SCALAR
                                                                :name "String"}}}}
+                                     {:name "ganres"
+                                      :type {:kind :NON_EMPTY_LIST
+                                             :name nil
+                                             :ofType {:kind :SCALAR
+                                                      :name "String"}}}
                                      {:name "release_year"
                                       :type {:kind :SCALAR
                                              :name "Int"
