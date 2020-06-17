@@ -132,8 +132,7 @@
                             :com.walmartlabs.lacinia/container-type-name resolved-type
                             constants/selection-key field-selection)
           field-resolver (field-selection-resolver schema field-selection resolved-type container-value)
-          start-ms (when (and (some? *timings)
-                              (not (-> field-resolver meta ::schema/default-resolver?)))
+          start-ms (when (some? *timings)
                      (System/currentTimeMillis))
           resolver-result (field-resolver resolve-context arguments container-value)]
       ;; If not collecting timing results, then the resolver-result is all we need.
