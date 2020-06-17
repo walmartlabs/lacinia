@@ -81,3 +81,28 @@ This places the type tag on the function, not on the symbol (as normally happens
 
 It doesn't matter whether the function invokes ``resolve-as`` or ``resolve-promise``, but returning
 nil or a bare value from a field resolver tagged with ResolverResult will cause runtime exceptions, so be careful.
+
+Default Resolvers
+-----------------
+
+When a field does not have an explicit resolver in the schema, a default resolver is provided by Lacinia
+(this is just one of the many operations that occur when compiling a schema);
+ultimately, every field has a resolver, but the vast majority are these default resolvers.
+
+The resolver  maps the field name directly to a map key; a field named ``user_name`` will default to a keyword key, ``:user_name``.
+
+Nested Resolver Results
+-----------------------
+
+Normally, a field resolver for a non-scalar field returns a map; the map is recusively selected by any nested fields
+(a field with a list type will return a seq of raw values).
+
+It is allowed that nested values are themselves ResolverResult instances; this is an alternative to defining resolvers
+for the nested fields, and only really makes sense for a ResolverResultPromise (an asynchronous result).
+
+This has an advantages: there's no need to define additional resolvers, and in some cases, no need to pass extra state
+in the context needed by the nested resolvers.
+
+The disadvantage is that the field in question may not be selected in the query and the asynchronous work being performed
+will simply be discarded.
+

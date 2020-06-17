@@ -21,7 +21,8 @@
     [com.walmartlabs.test-utils :refer [compile-schema] :as tu]
     [clojure.walk :refer [postwalk]]
     [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.lacinia.resolve :as resolve]))
+    [com.walmartlabs.lacinia.resolve :as resolve]
+    [com.walmartlabs.lacinia.util :as util]))
 
 (def resolve-contexts (atom []))
 
@@ -31,9 +32,9 @@
        (postwalk (fn [node]
                    (if-let [default-resolve (:resolve node)]
                      (assoc node :resolve
-                            (fn [context args value]
-                              (swap! resolve-contexts conj context)
-                              (default-resolve context args value)))
+                                 (fn [context args value]
+                                   (swap! resolve-contexts conj context)
+                                   (default-resolve context args value)))
                      node)))
        schema/compile))
 
@@ -129,3 +130,16 @@
                                {:query/hello resolver})]
     (is (= {:data {:hello "Like magic!"}}
            (tu/execute schema "{ hello }")))))
+
+(deftest default-resolver-return-resolver-result
+  (let [data-resolver (fn [_ _ _]
+                        {:value (resolve/resolve-as "Ahsoka Tano")})
+        schema (schema/compile (-> {:objects
+                                    {:Data
+                                     {:fields
+                                      {:value {:type :String}}}}
+                                    :queries
+                                    {:data {:type :Data}}}
+                                   (util/inject-resolvers {:queries/data data-resolver})))]
+    (is (= {:data {:data {:value "Ahsoka Tano"}}}
+           (tu/execute schema "{ data { value } }")))))
