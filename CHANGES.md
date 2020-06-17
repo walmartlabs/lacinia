@@ -20,7 +20,7 @@ This also applies to exceptions thrown when processing the result, such as an in
 enum value returned from a resolver function.
 
 Resolver functions can now return maps whose values are themselves ResolverResults.
-This can, in some cases, be easier thaN coordinating a parent resolver and a nested resolver.
+This can, in some cases, be easier than coordinating a parent resolver and a nested resolver.
 
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/25?closed=1)
 
