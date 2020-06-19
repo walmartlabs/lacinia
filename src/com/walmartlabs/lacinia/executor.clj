@@ -15,16 +15,16 @@
 (ns com.walmartlabs.lacinia.executor
   "Mechanisms for executing parsed queries against compiled schemas."
   (:require
-   [com.walmartlabs.lacinia.internal-utils
-    :refer [cond-let map-vals remove-vals q aggregate-results transform-result to-message]]
-   [flatland.ordered.map :refer [ordered-map]]
-   [com.walmartlabs.lacinia.schema :as schema]
-   [com.walmartlabs.lacinia.resolve :as resolve
-    :refer [resolve-as resolve-promise]]
-   [com.walmartlabs.lacinia.selector-context :as sc]
-   [com.walmartlabs.lacinia.constants :as constants])
+    [com.walmartlabs.lacinia.internal-utils
+     :refer [cond-let map-vals remove-vals q aggregate-results transform-result to-message]]
+    [flatland.ordered.map :refer [ordered-map]]
+    [com.walmartlabs.lacinia.schema :as schema]
+    [com.walmartlabs.lacinia.resolve :as resolve
+     :refer [resolve-as resolve-promise]]
+    [com.walmartlabs.lacinia.selector-context :as sc]
+    [com.walmartlabs.lacinia.constants :as constants])
   (:import
-   (clojure.lang PersistentQueue)))
+    (clojure.lang PersistentQueue)))
 
 (defn ^:private ex-info-map
   [field-selection execution-context]
@@ -68,7 +68,7 @@
     (cond-> {:message message
              :locations locations
              :path path}
-      (seq extensions') (assoc :extensions extensions'))))
+            (seq extensions') (assoc :extensions extensions'))))
 
 (defn ^:private enhance-errors
   "From an error map, or a collection of error maps, add additional data to
@@ -90,27 +90,27 @@
   field of the concrete type is used as the source for the field resolver."
   [schema field-selection resolved-type value]
   (cond-let
-   (:concrete-type? field-selection)
-   (-> field-selection :field-definition :resolve)
+    (:concrete-type? field-selection)
+    (-> field-selection :field-definition :resolve)
 
-   :let [{:keys [field]} field-selection]
+    :let [{:keys [field]} field-selection]
 
-   (nil? resolved-type)
-   (throw (ex-info "Sanity check: value type tag is nil on abstract type."
-                   {:value value}))
+    (nil? resolved-type)
+    (throw (ex-info "Sanity check: value type tag is nil on abstract type."
+                    {:value value}))
 
-   :let [type (get schema resolved-type)]
+    :let [type (get schema resolved-type)]
 
-   (nil? type)
-   (throw (ex-info "Sanity check: invalid type tag on value."
-                   {:type-name resolved-type
-                    :value value}))
+    (nil? type)
+    (throw (ex-info "Sanity check: invalid type tag on value."
+                    {:type-name resolved-type
+                     :value value}))
 
-   :else
-   (or (get-in type [:fields field :resolve])
-       (throw (ex-info "Sanity check: field not present."
-                       {:type resolved-type
-                        :value value})))))
+    :else
+    (or (get-in type [:fields field :resolve])
+        (throw (ex-info "Sanity check: field not present."
+                        {:type resolved-type
+                         :value value})))))
 
 (defn ^:private invoke-resolver-for-field
   "Resolves the value for a field selection node.
@@ -129,11 +129,10 @@
           schema (get context constants/schema-key)
           resolved-type (:resolved-type execution-context)
           resolve-context (assoc context
-                                 :com.walmartlabs.lacinia/container-type-name resolved-type
-                                 constants/selection-key field-selection)
+                            :com.walmartlabs.lacinia/container-type-name resolved-type
+                            constants/selection-key field-selection)
           field-resolver (field-selection-resolver schema field-selection resolved-type container-value)
-          start-ms (when (and (some? *timings)
-                              (not (-> field-resolver meta ::schema/default-resolver?)))
+          start-ms (when (some? *timings)
                      (System/currentTimeMillis))
           resolver-result (field-resolver resolve-context arguments container-value)]
       ;; If not collecting timing results, then the resolver-result is all we need.
@@ -170,16 +169,16 @@
 (declare ^:private resolve-and-select)
 
 (defrecord ExecutionContext
-    ;; context, resolved-value, and resolved-type change constantly during the process
-    ;; *errors is an Atom containing a vector, which accumulates
-    ;; error-maps during execution.
-    ;; *warnings is an Atom containing a vector of warnings (error maps that
-    ;; appear in the result as [:extensions :warnings].
-    ;; *timings is usually nil, or may be an Atom containing an empty map, which
-    ;; *extensions is an atom containing a map, if non-empty, it is added to the result map as :extensions
-    ;; accumulates timing data during execution.
-    ;; path is used when reporting errors
-    [context resolved-value resolved-type *errors *warnings *extensions *timings path])
+  ;; context, resolved-value, and resolved-type change constantly during the process
+  ;; *errors is an Atom containing a vector, which accumulates
+  ;; error-maps during execution.
+  ;; *warnings is an Atom containing a vector of warnings (error maps that
+  ;; appear in the result as [:extensions :warnings].
+  ;; *timings is usually nil, or may be an Atom containing an empty map, which
+  ;; *extensions is an atom containing a map, if non-empty, it is added to the result map as :extensions
+  ;; accumulates timing data during execution.
+  ;; path is used when reporting errors
+  [context resolved-value resolved-type *errors *warnings *extensions *timings path])
 
 (defn ^:private null-to-nil
   [v]
@@ -263,7 +262,7 @@
     (maybe-apply-fragment execution-context
                           ;; A bit of a hack:
                           (assoc fragment-spread-selection
-                                 :selections (:selections fragment-def))
+                            :selections (:selections fragment-def))
                           (:concrete-types fragment-def))))
 
 (defn ^:private apply-selection
@@ -367,10 +366,10 @@
                    resolved-type
                    (seq sub-selections))
             (execute-nested-selections
-             (assoc execution-context
-                    :resolved-value resolved-value
-                    :resolved-type resolved-type)
-             sub-selections)
+              (assoc execution-context
+                :resolved-value resolved-value
+                :resolved-type resolved-type)
+              sub-selections)
             (resolve-as resolved-value)))
         ;; In a concrete type, we know the selector from the field definition
         ;; (a field definition on a concrete object type).  Otherwise, we need
@@ -423,7 +422,18 @@
                                                           :arguments arguments
                                                           :location location} t)))))))
 
-        direct-fn (-> selection :field-definition :direct-fn)]
+        direct-fn (-> selection :field-definition :direct-fn)
+
+        ;; Given a ResolverResult from a field resolver, unwrap the field's RR and pass it through process-resolved-value.
+        ;; process-resolved-value also returns an RR and chain that RR's delivered value to the RR returned from this function.
+        unwrap-resolver-result (fn [field-resolver-result]
+                                 (let [final-result (resolve-promise)]
+                                   (resolve/on-deliver! field-resolver-result
+                                                        (fn receive-resolved-value-from-field [resolved-value]
+                                                          (resolve/on-deliver! (process-resolved-value resolved-value)
+                                                                               (fn deliver-selection-for-field [resolved-value]
+                                                                                 (resolve/deliver! final-result resolved-value)))))
+                                   final-result))]
 
     ;; For fragments, we start with a single value and it passes right through to
     ;; sub-selections, without changing value or type.
@@ -441,10 +451,14 @@
       ;; the selector, which returns a ResolverResult. Thus we've peeled back at least one layer
       ;; of ResolveResultPromise.
       direct-fn
-      (-> execution-context'
-          :resolved-value
-          direct-fn
-          process-resolved-value)
+      (let [resolved-value (-> execution-context'
+                               :resolved-value
+                               direct-fn)]
+        ;; Normally, resolved-value is a raw value, ready to be immediately processed; but in rare cases
+        ;; it may be a ResolverResult that needs to full job.
+        (if (resolve/is-resolver-result? resolved-value)
+          (unwrap-resolver-result resolved-value)
+          (process-resolved-value resolved-value)))
 
       ;; Here's where it comes together.  The field's selector
       ;; does the validations, and for list types, does the mapping.
@@ -454,13 +468,7 @@
       ;; The result is a scalar value, a map, or a list of maps or scalar values.
 
       :else
-      (let [final-result (resolve-promise)]
-        (resolve/on-deliver! (invoke-resolver-for-field execution-context' selection)
-                             (fn receive-resolved-value-from-field [resolved-value]
-                               (resolve/on-deliver! (process-resolved-value resolved-value)
-                                                    (fn deliver-selection-for-field [resolved-value]
-                                                      (resolve/deliver! final-result resolved-value)))))
-        final-result))))
+      (unwrap-resolver-result (invoke-resolver-for-field execution-context' selection)))))
 
 (defn execute-query
   "Entrypoint for execution of a query.
@@ -480,7 +488,7 @@
         *timings (when (:com.walmartlabs.lacinia/enable-timing? context)
                    (atom []))
         context' (assoc context constants/schema-key
-                        (get parsed-query constants/schema-key))
+                                (get parsed-query constants/schema-key))
         ;; Outside of subscriptions, the ::resolved-value is nil.
         ;; For subscriptions, the :resolved-value will be set to a non-nil value before
         ;; executing the query.
@@ -507,10 +515,10 @@
                                                extensions @*extensions]
                                            (resolve/deliver! result-promise
                                                              (cond-> {:data data}
-                                                               (seq extensions) (assoc :extensions extensions)
-                                                               *timings (assoc-in [:extensions :timings] @*timings)
-                                                               errors (assoc :errors (distinct errors))
-                                                               warnings (assoc-in [:extensions :warnings] (distinct warnings)))))))))
+                                                                     (seq extensions) (assoc :extensions extensions)
+                                                                     *timings (assoc-in [:extensions :timings] @*timings)
+                                                                     errors (assoc :errors (distinct errors))
+                                                                     warnings (assoc-in [:extensions :warnings] (distinct warnings)))))))))
               (catch Throwable t
                 (resolve/deliver! result-promise t))))]
 
@@ -590,8 +598,8 @@
   [node]
   (let [{:keys [field alias arguments]} node]
     (cond-> {:name (to-field-name node)}
-      (not (= field alias)) (assoc :alias alias)
-      (seq arguments) (assoc :args arguments))))
+            (not (= field alias)) (assoc :alias alias)
+            (seq arguments) (assoc :args arguments))))
 
 (defn selections-seq2
   "An enhancement of [[selections-seq]] that returns a map for each node:
