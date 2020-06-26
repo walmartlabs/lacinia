@@ -30,3 +30,7 @@ Sample Projects
   
 `Fullstack Learning Project <https://promesante.github.io/2019/08/14/clojure_graphql_fullstack_learning_project_part_1.html>`_
   A port of `The Fullstack Tutorial for GraphQL <https://www.howtographql.com/>`_, ported to Clojure and Lacinia.
+  
+`Hacker News GraphQL <https://www.giovanialtelino.com/project/hacker-news-graphql/>`_
+  A version of Hacker News implemented using GraphQL and `Datomic <https://www.datomic.com/>`_ on the backend,
+  and `re-frame <https://day8.github.io/re-frame/re-frame/>`_ on the front end.
