@@ -1,4 +1,4 @@
-## 0.37.0 -- UNRELEASED
+## 0.37.0 -- 30 Jun 2020
 
 Added new function `com.walmartlabs.lacinia.util/inject-streamers`, used to
 add streamers to a schema (typically, one parsed from a GraphQL schema document).
