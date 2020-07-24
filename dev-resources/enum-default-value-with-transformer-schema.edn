@@ -1,0 +1,14 @@
+{:objects
+ {:Country
+  {:fields
+   {:code {:type :CountryCode}}}}
+ :enums
+ {:CountryCode
+  {:values [:US]}}
+ :queries
+ {:countryByCode
+  {:type :Country
+   :resolve :placeholder
+   :args
+   {:code {:type :CountryCode
+           :default-value :country-codes/us}}}}}
