@@ -224,8 +224,8 @@ in [the manual](http://lacinia.readthedocs.io/en/latest/).
 ## Status
 
 Although this library is used in production at Walmart, it is
-still considered alpha software - subject to change.
-We expect to stabilize it in the near future.
+still considered beta software - subject to change.
+We hope to get to a 1.0 release in the reasonable future.
 
 To use this library with Clojure 1.8, you must include 
 a dependency on [clojure-future-spec](https://github.com/tonsky/clojure-future-spec).
@@ -234,7 +234,7 @@ More details are [in the manual](http://lacinia.readthedocs.io/en/latest/clojure
 
 ## License
 
-Copyright © 2017-2019 WalmartLabs
+Copyright © 2017-2020 WalmartLabs
 
 Distributed under the Apache License, Version 2.0.
 
