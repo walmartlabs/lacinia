@@ -241,8 +241,10 @@
       (str serialized))))
 
 (defmethod emit-default-value :enum
-  [_ _ value]
-  (name value))
+  [schema type-map value]
+  (let [type-name  (:type type-map)
+        enum-def   (get schema type-name)]
+    (name ((:serialize enum-def) value))))
 
 (defmethod emit-default-value :list
   [schema type-map value]

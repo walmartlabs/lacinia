@@ -13,9 +13,13 @@
 ; limitations under the License.
 
 (ns com.walmartlabs.introspection-test
-  (:require [clojure.test :refer [deftest testing is]]
+  (:require [clojure.edn :as edn]
+            [clojure.java.io :as io]
+            [clojure.string :as str]
+            [clojure.test :refer [deftest testing is]]
             [com.walmartlabs.lacinia :as lacinia]
             [com.walmartlabs.lacinia.schema :as schema]
+            [com.walmartlabs.lacinia.util :as util]
             [com.walmartlabs.test-schema :refer [test-schema]]
             [com.walmartlabs.test-utils :as utils :refer [simplify]]))
 
@@ -1471,6 +1475,26 @@
            (utils/execute schema "{
              __type(name: \"Filter\") { inputFields { name defaultValue } }
            }")))))
+
+(deftest enum-transformer-default-value
+  (let [;; Create kebab-cased namespaced keywords for enum values
+        parse-country     (fn [code] (keyword :country-code (str/lower-case (name code))))
+        ;; upper case, non namespaced keywords are in the schema
+        serialize-country (fn [code] (str/upper-case (name code)))
+        schema (-> (io/resource "enum-default-value-with-transformer-schema.edn")
+                   slurp
+                   edn/read-string
+                   (util/attach-resolvers {:placeholder identity})
+                   (util/inject-enum-transformers {:CountryCode {:parse     parse-country
+                                                                 :serialize serialize-country}})
+                   (schema/compile))]
+    (is (= {:data
+            {:__type
+             {:fields
+              [{:args [{:defaultValue "US"
+                        :name "code"}]
+                :name "countryByCode"}]}}}
+           (utils/execute schema fields-and-args-query)))))
 
 (deftest query-with-introspection-disabled
   (let [schema (schema/compile test-schema {:enable-introspection? false})
