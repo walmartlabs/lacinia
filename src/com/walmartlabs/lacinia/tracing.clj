@@ -13,10 +13,8 @@
 ; limitations under the License.
 
 (ns com.walmartlabs.lacinia.tracing
-  "Support for tracing of requests, as per the Apollo tracining specification
-
-  https://github.com/apollographql/apollo-tracing
-  "
+  "Support for tracing of requests, as per the
+  [Apollo tracing specification](https://github.com/apollographql/apollo-tracing)."
   {:added "0.38.0"}
   (:import
     (java.time.format DateTimeFormatter)
@@ -63,3 +61,12 @@
                :parsing (xf-phase parse-phase)
                :validation (xf-phase validation-phase)
                :execution {:resolvers resolver-timings}})))
+
+(defn enable-tracing
+  "Modifies the application context to enable tracing.
+
+  Tracing can signficantly slow down execution of the query document, both because
+  of the essential overhead, and because certain optimizations are disabled during a traced
+  request."
+  [context]
+  (assoc context ::enabled? true))

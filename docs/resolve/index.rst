@@ -31,5 +31,4 @@ In some cases, a field resolver may need to perform additional queries against a
     selections
     context
     extensions
-    timing
     examples

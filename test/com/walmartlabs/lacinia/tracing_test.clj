@@ -12,8 +12,8 @@
 ; See the License for the specific language governing permissions and
 ; limitations under the License.
 
-(ns com.walmartlabs.lacinia.timings-test
-  "Tests for the optional timing logic."
+(ns com.walmartlabs.lacinia.tracing-test
+  "Tests for the optional tracing logic."
   (:require
     [clojure.test :refer [deftest is]]
     [clojure.java.io :as io]
@@ -26,7 +26,7 @@
     [com.walmartlabs.lacinia.tracing :as tracing]
     [com.walmartlabs.lacinia.schema :as schema]))
 
-(def ^:private enable-timing {::tracing/enabled? true})
+(def ^:private enable-timing  (tracing/enable-tracing nil))
 
 ;; Used to convert nanos to millis
 (def ^:private million (Math/pow 10 6))
