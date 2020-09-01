@@ -3,7 +3,7 @@ Resolver Tracing
 
 When scaling a service, it is invaluable to know where queries are spending their execution time; Lacinia
 can help you here; when enabled, Lacinia will collect  performance tracing
-information compatible with [Apollo GraphQL](https://github.com/apollographql/apollo-tracing/blob/master/README.md).
+information compatible with `Apollo GraphQL <https://github.com/apollographql/apollo-tracing/blob/master/README.md>_`.
 
 Timing collection is enabled by passing the context through the `enable-tracing` function:
 
