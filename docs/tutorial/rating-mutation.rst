@@ -118,6 +118,7 @@ Let's start by seeing the initial state of things, using the default database::
                          :ratings [{:game {:id "1234", :name "Zertz"}, :rating 5}
                                    {:game {:id "1236", :name "Tiny Epic Galaxies"}, :rating 4}
                                    {:game {:id "1237", :name "7 Wonders: Duel"}, :rating 4}]}}}
+
 Ok, so maybe we've soured on Tiny Epic Galaxies for the moment::
 
   (q "mutation { rate_game(member_id: \"1410\", game_id: \"1236\", rating: 3) { rating_summary { count average }}}")

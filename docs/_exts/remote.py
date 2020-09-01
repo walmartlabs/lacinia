@@ -6,7 +6,7 @@ from docutils.statemachine import ViewList
 from typing import Any, Dict, List, Tuple
 from docutils.nodes import Element, Node
 
-
+from sphinx.directives.code import container_wrapper
 from six import string_types
 
 from sphinx.locale import _
@@ -41,19 +41,19 @@ class RemoteIncludeReader:
 
     def read_file(self, uri: str, location: Tuple[str, int] = None) -> List[str]:
         try:
-            with urllib.request.urlopen(uri):
-                text = f.read()
+            with urllib.request.urlopen(uri) as f:
+                text = f.read().decode(self.encoding)
                 if 'tab-width' in self.options:
                     text = text.expandtabs(self.options['tab-width'])
 
                 return text.splitlines(True)
         except OSError as exc:
             raise OSError(__('Include file %r not found or reading it failed') %
-                          filename) from exc
+                          uri) from exc
         except UnicodeError as exc:
             raise UnicodeError(__('Encoding %r used for reading included file %r seems to '
                                   'be wrong, try giving an :encoding: option') %
-                               (self.encoding, filename)) from exc
+                               (self.encoding, uri)) from exc
 
     def read(self, location: Tuple[str, int] = None) -> Tuple[str, int]:
         if 'diff' in self.options:
@@ -91,7 +91,7 @@ class RemoteIncludeReader:
             lines = [lines[n] for n in linelist if n < len(lines)]
             if lines == []:
                 raise ValueError(__('Line spec %r: no lines pulled from include file %r') %
-                                 (linespec, self.filename))
+                                 (linespec, self.uri))
 
         return lines
 
@@ -222,7 +222,7 @@ class RemoteInclude(SphinxDirective):
             # rel_filename, filename = self.env.relfn2path(self.arguments[0])
             # self.env.note_dependency(rel_filename)
 
-            retnode = nodes.literal_block(text, text, source=filename)  # type: Element
+            retnode = nodes.literal_block(text, text, source=uri)  # type: Element
             retnode['force'] = 'force' in self.options
             self.set_source_info(retnode)
             if 'language' in self.options:
@@ -287,8 +287,6 @@ class RemoteExample(Directive):
         node = nodes.Element()
 
         self.state.nested_parse(vl, 0, node)
-
-        print("node=" + str(node))
 
         return node.children
 
