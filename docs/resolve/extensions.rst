@@ -13,7 +13,7 @@ more familiar ``:data`` and ``:errors`` keys).
 
 The GraphQL specification allow for extensions but leaves them entirely up to the application to define and
 use - there's no validation at all.
-One example of extension data is :doc:`timing information <timing>` that Lacinia can optionally include in
+One example of extension data is :doc:`tracing information </tracing>` that Lacinia can optionally include in
 the result.
 
 More general extension data is introduced using modifier functions defined in the ``com.walmartlabs.lacinia.resolve``

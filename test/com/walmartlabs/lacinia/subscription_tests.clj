@@ -14,19 +14,20 @@
 
 (ns com.walmartlabs.lacinia.subscription-tests
   (:require
-   [clojure.test :refer [deftest is]]
-   [clojure.java.io :as io]
-   [clojure.edn :as edn]
-   [com.walmartlabs.lacinia.util :as util]
-   [com.walmartlabs.lacinia.parser :as parser]
-   [com.walmartlabs.lacinia.executor :as executor]
-   [com.walmartlabs.lacinia.constants :as constants]
-   [com.walmartlabs.lacinia.resolve :as resolve]
-   [com.walmartlabs.lacinia.schema :as schema]
-   [com.walmartlabs.test-utils :as test-utils :refer [simplify]]))
+    [clojure.test :refer [deftest is]]
+    [clojure.java.io :as io]
+    [clojure.edn :as edn]
+    [com.walmartlabs.lacinia.util :as util]
+    [com.walmartlabs.lacinia.parser :as parser]
+    [com.walmartlabs.lacinia.executor :as executor]
+    [com.walmartlabs.lacinia.constants :as constants]
+    [com.walmartlabs.lacinia.resolve :as resolve]
+    [com.walmartlabs.lacinia.schema :as schema]
+    [com.walmartlabs.test-utils :as test-utils :refer [simplify]]))
 
 ;; There's not a whole lot we can do here, as most of the support has to come from the web tier code, e.g.,
 ;; pedestal-lacinia.
+
 (def ^:private *latest-log-event (atom nil))
 (def ^:private *latest-response (atom nil))
 
@@ -37,10 +38,12 @@
 
 (defn ^:private latest-response
   []
+  ;; Give async stuff a chance to run
+  (Thread/sleep 10)
   (simplify @*latest-response))
 
 (defn ^:private stream-logs
-  [context args source-stream]
+  [_context args source-stream]
   (let [{:keys [severity]} args
         watch-key (gensym)]
     (add-watch *latest-log-event watch-key
@@ -71,7 +74,7 @@
                         (if (some? value)
                           (resolve/on-deliver!
                             (executor/execute-query (assoc context
-                                                           ::executor/resolved-value value))
+                                                      ::executor/resolved-value value))
                             (fn [result]
                               (reset! *latest-response result)))
                           (do

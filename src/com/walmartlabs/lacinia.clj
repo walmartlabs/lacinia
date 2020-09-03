@@ -19,7 +19,8 @@
             [com.walmartlabs.lacinia.validator :as validator]
             [com.walmartlabs.lacinia.internal-utils :refer [cond-let]]
             [com.walmartlabs.lacinia.util :refer [as-error-map]]
-            [com.walmartlabs.lacinia.resolve :as resolve])
+            [com.walmartlabs.lacinia.resolve :as resolve]
+            [com.walmartlabs.lacinia.tracing :as tracing])
   (:import (clojure.lang ExceptionInfo)))
 
 (defn ^:private as-errors
@@ -37,7 +38,12 @@
          (or (nil? context)
              (map? context))]}
   (cond-let
-    :let [[prepared error-result] (try
+    :let [{:keys [::tracing/timing-start]} parsed-query
+          ;; Validation phase encompasses preparing with query variables and actual validation.
+          ;; It's somewhat all mixed together.
+          start-offset (tracing/offset-from-start timing-start)
+          start-nanos (System/nanoTime)
+          [prepared error-result] (try
                                     [(parser/prepare-with-query-variables parsed-query variables)]
                                     (catch Exception e
                                       [nil (as-errors e)]))]
@@ -51,7 +57,9 @@
     (resolve/resolve-as {:errors validation-errors})
 
     :else
-    (executor/execute-query (assoc context constants/parsed-query-key prepared))))
+    (executor/execute-query (assoc context constants/parsed-query-key prepared
+                                           ::tracing/validation {:start-offset start-offset
+                                                                 :duration (tracing/duration start-nanos)}))))
 
 (defn execute-parsed-query
   "Prepares a query, by applying query variables to it, resulting in a prepared

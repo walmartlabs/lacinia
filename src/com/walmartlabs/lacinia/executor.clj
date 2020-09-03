@@ -22,6 +22,7 @@
     [com.walmartlabs.lacinia.resolve :as resolve
      :refer [resolve-as resolve-promise]]
     [com.walmartlabs.lacinia.selector-context :as sc]
+    [com.walmartlabs.lacinia.tracing :as tracing]
     [com.walmartlabs.lacinia.constants :as constants])
   (:import
     (clojure.lang PersistentQueue)))
@@ -122,7 +123,7 @@
   and not for default resolvers."
   [execution-context field-selection]
   (try
-    (let [*timings (:*timings execution-context)
+    (let [*resolver-tracing (:*resolver-tracing execution-context)
           {:keys [arguments]} field-selection
           container-value (:resolved-value execution-context)
           {:keys [context]} execution-context
@@ -131,28 +132,29 @@
           resolve-context (assoc context
                             :com.walmartlabs.lacinia/container-type-name resolved-type
                             constants/selection-key field-selection)
-          field-resolver (field-selection-resolver schema field-selection resolved-type container-value)
-          start-ms (when (some? *timings)
-                     (System/currentTimeMillis))
-          resolver-result (field-resolver resolve-context arguments container-value)]
-      ;; If not collecting timing results, then the resolver-result is all we need.
-      ;; Otherwise, we need to create an extra promise so that we can observe the
-      ;; delivery of the value to update our timing information. The downside is
-      ;; that collecting timing information affects timing.
-      (if-not start-ms
-        resolver-result
-        (transform-result resolver-result
-                          (fn [resolved-value]
-                            (let [finish-ms (System/currentTimeMillis)
-                                  elapsed-ms (- finish-ms start-ms)]
-                              ;; Discard 0 and 1 ms results
-                              (when (<= 2 elapsed-ms)
-                                (swap! *timings conj {:start (str start-ms)
-                                                      :finish (str finish-ms)
-                                                      :path (:path execution-context)
-                                                      ;; This is just a convenience:
-                                                      :elapsed elapsed-ms})))
-                            resolved-value))))
+          field-resolver (field-selection-resolver schema field-selection resolved-type container-value)]
+      (if-not (some? *resolver-tracing)
+        (field-resolver resolve-context arguments container-value)
+        (let [start-offset (tracing/offset-from-start (:timing-start execution-context))
+              start-nanos (System/nanoTime)
+              resolver-result (field-resolver resolve-context arguments container-value)]
+          ;; If not collecting tracing results, then the resolver-result is all we need.
+          ;; Otherwise, we need to create an extra promise so that we can observe the
+          ;; delivery of the value to update our timing information. The downside is
+          ;; that collecting timing information affects timing.
+          (transform-result resolver-result
+                            (fn [resolved-value]
+                              (let [duration (tracing/duration start-nanos)
+                                    {:keys [field-definition]} field-selection
+                                    {:keys [field-name type-string]} field-definition]
+                                (swap! *resolver-tracing conj
+                                       {:path (:path execution-context)
+                                        :parentType resolved-type
+                                        :fieldName field-name
+                                        :returnType type-string
+                                        :startOffset start-offset
+                                        :duration duration}))
+                              resolved-value)))))
     (catch Throwable t
       (let [field-name (get-in field-selection [:field-definition :qualified-name])
             {:keys [location arguments]} field-selection]
@@ -174,11 +176,11 @@
   ;; error-maps during execution.
   ;; *warnings is an Atom containing a vector of warnings (error maps that
   ;; appear in the result as [:extensions :warnings].
-  ;; *timings is usually nil, or may be an Atom containing an empty map, which
-  ;; *extensions is an atom containing a map, if non-empty, it is added to the result map as :extensions
+  ;; *resolver-tracing is usually nil, or may be an Atom containing an empty map, which
   ;; accumulates timing data during execution.
+  ;; *extensions is an atom containing a map, if non-empty, it is added to the result map as :extensions
   ;; path is used when reporting errors
-  [context resolved-value resolved-type *errors *warnings *extensions *timings path])
+  [context resolved-value resolved-type *errors *warnings *extensions *resolver-tracing path])
 
 (defn ^:private null-to-nil
   [v]
@@ -422,7 +424,10 @@
                                                           :arguments arguments
                                                           :location location} t)))))))
 
-        direct-fn (-> selection :field-definition :direct-fn)
+        ;; When tracing is enabled, defeat the optimization so that the (trivial) resolver can be
+        ;; invoke and its execution time tracked.
+        direct-fn (when-not (:*resolver-tracing execution-context)
+                    (-> selection :field-definition :direct-fn))
 
         ;; Given a ResolverResult from a field resolver, unwrap the field's RR and pass it through process-resolved-value.
         ;; process-resolved-value also returns an RR and chain that RR's delivered value to the RR returned from this function.
@@ -480,13 +485,13 @@
   This should generally not be invoked by user code; see [[execute-parsed-query]]."
   [context]
   (let [parsed-query (get context constants/parsed-query-key)
-        {:keys [selections operation-type]} parsed-query
+        {:keys [selections operation-type ::tracing/timing-start]} parsed-query
         enabled-selections (remove :disabled? selections)
         *errors (atom [])
         *warnings (atom [])
         *extensions (atom {})
-        *timings (when (:com.walmartlabs.lacinia/enable-timing? context)
-                   (atom []))
+        *resolver-tracing (when (::tracing/enabled? context)
+                            (atom []))
         context' (assoc context constants/schema-key
                                 (get parsed-query constants/schema-key))
         ;; Outside of subscriptions, the ::resolved-value is nil.
@@ -495,7 +500,8 @@
         execution-context (map->ExecutionContext {:context context'
                                                   :*errors *errors
                                                   :*warnings *warnings
-                                                  :*timings *timings
+                                                  :*resolver-tracing *resolver-tracing
+                                                  :timing-start timing-start
                                                   :*extensions *extensions
                                                   :path []
                                                   :resolved-type (get-in parsed-query [:root :type-name])
@@ -516,7 +522,11 @@
                                            (resolve/deliver! result-promise
                                                              (cond-> {:data data}
                                                                      (seq extensions) (assoc :extensions extensions)
-                                                                     *timings (assoc-in [:extensions :timings] @*timings)
+                                                                     *resolver-tracing
+                                                                     (tracing/inject-tracing timing-start
+                                                                                             (::tracing/parsing parsed-query)
+                                                                                             (::tracing/validation context)
+                                                                                             @*resolver-tracing)
                                                                      errors (assoc :errors (distinct errors))
                                                                      warnings (assoc-in [:extensions :warnings] (distinct warnings)))))))))
               (catch Throwable t

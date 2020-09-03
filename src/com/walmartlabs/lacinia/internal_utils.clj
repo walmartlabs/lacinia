@@ -423,8 +423,8 @@
      aggregate)))
 
 (defn transform-result
-  "Passes the resolved value of an existing ResolverResult thrown a transforming
-   function, resulting in a new ResolveResult.
+  "Passes the resolved value of an existing ResolverResult through a transforming
+   function, resulting in a new ResolverResult.
 
    Optimizes the case for a ResolverResult (pre-realized) vs.
    a ResolverResultPromise."

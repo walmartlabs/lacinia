@@ -1,3 +1,7 @@
+## 0.38.0 -- UNRELEASED
+
+Optional request tracing is now designed to be compatible with Apollo GraphQL's implementation.
+
 ## 0.37.0 -- 30 Jun 2020
 
 Added new function `com.walmartlabs.lacinia.util/inject-streamers`, used to

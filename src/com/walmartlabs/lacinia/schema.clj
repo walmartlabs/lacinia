@@ -130,7 +130,7 @@
   [schema]
   (->> schema
        vals
-       (filter :type-name)                                    ;; ::schema/root has no :type-name
+       (filter :type-name)                                  ;; ::schema/root has no :type-name
        (group-by :category)
        (map-vals #(->> (map :type-name %)
                        (remove is-internal-type-name?)
@@ -544,6 +544,22 @@
     (throw (ex-info "Could not process type."
                     {:type type}))))
 
+(defn ^:private type->string
+  "Converts the result of expand-type back into a string, as a type reference would appear in the
+  query language or SDL (e.g., `[String]!`)."
+  [input-type]
+  (let [{:keys [kind type]} input-type]
+    (case kind
+      :root (name type)
+      :list (str "[" (type->string type) "]")
+      :non-null (str (type->string type) "!"))))
+
+(defn ^:private add-type-string
+  [field-definition]
+  (let [field-type (:type field-definition)
+        type-string (type->string field-type)]
+    (assoc field-definition :type-string type-string)))
+
 (defn ^:no-doc root-type-name
   "For a compiled field (or argument) definition, delves down through the :type tag to find
   the root type name, a keyword."
@@ -586,6 +602,7 @@
   (let [{:keys [type-name]} type-def]
     (-> field-def
         rewrite-type
+        add-type-string
         (assoc :field-name field-name
                :qualified-name (qualified-name type-name field-name))
         (update :args #(map-kvs (fn [arg-name arg-def]
@@ -1043,9 +1060,9 @@
         ;; The detail for each value is the map that may includes :enum-value and
         ;; may include :description, :deprecated, and/or :directives.
         details (reduce (fn [m {:keys [enum-value] :as detail}]
-                               (assoc m enum-value detail))
-                             {}
-                             value-defs)]
+                          (assoc m enum-value detail))
+                        {}
+                        value-defs)]
     (when-not (= (count values) (count values-set))
       (throw (ex-info (format "Values defined for enum %s must be unique."
                               (-> enum-def :type-name q))
@@ -1567,8 +1584,8 @@
    ;; the single branch alt adds :args to the explain path as expected in tests
    (when-let [ed (s/explain-data ::compile-args [schema options])]
      (throw (ex-info
-             (str "Arguments to compile do not conform to spec:\n" (with-out-str (s/explain-out ed)))
-             ed)))
+              (str "Arguments to compile do not conform to spec:\n" (with-out-str (s/explain-out ed)))
+              ed)))
    (let [options' (merge default-compile-opts options)
          {:keys [enable-introspection?]} options'
          introspection-schema (when enable-introspection?

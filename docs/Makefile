@@ -199,7 +199,7 @@ pseudoxml:
 
 live: clean html
 		$(SPHINXAUTOBUILD) \
-				-i '.git/*' \
+				--ignore '.git/*' \
 				--no-initial \
 				--open-browser \
 				-b html \

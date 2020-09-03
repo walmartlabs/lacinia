@@ -26,6 +26,7 @@
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.resolve :as resolve]
     [com.walmartlabs.lacinia.parser.query :as qp]
+    [com.walmartlabs.lacinia.tracing :as tracing]
     [flatland.ordered.map :refer [ordered-map]])
   (:import
     (clojure.lang ExceptionInfo)))
@@ -355,7 +356,7 @@
 (defmethod process-literal-argument :array
   [schema argument-definition arg-tuple]
   (let [kind (-> argument-definition :type :kind)
-       [_ arg-value :as arg-tuple*] (coerce-to-multiple-if-list-type argument-definition arg-tuple)]
+        [_ arg-value :as arg-tuple*] (coerce-to-multiple-if-list-type argument-definition arg-tuple)]
     (case kind
       :non-null
       (recur schema (use-nested-type argument-definition) arg-tuple*)
@@ -383,20 +384,20 @@
     (if (empty? arguments)
       default-values
       (let [process-arg (fn [arg-name arg-value]
-                            (let [arg-def (get argument-defs arg-name)]
-                              (when-not arg-def
-                                (throw-exception (format "Unknown argument %s."
-                                                         (q arg-name))
-                                                 {:defined-arguments (keys argument-defs)}))
-                              (try
-                                (with-exception-context {:argument (:qualified-name arg-def)}
-                                  (process-literal-argument schema arg-def arg-value))
-                                (catch Exception e
-                                  (throw-exception (format "For argument %s, %s"
-                                                           (q arg-name)
-                                                           (decapitalize (to-message e)))
-                                                   nil
-                                                   e)))))]
+                          (let [arg-def (get argument-defs arg-name)]
+                            (when-not arg-def
+                              (throw-exception (format "Unknown argument %s."
+                                                       (q arg-name))
+                                               {:defined-arguments (keys argument-defs)}))
+                            (try
+                              (with-exception-context {:argument (:qualified-name arg-def)}
+                                (process-literal-argument schema arg-def arg-value))
+                              (catch Exception e
+                                (throw-exception (format "For argument %s, %s"
+                                                         (q arg-name)
+                                                         (decapitalize (to-message e)))
+                                                 nil
+                                                 e)))))]
         (let [static-args (reduce-kv (fn [m k v]
                                        (assoc m k (process-arg k v)))
                                      nil
@@ -726,28 +727,28 @@
   "Passed a seq of parsed directive nodes, returns a seq of executable directives."
   [schema parsed-directives]
   (let [f (fn [parsed-directive]
-          (let [{directive-name :directive-name} parsed-directive]
-            (with-exception-context {:directive directive-name}
-              (if-let [directive-def (get builtin-directives directive-name)]
-                (let [[literal-arguments dynamic-arguments-extractor]
-                      (try
-                        (process-arguments schema
-                                           (:args directive-def)
-                                           (-> parsed-directive :args build-map-from-parsed-arguments))
-                        (catch ExceptionInfo e
-                          (throw-exception (format "Exception applying arguments to directive %s: %s"
-                                                   (q directive-name)
-                                                   (to-message e))
-                                           nil
-                                           e)))]
-                  (assoc parsed-directive
-                         :effector (:effector directive-def)
-                         :arguments literal-arguments
-                         ::arguments-extractor dynamic-arguments-extractor))
-                (throw-exception (format "Unknown directive %s."
-                                         (q directive-name)
-                                         {:unknown-directive directive-name
-                                          :available-directives (-> builtin-directives keys sort)}))))))]
+            (let [{directive-name :directive-name} parsed-directive]
+              (with-exception-context {:directive directive-name}
+                (if-let [directive-def (get builtin-directives directive-name)]
+                  (let [[literal-arguments dynamic-arguments-extractor]
+                        (try
+                          (process-arguments schema
+                                             (:args directive-def)
+                                             (-> parsed-directive :args build-map-from-parsed-arguments))
+                          (catch ExceptionInfo e
+                            (throw-exception (format "Exception applying arguments to directive %s: %s"
+                                                     (q directive-name)
+                                                     (to-message e))
+                                             nil
+                                             e)))]
+                    (assoc parsed-directive
+                           :effector (:effector directive-def)
+                           :arguments literal-arguments
+                           ::arguments-extractor dynamic-arguments-extractor))
+                  (throw-exception (format "Unknown directive %s."
+                                           (q directive-name)
+                                           {:unknown-directive directive-name
+                                            :available-directives (-> builtin-directives keys sort)}))))))]
     (mapv f parsed-directives)))
 
 (def ^:private typename-field-definition
@@ -845,7 +846,7 @@
   [node variables]
   (reduce (fn [node directive]
             (let [effector (:effector directive)]
-                 (effector node (compute-arguments directive variables))))
+              (effector node (compute-arguments directive variables))))
           node
           (:directives node)))
 
@@ -982,7 +983,7 @@
                                :type on-type
                                :selections selections)
                         (cond-> directives
-                          (assoc :directives (convert-parsed-directives schema directives))))
+                                (assoc :directives (convert-parsed-directives schema directives))))
                   fragment-type (get schema on-type)]
               ;; TODO: Verify fragment type exists
               (normalize-selections schema
@@ -1217,9 +1218,22 @@
   ;; This version is rarely used: it assumes that document defines multiple named operations and only
   ;; one is being selected.
   ([schema query-document operation-name]
+   (parse-query schema query-document operation-name nil))
+  ([schema query-document operation-name timing-start]
    (when-not (schema/compiled-schema? schema)
      (throw (IllegalStateException. "The provided schema has not been compiled.")))
-   (xform-query schema (qp/parse-query query-document) operation-name)))
+   ;; Ideally, the timing-start should be provided very early in the request processing pipeline, handed down
+   ;; in the request or context (under Pedestal); however, in many other cases, it is not provided at all
+   ;; and so timing starts here at the parse phase.
+   (let [timing-start' (or timing-start
+                           (tracing/create-timing-start))
+         start-offset (tracing/offset-from-start timing-start')
+         start-nanos (System/nanoTime)
+         parsed (xform-query schema (qp/parse-query query-document) operation-name)]
+     (assoc parsed
+            ::tracing/timing-start timing-start'
+            ::tracing/parsing {:start-offset start-offset
+                               :duration (tracing/duration start-nanos)}))))
 
 (defn operations
   "Given a previously parsed query, this returns a map of two keys:

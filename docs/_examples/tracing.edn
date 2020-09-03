@@ -1,0 +1,73 @@
+(require '[com.walmartlabs.lacinia :as lacinia]
+          [com.walmartlabs.lacinia.tracing :as tracing])
+
+(def start-wars-schema ...)
+
+(lacinia/execute
+  star-wars-schema "
+  {
+    luke: human(id: \"1000\") { friends { name }}
+    leia: human(id: \"1003\") { name }
+  }"
+  nil
+  (tracing/enable-tracing nil))
+=>
+{:data {:luke {:friends [{:name "Han Solo"}
+                         {:name "Leia Organa"}
+                         {:name "C-3PO"}
+                         {:name "R2-D2"}]},
+        :leia {:name "Leia Organa"}},
+ :extensions {:tracing {:version 1,
+                        :startTime "2020-08-31T22:14:25.401Z",
+                        :endTime "2020-08-31T22:14:25.449Z",
+                        :duration 47430231,
+                        :parsing {:startOffset 68824, :duration 38932608},
+                        :validation {:startOffset 39099642, :duration 1941960},
+                        :execution {:resolvers [{:path [:luke],
+                                                 :parentType :QueryRoot,
+                                                 :fieldName :human,
+                                                 :returnType "human!",
+                                                 :startOffset 42476480,
+                                                 :duration 303264}
+                                                {:path [:luke :friends],
+                                                 :parentType :human,
+                                                 :fieldName :friends,
+                                                 :returnType "[character]",
+                                                 :startOffset 43183550,
+                                                 :duration 185802}
+                                                {:path [:luke :friends 0 :name],
+                                                 :parentType :human,
+                                                 :fieldName :name,
+                                                 :returnType "String",
+                                                 :startOffset 43669784,
+                                                 :duration 16145}
+                                                {:path [:luke :friends 1 :name],
+                                                 :parentType :human,
+                                                 :fieldName :name,
+                                                 :returnType "String",
+                                                 :startOffset 44205401,
+                                                 :duration 4629}
+                                                {:path [:luke :friends 2 :name],
+                                                 :parentType :droid,
+                                                 :fieldName :name,
+                                                 :returnType "String",
+                                                 :startOffset 44346489,
+                                                 :duration 4563}
+                                                {:path [:luke :friends 3 :name],
+                                                 :parentType :droid,
+                                                 :fieldName :name,
+                                                 :returnType "String",
+                                                 :startOffset 44477160,
+                                                 :duration 3971}
+                                                {:path [:leia],
+                                                 :parentType :QueryRoot,
+                                                 :fieldName :human,
+                                                 :returnType "human!",
+                                                 :startOffset 46609256,
+                                                 :duration 130413}
+                                                {:path [:leia :name],
+                                                 :parentType :human,
+                                                 :fieldName :name,
+                                                 :returnType "String",
+                                                 :startOffset 46866059,
+                                                 :duration 7833}]}}}}
