@@ -2,6 +2,8 @@
 
 Optional request tracing is now designed to be compatible with Apollo GraphQL's implementation.
 
+New support for [Apollo GraphQL Federation](https://www.apollographql.com/docs/apollo-server/federation/introduction/).
+
 ## 0.37.0 -- 30 Jun 2020
 
 Added new function `com.walmartlabs.lacinia.util/inject-streamers`, used to
@@ -15,7 +17,7 @@ to `com.walmartlabs.lacinia.parser.schema/parse-schema` which is now deprecated.
 The schema parser has been updated, to allow input values (within input types)
 to specify defaults, and to support extending input types.
 
-The preview API (`selections-seq2`, etc.) now recognize the `@include` and
+The preview API functions (`selections-seq2`, etc.) now recognize the `@include` and
 `@skip` directives.
 
 Exceptions thrown by resolver functions are now caught and wrapped as new exceptions

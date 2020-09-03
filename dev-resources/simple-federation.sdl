@@ -1,0 +1,9 @@
+type User @key(fields: "id") {
+    id: ID!
+    name: String
+}
+
+type Product @key(fields: "upc") @extends {
+  upc: String! @external
+  reviewed_by: User
+}
