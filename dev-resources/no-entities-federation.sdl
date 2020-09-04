@@ -1,0 +1,8 @@
+type User  {
+    id: Int!
+    name: String
+}
+
+# Just want a union to show that _entities is not present
+
+union Stuff = User

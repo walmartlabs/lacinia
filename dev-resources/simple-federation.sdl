@@ -1,5 +1,5 @@
 type User @key(fields: "id") {
-    id: ID!
+    id: Int!
     name: String
 }
 

@@ -1,3 +1,17 @@
+; Copyright (c) 2020-present Walmart, Inc.
+;
+; Licensed under the Apache License, Version 2.0 (the "License")
+; you may not use this file except in compliance with the License.
+; You may obtain a copy of the License at
+;
+;     http://www.apache.org/licenses/LICENSE-2.0
+;
+; Unless required by applicable law or agreed to in writing, software
+; distributed under the License is distributed on an "AS IS" BASIS,
+; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+; See the License for the specific language governing permissions and
+; limitations under the License.
+
 (ns com.walmartlabs.lacinia.federation
   (:require
     [com.walmartlabs.lacinia.resolve :as resolve]
@@ -89,22 +103,18 @@
         entities-resolver (entities-resolver-factory entity-resolvers)
         query-root (get-in schema [:roots :query] :QueryRoot)]
     ;; TODO: Ensure each non-external entity has a matching entity resolver.
-    ;; TODO: Only add _Entity and _entities if there are entities
     (prevent-collision schema [:unions :_Entity])
     (prevent-collision schema [:objects query-root :fields :_service])
     (prevent-collision schema [:objects query-root :fields :_entities])
-    (-> schema
-        (assoc-in [:objects :_Service :fields :sdl]
-                  {:type :String})
-        (assoc-in [:unions :_Entity :members] entity-names)
-        (assoc-in [:objects query-root :fields :_service]
-                  {:type '(non-null :_Service)
-                   :resolve (fn [_ _ _] {:sdl sdl})})
-        (assoc-in [:objects query-root :fields :_entities]
-                  {:type '(non-null (list :_Entity))
-                   :args
-                   {:representations
-                    {:type '(non-null (list (non-null :_Any)))}}
-                   :resolve entities-resolver}))))
+    (cond-> (assoc-in schema [:objects query-root :fields :_service]
+                      {:type '(non-null :_Service)
+                       :resolve (fn [_ _ _] {:sdl sdl})})
+      entity-names (-> (assoc-in [:unions :_Entity :members] entity-names)
+                       (assoc-in [:objects query-root :fields :_entities]
+                                 {:type '(non-null (list :_Entity))
+                                  :args
+                                  {:representations
+                                   {:type '(non-null (list (non-null :_Any)))}}
+                                  :resolve entities-resolver})))))
 
 (s/def ::entity-resolvers (s/map-of simple-keyword? ::schema/function-or-var))
