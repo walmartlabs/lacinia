@@ -29,7 +29,8 @@
            (execute schema
                     "{ _service { sdl }}")))
 
-    (is (= {:data {:entities {:members [{:name "Product"}
+    (is (= {:data {:entities {:members [{:name "Account"}
+                                        {:name "Product"}
                                         {:name "User"}]
                               :name "_Entity"}}}
            (execute schema
@@ -43,6 +44,14 @@
        :name (str "User #" id)}
       :User)))
 
+(defn ^:private resolve-account
+  [_ _ reps]
+  (for [{:keys [acct_number]} reps]
+    (schema/tag-with-type
+      {:acct_number acct_number
+       :name (str "Account #" acct_number)}
+      :Account)))
+
 (def entities-query
   "
 query($reps : [_Any!]!) {
@@ -50,6 +59,8 @@ query($reps : [_Any!]!) {
     __typename
 
     ... on User { id name }
+
+    ... on Account { acct_number name }
     }
   }
 }")
@@ -58,7 +69,8 @@ query($reps : [_Any!]!) {
   (let [sdl (slurp "dev-resources/simple-federation.sdl")
         schema (schema/compile
                  (parse-schema sdl {:federation {:entity-resolvers
-                                                 {:User resolve-user}}}))]
+                                                 {:User resolve-user
+                                                  :Account resolve-account}}}))]
 
     (is (= {:data {:entities []}}
            (execute schema
@@ -78,7 +90,55 @@ query($reps : [_Any!]!) {
                              :id 1001}
                             {:__typename "User"
                              :id 2002}]}
+                    nil)))
+
+    (is (= {:data {:entities [{:__typename :User
+                               :id 1001
+                               :name "User #1001"}
+                              {:__typename :Account
+                               :acct_number "2002"
+                               :name "Account #2002"}]}}
+           (execute schema
+                    entities-query
+                    {:reps [{:__typename "User"
+                             :id 1001}
+                            {:__typename "Account"
+                             :acct_number 2002}]}
                     nil)))))
+
+(deftest missing-entity-resolvers
+  (let [sdl (slurp "dev-resources/simple-federation.sdl")
+        schema (schema/compile
+                 (parse-schema sdl {:federation {:entity-resolvers
+                                                 {:User resolve-user}}}))
+        query (fn [& reps] (execute schema entities-query {:reps reps} nil))]
+
+    (is (= '{:data {:entities []}
+             :errors [{:extensions {:arguments {:representations $reps}}
+                       :locations [{:column 3
+                                    :line 3}]
+                       :message "No entity resolver for type `DoesNotExist'"
+                       :path [:entities]}]}
+           (query {:__typename "DoesNotExist"
+                   :id 9999})))
+
+    (is (= '{:data {:entities [{:__typename :User
+                                :id 3003
+                                :name "User #3003"}
+                               {:__typename :User
+                                :id 4004
+                                :name "User #4004"}]}
+             :errors [{:extensions {:arguments {:representations $reps}}
+                       :locations [{:column 3
+                                    :line 3}]
+                       :message "No entity resolver for type `DoesNotExist'"
+                       :path [:entities]}]}
+           (query {:__typename "User"
+                   :id 3003}
+                  {:__typename "DoesNotExist"
+                   :id 9998}
+                  {:__typename "User"
+                   :id 4004})))))
 
 (deftest no-entities
   (let [sdl (slurp "dev-resources/no-entities-federation.sdl")
@@ -98,12 +158,12 @@ query($reps : [_Any!]!) {
         field-names (->> result
                          :data :schema :query :fields
                          (map :name)
-                         (into #{}))
+                         set)
         union-names (->> result
                          :data :schema :types
                          (filter #(-> % :kind (= :UNION)))
                          (map :name)
-                         (into #{}))]
+                         set)]
     (reporting result
                (is (contains? field-names "_service"))
                (is (not (contains? field-names "_entities")))

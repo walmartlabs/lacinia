@@ -1,6 +1,11 @@
 type User @key(fields: "id") {
     id: Int!
-    name: String
+    name: String!
+}
+
+type Account @key(fields: "acct_number") {
+  acct_number: String!
+  name: String!
 }
 
 type Product @key(fields: "upc") @extends {

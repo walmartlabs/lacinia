@@ -14,7 +14,7 @@
 
 (ns com.walmartlabs.lacinia.federation
   (:require
-    [com.walmartlabs.lacinia.resolve :as resolve]
+    [com.walmartlabs.lacinia.resolve :as resolve :refer [with-error]]
     [com.walmartlabs.lacinia.internal-utils :as utils]
     [com.walmartlabs.lacinia.schema :as schema]
     [clojure.spec.alpha :as s]))
@@ -78,22 +78,37 @@
   [entity-resolvers]
   (fn [context args _]
     (let [{:keys [representations]} args
+          *errors (volatile! nil)
           grouped (group-by :__typename representations)
           results (reduce-kv
                     (fn [coll type-name reps]
-                      (let [resolver (get entity-resolvers (keyword type-name))
-                            result (resolver context {} reps)
-                            result' (if (resolve/is-resolver-result? result)
-                                      result
-                                      (resolve/resolve-as result))]
-                        (conj coll result')))
+                      (if-let [resolver (get entity-resolvers (keyword type-name))]
+                        (let [result (resolver context {} reps)
+                              result' (if (resolve/is-resolver-result? result)
+                                        result
+                                        (resolve/resolve-as result))]
+                          (conj coll result'))
+                        ;; Not found!
+                        (do
+                          (vswap! *errors conj {:message (str "No entity resolver for type " (utils/q type-name))})
+                          coll)))
                     []
-                    grouped)]
+                    grouped)
+          errors @*errors
+          maybe-wrap (fn [result]
+                       (if errors
+                         (with-error result errors)
+                         result))]
       ;; Quick optimization; don't do the aggregation if there's only a single
       ;; result (very common case).
-      (if (= 1 (count results))
-        (first results)
-        (utils/aggregate-results results #(reduce into [] %))))))
+      (case (count results)
+        0 (maybe-wrap [])
+
+        1 (if errors
+            (utils/transform-result (first results) #(with-error % errors))
+            (first results))
+
+        (utils/aggregate-results results #(maybe-wrap (reduce into [] %)))))))
 
 (defn inject-federation
   "Called after SDL parsing to extend the input schema
