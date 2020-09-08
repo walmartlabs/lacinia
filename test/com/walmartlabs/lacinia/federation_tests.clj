@@ -16,27 +16,17 @@
   (:require
     [clojure.test :refer [deftest is]]
     [com.walmartlabs.lacinia.parser.schema :refer [parse-schema]]
+    [com.walmartlabs.lacinia.util :as util]
     [com.walmartlabs.test-utils :refer [execute]]
     [com.walmartlabs.test-reporting :refer [reporting]]
     [com.walmartlabs.lacinia.schema :as schema]))
 
-(deftest essentials
-  (let [sdl (slurp "dev-resources/simple-federation.sdl")
-        schema (schema/compile
-                 (parse-schema sdl {:federation {:entity-resolvers {:User (fn [_ _ _] nil)}}}))]
-
-    (is (= {:data {:_service {:sdl sdl}}}
-           (execute schema
-                    "{ _service { sdl }}")))
-
-    (is (= {:data {:entities {:members [{:name "Account"}
-                                        {:name "Product"}
-                                        {:name "User"}]
-                              :name "_Entity"}}}
-           (execute schema
-                    "{ entities: __type(name: \"_Entity\") { name members: possibleTypes { name }}}")))))
-
 (defn ^:private resolve-user
+  [_ {:keys [id]} _]
+  {:id id
+   :name (str "User #" id)})
+
+(defn ^:private resolve-user-external
   [_ _ reps]
   (for [{:keys [id]} reps]
     (schema/tag-with-type
@@ -65,11 +55,34 @@ query($reps : [_Any!]!) {
   }
 }")
 
+(deftest essentials
+  (let [sdl (slurp "dev-resources/simple-federation.sdl")
+        schema (-> sdl
+                   (parse-schema {:federation {:entity-resolvers {:User (fn [_ _ _] nil)}}})
+                   (util/inject-resolvers {:Query/user_by_id resolve-user})
+                   schema/compile)]
+
+    (is (= {:data {:_service {:sdl sdl}}}
+           (execute schema
+                    "{ _service { sdl }}")))
+
+    (is (= {:data {:entities {:members [{:name "Account"}
+                                        {:name "Product"}
+                                        {:name "User"}]
+                              :name "_Entity"}}}
+           (execute schema
+                    "{ entities: __type(name: \"_Entity\") { name members: possibleTypes { name }}}")))
+
+    (is (= {:data {:user_by_id {:id 9998
+                                :name "User #9998"}}}
+           (execute schema
+                    "{ user_by_id(id: 9998) { id name }}")))))
+
 (deftest entity-resolvers
   (let [sdl (slurp "dev-resources/simple-federation.sdl")
         schema (schema/compile
                  (parse-schema sdl {:federation {:entity-resolvers
-                                                 {:User resolve-user
+                                                 {:User resolve-user-external
                                                   :Account resolve-account}}}))]
 
     (is (= {:data {:entities []}}
@@ -110,7 +123,7 @@ query($reps : [_Any!]!) {
   (let [sdl (slurp "dev-resources/simple-federation.sdl")
         schema (schema/compile
                  (parse-schema sdl {:federation {:entity-resolvers
-                                                 {:User resolve-user}}}))
+                                                 {:User resolve-user-external}}}))
         query (fn [& reps] (execute schema entities-query {:reps reps} nil))]
 
     (is (= '{:data {:entities []}
