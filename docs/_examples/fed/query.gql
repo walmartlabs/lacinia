@@ -1,0 +1,6 @@
+{ 
+    userById(id: "124c41") { 
+        name 
+        favoriteProducts { upc name price } 
+    } 
+}

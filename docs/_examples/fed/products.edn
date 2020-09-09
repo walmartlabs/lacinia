@@ -1,0 +1,58 @@
+(ns products.server
+  (:require
+   [io.pedestal.http :as http]
+   [clojure.java.io :as io]
+   [com.walmartlabs.lacinia.pedestal2 :as lp]
+   [com.walmartlabs.lacinia.parser.schema :refer [parse-schema]]
+   [com.walmartlabs.lacinia.schema :as schema]
+   [com.walmartlabs.lacinia.util :as util]))
+
+(defn resolve-users-external
+  [_ _ reps]
+  (for [{:keys [id]} reps]
+    (schema/tag-with-type {:id id} 
+                          :User)))
+
+(defn get-product-by-upc
+  [context upc]
+  ;; Peform DB query here, return map with :upc, :name, :price
+  )
+
+(defn get-favorite-products-for-user
+  [context user-id]
+  ;; Perform DB query here, return seq of maps with :upc, :name, :price
+  )
+
+(defn resolve-products-internal
+  [context _ reps]
+  (for [{:keys [upc]} reps
+        :let [product (get-product-by-upc context upc)]]
+    (schema/tag-with-type product :Product)))
+
+(defn resolve-product-by-upc
+  [context {:keys [upc]} _]
+  (get-product-by-upc context upc))
+
+(defn resolve-favorite-products
+  [context _ user]
+  (let [{:keys [id]} user]
+    (get-favorite-products-for-user context id)))
+
+(defn products-schema
+  []
+  (-> "products.gql"
+      io/resource
+      slurp
+      (parse-schema {:federation {:entity-resolvers {:Product resolve-products-internal
+                                                     :User resolve-users-external}}})
+      (util/inject-resolvers {:Query/productByUpc #'resolve-product-by-upc
+                              :User/favoriteProducts #'resolve-favorite-products})
+      schema/compile))
+
+(defn start
+  []
+  (-> (products-schema)
+      lp/default-service
+      http/create-server
+      http/start))
+ 
