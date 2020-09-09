@@ -55,10 +55,16 @@ query($reps : [_Any!]!) {
   }
 }")
 
+(defn always-nil
+  [_ _ _]
+  nil)
+
 (deftest essentials
   (let [sdl (slurp "dev-resources/simple-federation.sdl")
         schema (-> sdl
-                   (parse-schema {:federation {:entity-resolvers {:User (fn [_ _ _] nil)}}})
+                   (parse-schema {:federation {:entity-resolvers {:User always-nil
+                                                                  :Account always-nil
+                                                                  :Product always-nil}}})
                    (util/inject-resolvers {:Query/user_by_id resolve-user})
                    schema/compile)]
 
@@ -78,11 +84,27 @@ query($reps : [_Any!]!) {
            (execute schema
                     "{ user_by_id(id: 9998) { id name }}")))))
 
+(deftest missing-entity-resolver
+  (let [sdl (slurp "dev-resources/simple-federation.sdl")
+        ex (is (thrown? Exception
+                        (-> sdl
+                            (parse-schema {:federation {:entity-resolvers {:User always-nil
+                                                                           :Product always-nil}}}))))]
+    (when ex
+      (is (= "Must provide entity resolvers for each entity (each type with @key)" (ex-message ex)))
+      (is (= {:actual [:Product
+                       :User]
+              :expected [:Account
+                         :Product
+                         :User]}
+             (ex-data ex))))))
+
 (deftest entity-resolvers
   (let [sdl (slurp "dev-resources/simple-federation.sdl")
         schema (schema/compile
                  (parse-schema sdl {:federation {:entity-resolvers
                                                  {:User resolve-user-external
+                                                  :Product always-nil
                                                   :Account resolve-account}}}))]
 
     (is (= {:data {:entities []}}
@@ -123,7 +145,9 @@ query($reps : [_Any!]!) {
   (let [sdl (slurp "dev-resources/simple-federation.sdl")
         schema (schema/compile
                  (parse-schema sdl {:federation {:entity-resolvers
-                                                 {:User resolve-user-external}}}))
+                                                 {:User resolve-user-external
+                                                  :Product always-nil
+                                                  :Account always-nil}}}))
         query (fn [& reps] (execute schema entities-query {:reps reps} nil))]
 
     (is (= '{:data {:entities []}
@@ -178,6 +202,6 @@ query($reps : [_Any!]!) {
                          (map :name)
                          set)]
     (reporting result
-               (is (contains? field-names "_service"))
-               (is (not (contains? field-names "_entities")))
-               (is (= #{"Stuff"} union-names)))))
+      (is (contains? field-names "_service"))
+      (is (not (contains? field-names "_entities")))
+      (is (= #{"Stuff"} union-names)))))

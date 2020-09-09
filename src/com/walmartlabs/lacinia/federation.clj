@@ -75,7 +75,13 @@
   of entities for those representations.
 
   entity-resolvers is a map of keyword to resolver fn."
-  [entity-resolvers]
+  [entity-names entity-resolvers]
+  (let [entity-names' (set entity-names)
+        actual (-> entity-resolvers keys set)]
+    (when (not= entity-names' actual)
+      (throw (ex-info "Must provide entity resolvers for each entity (each type with @key)"
+                      {:expected entity-names
+                       :actual (sort actual)}))))
   (fn [context args _]
     (let [{:keys [representations]} args
           *errors (volatile! nil)
@@ -88,7 +94,8 @@
                                         result
                                         (resolve/resolve-as result))]
                           (conj coll result'))
-                        ;; Not found!
+                        ;; Not found!  This is a sanity check as an implementing service
+                        ;; should never be asked to resolve an entity it doesn't define (internal or external)
                         (do
                           (vswap! *errors conj {:message (str "No entity resolver for type " (utils/q type-name))})
                           coll)))
@@ -115,9 +122,8 @@
   (not the compiled schema) with federation support."
   [schema sdl entity-resolvers]
   (let [entity-names (find-entity-names schema)
-        entities-resolver (entities-resolver-factory entity-resolvers)
+        entities-resolver (entities-resolver-factory entity-names entity-resolvers)
         query-root (get-in schema [:roots :query] :QueryRoot)]
-    ;; TODO: Ensure each non-external entity has a matching entity resolver.
     (prevent-collision schema [:unions :_Entity])
     (prevent-collision schema [:objects query-root :fields :_service])
     (prevent-collision schema [:objects query-root :fields :_entities])
