@@ -545,7 +545,7 @@
 
   `:federation` enables support for GraphQL federation. It contains a
   sub-key, `:entity-resolvers` which maps from keyword entity name to
-  an entity resolver function.
+  an entity resolver function (or FieldResolver instance).
 
   `:resolvers` (deprecated) is expected to be a map of:
   {:type-name {:field-name resolver-fn}}

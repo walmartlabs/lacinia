@@ -74,48 +74,49 @@
   the context, no args, and a seq of representations and return a seq
   of entities for those representations.
 
-  entity-resolvers is a map of keyword to resolver fn."
+  entity-resolvers is a map of keyword to resolver fn (or FieldResolver instance)s."
   [entity-names entity-resolvers]
   (let [entity-names' (set entity-names)
-        actual (-> entity-resolvers keys set)]
+        actual (-> entity-resolvers keys set)
+        entity-resolvers' (utils/map-vals resolve/as-resolver-fn entity-resolvers)]
     (when (not= entity-names' actual)
       (throw (ex-info "Must provide entity resolvers for each entity (each type with @key)"
                       {:expected entity-names
-                       :actual (sort actual)}))))
-  (fn [context args _]
-    (let [{:keys [representations]} args
-          *errors (volatile! nil)
-          grouped (group-by :__typename representations)
-          results (reduce-kv
-                    (fn [coll type-name reps]
-                      (if-let [resolver (get entity-resolvers (keyword type-name))]
-                        (let [result (resolver context {} reps)
-                              result' (if (resolve/is-resolver-result? result)
-                                        result
-                                        (resolve/resolve-as result))]
-                          (conj coll result'))
-                        ;; Not found!  This is a sanity check as an implementing service
-                        ;; should never be asked to resolve an entity it doesn't define (internal or external)
-                        (do
-                          (vswap! *errors conj {:message (str "No entity resolver for type " (utils/q type-name))})
-                          coll)))
-                    []
-                    grouped)
-          errors @*errors
-          maybe-wrap (fn [result]
-                       (if errors
-                         (with-error result errors)
-                         result))]
-      ;; Quick optimization; don't do the aggregation if there's only a single
-      ;; result (very common case).
-      (case (count results)
-        0 (maybe-wrap [])
+                       :actual (sort actual)})))
+    (fn [context args _]
+      (let [{:keys [representations]} args
+            *errors (volatile! nil)
+            grouped (group-by :__typename representations)
+            results (reduce-kv
+                      (fn [coll type-name reps]
+                        (if-let [resolver (get entity-resolvers' (keyword type-name))]
+                          (let [result (resolver context {} reps)
+                                result' (if (resolve/is-resolver-result? result)
+                                          result
+                                          (resolve/resolve-as result))]
+                            (conj coll result'))
+                          ;; Not found!  This is a sanity check as an implementing service
+                          ;; should never be asked to resolve an entity it doesn't define (internal or external)
+                          (do
+                            (vswap! *errors conj {:message (str "No entity resolver for type " (utils/q type-name))})
+                            coll)))
+                      []
+                      grouped)
+            errors @*errors
+            maybe-wrap (fn [result]
+                         (if errors
+                           (with-error result errors)
+                           result))]
+        ;; Quick optimization; don't do the aggregation if there's only a single
+        ;; result (very common case).
+        (case (count results)
+          0 (maybe-wrap [])
 
-        1 (if errors
-            (utils/transform-result (first results) #(with-error % errors))
-            (first results))
+          1 (if errors
+              (utils/transform-result (first results) #(with-error % errors))
+              (first results))
 
-        (utils/aggregate-results results #(maybe-wrap (reduce into [] %)))))))
+          (utils/aggregate-results results #(maybe-wrap (reduce into [] %))))))))
 
 (defn inject-federation
   "Called after SDL parsing to extend the input schema
@@ -138,4 +139,4 @@
                                    {:type '(non-null (list (non-null :_Any)))}}
                                   :resolve entities-resolver})))))
 
-(s/def ::entity-resolvers (s/map-of simple-keyword? ::schema/function-or-var))
+(s/def ::entity-resolvers (s/map-of simple-keyword? ::schema/resolve))

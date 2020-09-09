@@ -16,6 +16,7 @@
   (:require
     [clojure.test :refer [deftest is]]
     [com.walmartlabs.lacinia.parser.schema :refer [parse-schema]]
+    [com.walmartlabs.lacinia.resolve :refer [FieldResolver resolve-as]]
     [com.walmartlabs.lacinia.util :as util]
     [com.walmartlabs.test-utils :refer [execute]]
     [com.walmartlabs.test-reporting :refer [reporting]]
@@ -139,6 +140,65 @@ query($reps : [_Any!]!) {
                              :id 1001}
                             {:__typename "Account"
                              :acct_number 2002}]}
+                    nil)))))
+
+(deftest entity-resolver-as-field-resolver-instance
+  (let [sdl (slurp "dev-resources/simple-federation.sdl")
+        user-fr (reify FieldResolver
+
+                  (resolve-value [_ _ _ reps]
+                    (for [{:keys [id]} reps]
+                      (schema/tag-with-type
+                        {:id id
+                         :name (str "FR-User #" id)}
+                        :User))))
+        schema (schema/compile
+                 (parse-schema sdl {:federation {:entity-resolvers
+                                                 {:User user-fr
+                                                  :Product always-nil
+                                                  :Account resolve-account}}}))]
+    (is (= {:data {:entities [{:__typename :User
+                               :id 1001
+                               :name "FR-User #1001"}
+                              {:__typename :User
+                               :id 2002
+                               :name "FR-User #2002"}]}}
+           (execute schema
+                    entities-query
+                    {:reps [{:__typename "User"
+                             :id 1001}
+                            {:__typename "User"
+                             :id 2002}]}
+                    nil)))))
+
+(deftest entity-resolver-returns-resolver-result
+  (let [sdl (slurp "dev-resources/simple-federation.sdl")
+        user-entity-resolver (fn [_ _ reps]
+                               (resolve-as
+                                 (resolve-user-external nil nil reps)
+                                 {:message "Error in user entity resolver"}))
+        schema (schema/compile
+                 (parse-schema sdl {:federation {:entity-resolvers
+                                                 {:User user-entity-resolver
+                                                  :Product always-nil
+                                                  :Account resolve-account}}}))]
+    (is (= {:data {:entities [{:__typename :User
+                               :id 1001
+                               :name "User #1001"}
+                              {:__typename :User
+                               :id 2002
+                               :name "User #2002"}]}
+            :errors '[{:extensions {:arguments {:representations $reps}}
+                       :locations [{:column 3
+                                    :line 3}]
+                       :message "Error in user entity resolver"
+                       :path [:entities]}]}
+           (execute schema
+                    entities-query
+                    {:reps [{:__typename "User"
+                             :id 1001}
+                            {:__typename "User"
+                             :id 2002}]}
                     nil)))))
 
 (deftest missing-entity-resolvers
