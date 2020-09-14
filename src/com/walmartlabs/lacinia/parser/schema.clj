@@ -21,6 +21,7 @@
     [com.walmartlabs.lacinia.parser.common :as common]
     [com.walmartlabs.lacinia.util :refer [inject-descriptions]]
     [com.walmartlabs.lacinia.schema :as schema]
+    [com.walmartlabs.lacinia.federation :as federation]
     [clojure.spec.alpha :as s]
     [clojure.string :as str])
   (:import
@@ -60,7 +61,7 @@
         (throw (ex-info (format "Field %s already defined in the existing schema. It cannot also be defined in this type extension."
                                 (q (qualified-name k property)))
                         (cond-> {:key k}
-                                (seq locations) (assoc :locations locations)))))))
+                          (seq locations) (assoc :locations locations)))))))
   (reduce merge
           {}
           [{:fields (merge (get org :fields) (get v :fields))}
@@ -87,7 +88,7 @@
           (throw (ex-info (format "Cannot extend type %s because it does not exist in the existing schema."
                                   (q k))
                           (cond-> {:key k}
-                                  (seq locations) (assoc :locations locations)))))
+                            (seq locations) (assoc :locations locations)))))
 
         (not (contains? m k))
         (assoc m k v)
@@ -101,7 +102,7 @@
                                   content
                                   (q k))
                           (cond-> {:key k}
-                                  (seq locations) (assoc :locations locations)))))))
+                            (seq locations) (assoc :locations locations)))))))
 
 (defn ^:private checked-map
   "Given a seq of key/value tuples, assembles a map, checking that keys do not conflict
@@ -141,18 +142,18 @@
 ;; Perhaps at some point we can merge it all into a single, unified grammar.
 
 (defmulti ^:private xform
-          "Transform an Antlr production into a result.
+  "Transform an Antlr production into a result.
 
-          Antlr productions are recursive lists; the first element is a type
-          (from the grammar), and the rest of the list are nested productions.
+  Antlr productions are recursive lists; the first element is a type
+  (from the grammar), and the rest of the list are nested productions.
 
-          Meta data on the production is the location (line, column) of the production."
-          first
-          ;; When debugging/developing, this is incredibly useful:
-          #_(fn [prod]
-              (log/trace :dispatch prod)
-              (first prod))
-          :default ::default)
+  Meta data on the production is the location (line, column) of the production."
+  first
+  ;; When debugging/developing, this is incredibly useful:
+  #_(fn [prod]
+      (log/trace :dispatch prod)
+      (first prod))
+  :default ::default)
 
 (defn ^:private xform-second
   [prod]
@@ -161,7 +162,7 @@
 (defn ^:private apply-description
   [parsed descripion-prod]
   (cond-> parsed
-          descripion-prod (assoc :description (xform descripion-prod))))
+    descripion-prod (assoc :description (xform descripion-prod))))
 
 (defn ^:private apply-directives
   [element directiveList]
@@ -502,7 +503,7 @@
 
 (defn ^:private xform-schema
   "Given an ANTLR parse tree, returns a Lacinia schema."
-  [antlr-tree resolvers scalars streamers documentation]
+  [antlr-tree empty-schema resolvers scalars streamers documentation]
   (let [schema (->> antlr-tree
                     rest
                     (map xform)
@@ -518,7 +519,7 @@
                                   (update-in schema path'
                                              assoc-check
                                              (-> path' last name) k value))))
-                            {}))]
+                            empty-schema))]
     (-> schema
         (attach-field-fns :resolve resolvers)
         (attach-field-fns :stream streamers)
@@ -535,17 +536,21 @@
   Directives may be declared and used, but validation of directives is
   also deferred downstream.
 
-  The `attach` map is deprecated, but still supported.
+  Most keys of the `attach` map are deprecated, but still supported.
   Documentation can now be provided inline in the schema document,
   and directives, streamers, and etc. can be added as needed via
   functions in the [[com.walmartlabs.lacinia.util]] namespace.
 
   `attach` should be a map consisting of the following keys:
 
-  `:resolvers` is expected to be a map of:
+  `:federation` enables support for GraphQL federation. It contains a
+  sub-key, `:entity-resolvers` which maps from keyword entity name to
+  an entity resolver function (or FieldResolver instance).
+
+  `:resolvers` (deprecated) is expected to be a map of:
   {:type-name {:field-name resolver-fn}}
 
-  `:scalars` is expected to be a map of:
+  `:scalars` (deprecated) is expected to be a map of:
   {:scalar-name {:parse parse-spec
                  :serialize serialize-spec}}
 
@@ -553,10 +558,10 @@
 
   The provided scalar maps are merged into the scalars parsed from the document.
 
-  `:streamers` is expected to be a map of:
+  `:streamers` (deprecated) is expected to be a map of:
   {:type-name {:subscription-field-name stream-fn}}
 
-  `:documentation` is expected to be a map of:
+  `:documentation` (deprecated) is expected to be a map of:
   {:type-name doc-str
    :type-name/field-name doc-str
    :type-name/field-name.arg-name doc-str}"
@@ -567,17 +572,24 @@
      (throw (ex-info (str "Arguments to parse-schema do not conform to spec:\n" (with-out-str (s/explain-out ed)))
                      ed)))
 
-   (let [{:keys [resolvers scalars streamers documentation]} attach]
-     (xform-schema (try
-                     (common/antlr-parse grammar schema-string)
-                     (catch ParseError e
-                       (let [failures (common/parse-failures e)]
-                         (throw (ex-info "Failed to parse GraphQL schema."
-                                         {:errors failures})))))
-                   resolvers
-                   scalars
-                   streamers
-                   documentation))))
+   (let [{:keys [resolvers scalars streamers documentation federation]} attach
+         empty-schema (if federation
+                        federation/foundation-types
+                        {})
+         antlr-tree (try
+                      (common/antlr-parse grammar schema-string)
+                      (catch ParseError e
+                        (let [failures (common/parse-failures e)]
+                          (throw (ex-info "Failed to parse GraphQL schema."
+                                          {:errors failures})))))]
+     (cond-> (xform-schema antlr-tree
+                           empty-schema
+                           resolvers
+                           scalars
+                           streamers
+                           documentation)
+       federation (federation/inject-federation schema-string
+                                                (:entity-resolvers federation))))))
 
 (s/def ::field-fn (s/map-of simple-keyword? (s/or :function ::schema/function-or-var
                                                   :keyword simple-keyword?)))
@@ -593,10 +605,13 @@
 (s/def ::resolvers ::fn-map)
 (s/def ::streamers ::fn-map)
 
+(s/def ::federation (s/keys :req-un [::federation/entity-resolvers]))
+
 (s/def ::parse-schema-args (s/or
                              :supported string?
-                             :deprecated (s/cat :schema-string string?
-                                                :attachments (s/keys :opt-un [::resolvers
-                                                                              ::streamers
-                                                                              ::scalars
-                                                                              ::documentation]))))
+                             :attach (s/cat :schema-string string?
+                                            :attachments (s/keys :opt-un [::resolvers
+                                                                          ::streamers
+                                                                          ::scalars
+                                                                          ::documentation
+                                                                          ::federation]))))

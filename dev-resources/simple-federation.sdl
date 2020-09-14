@@ -1,0 +1,20 @@
+type User @key(fields: "id") {
+    id: Int!
+    name: String!
+}
+
+type Query {
+    user_by_id(id: Int!) : User
+}
+
+schema { query: Query }
+
+type Account @key(fields: "acct_number") {
+  acct_number: String!
+  name: String!
+}
+
+type Product @key(fields: "upc") @extends {
+  upc: String! @external
+  reviewed_by: User
+}

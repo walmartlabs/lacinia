@@ -1,0 +1,16 @@
+type User @extends @key(fields: "id") {
+  id: String! @external
+  favoriteProducts: [Product]
+}
+
+type Product @key(fields: "upc") {
+  upc: String!
+  name: String!
+  price: Int!
+}
+
+type Query {
+    productByUpc(upc: String!) : Product
+}
+
+schema { query: Query }

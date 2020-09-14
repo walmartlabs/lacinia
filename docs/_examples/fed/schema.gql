@@ -1,0 +1,9 @@
+scalar _Any
+scalar _FieldSet
+
+# a union of all types that use the @key directive
+union _Entity
+
+extend type Query {
+  _entities(representations: [_Any!]!): [_Entity]!
+}
