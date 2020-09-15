@@ -35,7 +35,7 @@ avoid unecessary function calls and object creation.
 .. warning::
 
    Tracing should never be enabled in production. This can be accomplished by removing the ``com.walmartlabs.lacinia.pedestal2/enable-tracing-interceptor``
-   interceptor from the pipeline.
+   interceptor from the pipeline (when using lacinia-pedestal).
    
 
 
