@@ -2,14 +2,14 @@ Apollo GraphQL Federation
 =========================
 
 GraphQL federation is a concept, spearheaded by
-`Apollo GraphQL <https://www.apollographql.com/docs/apollo-server/federation/introduction/>`_, a Node-based JavaScript project,
+`Apollo GraphQL <https://www.apollographql.com/docs/apollo-server/federation/introduction/>`_ (a Node-based JavaScript project)
 whereby multiple GraphQL schemas can be combined, behind a single `gateway` service.
 It's a useful concept, as it allows different teams to stand up their own schemas and services, written in
 any language, and dynamically combine them into a single "super" schema.
 
 Each service's schema can evolve independentently (as long as that evolution is backwards compatible), and can deploy
 on its own cycle. The gateway becomes the primary entrypoint for all clients, and it knows how to break
-service-spanning queries apart and build a overall query plan.
+service-spanning queries apart and build an overall query plan.
 
 Lacinia has been extended, starting in 0.38.0, to support acting as an implementing service; there is no plan
 at this time to act as a gateway.
@@ -19,7 +19,7 @@ at this time to act as a gateway.
     At this time, only a schema defined with the :doc:`Schema Definition Language </schema/parsing>`, can be extended to act as
     a service implementation.
 
-Essentially, federation allows a set of services to each provide their own types, queries, mutations and organizes things so that
+Essentially, federation allows a set of services to each provide their own types, queries, and mutations, and organizes things so that
 each service can provide additional fields to the types provided by the other services.
 
 The `Apollo GraphQL documentation <https://www.apollographql.com/docs/apollo-server/federation/introduction/#concern-based-separation>`_ includes
