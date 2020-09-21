@@ -1,3 +1,0 @@
-[{:type :query
-  :selections [{:type :field
-                :field-name :hello}]}]

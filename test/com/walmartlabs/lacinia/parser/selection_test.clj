@@ -18,6 +18,7 @@
     [clojure.test :refer [is deftest use-fixtures]]
     [com.walmartlabs.lacinia.executor :as executor]
     [com.walmartlabs.lacinia.protocols :as p]
+    [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.test-utils :refer [compile-sdl-schema execute]]))
 
 (def ^:private *log (atom []))
@@ -44,7 +45,7 @@
             "Done")
         schema (compile-sdl-schema "selection/simple.sdl"
                                    {:Query/basic f})
-        result (execute schema "{ basic }")]
+        result (execute schema "{ basic @concise }")]
     (is (= {:data {:basic "Done"}}
            result))
     (is (= '[[:selection {:field-selection? true
@@ -54,3 +55,7 @@
            @*log))))
 
 
+(comment
+  (-> (compile-sdl-schema "selection/simple.sdl" nil)
+       ::schema/directive-defs)
+  )

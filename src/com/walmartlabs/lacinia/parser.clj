@@ -720,10 +720,12 @@
 (defn ^:private convert-parsed-directives
   "Passed a seq of parsed directive nodes, returns a seq of executable directives."
   [schema parsed-directives]
-  (let [f (fn [parsed-directive]
+  (let [{:keys [::schema/directive-defs]} schema
+        f (fn [parsed-directive]
             (let [{directive-name :directive-name} parsed-directive]
-              (with-exception-context {:directive directive-name}
-                (if-let [directive-def (get builtin-directives directive-name)]
+              (with-exception-context {:directive-name directive-name}
+                (if-let [directive-def (or (get builtin-directives directive-name)
+                                           (get directive-defs directive-name))]
                   (let [[literal-arguments dynamic-arguments-extractor]
                         (try
                           (process-arguments schema
@@ -761,7 +763,7 @@
 
    :selector schema/floor-selector})
 
-(defrecord ^:private  FieldSelection [selection-type field-definition leaf? concrete-type? reportable-arguments
+(defrecord ^:private FieldSelection [selection-type field-definition leaf? concrete-type? reportable-arguments
                                      alias field-name selections directives arguments]
 
   p/QualifiedName
@@ -865,8 +867,11 @@
   directive's effector."
   [node variables]
   (reduce (fn [node directive]
-            (let [effector (:effector directive)]
-              (effector node (compute-arguments directive variables))))
+            ;; Only the built-in directives @skip and @include have effectors, other
+            ;; directives do not.
+            (if-let [effector (:effector directive)]
+              (effector node (compute-arguments directive variables))
+              node))
           node
           (:directives node)))
 
