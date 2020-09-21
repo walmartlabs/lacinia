@@ -69,7 +69,7 @@
     (cond-> {:message message
              :locations locations
              :path path}
-            (seq extensions') (assoc :extensions extensions'))))
+      (seq extensions') (assoc :extensions extensions'))))
 
 (defn ^:private enhance-errors
   "From an error map, or a collection of error maps, add additional data to
@@ -94,7 +94,7 @@
     (:concrete-type? field-selection)
     (-> field-selection :field-definition :resolve)
 
-    :let [{:keys [field]} field-selection]
+    :let [{:keys [field-name]} field-selection]
 
     (nil? resolved-type)
     (throw (ex-info "Sanity check: value type tag is nil on abstract type."
@@ -108,7 +108,7 @@
                      :value value}))
 
     :else
-    (or (get-in type [:fields field :resolve])
+    (or (get-in type [:fields field-name :resolve])
         (throw (ex-info "Sanity check: field not present."
                         {:type resolved-type
                          :value value})))))
@@ -130,8 +130,8 @@
           schema (get context constants/schema-key)
           resolved-type (:resolved-type execution-context)
           resolve-context (assoc context
-                            :com.walmartlabs.lacinia/container-type-name resolved-type
-                            constants/selection-key field-selection)
+                                 :com.walmartlabs.lacinia/container-type-name resolved-type
+                                 constants/selection-key field-selection)
           field-resolver (field-selection-resolver schema field-selection resolved-type container-value)]
       (if-not (some? *resolver-tracing)
         (field-resolver resolve-context arguments container-value)
@@ -264,7 +264,7 @@
     (maybe-apply-fragment execution-context
                           ;; A bit of a hack:
                           (assoc fragment-spread-selection
-                            :selections (:selections fragment-def))
+                                 :selections (:selections fragment-def))
                           (:concrete-types fragment-def))))
 
 (defn ^:private apply-selection
@@ -369,8 +369,8 @@
                    (seq sub-selections))
             (execute-nested-selections
               (assoc execution-context
-                :resolved-value resolved-value
-                :resolved-type resolved-type)
+                     :resolved-value resolved-value
+                     :resolved-type resolved-type)
               sub-selections)
             (resolve-as resolved-value)))
         ;; In a concrete type, we know the selector from the field definition
@@ -381,7 +381,7 @@
         selector (if is-fragment?
                    schema/floor-selector
                    (or (-> selection :field-definition :selector)
-                       (let [field-name (:field selection)]
+                       (let [field-name (:field-name selection)]
                          (-> execution-context'
                              :context
                              (get constants/schema-key)
@@ -493,7 +493,7 @@
         *resolver-tracing (when (::tracing/enabled? context)
                             (atom []))
         context' (assoc context constants/schema-key
-                                (get parsed-query constants/schema-key))
+                        (get parsed-query constants/schema-key))
         ;; Outside of subscriptions, the ::resolved-value is nil.
         ;; For subscriptions, the :resolved-value will be set to a non-nil value before
         ;; executing the query.
@@ -521,14 +521,14 @@
                                                extensions @*extensions]
                                            (resolve/deliver! result-promise
                                                              (cond-> {:data data}
-                                                                     (seq extensions) (assoc :extensions extensions)
-                                                                     *resolver-tracing
-                                                                     (tracing/inject-tracing timing-start
-                                                                                             (::tracing/parsing parsed-query)
-                                                                                             (::tracing/validation context)
-                                                                                             @*resolver-tracing)
-                                                                     errors (assoc :errors (distinct errors))
-                                                                     warnings (assoc-in [:extensions :warnings] (distinct warnings)))))))))
+                                                               (seq extensions) (assoc :extensions extensions)
+                                                               *resolver-tracing
+                                                               (tracing/inject-tracing timing-start
+                                                                                       (::tracing/parsing parsed-query)
+                                                                                       (::tracing/validation context)
+                                                                                       @*resolver-tracing)
+                                                               errors (assoc :errors (distinct errors))
+                                                               warnings (assoc-in [:extensions :warnings] (distinct warnings)))))))))
               (catch Throwable t
                 (resolve/deliver! result-promise t))))]
 
@@ -594,6 +594,12 @@
          next
          (keep f))))
 
+(defn selection [context]
+  "Returns the field selection, which implements the
+  FieldSelection, QualifiedName, SelectionSet, and Directives protocols."
+  {:added "0.38.0"}
+  (get context constants/selection-key))
+
 (defn selections-seq
   "A width-first traversal of the selections tree, returning a lazy sequence
   of qualified field names.  A qualified field name is a namespaced keyword,
@@ -606,10 +612,11 @@
 
 (defn ^:private to-field-data
   [node]
-  (let [{:keys [field alias arguments]} node]
+  (let [{:keys [alias arguments]
+         simple-field-name :field-name} node]
     (cond-> {:name (to-field-name node)}
-            (not (= field alias)) (assoc :alias alias)
-            (seq arguments) (assoc :args arguments))))
+      (not (= simple-field-name alias)) (assoc :alias alias)
+      (seq arguments) (assoc :args arguments))))
 
 (defn selections-seq2
   "An enhancement of [[selections-seq]] that returns a map for each node:
@@ -656,13 +663,14 @@
                 :field
                 ;; to-field-name returns nil for pseudo-fields, which are skipped
                 (if-some [field-name (to-field-name selection)]
-                  (let [{:keys [field alias selections]} selection
+                  (let [{:keys [alias selections]
+                         simple-field-name :field-name} selection
                         arguments (:arguments selection)
                         selections-map (build-selections-map parsed-query selections)
                         nested-map (cond-> nil
-                                           (not (= field alias)) (assoc :alias alias)
-                                           (seq arguments) (assoc :args arguments)
-                                           (seq selections-map) (assoc :selections selections-map))]
+                                     (not (= simple-field-name alias)) (assoc :alias alias)
+                                     (seq arguments) (assoc :args arguments)
+                                     (seq selections-map) (assoc :selections selections-map))]
                     (update m field-name conjv nested-map))
                   m)
 
@@ -718,4 +726,5 @@
      constants/selection-key {:selection-type :field
                               :field-definition root
                               :selections selections}}))
+
 

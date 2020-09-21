@@ -74,7 +74,7 @@
 
 (deftest var-nested-in-map-not-allowed
   (is (= {:errors [{:extensions {:argument :__Queries/echo.input
-                                 :field :__Queries/echo
+                                 :field-name :__Queries/echo
                                  :variable-name :input}
                     :locations [{:column 21
                                  :line 1}]

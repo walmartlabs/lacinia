@@ -1,0 +1,10 @@
+directive @auth (role: String!) on FIELD_DEFINITION
+
+directive @concise on FIELD
+
+schema { query: Query }
+
+type Query {
+    basic: String! @auth(role: "basic")
+}
+

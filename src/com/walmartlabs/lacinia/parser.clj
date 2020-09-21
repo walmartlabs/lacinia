@@ -27,6 +27,7 @@
     [com.walmartlabs.lacinia.resolve :as resolve]
     [com.walmartlabs.lacinia.parser.query :as qp]
     [com.walmartlabs.lacinia.tracing :as tracing]
+    [com.walmartlabs.lacinia.protocols :as p]
     [flatland.ordered.map :refer [ordered-map]])
   (:import
     (clojure.lang ExceptionInfo)))
@@ -36,13 +37,6 @@
   (->> coll
        (filter pred)
        first))
-
-(defn ^:private assoc-seq?
-  "Associates a key into map only when the value is a non-empty seq."
-  [m k v]
-  (if (seq v)
-    (assoc m k v)
-    m))
 
 (declare ^:private selection)
 
@@ -767,16 +761,42 @@
 
    :selector schema/floor-selector})
 
+(defrecord ^:private  FieldSelection [selection-type field-definition leaf? concrete-type? reportable-arguments
+                                     alias field-name selections directives arguments]
+
+  p/QualifiedName
+
+  (qualified-name [_] (:qualified-name field-definition))
+
+  p/SelectionSet
+
+  (field-selection? [_] true)
+
+  (selections [_] selections)
+
+  p/FieldSelection
+
+  (field-name [_] field-name)
+
+  (alias-name [_] alias))
+
+(defn ^:private nil-map
+  [m]
+  (when-not (empty? m)
+    m))
+
 (defn ^:private prepare-parsed-field
-  [parsed-field]
+  [defaults parsed-field]
   (let [{:keys [alias field-name selections directives args]} parsed-field
         arguments (build-map-from-parsed-arguments args)]
-    (-> {:field field-name
-         :alias alias
-         :selections selections
-         :directives directives}
-        (assoc-seq? :arguments arguments)
-        (assoc-seq? :reportable-arguments (extract-reportable-arguments arguments)))))
+    (map->FieldSelection (assoc defaults
+                                :selection-type :field
+                                :field-name field-name
+                                :alias (or alias field-name)
+                                :selections selections
+                                :directives (seq directives)
+                                :arguments (nil-map arguments)
+                                :reportable-arguments (nil-map (extract-reportable-arguments arguments))))))
 
 (defn ^:private select-operation
   "Given a collection of parsed operation definitions and an operation name (which
@@ -1006,30 +1026,29 @@
   (let [defaults (default-node-map parsed-field)
         context (node-context defaults)
         result (with-exception-context context
-                 (merge defaults (prepare-parsed-field parsed-field)))
-        {:keys [field alias arguments reportable-arguments directives]} result
-        is-typename-metafield? (= field :__typename)
+                 (prepare-parsed-field defaults parsed-field))
+        {:keys [field-name arguments directives]} result
+        is-typename-metafield? (= field-name :__typename)
         field-definition (if is-typename-metafield?
                            typename-field-definition
-                           (get-in type [:fields field]))
+                           (get-in type [:fields field-name]))
         field-type (schema/root-type-name field-definition)
         nested-type (get schema field-type)
-        field-name (:qualified-name field-definition)
+        qualified-field-name (:qualified-name field-definition field-name)
         context' (cond-> context
-                   field-name (assoc :field field-name))
+                   qualified-field-name (assoc :field-name qualified-field-name))
         selection (with-exception-context context'
                     (when (nil? nested-type)
                       (if (scalar? type)
-                        (throw-exception "Path de-references through a scalar type."
-                                         {:field field})
+                        (throw-exception "Path de-references through a scalar type." {})
                         (let [type-name (:type-name type)]
                           (throw-exception (format "Cannot query field %s on type %s."
-                                                   (q field)
+                                                   (q field-name)
                                                    (if type-name
                                                      (q type-name)
                                                      "UNKNOWN"))
-                                           {:type type-name
-                                            :field field}))))
+                                           {:field-name field-name
+                                            :type-name type-name}))))
                     (let [[literal-arguments dynamic-arguments-extractor]
                           (try
                             (process-arguments schema
@@ -1037,22 +1056,31 @@
                                                arguments)
                             (catch ExceptionInfo e
                               (throw-exception (format "Exception applying arguments to field %s: %s"
-                                                       (q field)
+                                                       (q field-name)
                                                        (to-message e))
                                                nil
                                                e)))]
                       (assoc result
-                             :selection-type :field
                              :directives (convert-parsed-directives schema directives)
-                             :alias (or alias field)
                              :leaf? (scalar? nested-type)
                              :concrete-type? (or is-typename-metafield?
                                                  (-> type :category #{:object :input-object} some?))
-                             :reportable-arguments reportable-arguments
                              :arguments literal-arguments
                              ::arguments-extractor dynamic-arguments-extractor
                              :field-definition field-definition)))]
     (normalize-selections schema selection nested-type)))
+
+(defrecord ^:private InlineFragment [selection-type selections directives]
+
+  p/Directives
+
+  (directives [_] directives)
+
+  p/SelectionSet
+
+  (field-selection? [_] false)
+
+  (selections [_] selections))
 
 (defmethod selection :inline-fragment
   [schema parsed-inline-fragment _type]
@@ -1072,10 +1100,23 @@
               inline-fragment (-> selection
                                   (assoc :selection-type :inline-fragment
                                          :concrete-types concrete-types)
-                                  (cond-> directives (assoc :directives (convert-parsed-directives schema directives))))]
+                                  (cond-> directives (assoc :directives (convert-parsed-directives schema directives)))
+                                  map->InlineFragment)]
           (normalize-selections schema
                                 inline-fragment
                                 fragment-type))))))
+
+(defrecord ^:private NamedFragment [selection-type directives selections]
+
+  p/SelectionSet
+
+  (field-selection? [_] false)
+
+  (selections [_] selections)
+
+  p/Directives
+
+  (directives [_] directives))
 
 (defmethod selection :named-fragment
   [schema parsed-fragment _type]
@@ -1085,8 +1126,9 @@
       ;; TODO: Verify that fragment name exists?
       (-> defaults
           (merge {:selection-type :fragment-spread
-                  :fragment-name fragment-name})
-          (cond-> directives (assoc :directives (convert-parsed-directives schema directives)))
+                  :fragment-name fragment-name
+                  :directives (seq (convert-parsed-directives schema directives))})
+          map->NamedFragment
           mark-node-for-prepare))))
 
 (defn ^:private construct-var-type-map
