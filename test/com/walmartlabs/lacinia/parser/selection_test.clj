@@ -18,7 +18,6 @@
     [clojure.test :refer [is deftest use-fixtures]]
     [com.walmartlabs.lacinia.executor :as executor]
     [com.walmartlabs.lacinia.protocols :as p]
-    [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.test-utils :refer [compile-sdl-schema execute]]))
 
 (def ^:private *log (atom []))
@@ -59,4 +58,36 @@
                           :alias :basic}]
              [:directive-keys [:concise]]
              [:directive-names [:concise]]]
+           @*log))))
+
+(deftest directive-args
+  (let [f (fn [context _ _]
+            (let [limit (->> context
+                             executor/selection
+                             p/directives
+                             :limit
+                             first
+                             p/arguments
+                             :value)]
+              (log :limit limit)
+              (repeat limit "X")))
+        schema (compile-sdl-schema "selection/directive-args.sdl"
+                                   {:Query/basic f})]
+     (is (= {:data {:basic (repeat 10 "X")}}
+           (execute schema "{basic @limit}")))
+
+     (is (= {:data {:basic (repeat 2 "X")}}
+           (execute schema "{basic @limit(value: 2)}")))
+
+    (is (= {:data {:basic ["X"]}}
+           (execute schema "
+           query($n: Int!) {
+             basic @limit(value: $n)
+           }"
+                    {:n 1}
+                    nil)))
+
+    (is (= [[:limit 10]
+            [:limit 2]
+            [:limit 1]]
            @*log))))

@@ -178,16 +178,12 @@
   whose value comes from a query variable."
   [arguments]
   (when arguments
-    (loop [state nil
-           args arguments]
-      (if (seq args)
-        (let [[k v] (first args)
-              classification (if (is-dynamic? v)
-                               :dynamic
-                               :literal)]
-          (recur (assoc-in state [classification k] v)
-                 (next args)))
-        [(:literal state) (:dynamic state)]))))
+    (let [literals (volatile! (transient {}))
+          dynamics (volatile! (transient {}))]
+      (doseq [[k v] arguments]
+        (vswap! (if (is-dynamic? v) dynamics literals) assoc! k v))
+      [(persistent! @literals)
+       (persistent! @dynamics)])))
 
 (defn ^:private collect-default-values
   [field-map]                                               ; also works with arguments
@@ -692,6 +688,8 @@
   values from the map of query variables."
   [schema argument-definitions arguments]
   (let [[literal-args dynamic-args] (split-arguments arguments)
+        ;; literal-argument-values may include defaults for arguments that will be provided as
+        ;; a variable (if the variable is omitted, the default stands).
         literal-argument-values (construct-literal-arguments schema argument-definitions literal-args)
         dynamic-extractor (construct-dynamic-arguments-extractor schema argument-definitions dynamic-args)
         missing-keys (-> argument-definitions
@@ -709,7 +707,6 @@
     (when (seq missing-keys)
       (throw-exception "Not all non-nullable arguments have supplied values."
                        {:missing-arguments missing-keys}))
-
     [literal-argument-values dynamic-extractor]))
 
 (defn ^:private default-node-map
@@ -728,17 +725,19 @@
 
   (directive-type [_] directive-name)
 
-  )
+  p/Arguments
+
+  (arguments [_] arguments))
 
 (defn ^:private convert-parsed-directives
   "Passed a seq of parsed directive nodes, returns a seq of executable directives."
   [schema parsed-directives]
   (let [{:keys [::schema/directive-defs]} schema
         f (fn [parsed-directive]
-            (let [{directive-name :directive-name} parsed-directive]
+            (let [{directive-name :directive-name} parsed-directive
+                  all-directive-defs (merge builtin-directives directive-defs)]
               (with-exception-context {:directive-name directive-name}
-                (if-let [directive-def (or (get builtin-directives directive-name)
-                                           (get directive-defs directive-name))]
+                (if-let [directive-def (get all-directive-defs directive-name)]
                   (let [[literal-arguments dynamic-arguments-extractor]
                         (try
                           (process-arguments schema
@@ -759,7 +758,7 @@
                   (throw-exception (format "Unknown directive %s."
                                            (q directive-name)
                                            {:unknown-directive directive-name
-                                            :available-directives (-> builtin-directives keys sort)}))))))]
+                                            :available-directives (-> all-directive-defs keys sort)}))))))]
     (mapv f parsed-directives)))
 
 (def ^:private typename-field-definition
@@ -871,29 +870,26 @@
       (or directives? dynamic-arguments? selections-need-prepare?)
       (assoc ::needs-prepare? true))))
 
-(defn ^:private compute-arguments
+(defn ^:private apply-variables-to-arguments
   [node variables]
-  (let [{:keys [arguments :arguments-extractor]} node]
-    (cond-> arguments
-      arguments-extractor (merge (arguments-extractor variables)))))
+  (let [{:keys [arguments arguments-extractor]} node]
+    (cond-> node
+      arguments-extractor
+      (assoc :arguments (merge arguments (arguments-extractor variables))))))
 
 (defn ^:private apply-directives
   "Computes final arguments for each directive, and passes the node through each
   directive's effector."
   [node variables]
-  (reduce (fn [node directive]
-            ;; Only the built-in directives @skip and @include have effectors, other
-            ;; directives do not.
-            (if-let [effector (:effector directive)]
-              (effector node (compute-arguments directive variables))
-              node))
-          node
-          (:directives node)))
-
-(defn ^:private apply-dynamic-arguments
-  "Computes final arguments for a field from its literal arguments and dynamic arguments."
-  [node variables]
-  (assoc node :arguments (compute-arguments node variables)))
+  (let [directives' (map #(apply-variables-to-arguments % variables) (:directives node))]
+    (reduce (fn [node directive]
+              ;; Only the built-in directives @skip and @include have effectors, other
+              ;; directives do not.
+              (if-let [effector (:effector directive)]
+                (effector node (:arguments directive))
+                node))
+            (assoc node :directives directives')
+            directives')))
 
 (declare ^:private prepare-node)
 
@@ -921,7 +917,7 @@
         ;; No need to do work further down the tree if the node itself is
         ;; disabled
         (cond-> node'
-          prepare-dynamic-arguments? (apply-dynamic-arguments variables)
+          prepare-dynamic-arguments? (apply-variables-to-arguments variables)
           prepare-nested-selections? (prepare-nested-selections variables))))))
 
 (defn ^:private to-selection-key

@@ -8,7 +8,19 @@
   (qualified-name [named]
     "Returns a keyword whose namespace is the containing element; e.g., :User/id for the id field of the User type."))
 
+(defprotocol Arguments
+
+  "Implemented by [[Directive]]."
+
+  (arguments [element]
+    "Returns a map of keyword name to value.  May return nil if no arguments.
+
+     The value may reflect query variables or argument defaults."))
+
 (defprotocol Directive
+
+  "Implements [[Arguments]]."
+
   (directive-type [d]
     "Returns the type of directive as a keyword."))
 
@@ -19,8 +31,6 @@
     "Returns a map of directives for this element; keys are keywords, values are a seq of Directive.
 
     May return nil."))
-
-(defprotocol Argument)
 
 (defprotocol SelectionSet
 
