@@ -38,6 +38,11 @@
        (filter pred)
        first))
 
+(defn ^:private nil-map
+  [m]
+  (when-not (empty? m)
+    m))
+
 (declare ^:private selection)
 
 (defn ^:private contains-modifier?
@@ -717,6 +722,14 @@
   [node-map]
   {:locations [(:location node-map)]})
 
+(defrecord ^:private Directive [directive-name effector arguments arguments-extractor]
+
+  p/Directive
+
+  (directive-type [_] directive-name)
+
+  )
+
 (defn ^:private convert-parsed-directives
   "Passed a seq of parsed directive nodes, returns a seq of executable directives."
   [schema parsed-directives]
@@ -737,10 +750,12 @@
                                                      (to-message e))
                                              nil
                                              e)))]
-                    (assoc parsed-directive
-                           :effector (:effector directive-def)
-                           :arguments literal-arguments
-                           ::arguments-extractor dynamic-arguments-extractor))
+                    (-> parsed-directive
+                        (assoc
+                          :effector (:effector directive-def)
+                          :arguments literal-arguments
+                          :arguments-extractor dynamic-arguments-extractor)
+                        map->Directive))
                   (throw-exception (format "Unknown directive %s."
                                            (q directive-name)
                                            {:unknown-directive directive-name
@@ -780,12 +795,12 @@
 
   (field-name [_] field-name)
 
-  (alias-name [_] alias))
+  (alias-name [_] alias)
 
-(defn ^:private nil-map
-  [m]
-  (when-not (empty? m)
-    m))
+  p/Directives
+
+  (directives [_]
+    (nil-map (group-by :directive-name directives))))
 
 (defn ^:private prepare-parsed-field
   [defaults parsed-field]
@@ -844,7 +859,7 @@
   with nested selections."
   [node]
   (let [directives? (-> node :directives some?)
-        dynamic-arguments? (-> node ::arguments-extractor some?)
+        dynamic-arguments? (-> node :arguments-extractor some?)
         selections-need-prepare? (->> node
                                       :selections
                                       (some ::needs-prepare?)
@@ -858,7 +873,7 @@
 
 (defn ^:private compute-arguments
   [node variables]
-  (let [{:keys [arguments ::arguments-extractor]} node]
+  (let [{:keys [arguments :arguments-extractor]} node]
     (cond-> arguments
       arguments-extractor (merge (arguments-extractor variables)))))
 
@@ -1071,7 +1086,7 @@
                              :concrete-type? (or is-typename-metafield?
                                                  (-> type :category #{:object :input-object} some?))
                              :arguments literal-arguments
-                             ::arguments-extractor dynamic-arguments-extractor
+                             :arguments-extractor dynamic-arguments-extractor
                              :field-definition field-definition)))]
     (normalize-selections schema selection nested-type)))
 

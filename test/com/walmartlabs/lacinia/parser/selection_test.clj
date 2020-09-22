@@ -37,11 +37,16 @@
 
 (deftest access-to-selection
   (let [f (fn [context _ _]
-            (let [s (executor/selection context)]
+            (let [s (executor/selection context)
+                  directives (p/directives s)]
               (log :selection {:field-selection? (p/field-selection? s)
                                :qualified-name (p/qualified-name s)
                                :field-name (p/field-name s)
-                               :alias (p/alias-name s)}))
+                               :alias (p/alias-name s)}
+                   :directive-keys (-> directives keys sort)
+                   :directive-names (->> directives
+                                         :concise
+                                         (map p/directive-type))))
             "Done")
         schema (compile-sdl-schema "selection/simple.sdl"
                                    {:Query/basic f})
@@ -51,11 +56,7 @@
     (is (= '[[:selection {:field-selection? true
                           :qualified-name :Query/basic
                           :field-name :basic
-                          :alias :basic}]]
+                          :alias :basic}]
+             [:directive-keys [:concise]]
+             [:directive-names [:concise]]]
            @*log))))
-
-
-(comment
-  (-> (compile-sdl-schema "selection/simple.sdl" nil)
-       ::schema/directive-defs)
-  )
