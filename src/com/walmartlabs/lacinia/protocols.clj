@@ -49,7 +49,21 @@
   (field-name [fs]
     "Returns the name of the field (as an unqualified keyword).")
 
+  (root-value-type [fs]
+    "Returns the root value type for this field (the actual type may
+    include `list` or `non-null` qualifiers).")
+
   (alias-name [fs]
     "Returns the alias for the field selection, or name of the field."))
+
+(defprotocol Type
+
+  "A type defined in a GraphQL schema.  Implements the [[Directives]] protocol as well."
+
+  (type-name [type]
+    "Returns the name of the type, as a keyword.")
+
+  (type-kind [type]
+    "Returns the kind of type, one of: `:object`, `:union`, `:interface`, `:scalar`, or `:enum`."))
 
 

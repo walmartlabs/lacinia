@@ -13,7 +13,7 @@
 ; limitations under the License.
 
 (ns com.walmartlabs.lacinia.parser.selection-test
-  "Tests related to the executor/selection function and related data, introduced in 0.38.0."
+  "Tests related to the executor/selection functi5on and related data, introduced in 0.38.0."
   (:require
     [clojure.test :refer [is deftest use-fixtures]]
     [com.walmartlabs.lacinia.executor :as executor]
@@ -60,6 +60,68 @@
              [:directive-names [:concise]]]
            @*log))))
 
+(deftest access-to-type
+  (let [me (fn [context _ _]
+             (let [t (-> context
+                         executor/selection
+                         p/root-value-type)]
+               (log :type {:type-name (p/type-name t)
+                           :type-kind (p/type-kind t)})
+               {:name "Lacinia"}))
+        friends (fn [context _ _]
+                  (log :type (-> context
+                                 executor/selection
+                                 p/root-value-type
+                                 p/type-name))
+                  [{:name "Asinthe"}
+                   {:name "Graphiti"}])
+        schema (compile-sdl-schema "selection/object-type.sdl"
+                                   {:Query/me me
+                                    :Query/friends friends})]
+    (is (= {:data {:me {:name "Lacinia"}}}
+           (execute schema "{ me { name }}")))
+
+    (is (= {:data {:friends [{:name "Asinthe"}
+                             {:name "Graphiti"}]}}
+           (execute schema "{ friends { name }}")))
+
+    (is (= [[:type {:type-kind :object
+                    :type-name :User}]
+            ;; Still :User, because we unwrap list and non-null
+            [:type :User]]
+           @*log))))
+
+(deftest access-to-type-directives
+  (let [context->role (fn [context]
+                        (-> context
+                            executor/selection
+                            p/root-value-type
+                            p/directives
+                            :auth
+                            first
+                            p/arguments
+                            :role))
+        me (fn [context _ _]
+             (log :me-role (context->role context))
+             {:name "Lacinia"})
+        friends (fn [context _ _]
+                  (log :friends-role (context->role context))
+                  [{:name "Asinthe"}
+                   {:name "Graphiti"}])
+        schema (compile-sdl-schema "selection/object-type.sdl"
+                                   {:Query/me me
+                                    :Query/friends friends})]
+    (is (= {:data {:me {:name "Lacinia"}}}
+           (execute schema "{ me { name }}")))
+
+    (is (= {:data {:friends [{:name "Asinthe"}
+                             {:name "Graphiti"}]}}
+           (execute schema "{ friends { name }}")))
+
+    (is (= [[:me-role "basic"]
+            [:friends-role "basic"]]
+           @*log))))
+
 (deftest directive-args
   (let [f (fn [context _ _]
             (let [limit (->> context
@@ -73,10 +135,10 @@
               (repeat limit "X")))
         schema (compile-sdl-schema "selection/directive-args.sdl"
                                    {:Query/basic f})]
-     (is (= {:data {:basic (repeat 10 "X")}}
+    (is (= {:data {:basic (repeat 10 "X")}}
            (execute schema "{basic @limit}")))
 
-     (is (= {:data {:basic (repeat 2 "X")}}
+    (is (= {:data {:basic (repeat 2 "X")}}
            (execute schema "{basic @limit(value: 2)}")))
 
     (is (= {:data {:basic ["X"]}}

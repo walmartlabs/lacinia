@@ -778,7 +778,8 @@
    :selector schema/floor-selector})
 
 (defrecord ^:private FieldSelection [selection-type field-definition leaf? concrete-type? reportable-arguments
-                                     alias field-name selections directives arguments]
+                                     alias field-name selections directives arguments
+                                     root-value-type]
 
   p/QualifiedName
 
@@ -795,6 +796,8 @@
   (field-name [_] field-name)
 
   (alias-name [_] alias)
+
+  (root-value-type [_] root-value-type)
 
   p/Directives
 
@@ -1077,6 +1080,7 @@
                                                nil
                                                e)))]
                       (assoc result
+                             :root-value-type nested-type
                              :directives (convert-parsed-directives schema directives)
                              :leaf? (scalar? nested-type)
                              :concrete-type? (or is-typename-metafield?

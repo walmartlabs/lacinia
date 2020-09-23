@@ -34,6 +34,7 @@
     [clojure.string :as str]
     [clojure.set :refer [difference]]
     [clojure.pprint :as pprint]
+    [com.walmartlabs.lacinia.protocols :as p]
     [com.walmartlabs.lacinia.selector-context :as sc])
   (:import
     (clojure.lang IObj)
@@ -437,6 +438,40 @@
 (s/def ::compile-options (s/keys :opt-un [::default-field-resolver
                                           ::promote-nils-to-empty-list?
                                           ::enable-introspection?]))
+
+(defrecord ^:private Directive [directive-type arguments]
+
+  p/Directive
+
+  (directive-type [_] directive-type)
+
+  p/Arguments
+
+  ;; TODO: May need to do some processing of defaults from directive def on the arguments.
+  (arguments [_] arguments))
+
+(defrecord ^:private Type [category type-name description fields directives compiled-directives
+                           implements tag]
+
+  p/Type
+
+  (type-name [_] type-name)
+
+  (type-kind [_] category)
+
+  p/Directives
+
+  (directives [_] compiled-directives))
+
+(defn ^:private compile-directives
+  [element]
+  (let [{:keys [directives]} element]
+    (if (seq directives)
+      (assoc element :compiled-directives (->> directives
+                                               (map (fn [{:keys [directive-type directive-args]}]
+                                                      (->Directive directive-type directive-args)))
+                                               (group-by p/directive-type)))
+      element)))
 
 (defmulti ^:private check-compatible
   "Given two type definitions, dispatches on a vector of the category of the two types.
@@ -1106,8 +1141,10 @@
                         {:object object
                          :schema-types (type-map schema)}))))
     (-> object
+        map->Type
         (assoc :implements implements
                :tag tag-class)
+        compile-directives
         compile-fields)))
 
 (defmethod compile-type :input-object
@@ -1352,10 +1389,10 @@
   "Adds a root object for 'extra' operations (e.g., the :queries map in the input schema)."
   [compiled-schema object-name object-description fields]
   (assoc compiled-schema object-name
-         {:category :object
-          :type-name object-name
-          :description object-description
-          :fields fields}))
+         (map->Type {:category :object
+                     :type-name object-name
+                     :description object-description
+                     :fields fields})))
 
 (defn ^:private merge-root
   "Used after the compile-type stage, to merge together the root objects, one possibly provided
