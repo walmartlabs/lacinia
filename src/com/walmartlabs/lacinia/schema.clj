@@ -457,7 +457,19 @@
 
   (type-name [_] type-name)
 
-  (type-kind [_] category)
+  (type-kind [_] :object)
+
+  p/Directives
+
+  (directives [_] compiled-directives))
+
+(defrecord ^:private Interface [type-name member fields directives compiled-directives]
+
+  p/Type
+
+  (type-name [_] type-name)
+
+  (type-kind [_] :interface)
 
   p/Directives
 
@@ -1165,7 +1177,10 @@
 
 (defmethod compile-type :interface
   [interface schema]
-  (compile-fields interface))
+  (-> interface
+      map->Interface
+      compile-directives
+      compile-fields))
 
 (defn ^:private extract-type-name
   "Navigates a type map down to the root kind and returns the type name."
@@ -1314,7 +1329,8 @@
                                     (map-vals #(assoc % :type-name interface-name))
                                     (map-vals apply-deprecated-directive))]
                    (-> interface
-                       (assoc :members implementors :fields fields')
+                       (assoc :members implementors
+                              :fields fields')
                        (dissoc :resolve)))))))
 
 (defn ^:private prepare-and-validate-object

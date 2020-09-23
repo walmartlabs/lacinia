@@ -18,7 +18,8 @@
     [clojure.test :refer [is deftest use-fixtures]]
     [com.walmartlabs.lacinia.executor :as executor]
     [com.walmartlabs.lacinia.protocols :as p]
-    [com.walmartlabs.test-utils :refer [compile-sdl-schema execute]]))
+    [com.walmartlabs.test-utils :refer [compile-sdl-schema execute]]
+    [com.walmartlabs.lacinia.schema :as schema]))
 
 (def ^:private *log (atom []))
 
@@ -122,6 +123,37 @@
             [:friends-role "basic"]]
            @*log))))
 
+(deftest access-to-interface-directives
+  (let [me (fn [context _ _]
+             (let [root-type (-> context
+                                 executor/selection
+                                 p/root-value-type)]
+               (log :type-name (p/type-name root-type)
+                    :kind (p/type-kind root-type)
+                    :role (-> root-type
+                              p/directives
+                              :auth
+                              first
+                              p/arguments
+                              :role)))
+             (schema/tag-with-type {:name "Lacinia" :userId 101} :LegacyUser))
+        schema (compile-sdl-schema "selection/interface-types.sdl"
+                                   {:Query/me me})]
+    (is (= {:data {:me {:name "Lacinia" :userId 101}}}
+           (execute schema "
+           {
+             me {
+                name
+                ... on LegacyUser { userId }
+             }
+           }")))
+
+    ;; And not the 'hidden' role on the LegacyUser object
+    (is (= [[:type-name :User]
+            [:kind :interface]
+            [:role "basic"]]
+           @*log))))
+
 (deftest directive-args
   (let [f (fn [context _ _]
             (let [limit (->> context
@@ -153,3 +185,10 @@
             [:limit 2]
             [:limit 1]]
            @*log))))
+
+(comment
+  (-> "selection/interface-types.sdl"
+      clojure.java.io/resource
+      slurp
+      com.walmartlabs.lacinia.parser.schema/parse-schema)
+  )
