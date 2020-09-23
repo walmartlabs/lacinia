@@ -475,6 +475,18 @@
 
   (directives [_] compiled-directives))
 
+(defrecord ^:private Union [type-name description directives compiled-directives]
+
+  p/Type
+
+  (type-name [_] type-name)
+
+  (type-kind [_] :union)
+
+  p/Directives
+
+  (directives [_] compiled-directives))
+
 (defn ^:private compile-directives
   [element]
   (let [{:keys [directives]} element]
@@ -1069,7 +1081,10 @@
                                   (-> type :category name))
                           {:union union
                            :schema-types (type-map schema)})))))
-    (assoc union :members members)))
+    (-> union
+        map->Union
+        compile-directives
+        (assoc :members members))))
 
 (defn ^:private apply-deprecated-directive
   "For a field definition or enum value definition, checks for a :deprecated annotation and,
