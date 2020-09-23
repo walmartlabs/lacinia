@@ -487,6 +487,20 @@
 
   (directives [_] compiled-directives))
 
+(defrecord ^:private EnumType [type-name description parse serialize values
+                               values-detail values-set
+                               directives compiled-directives]
+
+  p/Type
+
+  (type-name [_] type-name)
+
+  (type-kind [_] :enum)
+
+  p/Directives
+
+  (directives [_] compiled-directives))
+
 (defn ^:private compile-directives
   [element]
   (let [{:keys [directives]} element]
@@ -1129,12 +1143,15 @@
       (throw (ex-info (format "Values defined for enum %s must be unique."
                               (-> enum-def :type-name q))
                       {:enum enum-def})))
-    (assoc enum-def
-           :parse parse
-           :serialize serialize
-           :values values
-           :values-detail details
-           :values-set values-set)))
+    (-> enum-def
+        map->EnumType
+        compile-directives
+        (assoc
+          :parse parse
+          :serialize serialize
+          :values values
+          :values-detail details
+          :values-set values-set))))
 
 (defmethod compile-type :object
   [object schema]

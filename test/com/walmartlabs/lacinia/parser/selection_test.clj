@@ -35,6 +35,22 @@
 
 (use-fixtures :each reset-log)
 
+(defn ^:private root-type
+  [context]
+  (-> context
+      executor/selection
+      p/root-value-type))
+
+(defn ^:private auth-role
+  [context]
+  (-> context
+      root-type
+      p/directives
+      :auth
+      first
+      p/arguments
+      :role))
+
 (deftest access-to-selection
   (let [f (fn [context _ _]
             (let [s (executor/selection context)
@@ -63,17 +79,12 @@
 
 (deftest access-to-type
   (let [me (fn [context _ _]
-             (let [t (-> context
-                         executor/selection
-                         p/root-value-type)]
+             (let [t (root-type context)]
                (log :type {:type-name (p/type-name t)
                            :type-kind (p/type-kind t)})
                {:name "Lacinia"}))
         friends (fn [context _ _]
-                  (log :type (-> context
-                                 executor/selection
-                                 p/root-value-type
-                                 p/type-name))
+                  (log :type (-> context root-type p/type-name))
                   [{:name "Asinthe"}
                    {:name "Graphiti"}])
         schema (compile-sdl-schema "selection/object-type.sdl"
@@ -93,20 +104,11 @@
            @*log))))
 
 (deftest access-to-type-directives
-  (let [context->role (fn [context]
-                        (-> context
-                            executor/selection
-                            p/root-value-type
-                            p/directives
-                            :auth
-                            first
-                            p/arguments
-                            :role))
-        me (fn [context _ _]
-             (log :me-role (context->role context))
+  (let [me (fn [context _ _]
+             (log :me-role (auth-role context))
              {:name "Lacinia"})
         friends (fn [context _ _]
-                  (log :friends-role (context->role context))
+                  (log :friends-role (auth-role context))
                   [{:name "Asinthe"}
                    {:name "Graphiti"}])
         schema (compile-sdl-schema "selection/object-type.sdl"
@@ -125,17 +127,10 @@
 
 (deftest access-to-interface-directives
   (let [me (fn [context _ _]
-             (let [root-type (-> context
-                                 executor/selection
-                                 p/root-value-type)]
-               (log :type-name (p/type-name root-type)
-                    :kind (p/type-kind root-type)
-                    :role (-> root-type
-                              p/directives
-                              :auth
-                              first
-                              p/arguments
-                              :role)))
+             (let [t (root-type context)]
+               (log :type-name (p/type-name t)
+                    :kind (p/type-kind t)
+                    :role (auth-role context)))
              (schema/tag-with-type {:name "Lacinia" :userId 101} :LegacyUser))
         schema (compile-sdl-schema "selection/interface-types.sdl"
                                    {:Query/me me})]
@@ -156,18 +151,12 @@
 
 (deftest access-to-union-directives
   (let [me (fn [context _ _]
-             (let [root-type (-> context
-                                 executor/selection
-                                 p/root-value-type)]
-               (log :type-name (p/type-name root-type)
-                    :kind (p/type-kind root-type)
-                    :role (-> root-type
-                              p/directives
-                              :auth
-                              first
-                              p/arguments
-                              :role)))
-             (schema/tag-with-type {:userName "Lacinia" :userId 101} :LegacyUser))
+             (let [t (root-type context)]
+               (log :type-name (p/type-name t)
+                    :kind (p/type-kind t)
+                    :role (auth-role context)))
+             (schema/tag-with-type {:userName "Lacinia" :userId 101}
+                                   :LegacyUser))
         schema (compile-sdl-schema "selection/union-types.sdl"
                                    {:Query/me me})]
     (is (= {:data {:me {:userName "Lacinia" :userId 101}}}
@@ -182,6 +171,26 @@
     (is (= [[:type-name :User]
             [:kind :union]
             [:role "basic"]]
+           @*log))))
+
+(deftest access-to-enum-directives
+  (let [me (constantly
+             {:name "Lacinia"})
+        rank (fn [context _ _]
+               (let [t (root-type context)]
+                 (log :type-name (p/type-name t)
+                      :role (auth-role context))
+                 :SENIOR))
+        schema (compile-sdl-schema "selection/enum-types.sdl"
+                                   {:Query/me me
+                                    :User/rank rank})]
+
+    (is (= {:data {:me {:name "Lacinia"
+                        :rank :SENIOR}}}
+           (execute schema "{ me { name rank } }")))
+
+    (is (= [[:type-name :Rank]
+            [:role "enum"]]
            @*log))))
 
 (deftest directive-args
