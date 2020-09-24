@@ -60,7 +60,7 @@
   (let [f (fn [context _ _]
             (let [s (executor/selection context)
                   directives (p/directives s)]
-              (log :selection {:field-selection? (p/field-selection? s)
+              (log :selection {:kind (p/selection-kind s)
                                :qualified-name (p/qualified-name s)
                                :field-name (p/field-name s)
                                :alias (p/alias-name s)}
@@ -74,7 +74,7 @@
         result (execute schema "{ basic @concise }")]
     (is (= {:data {:basic "Done"}}
            result))
-    (is (= '[[:selection {:field-selection? true
+    (is (= '[[:selection {:kind :field
                           :qualified-name :Query/basic
                           :field-name :basic
                           :alias :basic}]
@@ -152,6 +152,40 @@
     (is (= [[:type-name :User]
             [:kind :interface]
             [:role "basic"]]
+           @*log))))
+
+(deftest sub-selections
+  (let [me (fn [context _ _]
+             (doseq [s (-> context
+                           executor/selection
+                           p/selections)
+                     :let [sub-kind (p/selection-kind s)]]
+               (log :sub-kind sub-kind)
+               (when (= :field sub-kind)
+                 (log :sub-field-name (p/field-name s)
+                      :sub-field-type (-> s p/root-value-type p/type-name))))
+
+             (schema/tag-with-type {:name "Lacinia" :userId 101} :LegacyUser))
+        schema (compile-sdl-schema "selection/interface-types.sdl"
+                                   {:Query/me me})]
+    (is (= {:data {:me {:type :LegacyUser
+                        :name "Lacinia" :userId 101}}}
+           (execute schema "
+           {
+             me {
+                type: __typename
+                name
+                ... on LegacyUser { userId }
+             }
+           }")))
+
+    (is (= [[:sub-kind :field]
+            [:sub-field-name :__typename]
+            [:sub-field-type :String]
+            [:sub-kind :field]
+            [:sub-field-name :name]
+            [:sub-field-type :String]
+            [:sub-kind :inline-fragment]]
            @*log))))
 
 (deftest access-to-union-directives

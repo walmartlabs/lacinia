@@ -596,7 +596,7 @@
 
 (defn selection [context]
   "Returns the field selection, which implements the
-  FieldSelection, QualifiedName, SelectionSet, and Directives protocols."
+  [[FieldSelection]], [[QualifiedName]], [[SelectionSet]], and [[Directives]] protocols."
   {:added "0.38.0"}
   (get context constants/selection-key))
 

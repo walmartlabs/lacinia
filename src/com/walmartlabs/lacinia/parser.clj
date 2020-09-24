@@ -787,7 +787,7 @@
 
   p/SelectionSet
 
-  (field-selection? [_] true)
+  (selection-kind [_] :field)
 
   (selections [_] selections)
 
@@ -1098,7 +1098,7 @@
 
   p/SelectionSet
 
-  (field-selection? [_] false)
+  (selection-kind [_] :inline-fragment)
 
   (selections [_] selections))
 
@@ -1130,7 +1130,7 @@
 
   p/SelectionSet
 
-  (field-selection? [_] false)
+  (selection-kind [_] :named-fragment)
 
   (selections [_] selections)
 

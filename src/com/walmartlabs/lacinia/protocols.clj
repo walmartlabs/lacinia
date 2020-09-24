@@ -34,12 +34,17 @@
 
 (defprotocol SelectionSet
 
-  "An selection that may contain sub-selections.  FieldSelection specializes this."
+  "An selection that may contain sub-selections."
 
-  (field-selection? [selection])
+  (selection-kind [selection]
+    "The type of selection: either :field, :inline-fragment or :named-fragment.
+
+    For :field, the [[FieldSelection]] protocol will also be implemented.")
 
   (selections [selection]
-    "Returns a seq of sub-selections of this field selection."))
+    "Returns a seq of sub-selections (also SelectionSets) of this selection.
+
+    May be nil for a field that selects a scalar."))
 
 (defprotocol FieldSelection
 
