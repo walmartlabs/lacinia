@@ -19,7 +19,12 @@
     [com.walmartlabs.lacinia.executor :as executor]
     [com.walmartlabs.lacinia.protocols :as p]
     [com.walmartlabs.test-utils :refer [compile-sdl-schema execute]]
-    [com.walmartlabs.lacinia.schema :as schema]))
+    [com.walmartlabs.lacinia.schema :as schema]
+    [com.walmartlabs.lacinia.parser.schema :refer [parse-schema]]
+    [clojure.java.io :as io]
+    [com.walmartlabs.lacinia.util :as util])
+  (:import
+    (java.util UUID)))
 
 (def ^:private *log (atom []))
 
@@ -193,6 +198,32 @@
             [:role "enum"]]
            @*log))))
 
+(deftest access-to-scalar-directives
+  (let [me (constantly
+             {:name "Lacinia"})
+        uuid (str (UUID/randomUUID))
+        id-resolver (fn [context _ _]
+                      (log :type-name (-> context root-type p/type-name)
+                           :role (auth-role context))
+                      uuid)
+        schema (-> "selection/scalar-types.sdl"
+                   io/resource
+                   slurp
+                   parse-schema
+                   (util/inject-scalar-transformers {:UUID {:parse identity
+                                                            :serialize identity}})
+                   (util/inject-resolvers {:Query/me me
+                                           :User/id id-resolver})
+                   schema/compile)]
+
+    (is (= {:data {:me {:name "Lacinia"
+                        :id uuid}}}
+           (execute schema "{ me { name id } }")))
+
+    (is (= [[:type-name :UUID]
+            [:role "basic"]]
+           @*log))))
+
 (deftest directive-args
   (let [f (fn [context _ _]
             (let [limit (->> context
@@ -224,10 +255,3 @@
             [:limit 2]
             [:limit 1]]
            @*log))))
-
-(comment
-  (-> "selection/interface-types.sdl"
-      clojure.java.io/resource
-      slurp
-      com.walmartlabs.lacinia.parser.schema/parse-schema)
-  )

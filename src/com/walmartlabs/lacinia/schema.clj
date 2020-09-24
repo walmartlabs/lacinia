@@ -463,7 +463,7 @@
 
   (directives [_] compiled-directives))
 
-(defrecord ^:private Interface [type-name member fields directives compiled-directives]
+(defrecord ^:private Interface [category type-name member fields directives compiled-directives]
 
   p/Type
 
@@ -475,7 +475,7 @@
 
   (directives [_] compiled-directives))
 
-(defrecord ^:private Union [type-name description directives compiled-directives]
+(defrecord ^:private Union [category type-name description directives compiled-directives]
 
   p/Type
 
@@ -487,9 +487,21 @@
 
   (directives [_] compiled-directives))
 
-(defrecord ^:private EnumType [type-name description parse serialize values
+(defrecord ^:private EnumType [category type-name description parse serialize values
                                values-detail values-set
                                directives compiled-directives]
+
+  p/Type
+
+  (type-name [_] type-name)
+
+  (type-kind [_] :enum)
+
+  p/Directives
+
+  (directives [_] compiled-directives))
+
+(defrecord ^:private Scalar [type-name description parsae serialize directives compiled-directives]
 
   p/Type
 
@@ -1071,6 +1083,12 @@
   [type schema]
   type)
 
+(defmethod compile-type :scalar
+  [type schema]
+  (-> type
+      map->Scalar
+      compile-directives))
+
 (defmethod compile-type :union
   [union schema]
   (let [members (-> union :members set)]
@@ -1569,8 +1587,10 @@
   [schema options]
   ;; Note: using merge, not two calls to xfer-types, since want to allow
   ;; for overrides of the built-in scalars without a name conflict exception.
-  (let [merged-scalars (merge default-scalar-transformers
-                              (:scalars schema))
+  (let [merged-scalars (->> schema
+                            :scalars
+                            (merge default-scalar-transformers)
+                            (map-vals #(assoc % :category :scalar)))
         {:keys [query mutation subscription]
          :or {query :QueryRoot
               mutation :MutationRoot
