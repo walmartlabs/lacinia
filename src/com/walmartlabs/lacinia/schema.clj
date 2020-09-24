@@ -439,7 +439,7 @@
                                           ::promote-nils-to-empty-list?
                                           ::enable-introspection?]))
 
-(defrecord ^:private Directive [directive-type arguments]
+(defrecord ^:private Directive [directive-type arguments effector arguments-extractor]
 
   p/Directive
 
@@ -459,6 +459,37 @@
 
   (type-kind [_] :object)
 
+  p/Fields
+
+  (fields [_] fields)
+
+  p/Directives
+
+  (directives [_] compiled-directives))
+
+(defn ^:no-doc root-type-name
+  "For a compiled field (or argument) definition, delves down through the :type tag to find
+  the root type name, a keyword."
+  [field-def]
+  ;; In some error scenarios, the query references an unknown field and
+  ;; the field-def is nil. Without this check, this loops endlessly.
+  (when field-def
+    (loop [type-def (:type field-def)]
+      (if (-> type-def :kind (= :root))
+        (:type type-def)
+        (recur (:type type-def))))))
+
+(defrecord ^:private Field [type type-string directives compiled-directives
+                            field-name qualified-name args]
+
+  p/Field
+
+  (root-type-name [_] (root-type-name type))
+
+  p/QualifiedName
+
+  (qualified-name [_] qualified-name)
+
   p/Directives
 
   (directives [_] compiled-directives))
@@ -470,6 +501,10 @@
   (type-name [_] type-name)
 
   (type-kind [_] :interface)
+
+  p/Fields
+
+  (fields [_] fields)
 
   p/Directives
 
@@ -501,7 +536,7 @@
 
   (directives [_] compiled-directives))
 
-(defrecord ^:private Scalar [type-name description parsae serialize directives compiled-directives]
+(defrecord ^:private Scalar [category type-name description parsae serialize directives compiled-directives]
 
   p/Type
 
@@ -519,7 +554,9 @@
     (if (seq directives)
       (assoc element :compiled-directives (->> directives
                                                (map (fn [{:keys [directive-type directive-args]}]
-                                                      (->Directive directive-type directive-args)))
+                                                      (map->Directive
+                                                        {:directive-type directive-type
+                                                         :arguments directive-args})))
                                                (group-by p/directive-type)))
       element)))
 
@@ -645,18 +682,6 @@
         type-string (type->string field-type)]
     (assoc field-definition :type-string type-string)))
 
-(defn ^:no-doc root-type-name
-  "For a compiled field (or argument) definition, delves down through the :type tag to find
-  the root type name, a keyword."
-  [field-def]
-  ;; In some error scenarios, the query references an unknown field and
-  ;; the field-def is nil. Without this check, this loops endlessly.
-  (when field-def
-    (loop [type-def (:type field-def)]
-      (if (-> type-def :kind (= :root))
-        (:type type-def)
-        (recur (:type type-def))))))
-
 (defn ^:private rewrite-type
   "Rewrites the type tag of a field (or argument) into a nested structure of types.
 
@@ -686,8 +711,10 @@
   [type-def field-name field-def]
   (let [{:keys [type-name]} type-def]
     (-> field-def
+        map->Field
         rewrite-type
         add-type-string
+        compile-directives
         (assoc :field-name field-name
                :qualified-name (qualified-name type-name field-name))
         (update :args #(map-kvs (fn [arg-name arg-def]

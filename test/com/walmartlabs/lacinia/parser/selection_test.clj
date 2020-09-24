@@ -26,19 +26,21 @@
   (:import
     (java.util UUID)))
 
-(def ^:private *log (atom []))
+(def ^:private *facts
+  "A collection of key/value facts gathered during execution of a test."
+  (atom []))
 
-(defn ^:private log
+(defn ^:private note
   [& kvs]
-  (let [pairs (partition-all 2 kvs)]
-    (swap! *log into pairs)))
+  (let [pairs (map vec (partition-all 2 kvs))]
+    (swap! *facts into pairs)))
 
-(defn ^:private reset-log
+(defn ^:private reset-facts
   [f]
-  (reset! *log [])
+  (reset! *facts [])
   (f))
 
-(use-fixtures :each reset-log)
+(use-fixtures :each reset-facts)
 
 (defn ^:private root-type
   [context]
@@ -60,12 +62,12 @@
   (let [f (fn [context _ _]
             (let [s (executor/selection context)
                   directives (p/directives s)]
-              (log :selection {:kind (p/selection-kind s)
+              (note :selection {:kind (p/selection-kind s)
                                :qualified-name (p/qualified-name s)
                                :field-name (p/field-name s)
                                :alias (p/alias-name s)}
-                   :directive-keys (-> directives keys sort)
-                   :directive-names (->> directives
+                    :directive-keys (-> directives keys sort)
+                    :directive-names (->> directives
                                          :concise
                                          (map p/directive-type))))
             "Done")
@@ -80,16 +82,16 @@
                           :alias :basic}]
              [:directive-keys [:concise]]
              [:directive-names [:concise]]]
-           @*log))))
+           @*facts))))
 
 (deftest access-to-type
   (let [me (fn [context _ _]
              (let [t (root-type context)]
-               (log :type {:type-name (p/type-name t)
+               (note :type {:type-name (p/type-name t)
                            :type-kind (p/type-kind t)})
                {:name "Lacinia"}))
         friends (fn [context _ _]
-                  (log :type (-> context root-type p/type-name))
+                  (note :type (-> context root-type p/type-name))
                   [{:name "Asinthe"}
                    {:name "Graphiti"}])
         schema (compile-sdl-schema "selection/object-type.sdl"
@@ -106,14 +108,14 @@
                     :type-name :User}]
             ;; Still :User, because we unwrap list and non-null
             [:type :User]]
-           @*log))))
+           @*facts))))
 
 (deftest access-to-type-directives
   (let [me (fn [context _ _]
-             (log :me-role (auth-role context))
+             (note :me-role (auth-role context))
              {:name "Lacinia"})
         friends (fn [context _ _]
-                  (log :friends-role (auth-role context))
+                  (note :friends-role (auth-role context))
                   [{:name "Asinthe"}
                    {:name "Graphiti"}])
         schema (compile-sdl-schema "selection/object-type.sdl"
@@ -128,14 +130,45 @@
 
     (is (= [[:me-role "basic"]
             [:friends-role "basic"]]
-           @*log))))
+           @*facts))))
+
+(deftest access-to-fields
+  (let [me (fn [context _ _]
+             (let [type (-> context
+                            executor/selection
+                            p/root-value-type)
+                   fields (p/fields type)]
+               (doseq [field (vals fields)]
+                 (note :name (p/qualified-name field)
+                       :type (p/root-type-name field)
+                       :auth (some-> field
+                                    p/directives
+                                    :auth
+                                    first
+                                    p/arguments
+                                    :role))))
+             {:name "Lacinia"
+              :department "not used"})
+        schema (compile-sdl-schema "selection/object-type.sdl"
+                                   {:Query/me me})]
+    (is (= {:data {:me {:name "Lacinia"}}}
+           (execute schema "{ me { name }}")))
+
+    (is (= [[:name :User/name]
+            [:type :String]
+            [:auth "advanced"]
+            [:name :User/department]
+            [:type :String]
+            [:auth nil]]
+           @*facts))))
+
 
 (deftest access-to-interface-directives
   (let [me (fn [context _ _]
              (let [t (root-type context)]
-               (log :type-name (p/type-name t)
-                    :kind (p/type-kind t)
-                    :role (auth-role context)))
+               (note :type-name (p/type-name t)
+                     :kind (p/type-kind t)
+                     :role (auth-role context)))
              (schema/tag-with-type {:name "Lacinia" :userId 101} :LegacyUser))
         schema (compile-sdl-schema "selection/interface-types.sdl"
                                    {:Query/me me})]
@@ -152,7 +185,7 @@
     (is (= [[:type-name :User]
             [:kind :interface]
             [:role "basic"]]
-           @*log))))
+           @*facts))))
 
 (deftest sub-selections
   (let [me (fn [context _ _]
@@ -160,10 +193,10 @@
                            executor/selection
                            p/selections)
                      :let [sub-kind (p/selection-kind s)]]
-               (log :sub-kind sub-kind)
+               (note :sub-kind sub-kind)
                (when (= :field sub-kind)
-                 (log :sub-field-name (p/field-name s)
-                      :sub-field-type (-> s p/root-value-type p/type-name))))
+                 (note :sub-field-name (p/field-name s)
+                       :sub-field-type (-> s p/root-value-type p/type-name))))
 
              (schema/tag-with-type {:name "Lacinia" :userId 101} :LegacyUser))
         schema (compile-sdl-schema "selection/interface-types.sdl"
@@ -186,14 +219,14 @@
             [:sub-field-name :name]
             [:sub-field-type :String]
             [:sub-kind :inline-fragment]]
-           @*log))))
+           @*facts))))
 
 (deftest access-to-union-directives
   (let [me (fn [context _ _]
              (let [t (root-type context)]
-               (log :type-name (p/type-name t)
-                    :kind (p/type-kind t)
-                    :role (auth-role context)))
+               (note :type-name (p/type-name t)
+                     :kind (p/type-kind t)
+                     :role (auth-role context)))
              (schema/tag-with-type {:userName "Lacinia" :userId 101}
                                    :LegacyUser))
         schema (compile-sdl-schema "selection/union-types.sdl"
@@ -210,15 +243,15 @@
     (is (= [[:type-name :User]
             [:kind :union]
             [:role "basic"]]
-           @*log))))
+           @*facts))))
 
 (deftest access-to-enum-directives
   (let [me (constantly
              {:name "Lacinia"})
         rank (fn [context _ _]
                (let [t (root-type context)]
-                 (log :type-name (p/type-name t)
-                      :role (auth-role context))
+                 (note :type-name (p/type-name t)
+                       :role (auth-role context))
                  :SENIOR))
         schema (compile-sdl-schema "selection/enum-types.sdl"
                                    {:Query/me me
@@ -230,15 +263,15 @@
 
     (is (= [[:type-name :Rank]
             [:role "enum"]]
-           @*log))))
+           @*facts))))
 
 (deftest access-to-scalar-directives
   (let [me (constantly
              {:name "Lacinia"})
         uuid (str (UUID/randomUUID))
         id-resolver (fn [context _ _]
-                      (log :type-name (-> context root-type p/type-name)
-                           :role (auth-role context))
+                      (note :type-name (-> context root-type p/type-name)
+                            :role (auth-role context))
                       uuid)
         schema (-> "selection/scalar-types.sdl"
                    io/resource
@@ -256,7 +289,7 @@
 
     (is (= [[:type-name :UUID]
             [:role "basic"]]
-           @*log))))
+           @*facts))))
 
 (deftest directive-args
   (let [f (fn [context _ _]
@@ -267,7 +300,7 @@
                              first
                              p/arguments
                              :value)]
-              (log :limit limit)
+              (note :limit limit)
               (repeat limit "X")))
         schema (compile-sdl-schema "selection/directive-args.sdl"
                                    {:Query/basic f})]
@@ -288,4 +321,4 @@
     (is (= [[:limit 10]
             [:limit 2]
             [:limit 1]]
-           @*log))))
+           @*facts))))

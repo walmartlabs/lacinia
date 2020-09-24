@@ -1,9 +1,10 @@
-directive @auth (role: String!) on OBJECT
+directive @auth (role: String!) on OBJECT | FIELD_DEFINITION
 
 schema { query: Query }
 
 type User @auth(role: "basic") {
-    name: String!
+    name:  String! @auth(role: "advanced")
+    department: String!
 }
 
 type Query {

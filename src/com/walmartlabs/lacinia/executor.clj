@@ -23,7 +23,8 @@
      :refer [resolve-as resolve-promise]]
     [com.walmartlabs.lacinia.selector-context :as sc]
     [com.walmartlabs.lacinia.tracing :as tracing]
-    [com.walmartlabs.lacinia.constants :as constants])
+    [com.walmartlabs.lacinia.constants :as constants]
+    [com.walmartlabs.lacinia.protocols :as p])
   (:import
     (clojure.lang PersistentQueue)))
 
@@ -94,7 +95,7 @@
     (:concrete-type? field-selection)
     (-> field-selection :field-definition :resolve)
 
-    :let [{:keys [field-name]} field-selection]
+    :let [field-name (p/field-name field-selection)]
 
     (nil? resolved-type)
     (throw (ex-info "Sanity check: value type tag is nil on abstract type."
@@ -124,7 +125,7 @@
   [execution-context field-selection]
   (try
     (let [*resolver-tracing (:*resolver-tracing execution-context)
-          {:keys [arguments]} field-selection
+          arguments (p/arguments field-selection)
           container-value (:resolved-value execution-context)
           {:keys [context]} execution-context
           schema (get context constants/schema-key)
@@ -157,7 +158,8 @@
                               resolved-value)))))
     (catch Throwable t
       (let [field-name (get-in field-selection [:field-definition :qualified-name])
-            {:keys [location arguments]} field-selection]
+            {:keys [location]} field-selection
+            arguments (p/arguments field-selection)]
         (throw (ex-info (str "Exception in resolver for "
                              (q field-name)
                              ": "
@@ -335,12 +337,12 @@
 
   Accumulates errors in the execution context as a side-effect."
   [execution-context selection]
-  (let [is-fragment? (-> selection :selection-type (not= :field))
+  (let [is-fragment? (not= :field (p/selection-kind selection))
         ;; When starting to execute a field, add the current alias (or field name) to the path.
         execution-context' (if is-fragment?
                              execution-context
-                             (update execution-context :path conj (:alias selection)))
-        sub-selections (:selections selection)
+                             (update execution-context :path conj (p/alias-name selection)))
+        sub-selections (p/selections selection)
 
         apply-errors (fn [selection-context sc-key ec-atom-key]
                        (when-let [errors (get selection-context sc-key)]
@@ -381,7 +383,7 @@
         selector (if is-fragment?
                    schema/floor-selector
                    (or (-> selection :field-definition :selector)
-                       (let [field-name (:field-name selection)]
+                       (let [field-name (p/field-name selection)]
                          (-> execution-context'
                              :context
                              (get constants/schema-key)
@@ -413,8 +415,9 @@
                                    (catch Throwable t
                                      (if @*pass-through-exceptions
                                        (throw t)
-                                       (let [{:keys [location field-definition arguments]} selection
-                                             {:keys [qualified-name]} field-definition]
+                                       (let [{:keys [location]} selection
+                                             arguments (p/arguments selection)
+                                             qualified-name (p/qualified-name selection)]
                                          (throw (ex-info (str "Exception processing resolved value for "
                                                               (q qualified-name)
                                                               ": "
@@ -596,7 +599,7 @@
 
 (defn selection
   "Returns the field selection, an object that implements the
-  [[FieldSelection]], [[QualifiedName]], [[SelectionSet]], and [[Directives]] protocols."
+  [[FieldSelection]], [[QualifiedName]], [[SelectionSet]], [[Arguments]], and [[Directives]] protocols."
   [context]
   {:added "0.38.0"}
   (get context constants/selection-key))

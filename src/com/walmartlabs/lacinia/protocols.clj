@@ -60,8 +60,10 @@
 
 (defprotocol FieldSelection
 
-  "A SelectionSet that extracts a value from a field and records it into the
-   result as a name or alias; for non-scalar types, may have sub-selections."
+  "A [[SelectionSet]] that extracts a value from a field and records it into the
+   result as a name or alias; for non-scalar types, may have sub-selections.
+
+   Also implements [[QualifiedName]], [[Arguments]], and [[Directives]]."
 
   (field-name [fs]
     "Returns the name of the field (as an unqualified keyword).")
@@ -82,5 +84,19 @@
 
   (type-kind [type]
     "Returns the kind of type, one of: `:object`, `:union`, `:interface`, `:scalar`, or `:enum`."))
+
+(defprotocol Fields
+
+  "Implemented by the :object and :interface [[Type]] kinds to expose fields."
+
+  (fields [type]
+    "Returns a map of keyword to [[Field]]."))
+
+(defprotocol Field
+
+  "A field within a [[Type]].  Implements [[Directives]] and [[QualifiedName]]."
+
+  (root-type-name [field]
+     "Returns the keyword name of root type of the field."))
 
 

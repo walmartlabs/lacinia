@@ -241,7 +241,6 @@
         scalar-type (get schema type-name)]
     (with-exception-context {:value arg-value
                              :type-name type-name}
-      ;; TODO: Special case for the all-too-popular "passed a string for an enum"
       (when-not (= :scalar (:category scalar-type))
         (throw-exception (format "A scalar value was provided for type %s, which is not a scalar type."
                                  (q type-name))
@@ -779,7 +778,7 @@
 
 (defrecord ^:private FieldSelection [selection-type field-definition leaf? concrete-type? reportable-arguments
                                      alias field-name selections directives arguments
-                                     root-value-type]
+                                     location locations root-value-type]
 
   p/QualifiedName
 
@@ -799,10 +798,39 @@
 
   (root-value-type [_] root-value-type)
 
+  p/Arguments
+  (arguments [_] arguments)
+
   p/Directives
 
   (directives [_]
     (nil-map (group-by :directive-name directives))))
+
+(defrecord ^:private InlineFragment [selection-type selections directives
+                                     location locations concrete-types]
+
+  p/Directives
+
+  (directives [_] directives)
+
+  p/SelectionSet
+
+  (selection-kind [_] :inline-fragment)
+
+  (selections [_] selections))
+
+(defrecord ^:private NamedFragment [selection-type directives selections
+                                    location locations concrete-types]
+
+  p/SelectionSet
+
+  (selection-kind [_] :named-fragment)
+
+  (selections [_] selections)
+
+  p/Directives
+
+  (directives [_] directives))
 
 (defn ^:private prepare-parsed-field
   [defaults parsed-field]
@@ -1090,18 +1118,6 @@
                              :field-definition field-definition)))]
     (normalize-selections schema selection nested-type)))
 
-(defrecord ^:private InlineFragment [selection-type selections directives]
-
-  p/Directives
-
-  (directives [_] directives)
-
-  p/SelectionSet
-
-  (selection-kind [_] :inline-fragment)
-
-  (selections [_] selections))
-
 (defmethod selection :inline-fragment
   [schema parsed-inline-fragment _type]
   (let [defaults (default-node-map parsed-inline-fragment)]
@@ -1125,18 +1141,6 @@
           (normalize-selections schema
                                 inline-fragment
                                 fragment-type))))))
-
-(defrecord ^:private NamedFragment [selection-type directives selections]
-
-  p/SelectionSet
-
-  (selection-kind [_] :named-fragment)
-
-  (selections [_] selections)
-
-  p/Directives
-
-  (directives [_] directives))
 
 (defmethod selection :named-fragment
   [schema parsed-fragment _type]
