@@ -89,8 +89,22 @@ These last two are leaf nodes, because they are scalar values.
 The list of ``characters`` (from the ``friends`` field) then has its ``name`` field selected.
 The result map then constructs from bottom to top.
 
+Accessing the Selection
+-----------------------
+
+From inside a field resolver, the function :api:`executor/selection` may be invoked to
+return a :api:`protocols/FieldSelection` instance; from this instance it is possible
+to identify directives on the field, navigate to nested selections, or even navigate to the
+field type and identify directives there.
+
 Previewing Selections
 ---------------------
+
+.. tip::
+
+   This API is a bit older than :api:`executor/selection`, but is a bit easier to use.
+   Also, ``selection`` include the field selection itself; these APIs identify only
+   nested selections.
 
 A field resolver can "preview" what fields will be selected below it in the selections tree.
 This is a tool frequently used to optimize data retrieval operations.

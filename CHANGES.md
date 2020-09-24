@@ -4,6 +4,9 @@ Optional request tracing is now designed to be compatible with Apollo GraphQL's 
 
 New support for [Apollo GraphQL Federation](https://www.apollographql.com/docs/apollo-server/federation/introduction/).
 
+Added function `com.walmartlabs.lacinia.executor/selection` which provides access to 
+the details about the selection, including directives and nested selections.
+
 ## 0.37.0 -- 30 Jun 2020
 
 Added new function `com.walmartlabs.lacinia.util/inject-streamers`, used to

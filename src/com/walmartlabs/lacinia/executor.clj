@@ -594,9 +594,10 @@
          next
          (keep f))))
 
-(defn selection [context]
-  "Returns the field selection, which implements the
+(defn selection
+  "Returns the field selection, an object that implements the
   [[FieldSelection]], [[QualifiedName]], [[SelectionSet]], and [[Directives]] protocols."
+  [context]
   {:added "0.38.0"}
   (get context constants/selection-key))
 
