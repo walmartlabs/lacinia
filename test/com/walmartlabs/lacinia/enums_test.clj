@@ -56,10 +56,10 @@
     (is (= {:extensions {:allowed-values #{:EMPIRE
                                            :JEDI
                                            :NEWHOPE}
-                         :argument :__Queries/hero.episode
+                         :argument :Query/hero.episode
                          :enum-type :episode
                          :value :CLONES
-                         :field :__Queries/hero}
+                         :field :Query/hero}
             ;; TODO: This is the location of 'hero', should be location of 'episode' or 'CLONES'.
             :locations [{:column 3
                          :line 1}]

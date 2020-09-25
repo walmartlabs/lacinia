@@ -56,12 +56,12 @@
     ;; Should not get as far as the resolver function:
 
     (is (= {:errors
-            [{:message "No variable `i' was supplied for argument `__Queries/echo.input', which is required."
+            [{:message "No variable `i' was supplied for argument `Query/echo.input', which is required."
               :locations [{:line 2
                            :column 34}]
               :extensions
-              {:argument :__Queries/echo.input
-               :field :__Queries/echo
+              {:argument :Query/echo.input
+               :field :Query/echo
                :variable-name :i}}]}
            (execute-parsed-query q nil nil)))))
 

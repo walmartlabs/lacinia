@@ -73,8 +73,8 @@
                        :order "asc"}))))
 
 (deftest var-nested-in-map-not-allowed
-  (is (= {:errors [{:extensions {:argument :__Queries/echo.input
-                                 :field :__Queries/echo
+  (is (= {:errors [{:extensions {:argument :Query/echo.input
+                                 :field :Query/echo
                                  :variable-name :input}
                     :locations [{:column 21
                                  :line 1}]

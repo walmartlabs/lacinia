@@ -52,8 +52,8 @@
          (utils/execute id-schema "{ convert(value: \"r2d2\") }"))))
 
 (deftest non-numeric-id-is-failure
-  (is (= {:errors [{:extensions {:argument :__Queries/convert.value
-                                 :field :__Queries/convert
+  (is (= {:errors [{:extensions {:argument :Query/convert.value
+                                 :field :Query/convert
                                  :type-name :ID
                                  :value 3.41}
                     :locations [{:column 3
@@ -81,8 +81,8 @@
                               :resolve (fn [_ args _]
                                          (:value args))}}}))
 (deftest int-parse-only-numbers
-  (is (= {:errors [{:extensions {:argument :__Queries/convert.value
-                                 :field :__Queries/convert
+  (is (= {:errors [{:extensions {:argument :Query/convert.value
+                                 :field :Query/convert
                                  :type-name :Int
                                  :value 98.6}
                     :locations [{:column 3
@@ -96,8 +96,8 @@
            (utils/execute int-schema (str "{ convert(value: " v ") }"))))))
 
 (deftest int-too-small
-  (is (= {:errors [{:extensions {:argument :__Queries/convert.value
-                                 :field :__Queries/convert
+  (is (= {:errors [{:extensions {:argument :Query/convert.value
+                                 :field :Query/convert
                                  :type-name :Int
                                  :value "-2147483649"}
                     :locations [{:column 3
@@ -106,8 +106,8 @@
          (utils/execute int-schema "{ convert(value: -2147483649) }"))))
 
 (deftest int-too-large
-  (is (= {:errors [{:extensions {:argument :__Queries/convert.value
-                                 :field :__Queries/convert
+  (is (= {:errors [{:extensions {:argument :Query/convert.value
+                                 :field :Query/convert
                                  :type-name :Int
                                  :value "2147483648"}
                     :locations [{:column 3
@@ -209,8 +209,8 @@
                                          (:value args))}}}))
 
 (deftest string-parse-only-string
-  (is (= {:errors [{:extensions {:argument :__Queries/convert.value
-                                 :field :__Queries/convert
+  (is (= {:errors [{:extensions {:argument :Query/convert.value
+                                 :field :Query/convert
                                  :type-name :String
                                  :value 98.6}
                     :locations [{:column 3
@@ -231,8 +231,8 @@
          (utils/execute boolean-schema "{ convert(value: true) }"))))
 
 (deftest boolean-parse-only-boolean
-  (is (= {:errors [{:extensions {:argument :__Queries/convert.value
-                                 :field :__Queries/convert
+  (is (= {:errors [{:extensions {:argument :Query/convert.value
+                                 :field :Query/convert
                                  :type-name :Boolean
                                  :value "sure"}
                     :locations [{:column 3

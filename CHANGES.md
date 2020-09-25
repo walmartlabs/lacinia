@@ -4,6 +4,12 @@ Optional request tracing is now designed to be compatible with Apollo GraphQL's 
 
 New support for [Apollo GraphQL Federation](https://www.apollographql.com/docs/apollo-server/federation/introduction/).
 
+The default objects names for storing operations are now `Query`, `Mutation`,
+and `Subscription`, and these must be objects (not unions), as
+per [the GraphQL specification](http://spec.graphql.org/June2018/#sec-Root-Operation-Types).
+
+
+
 ## 0.37.0 -- 30 Jun 2020
 
 Added new function `com.walmartlabs.lacinia.util/inject-streamers`, used to

@@ -45,7 +45,7 @@
   [ctx args _]
   (fn [] nil))
 
-(def ^:private resolver-map {:Query {:in_episode in-episode}
+(def ^:private resolver-map {:MyQuery {:in_episode in-episode}
                              :OtherQuery {:find_by_names find-by-names}
                              :Mutation {:add add}})
 
@@ -358,8 +358,8 @@
                                      :documentation {:Character "A character"
                                                      :Character/name "Character name"
                                                      :Character/birthDate "Date of Birth"
-                                                     :Query/in_episode "Find all characters for a given episode"
-                                                     :Query/in_episode.episode "Episode for which to find characters"}})]
+                                                     :MyQuery/in_episode "Find all characters for a given episode"
+                                                     :MyQuery/in_episode.episode "Episode for which to find characters"}})]
     (testing "parsing"
       (is (= {:directive-defs {:Trace {:args {:label {:type '(non-null String)}}
                                        :description "Extra tracing of field operations"
@@ -373,7 +373,7 @@
                                :description "Date in standard ISO format"}}
               :interfaces {:Human {:fields {:name {:type 'String}
                                             :birthDate {:type :Date}}}}
-              :unions {:Queries {:members [:Query :OtherQuery]}}
+              :unions {:Queries {:members [:MyQuery :OtherQuery]}}
               :input-objects {:Character {:description "A character"
                                           :fields {:name {:type '(non-null String)
                                                           :description "Character name"}
@@ -384,7 +384,7 @@
                                                    :birthDate {:type :Date}
                                                    :episodes {:type '(list :episode)}}
                                           :implements [:Human]}
-                        :Query {:fields {:in_episode {:args {:episode {:type :episode
+                        :MyQuery {:fields {:in_episode {:args {:episode {:type :episode
                                                                        :default-value :NEWHOPE
                                                                        :description "Episode for which to find characters"}}
                                                       :directives [{:directive-type :Trace}]
@@ -407,16 +407,15 @@
                                                                 :stream new-character
                                                                 :type :CharacterOutput}}}}
               :roots {:mutation :Mutation
-                      :query :Queries
+                      :query :MyQuery
                       :subscription :Subscription}}
              parsed-schema)))
     (testing "using parsed schema"
       (let [compiled (schema/compile parsed-schema)]
         (is (= {:data {:in_episode [{:name "Jabba the Hutt"
                                      :birthDate "?"
-                                     :episodes [:JEDI]}]
-                       :find_by_names [{:name "Horace the Demogorgon" :episodes []}]}}
-               (execute compiled "query { in_episode(episode: JEDI) { name birthDate episodes} find_by_names(names: [\"Horace the Demogorgon\"]) {name episodes} }" nil {})))
+                                     :episodes [:JEDI]}]}}
+               (execute compiled "query { in_episode(episode: JEDI) { name birthDate episodes} }" nil {})))
         (is (= {:data {:add false}}
                (execute compiled "mutation { add(character: {name: \"Darth Vader\"}) }" nil {})))))))
 

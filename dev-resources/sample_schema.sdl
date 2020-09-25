@@ -28,7 +28,7 @@ input Character {
   episodes: [episode]
 }
 
-type Query {
+type MyQuery {
   in_episode(episode: episode = NEWHOPE) : [CharacterOutput] @Trace
 }
 
@@ -46,10 +46,12 @@ type Subscription {
   new_character(episodes: [episode!]!) : CharacterOutput
 }
 
-union Queries = Query | OtherQuery
+# This doesn't make much sense but is a remnant from when unions were allowed for schema operation types
+# (Jun 2018 spec makes it clear they must be objects, not unions). */
+union Queries = MyQuery | OtherQuery
 
 schema {
-  query: Queries
+  query: MyQuery
   mutation: Mutation
   subscription: Subscription
 }

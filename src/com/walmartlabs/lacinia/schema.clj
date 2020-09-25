@@ -1350,67 +1350,32 @@
 
 (defn ^:private add-root
   "Adds a root object for 'extra' operations (e.g., the :queries map in the input schema)."
-  [compiled-schema object-name object-description fields]
-  (assoc compiled-schema object-name
-         {:category :object
-          :type-name object-name
-          :description object-description
-          :fields fields}))
+  [compiled-schema object-name operation-key fields]
+  (cond-let
+    :let [existing (get compiled-schema object-name)]
 
-(defn ^:private merge-root
-  "Used after the compile-type stage, to merge together the root objects, one possibly provided
-  via the input schema :roots map, and the other built from the :queries, :mutations, or :subscriptions
-  maps (the 'extra object').
+    (nil? existing)
+    (assoc compiled-schema object-name
+           {:category :object
+            :type-name object-name
+            :fields fields})
 
-  The object-name is the name provided in the :roots map; it may not exist (normally, this is because
-  it gets a default name such as `QueryRoot`), in which case it is created."
-  [compiled-schema root-name extra-object-name object-name]
-  (let [root-object-def (get compiled-schema object-name)
-        extra-object-def (get compiled-schema extra-object-name)
-        merge-into (fn [fields more-fields]
-                     (reduce-kv (fn [m k v]
-                                  (when (contains? m k)
-                                    (throw (ex-info (format "Name collision compiling schema. %s %s conflicts with %s."
-                                                            (-> root-name name str/capitalize)
-                                                            (-> v :qualified-name q)
-                                                            (q (get-in m [k :qualified-name])))
-                                                    {:field-name k
-                                                     :operation root-name})))
-                                  (assoc m k v))
-                                fields
-                                more-fields))]
-    (cond-let
+    (empty? fields)
+    compiled-schema
 
-      (nil? root-object-def)
-      ;; Copy the extra object over as the missing root object.
-      (let [extra-object-def (get compiled-schema extra-object-name)]
-        (assoc compiled-schema object-name
-               (assoc extra-object-def :type-name object-name)))
-
-      :let [category (:category root-object-def)]
-
-      (= :object category)
-      ;; Merge in the extra fields into the actual object
-      (update-in compiled-schema [object-name :fields] merge-into (:fields extra-object-def))
-
-      (= :union category)
-      ;; Lacinia's execution and introspection code is built on the idea of a single root object type for
-      ;; each type of operation. To keep that working, we copy the fields of each member object in
-      ;; the union into the extra object and then designate the extra object the root.
-      (let [reduce* (fn [val f coll] (reduce f val coll))]
-        (-> compiled-schema
-            (update-in [extra-object-name :fields] reduce* (fn [fields member-type-name]
-                                                             (merge-into fields (get-in compiled-schema [member-type-name :fields])))
-                       (:members root-object-def))
-            (assoc-in [::roots root-name] extra-object-name)))
-
-      :else
-      (throw (ex-info (format "Type %s (a %s operation root) must be a union or object, not %s."
-                              (q object-name)
-                              (name root-name)
-                              (name category))
-                      {:type root-name
-                       :category category})))))
+    ;; Ok, so here's the less fun case - the object is already in the schema and there are fields defiend on that object
+    ;; there but there are also fields separately ... say, due to Introspection adding queries.
+    :else
+    (let [merged-fields (reduce-kv (fn [m k v]
+                                     (when (contains? m k)
+                                       (throw (ex-info (format "Name collision compiling schema: %s already exists with value from %s."
+                                                               (q (qualified-name object-name k))
+                                                               operation-key)
+                                                       {:field-name k})))
+                                     (assoc m k v))
+                                   (:fields existing)
+                                   fields)]
+      (assoc-in compiled-schema [object-name :fields] merged-fields))))
 
 (defn ^:private compile-directive-defs
   [schema directive-defs]
@@ -1487,9 +1452,9 @@
   (let [merged-scalars (merge default-scalar-transformers
                               (:scalars schema))
         {:keys [query mutation subscription]
-         :or {query :QueryRoot
-              mutation :MutationRoot
-              subscription :SubscriptionRoot}} (map-vals as-keyword (:roots schema))
+         :or {query :Query
+              mutation :Mutation
+              subscription :Subscription}} (map-vals as-keyword (:roots schema))
         defaulted-subscriptions (->> schema
                                      :subscriptions
                                      (map-vals #(if-not (:resolve %)
@@ -1505,14 +1470,14 @@
         (xfer-types (:objects schema) :object)
         (xfer-types (:interfaces schema) :interface)
         (xfer-types (:input-objects schema) :input-object)
-        (add-root :__Queries "Root of all queries." (:queries schema))
-        (add-root :__Mutations "Root of all mutations." (:mutations schema))
-        (add-root :__Subscriptions "Root of all subscriptions." defaulted-subscriptions)
+        (add-root query :queries (:queries schema))
+        (add-root mutation :mutations (:mutations schema))
+        (add-root subscription :subscriptions defaulted-subscriptions)
         (as-> s
               (map-vals #(compile-type % s) s))
-        (merge-root :query :__Queries query)
-        (merge-root :mutation :__Mutations mutation)
-        (merge-root :subscription :__Subscriptions subscription)
+        ;(merge-root :query :__Queries query)
+        ;(merge-root :mutation :__Mutations mutation)
+        ;(merge-root :subscription :__Subscriptions subscription)
         (compile-directive-defs (:directive-defs schema))
         (prepare-and-validate-interfaces)
         (prepare-and-validate-objects :object options)

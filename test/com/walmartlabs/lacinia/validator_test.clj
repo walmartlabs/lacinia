@@ -27,7 +27,7 @@
 (deftest scalar-leafs-validations
   (testing "All leafs are scalar types or enums"
     (let [q "{ hero }"]
-      (is (= {:errors [{:message "Field `__Queries/hero' must have at least one selection.",
+      (is (= {:errors [{:message "Field `Query/hero' must have at least one selection.",
                         :locations [{:line 1
                                      :column 3}]}]}
              (execute compiled-schema q {} nil))))
@@ -272,8 +272,8 @@
 
 (deftest query-argument-validations
     (let [q "{ echoArgs(integer: \"hello world\") { integer } }"]
-      (is (= {:errors [{:extensions {:argument :__Queries/echoArgs.integer
-                                     :field :__Queries/echoArgs
+      (is (= {:errors [{:extensions {:argument :Query/echoArgs.integer
+                                     :field :Query/echoArgs
                                      :type-name :Int
                                      :value "hello world"}
                         :locations [{:column 3
@@ -283,7 +283,7 @@
 
   (testing "undefined argument"
     (let [q "{ echoArgs(undefinedArg: 1) { integer } }"]
-      (is (= {:errors [{:extensions {:field :__Queries/echoArgs
+      (is (= {:errors [{:extensions {:field :Query/echoArgs
                                      :defined-arguments [:integer
                                                          :integerArray
                                                          :inputObject]}
@@ -299,8 +299,8 @@
                                       string: \"five\",
                                       nestedInputObject: {integerArray: \"hello world\",
                                                           date: \"1983-08-13\"}}) { integer }}"]
-      (is (= {:errors [{:extensions {:argument :__Queries/echoArgs.inputObject
-                                     :field :__Queries/echoArgs
+      (is (= {:errors [{:extensions {:argument :Query/echoArgs.inputObject
+                                     :field :Query/echoArgs
                                      :type-name :Int
                                      :value "hello world"}
                         :locations [{:column 3
@@ -311,8 +311,8 @@
 
   (testing "invalid array element"
     (let [q "{echoArgs(integer: 3, integerArray: [1, 2, \"foo\"]) { integer }}"]
-      (is (= {:errors [{:extensions {:argument :__Queries/echoArgs.integerArray
-                                     :field :__Queries/echoArgs
+      (is (= {:errors [{:extensions {:argument :Query/echoArgs.integerArray
+                                     :field :Query/echoArgs
                                      :type-name :Int
                                      :value "foo"}
                         :locations [{:column 2
@@ -323,21 +323,21 @@
 
   (testing "Non-nullable arguments"
     (let [q "mutation { addHeroEpisodes(episodes: []) { name appears_in } }"]
-      (is (= {:errors [{:extensions {:field :__Mutations/addHeroEpisodes
+      (is (= {:errors [{:extensions {:field :Mutation/addHeroEpisodes
                                      :missing-arguments [:id]}
                         :locations [{:column 12
                                      :line 1}]
                         :message "Exception applying arguments to field `addHeroEpisodes': Not all non-nullable arguments have supplied values."}]}
              (execute compiled-schema q nil nil))))
     (let [q "mutation { addHeroEpisodes(id:\"1004\") { name appears_in } }"]
-      (is (= {:errors [{:extensions {:field :__Mutations/addHeroEpisodes
+      (is (= {:errors [{:extensions {:field :Mutation/addHeroEpisodes
                                      :missing-arguments [:episodes]}
                         :locations [{:column 12
                                      :line 1}]
                         :message "Exception applying arguments to field `addHeroEpisodes': Not all non-nullable arguments have supplied values."}]}
              (execute compiled-schema q nil nil))))
     (let [q "mutation { addHeroEpisodes { name appears_in } }"]
-      (is (= {:errors [{:extensions {:field :__Mutations/addHeroEpisodes
+      (is (= {:errors [{:extensions {:field :Mutation/addHeroEpisodes
                                      :missing-arguments [:episodes :id]}
                         :locations [{:column 12
                                      :line 1}]
@@ -346,11 +346,11 @@
 
 (deftest invalid-type-for-query
   (expect-exception
-    "Field `__Queries/unknown_type' references unknown type `not_defined'."
-    {:field-name :__Queries/unknown_type
-     :schema-types {:object [:MutationRoot
-                             :QueryRoot
-                             :SubscriptionRoot]
+    "Field `Query/unknown_type' references unknown type `not_defined'."
+    {:field-name :Query/unknown_type
+     :schema-types {:object [:Mutation
+                             :Query
+                             :Subscription]
                     :scalar [:Boolean
                              :Float
                              :ID
