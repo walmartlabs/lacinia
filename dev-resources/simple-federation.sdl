@@ -7,8 +7,6 @@ type Query {
     user_by_id(id: Int!) : User
 }
 
-schema { query: Query }
-
 type Account @key(fields: "acct_number") {
   acct_number: String!
   name: String!

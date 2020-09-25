@@ -12,5 +12,3 @@ type Product @key(fields: "upc") {
 type Query {
     productByUpc(upc: String!) : Product
 }
-
-schema { query: Query }
