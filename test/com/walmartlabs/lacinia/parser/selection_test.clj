@@ -13,7 +13,7 @@
 ; limitations under the License.
 
 (ns com.walmartlabs.lacinia.parser.selection-test
-  "Tests related to the executor/selection functi5on and related data, introduced in 0.38.0."
+  "Tests related to the executor/selection function and related data, introduced in 0.38.0."
   (:require
     [clojure.test :refer [is deftest use-fixtures]]
     [com.walmartlabs.lacinia.executor :as executor]

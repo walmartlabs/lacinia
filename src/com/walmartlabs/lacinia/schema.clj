@@ -447,7 +447,6 @@
 
   p/Arguments
 
-  ;; TODO: May need to do some processing of defaults from directive def on the arguments.
   (arguments [_] arguments))
 
 (defrecord ^:private Type [category type-name description fields directives compiled-directives

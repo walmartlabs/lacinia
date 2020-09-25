@@ -103,8 +103,8 @@ Previewing Selections
 .. tip::
 
    This API is a bit older than :api:`executor/selection`, but is a bit easier to use.
-   Also, ``selection`` include the field selection itself; these APIs identify only
-   nested selections.
+   Also, ``selection`` includes the field selection itself; these APIs identify only
+   nested selections below the current field.
 
 A field resolver can "preview" what fields will be selected below it in the selections tree.
 This is a tool frequently used to optimize data retrieval operations.
