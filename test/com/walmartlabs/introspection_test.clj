@@ -1499,8 +1499,8 @@
 (deftest query-with-introspection-disabled
   (let [schema (schema/compile test-schema {:enable-introspection? false})
         q "{ __type(name: \"human\") { kind name fields { name }}}"]
-    (is (= {:errors [{:extensions {:field :__type
-                                   :type :QueryRoot}
+    (is (= {:errors [{:extensions {:field-name :__type
+                                   :type-name :QueryRoot}
                       :locations [{:column 3
                                    :line 1}]
                       :message "Cannot query field `__type' on type `QueryRoot'."}]}

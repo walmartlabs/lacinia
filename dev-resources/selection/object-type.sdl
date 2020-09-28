@@ -1,0 +1,15 @@
+directive @auth (role: String!) on OBJECT | FIELD_DEFINITION
+
+schema { query: Query }
+
+type User @auth(role: "basic") {
+    name:  String! @auth(role: "advanced")
+    department: String!
+}
+
+type Query {
+    me: User
+
+    friends: [User!]!
+}
+

@@ -134,7 +134,7 @@
                         :message "Field `character/friends' must have at least one selection."}]}
              (execute compiled-schema q {} nil))))
     (let [q "{ hero { name { id } } }"]
-      (is (= {:errors [{:extensions {:field :id}
+      (is (= {:errors [{:extensions {:field-name :id}
                         :locations [{:column 17
                                      :line 1}]
                         :message "Path de-references through a scalar type."}]}
@@ -244,7 +244,7 @@
            fragment scalarFragment on String {
              id
            }"]
-    (is (= {:errors [{:extensions {:field :id}
+    (is (= {:errors [{:extensions {:field-name :id}
                       :locations [{:column 14
                                    :line 7}]
                       :message "Path de-references through a scalar type."}]}
@@ -273,7 +273,7 @@
 (deftest query-argument-validations
     (let [q "{ echoArgs(integer: \"hello world\") { integer } }"]
       (is (= {:errors [{:extensions {:argument :__Queries/echoArgs.integer
-                                     :field :__Queries/echoArgs
+                                     :field-name :__Queries/echoArgs
                                      :type-name :Int
                                      :value "hello world"}
                         :locations [{:column 3
@@ -283,7 +283,7 @@
 
   (testing "undefined argument"
     (let [q "{ echoArgs(undefinedArg: 1) { integer } }"]
-      (is (= {:errors [{:extensions {:field :__Queries/echoArgs
+      (is (= {:errors [{:extensions {:field-name :__Queries/echoArgs
                                      :defined-arguments [:integer
                                                          :integerArray
                                                          :inputObject]}
@@ -300,7 +300,7 @@
                                       nestedInputObject: {integerArray: \"hello world\",
                                                           date: \"1983-08-13\"}}) { integer }}"]
       (is (= {:errors [{:extensions {:argument :__Queries/echoArgs.inputObject
-                                     :field :__Queries/echoArgs
+                                     :field-name :__Queries/echoArgs
                                      :type-name :Int
                                      :value "hello world"}
                         :locations [{:column 3
@@ -312,7 +312,7 @@
   (testing "invalid array element"
     (let [q "{echoArgs(integer: 3, integerArray: [1, 2, \"foo\"]) { integer }}"]
       (is (= {:errors [{:extensions {:argument :__Queries/echoArgs.integerArray
-                                     :field :__Queries/echoArgs
+                                     :field-name :__Queries/echoArgs
                                      :type-name :Int
                                      :value "foo"}
                         :locations [{:column 2
@@ -323,21 +323,21 @@
 
   (testing "Non-nullable arguments"
     (let [q "mutation { addHeroEpisodes(episodes: []) { name appears_in } }"]
-      (is (= {:errors [{:extensions {:field :__Mutations/addHeroEpisodes
+      (is (= {:errors [{:extensions {:field-name :__Mutations/addHeroEpisodes
                                      :missing-arguments [:id]}
                         :locations [{:column 12
                                      :line 1}]
                         :message "Exception applying arguments to field `addHeroEpisodes': Not all non-nullable arguments have supplied values."}]}
              (execute compiled-schema q nil nil))))
     (let [q "mutation { addHeroEpisodes(id:\"1004\") { name appears_in } }"]
-      (is (= {:errors [{:extensions {:field :__Mutations/addHeroEpisodes
+      (is (= {:errors [{:extensions {:field-name :__Mutations/addHeroEpisodes
                                      :missing-arguments [:episodes]}
                         :locations [{:column 12
                                      :line 1}]
                         :message "Exception applying arguments to field `addHeroEpisodes': Not all non-nullable arguments have supplied values."}]}
              (execute compiled-schema q nil nil))))
     (let [q "mutation { addHeroEpisodes { name appears_in } }"]
-      (is (= {:errors [{:extensions {:field :__Mutations/addHeroEpisodes
+      (is (= {:errors [{:extensions {:field-name :__Mutations/addHeroEpisodes
                                      :missing-arguments [:episodes :id]}
                         :locations [{:column 12
                                      :line 1}]

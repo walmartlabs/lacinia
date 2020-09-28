@@ -34,6 +34,7 @@
     [clojure.string :as str]
     [clojure.set :refer [difference]]
     [clojure.pprint :as pprint]
+    [com.walmartlabs.lacinia.protocols :as p]
     [com.walmartlabs.lacinia.selector-context :as sc])
   (:import
     (clojure.lang IObj)
@@ -438,6 +439,126 @@
                                           ::promote-nils-to-empty-list?
                                           ::enable-introspection?]))
 
+(defrecord ^:private Directive [directive-type arguments effector arguments-extractor]
+
+  p/Directive
+
+  (directive-type [_] directive-type)
+
+  p/Arguments
+
+  (arguments [_] arguments))
+
+(defrecord ^:private Type [category type-name description fields directives compiled-directives
+                           implements tag]
+
+  p/Type
+
+  (type-name [_] type-name)
+
+  (type-kind [_] :object)
+
+  p/Fields
+
+  (fields [_] fields)
+
+  p/Directives
+
+  (directives [_] compiled-directives))
+
+(defn ^:no-doc root-type-name
+  "For a compiled field (or argument) definition, delves down through the :type tag to find
+  the root type name, a keyword."
+  [field-def]
+  ;; In some error scenarios, the query references an unknown field and
+  ;; the field-def is nil. Without this check, this loops endlessly.
+  (when field-def
+    (loop [type-def (:type field-def)]
+      (if (-> type-def :kind (= :root))
+        (:type type-def)
+        (recur (:type type-def))))))
+
+(defrecord ^:private Field [type type-string directives compiled-directives
+                            field-name qualified-name args]
+
+  p/Field
+
+  (root-type-name [_] (root-type-name type))
+
+  p/QualifiedName
+
+  (qualified-name [_] qualified-name)
+
+  p/Directives
+
+  (directives [_] compiled-directives))
+
+(defrecord ^:private Interface [category type-name member fields directives compiled-directives]
+
+  p/Type
+
+  (type-name [_] type-name)
+
+  (type-kind [_] :interface)
+
+  p/Fields
+
+  (fields [_] fields)
+
+  p/Directives
+
+  (directives [_] compiled-directives))
+
+(defrecord ^:private Union [category type-name description directives compiled-directives]
+
+  p/Type
+
+  (type-name [_] type-name)
+
+  (type-kind [_] :union)
+
+  p/Directives
+
+  (directives [_] compiled-directives))
+
+(defrecord ^:private EnumType [category type-name description parse serialize values
+                               values-detail values-set
+                               directives compiled-directives]
+
+  p/Type
+
+  (type-name [_] type-name)
+
+  (type-kind [_] :enum)
+
+  p/Directives
+
+  (directives [_] compiled-directives))
+
+(defrecord ^:private Scalar [category type-name description parsae serialize directives compiled-directives]
+
+  p/Type
+
+  (type-name [_] type-name)
+
+  (type-kind [_] :enum)
+
+  p/Directives
+
+  (directives [_] compiled-directives))
+
+(defn ^:private compile-directives
+  [element]
+  (let [{:keys [directives]} element]
+    (if (seq directives)
+      (assoc element :compiled-directives (->> directives
+                                               (map (fn [{:keys [directive-type directive-args]}]
+                                                      (map->Directive
+                                                        {:directive-type directive-type
+                                                         :arguments directive-args})))
+                                               (group-by p/directive-type)))
+      element)))
+
 (defmulti ^:private check-compatible
   "Given two type definitions, dispatches on a vector of the category of the two types.
   'Returns true if the two types are compatible.
@@ -560,18 +681,6 @@
         type-string (type->string field-type)]
     (assoc field-definition :type-string type-string)))
 
-(defn ^:no-doc root-type-name
-  "For a compiled field (or argument) definition, delves down through the :type tag to find
-  the root type name, a keyword."
-  [field-def]
-  ;; In some error scenarios, the query references an unknown field and
-  ;; the field-def is nil. Without this check, this loops endlessly.
-  (when field-def
-    (loop [type-def (:type field-def)]
-      (if (-> type-def :kind (= :root))
-        (:type type-def)
-        (recur (:type type-def))))))
-
 (defn ^:private rewrite-type
   "Rewrites the type tag of a field (or argument) into a nested structure of types.
 
@@ -601,8 +710,10 @@
   [type-def field-name field-def]
   (let [{:keys [type-name]} type-def]
     (-> field-def
+        map->Field
         rewrite-type
         add-type-string
+        compile-directives
         (assoc :field-name field-name
                :qualified-name (qualified-name type-name field-name))
         (update :args #(map-kvs (fn [arg-name arg-def]
@@ -936,15 +1047,13 @@
                         (default-field-resolver field-name))
         selector (assemble-selector schema type-def field-def (:type field-def))
         wrapped-resolver (cond-> (wrap-resolver-to-ensure-resolver-result base-resolver)
-                           (nil? provided-resolver) (vary-meta assoc ::default-resolver? true))
-        direct-fn (-> wrapped-resolver meta ::direct-fn)]
+                           (nil? provided-resolver) (vary-meta assoc ::default-resolver? true))]
     (-> field-def
         (assoc :type-name type-name
                :description (or description
                                 (default-field-description schema type-def field-name))
                :resolve wrapped-resolver
-               :selector selector
-               :direct-fn direct-fn)
+               :selector selector)
         (provide-default-arg-descriptions schema type-def))))
 
 ;;-------------------------------------------------------------------------------
@@ -998,6 +1107,12 @@
   [type schema]
   type)
 
+(defmethod compile-type :scalar
+  [type schema]
+  (-> type
+      map->Scalar
+      compile-directives))
+
 (defmethod compile-type :union
   [union schema]
   (let [members (-> union :members set)]
@@ -1022,7 +1137,10 @@
                                   (-> type :category name))
                           {:union union
                            :schema-types (type-map schema)})))))
-    (assoc union :members members)))
+    (-> union
+        map->Union
+        compile-directives
+        (assoc :members members))))
 
 (defn ^:private apply-deprecated-directive
   "For a field definition or enum value definition, checks for a :deprecated annotation and,
@@ -1067,12 +1185,15 @@
       (throw (ex-info (format "Values defined for enum %s must be unique."
                               (-> enum-def :type-name q))
                       {:enum enum-def})))
-    (assoc enum-def
-           :parse parse
-           :serialize serialize
-           :values values
-           :values-detail details
-           :values-set values-set)))
+    (-> enum-def
+        map->EnumType
+        compile-directives
+        (assoc
+          :parse parse
+          :serialize serialize
+          :values values
+          :values-detail details
+          :values-set values-set))))
 
 (defmethod compile-type :object
   [object schema]
@@ -1106,8 +1227,10 @@
                         {:object object
                          :schema-types (type-map schema)}))))
     (-> object
+        map->Type
         (assoc :implements implements
                :tag tag-class)
+        compile-directives
         compile-fields)))
 
 (defmethod compile-type :input-object
@@ -1128,7 +1251,10 @@
 
 (defmethod compile-type :interface
   [interface schema]
-  (compile-fields interface))
+  (-> interface
+      map->Interface
+      compile-directives
+      compile-fields))
 
 (defn ^:private extract-type-name
   "Navigates a type map down to the root kind and returns the type name."
@@ -1277,7 +1403,8 @@
                                     (map-vals #(assoc % :type-name interface-name))
                                     (map-vals apply-deprecated-directive))]
                    (-> interface
-                       (assoc :members implementors :fields fields')
+                       (assoc :members implementors
+                              :fields fields')
                        (dissoc :resolve)))))))
 
 (defn ^:private prepare-and-validate-object
@@ -1352,10 +1479,10 @@
   "Adds a root object for 'extra' operations (e.g., the :queries map in the input schema)."
   [compiled-schema object-name object-description fields]
   (assoc compiled-schema object-name
-         {:category :object
-          :type-name object-name
-          :description object-description
-          :fields fields}))
+         (map->Type {:category :object
+                     :type-name object-name
+                     :description object-description
+                     :fields fields})))
 
 (defn ^:private merge-root
   "Used after the compile-type stage, to merge together the root objects, one possibly provided
@@ -1484,8 +1611,10 @@
   [schema options]
   ;; Note: using merge, not two calls to xfer-types, since want to allow
   ;; for overrides of the built-in scalars without a name conflict exception.
-  (let [merged-scalars (merge default-scalar-transformers
-                              (:scalars schema))
+  (let [merged-scalars (->> schema
+                            :scalars
+                            (merge default-scalar-transformers)
+                            (map-vals #(assoc % :category :scalar)))
         {:keys [query mutation subscription]
          :or {query :QueryRoot
               mutation :MutationRoot
@@ -1526,8 +1655,7 @@
   "The default for the :default-field-resolver option, this uses the field name as the key into
   the resolved value."
   [field-name]
-  ^{:tag ResolverResult
-    ::direct-fn field-name}
+  ^{:tag ResolverResult}
   (fn default-resolver [_ _ v]
 
     (resolve-as (get v field-name))))

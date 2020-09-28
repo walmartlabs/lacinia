@@ -1,0 +1,15 @@
+schema { query: Query }
+
+directive @auth (role: String!) on SCALAR
+
+scalar UUID @auth(role: "basic")
+
+type User  {
+    name: String!
+    id: UUID
+}
+
+type Query {
+    me: User
+}
+
