@@ -40,7 +40,8 @@
 
 (defn ^:private nil-map
   [m]
-  (when-not (empty? m)
+  (when (seq m)
+    m)
     m))
 
 (declare ^:private selection)
@@ -1362,5 +1363,4 @@
   (->> parsed-query
        :selections
        (summarize-selections parsed-query)))
-
 
