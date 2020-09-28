@@ -13,7 +13,8 @@
 ;; limitations under the License.
 
 (ns com.walmartlabs.lacinia.protocols
-  "Protocols for objects accessible from the [[selection]] function, "
+  "Protocols for selection-related objects accessible from the [[selection]] function, and
+   as well as the schema type objects navigable to from the selection."
   {:added "0.38.0"})
 
 (defprotocol QualifiedName
@@ -25,7 +26,7 @@
   "Implemented by [[Directive]]."
 
   (arguments [element]
-    "Returns a map of keyword name to value.  May return nil if no arguments.
+    "Returns a map of keyword name to argument value.  May return nil if no arguments.
 
      The value may reflect query variables or argument defaults."))
 
@@ -40,7 +41,9 @@
   "An element that may contain directives."
 
   (directives [element]
-    "Returns a map of directives for this element; keys are keywords, values are a seq of Directive.
+    "Returns a map of directives for this element; keys are keywords identifying,
+    the directive, values are a seq of Directive of that type (directives
+    are inherently repeatable).
 
     May return nil."))
 

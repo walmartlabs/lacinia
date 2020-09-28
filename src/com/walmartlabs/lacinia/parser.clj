@@ -41,7 +41,6 @@
 (defn ^:private nil-map
   [m]
   (when (seq m)
-    m)
     m))
 
 (declare ^:private selection)
@@ -179,12 +178,19 @@
   whose value comes from a query variable."
   [arguments]
   (when arguments
-    (let [literals (volatile! (transient {}))
-          dynamics (volatile! (transient {}))]
-      (doseq [[k v] arguments]
-        (vswap! (if (is-dynamic? v) dynamics literals) assoc! k v))
-      [(persistent! @literals)
-       (persistent! @dynamics)])))
+    (loop [[kv & more-arguments] arguments
+           literals nil
+           dynamics nil]
+      (if (nil? kv)
+        [literals dynamics]
+        (let [[k v] kv]
+          (if (is-dynamic? v)
+            (recur more-arguments
+                   literals
+                   (assoc dynamics k v))
+            (recur more-arguments
+                   (assoc literals k v)
+                   dynamics)))))))
 
 (defn ^:private collect-default-values
   [field-map]                                               ; also works with arguments
