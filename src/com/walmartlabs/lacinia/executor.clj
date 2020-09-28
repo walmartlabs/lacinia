@@ -427,11 +427,6 @@
                                                           :arguments arguments
                                                           :location location} t)))))))
 
-        ;; When tracing is enabled, defeat the optimization so that the (trivial) resolver can be
-        ;; invoke and its execution time tracked.
-        direct-fn (when-not (:*resolver-tracing execution-context)
-                    (-> selection :field-definition :direct-fn))
-
         ;; Given a ResolverResult from a field resolver, unwrap the field's RR and pass it through process-resolved-value.
         ;; process-resolved-value also returns an RR and chain that RR's delivered value to the RR returned from this function.
         unwrap-resolver-result (fn [field-resolver-result]
@@ -452,21 +447,6 @@
                                       selector-callback
                                       (:resolved-value execution-context')
                                       resolved-type))
-
-      ;; Optimization: for simple fields there may be direct function.
-      ;; This is a function that synchronously provides the value from the container resolved value.
-      ;; This is almost always a default resolver.  The extracted value is passed though to
-      ;; the selector, which returns a ResolverResult. Thus we've peeled back at least one layer
-      ;; of ResolveResultPromise.
-      direct-fn
-      (let [resolved-value (-> execution-context'
-                               :resolved-value
-                               direct-fn)]
-        ;; Normally, resolved-value is a raw value, ready to be immediately processed; but in rare cases
-        ;; it may be a ResolverResult that needs to full job.
-        (if (resolve/is-resolver-result? resolved-value)
-          (unwrap-resolver-result resolved-value)
-          (process-resolved-value resolved-value)))
 
       ;; Here's where it comes together.  The field's selector
       ;; does the validations, and for list types, does the mapping.
