@@ -37,7 +37,7 @@
            (execute schema "mutation { create_game }")))
 
     (is (= {:errors [{:extensions {:argument :Mutation/create_game.game_data
-                                   :field :Mutation/create_game
+                                   :field-name :Mutation/create_game
                                    :missing-key :id
                                    :required-keys [:id]
                                    :schema-type :game_template}
@@ -49,7 +49,7 @@
     ;; TODO: Missing some needed context from above
 
     (is (= {:errors [{:extensions {:argument :Mutation/create_game.game_data
-                                   :field :Mutation/create_game
+                                   :field-name :Mutation/create_game
                                    :missing-key :id
                                    :required-keys [:id]
                                    :schema-type :game_template}
@@ -89,7 +89,7 @@
                     "{ search(filter: {terms: \"lego\", max_count: 5}) }")))
 
     (is (= {:errors [{:extensions {:argument :Query/search.filter
-                                   :field :Query/search
+                                   :field-name :Query/search
                                    :schema-type :Filter}
                       :locations [{:column 3
                                    :line 1}]
@@ -98,7 +98,6 @@
                     "{ search(filter: {term: \"lego\", max_count: 5}) }")))
 
     (is (= {:errors [{:extensions {:argument :Query/search.filter
-                                   :field :Query/search
                                    :field-name :term
                                    :input-object-fields [:max_count
                                                          :terms]

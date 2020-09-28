@@ -1,0 +1,22 @@
+directive @auth (role: String!) on OBJECT | UNION
+
+schema { query: Query }
+
+union User @auth(role: "basic") = ActiveUser | LegacyUser
+
+type LegacyUser @auth(role: "hidden") {
+    userName: String!
+    userId: Int!
+}
+
+type ActiveUser  {
+    name: String!
+    idCode: String!
+}
+
+type Query {
+    me: User
+
+    friends: [User!]!
+}
+

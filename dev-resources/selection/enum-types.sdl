@@ -1,0 +1,15 @@
+directive @auth (role: String!) on ENUM
+
+schema { query: Query }
+
+enum Rank @auth(role: "enum") { INTRO, JUNIOR, SENIOR }
+
+type User  {
+    name: String!
+    rank: Rank
+}
+
+type Query {
+    me: User
+}
+

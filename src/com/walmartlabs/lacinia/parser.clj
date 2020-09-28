@@ -27,6 +27,7 @@
     [com.walmartlabs.lacinia.resolve :as resolve]
     [com.walmartlabs.lacinia.parser.query :as qp]
     [com.walmartlabs.lacinia.tracing :as tracing]
+    [com.walmartlabs.lacinia.protocols :as p]
     [flatland.ordered.map :refer [ordered-map]])
   (:import
     (clojure.lang ExceptionInfo)))
@@ -37,11 +38,9 @@
        (filter pred)
        first))
 
-(defn ^:private assoc-seq?
-  "Associates a key into map only when the value is a non-empty seq."
-  [m k v]
-  (if (seq v)
-    (assoc m k v)
+(defn ^:private nil-map
+  [m]
+  (when (seq m)
     m))
 
 (declare ^:private selection)
@@ -179,16 +178,19 @@
   whose value comes from a query variable."
   [arguments]
   (when arguments
-    (loop [state nil
-           args arguments]
-      (if (seq args)
-        (let [[k v] (first args)
-              classification (if (is-dynamic? v)
-                               :dynamic
-                               :literal)]
-          (recur (assoc-in state [classification k] v)
-                 (next args)))
-        [(:literal state) (:dynamic state)]))))
+    (loop [[kv & more-arguments] arguments
+           literals nil
+           dynamics nil]
+      (if (nil? kv)
+        [literals dynamics]
+        (let [[k v] kv]
+          (if (is-dynamic? v)
+            (recur more-arguments
+                   literals
+                   (assoc dynamics k v))
+            (recur more-arguments
+                   (assoc literals k v)
+                   dynamics)))))))
 
 (defn ^:private collect-default-values
   [field-map]                                               ; also works with arguments
@@ -246,7 +248,6 @@
         scalar-type (get schema type-name)]
     (with-exception-context {:value arg-value
                              :type-name type-name}
-      ;; TODO: Special case for the all-too-popular "passed a string for an enum"
       (when-not (= :scalar (:category scalar-type))
         (throw-exception (format "A scalar value was provided for type %s, which is not a scalar type."
                                  (q type-name))
@@ -693,6 +694,8 @@
   values from the map of query variables."
   [schema argument-definitions arguments]
   (let [[literal-args dynamic-args] (split-arguments arguments)
+        ;; literal-argument-values may include defaults for arguments that will be provided as
+        ;; a variable (if the variable is omitted, the default stands).
         literal-argument-values (construct-literal-arguments schema argument-definitions literal-args)
         dynamic-extractor (construct-dynamic-arguments-extractor schema argument-definitions dynamic-args)
         missing-keys (-> argument-definitions
@@ -710,7 +713,6 @@
     (when (seq missing-keys)
       (throw-exception "Not all non-nullable arguments have supplied values."
                        {:missing-arguments missing-keys}))
-
     [literal-argument-values dynamic-extractor]))
 
 (defn ^:private default-node-map
@@ -723,13 +725,25 @@
   [node-map]
   {:locations [(:location node-map)]})
 
+(defrecord ^:private Directive [directive-name effector arguments arguments-extractor]
+
+  p/Directive
+
+  (directive-type [_] directive-name)
+
+  p/Arguments
+
+  (arguments [_] arguments))
+
 (defn ^:private convert-parsed-directives
   "Passed a seq of parsed directive nodes, returns a seq of executable directives."
   [schema parsed-directives]
-  (let [f (fn [parsed-directive]
-            (let [{directive-name :directive-name} parsed-directive]
-              (with-exception-context {:directive directive-name}
-                (if-let [directive-def (get builtin-directives directive-name)]
+  (let [{:keys [::schema/directive-defs]} schema
+        f (fn [parsed-directive]
+            (let [{directive-name :directive-name} parsed-directive
+                  all-directive-defs (merge builtin-directives directive-defs)]
+              (with-exception-context {:directive-name directive-name}
+                (if-let [directive-def (get all-directive-defs directive-name)]
                   (let [[literal-arguments dynamic-arguments-extractor]
                         (try
                           (process-arguments schema
@@ -741,14 +755,16 @@
                                                      (to-message e))
                                              nil
                                              e)))]
-                    (assoc parsed-directive
-                           :effector (:effector directive-def)
-                           :arguments literal-arguments
-                           ::arguments-extractor dynamic-arguments-extractor))
+                    (-> parsed-directive
+                        (assoc
+                          :effector (:effector directive-def)
+                          :arguments literal-arguments
+                          :arguments-extractor dynamic-arguments-extractor)
+                        map->Directive))
                   (throw-exception (format "Unknown directive %s."
                                            (q directive-name)
                                            {:unknown-directive directive-name
-                                            :available-directives (-> builtin-directives keys sort)}))))))]
+                                            :available-directives (-> all-directive-defs keys sort)}))))))]
     (mapv f parsed-directives)))
 
 (def ^:private typename-field-definition
@@ -767,16 +783,74 @@
 
    :selector schema/floor-selector})
 
+(defrecord ^:private FieldSelection [selection-type field-definition leaf? concrete-type? reportable-arguments
+                                     alias field-name selections directives arguments
+                                     location locations root-value-type]
+
+  p/QualifiedName
+
+  (qualified-name [_] (:qualified-name field-definition))
+
+  p/SelectionSet
+
+  (selection-kind [_] :field)
+
+  (selections [_] selections)
+
+  p/FieldSelection
+
+  (field-name [_] field-name)
+
+  (alias-name [_] alias)
+
+  (root-value-type [_] root-value-type)
+
+  p/Arguments
+  (arguments [_] arguments)
+
+  p/Directives
+
+  (directives [_]
+    (nil-map (group-by :directive-name directives))))
+
+(defrecord ^:private InlineFragment [selection-type selections directives
+                                     location locations concrete-types]
+
+  p/Directives
+
+  (directives [_] directives)
+
+  p/SelectionSet
+
+  (selection-kind [_] :inline-fragment)
+
+  (selections [_] selections))
+
+(defrecord ^:private NamedFragment [selection-type directives selections
+                                    location locations concrete-types]
+
+  p/SelectionSet
+
+  (selection-kind [_] :named-fragment)
+
+  (selections [_] selections)
+
+  p/Directives
+
+  (directives [_] directives))
+
 (defn ^:private prepare-parsed-field
-  [parsed-field]
+  [defaults parsed-field]
   (let [{:keys [alias field-name selections directives args]} parsed-field
         arguments (build-map-from-parsed-arguments args)]
-    (-> {:field field-name
-         :alias alias
-         :selections selections
-         :directives directives}
-        (assoc-seq? :arguments arguments)
-        (assoc-seq? :reportable-arguments (extract-reportable-arguments arguments)))))
+    (map->FieldSelection (assoc defaults
+                                :selection-type :field
+                                :field-name field-name
+                                :alias (or alias field-name)
+                                :selections selections
+                                :directives (seq directives)
+                                :arguments (nil-map arguments)
+                                :reportable-arguments (nil-map (extract-reportable-arguments arguments))))))
 
 (defn ^:private select-operation
   "Given a collection of parsed operation definitions and an operation name (which
@@ -822,7 +896,7 @@
   with nested selections."
   [node]
   (let [directives? (-> node :directives some?)
-        dynamic-arguments? (-> node ::arguments-extractor some?)
+        dynamic-arguments? (-> node :arguments-extractor some?)
         selections-need-prepare? (->> node
                                       :selections
                                       (some ::needs-prepare?)
@@ -834,26 +908,26 @@
       (or directives? dynamic-arguments? selections-need-prepare?)
       (assoc ::needs-prepare? true))))
 
-(defn ^:private compute-arguments
+(defn ^:private apply-variables-to-arguments
   [node variables]
-  (let [{:keys [arguments ::arguments-extractor]} node]
-    (cond-> arguments
-      arguments-extractor (merge (arguments-extractor variables)))))
+  (let [{:keys [arguments arguments-extractor]} node]
+    (cond-> node
+      arguments-extractor
+      (assoc :arguments (merge arguments (arguments-extractor variables))))))
 
 (defn ^:private apply-directives
   "Computes final arguments for each directive, and passes the node through each
   directive's effector."
   [node variables]
-  (reduce (fn [node directive]
-            (let [effector (:effector directive)]
-              (effector node (compute-arguments directive variables))))
-          node
-          (:directives node)))
-
-(defn ^:private apply-dynamic-arguments
-  "Computes final arguments for a field from its literal arguments and dynamic arguments."
-  [node variables]
-  (assoc node :arguments (compute-arguments node variables)))
+  (let [directives' (map #(apply-variables-to-arguments % variables) (:directives node))]
+    (reduce (fn [node directive]
+              ;; Only the built-in directives @skip and @include have effectors, other
+              ;; directives do not.
+              (if-let [effector (:effector directive)]
+                (effector node (:arguments directive))
+                node))
+            (assoc node :directives directives')
+            directives')))
 
 (declare ^:private prepare-node)
 
@@ -881,7 +955,7 @@
         ;; No need to do work further down the tree if the node itself is
         ;; disabled
         (cond-> node'
-          prepare-dynamic-arguments? (apply-dynamic-arguments variables)
+          prepare-dynamic-arguments? (apply-variables-to-arguments variables)
           prepare-nested-selections? (prepare-nested-selections variables))))))
 
 (defn ^:private to-selection-key
@@ -1006,30 +1080,29 @@
   (let [defaults (default-node-map parsed-field)
         context (node-context defaults)
         result (with-exception-context context
-                 (merge defaults (prepare-parsed-field parsed-field)))
-        {:keys [field alias arguments reportable-arguments directives]} result
-        is-typename-metafield? (= field :__typename)
+                 (prepare-parsed-field defaults parsed-field))
+        {:keys [field-name arguments directives]} result
+        is-typename-metafield? (= field-name :__typename)
         field-definition (if is-typename-metafield?
                            typename-field-definition
-                           (get-in type [:fields field]))
+                           (get-in type [:fields field-name]))
         field-type (schema/root-type-name field-definition)
         nested-type (get schema field-type)
-        field-name (:qualified-name field-definition)
+        qualified-field-name (:qualified-name field-definition field-name)
         context' (cond-> context
-                   field-name (assoc :field field-name))
+                   qualified-field-name (assoc :field-name qualified-field-name))
         selection (with-exception-context context'
                     (when (nil? nested-type)
                       (if (scalar? type)
-                        (throw-exception "Path de-references through a scalar type."
-                                         {:field field})
+                        (throw-exception "Path de-references through a scalar type." {})
                         (let [type-name (:type-name type)]
                           (throw-exception (format "Cannot query field %s on type %s."
-                                                   (q field)
+                                                   (q field-name)
                                                    (if type-name
                                                      (q type-name)
                                                      "UNKNOWN"))
-                                           {:type type-name
-                                            :field field}))))
+                                           {:field-name field-name
+                                            :type-name type-name}))))
                     (let [[literal-arguments dynamic-arguments-extractor]
                           (try
                             (process-arguments schema
@@ -1037,20 +1110,18 @@
                                                arguments)
                             (catch ExceptionInfo e
                               (throw-exception (format "Exception applying arguments to field %s: %s"
-                                                       (q field)
+                                                       (q field-name)
                                                        (to-message e))
                                                nil
                                                e)))]
                       (assoc result
-                             :selection-type :field
+                             :root-value-type nested-type
                              :directives (convert-parsed-directives schema directives)
-                             :alias (or alias field)
                              :leaf? (scalar? nested-type)
                              :concrete-type? (or is-typename-metafield?
                                                  (-> type :category #{:object :input-object} some?))
-                             :reportable-arguments reportable-arguments
                              :arguments literal-arguments
-                             ::arguments-extractor dynamic-arguments-extractor
+                             :arguments-extractor dynamic-arguments-extractor
                              :field-definition field-definition)))]
     (normalize-selections schema selection nested-type)))
 
@@ -1072,7 +1143,8 @@
               inline-fragment (-> selection
                                   (assoc :selection-type :inline-fragment
                                          :concrete-types concrete-types)
-                                  (cond-> directives (assoc :directives (convert-parsed-directives schema directives))))]
+                                  (cond-> directives (assoc :directives (convert-parsed-directives schema directives)))
+                                  map->InlineFragment)]
           (normalize-selections schema
                                 inline-fragment
                                 fragment-type))))))
@@ -1085,8 +1157,9 @@
       ;; TODO: Verify that fragment name exists?
       (-> defaults
           (merge {:selection-type :fragment-spread
-                  :fragment-name fragment-name})
-          (cond-> directives (assoc :directives (convert-parsed-directives schema directives)))
+                  :fragment-name fragment-name
+                  :directives (seq (convert-parsed-directives schema directives))})
+          map->NamedFragment
           mark-node-for-prepare))))
 
 (defn ^:private construct-var-type-map
@@ -1296,5 +1369,4 @@
   (->> parsed-query
        :selections
        (summarize-selections parsed-query)))
-
 

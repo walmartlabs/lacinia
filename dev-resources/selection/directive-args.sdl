@@ -1,0 +1,10 @@
+directive @auth (role: String!) on FIELD_DEFINITION
+
+directive @limit(value: Int = 10) on FIELD
+
+schema { query: Query }
+
+type Query {
+    basic: [String]!
+}
+

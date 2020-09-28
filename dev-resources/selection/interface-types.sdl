@@ -1,0 +1,24 @@
+directive @auth (role: String!) on OBJECT | INTERFACE
+
+schema { query: Query }
+
+interface User @auth(role: "basic") {
+    name: String!
+}
+
+type LegacyUser implements User @auth(role: "hidden") {
+    name: String!
+    userId: Int!
+}
+
+type ActiveUser implements User {
+    name: String!
+    userId: String!
+}
+
+type Query {
+    me: User
+
+    friends: [User!]!
+}
+

@@ -23,8 +23,7 @@
    [clojure.set :as set]
    [clojure.java.io :as io]
    [clojure.edn :as edn]
-   [com.walmartlabs.lacinia.util :as util]
-   [com.walmartlabs.lacinia :as lacinia]))
+   [com.walmartlabs.lacinia.util :as util]))
 
 (def compiled-schema (schema/compile test-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))
 
@@ -59,7 +58,7 @@
                          :argument :Query/hero.episode
                          :enum-type :episode
                          :value :CLONES
-                         :field :Query/hero}
+                         :field-name :Query/hero}
             ;; TODO: This is the location of 'hero', should be location of 'episode' or 'CLONES'.
             :locations [{:column 3
                          :line 1}]

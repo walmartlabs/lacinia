@@ -8,7 +8,8 @@ The default objects names for storing operations are now `Query`, `Mutation`,
 and `Subscription`, and these must be objects (not unions), as
 per [the GraphQL specification](http://spec.graphql.org/June2018/#sec-Root-Operation-Types).
 
-
+Added function `com.walmartlabs.lacinia.executor/selection` which provides access to 
+the details about the selection, including directives and nested selections.
 
 ## 0.37.0 -- 30 Jun 2020
 

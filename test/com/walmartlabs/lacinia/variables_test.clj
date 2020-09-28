@@ -61,7 +61,7 @@
                            :column 34}]
               :extensions
               {:argument :Query/echo.input
-               :field :Query/echo
+               :field-name :Query/echo
                :variable-name :i}}]}
            (execute-parsed-query q nil nil)))))
 

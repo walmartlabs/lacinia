@@ -6,6 +6,7 @@
     [clojure.edn :as edn]
     [com.walmartlabs.lacinia :as lacinia]
     [com.walmartlabs.lacinia.util :as util]
+    [com.walmartlabs.lacinia.parser.schema :refer [parse-schema]]
     [com.walmartlabs.lacinia.schema :as schema])
   (:import
     (clojure.lang IPersistentMap)))
@@ -69,6 +70,15 @@
        edn/read-string
        (util/attach-resolvers resolvers)
        (schema/compile options))))
+
+(defn compile-sdl-schema
+  "Reads a schema SDL file, injects resolvers, and compiles the schema."
+  [resource-path resolvers]
+  (-> (io/resource resource-path)
+      slurp
+      parse-schema
+      (util/inject-resolvers resolvers)
+      schema/compile))
 
 (defn execute
   ([compiled-schema query]

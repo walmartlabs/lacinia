@@ -276,6 +276,8 @@
                              :args {:direction {:directives [{:directive-type :Arg}]
                                                 :type String}}
                              :directives [{:directive-type :Field}]}}}}}
+         ;; TODO: Our parser allows annotation on arguments and return types, which goes well
+         ;; beyond the GraphQL spec.
          (parse-string "type Ebb @Object { flow(direction : String @Arg) : String @Field }"))))
 
 (deftest interface-directives
