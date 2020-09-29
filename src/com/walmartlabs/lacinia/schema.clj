@@ -1485,25 +1485,24 @@
     (assoc compiled-schema object-name
            (map->Type {:category :object
                        :type-name object-name
-                       :description object-description
-                       :fields fields})))
+                       :fields fields}))
 
-  (empty? fields)
-  compiled-schema
+    (empty? fields)
+    compiled-schema
 
-  ;; Ok, so here's the less fun case - the object is already in the schema and there are fields defiend on that object
-  ;; there but there are also fields separately ... say, due to Introspection adding queries.
-  :else
-  (let [merged-fields (reduce-kv (fn [m k v]
-                                   (when (contains? m k)
-                                     (throw (ex-info (format "Name collision compiling schema: %s already exists with value from %s."
-                                                             (q (qualified-name object-name k))
-                                                             operation-key)
-                                                     {:field-name k})))
-                                   (assoc m k v))
-                                 (:fields existing)
-                                 fields)]
-    (assoc-in compiled-schema [object-name :fields] merged-fields))) )
+    ;; Ok, so here's the less fun case - the object is already in the schema and there are fields defiend on that object
+    ;; there but there are also fields separately ... say, due to Introspection adding queries.
+    :else
+    (let [merged-fields (reduce-kv (fn [m k v]
+                                     (when (contains? m k)
+                                       (throw (ex-info (format "Name collision compiling schema: %s already exists with value from %s."
+                                                               (q (qualified-name object-name k))
+                                                               operation-key)
+                                                       {:field-name k})))
+                                     (assoc m k v))
+                                   (:fields existing)
+                                   fields)]
+      (assoc-in compiled-schema [object-name :fields] merged-fields))))
 
 (defn ^:private compile-directive-defs
   [schema directive-defs]

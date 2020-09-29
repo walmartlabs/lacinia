@@ -433,9 +433,14 @@
                                  (let [final-result (resolve-promise)]
                                    (resolve/on-deliver! field-resolver-result
                                                         (fn receive-resolved-value-from-field [resolved-value]
-                                                          (resolve/on-deliver! (process-resolved-value resolved-value)
-                                                                               (fn deliver-selection-for-field [resolved-value]
-                                                                                 (resolve/deliver! final-result resolved-value)))))
+                                                          ;; This is for a specific case, where a parent resolver returns a map whose value
+                                                          ;; is also a ResolverResult; in that case, unwrap one layer further before calling
+                                                          ;; process-resolved-value.
+                                                          (if (resolve/is-resolver-result? resolved-value)
+                                                            (resolve/on-deliver! resolved-value receive-resolved-value-from-field)
+                                                            (resolve/on-deliver! (process-resolved-value resolved-value)
+                                                                                 (fn deliver-selection-for-field [resolved-value]
+                                                                                   (resolve/deliver! final-result resolved-value))))))
                                    final-result))]
 
     ;; For fragments, we start with a single value and it passes right through to
