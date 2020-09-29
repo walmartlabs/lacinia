@@ -17,13 +17,13 @@ to pass to the products service, using information from the ``@key`` directive:
     {"__typename": "User",
      "id": "124c41"}
 
-This representation is JSON, and is be passed to an implementing service's ``_entities`` query, which is automaticaly added
+This representation is JSON, and is passed to an implementing service's ``_entities`` query, which is automaticaly added
 to the implementing service's schema by Lacinia:
 
 .. literalinclude:: /_examples/fed/schema.gql
 
 The ``_Entity`` union will contain all entities, internal or external, in the local schema; for the products service, this
-will be ``User`` and ``Product``.
+will be ``User`` (external) and ``Product`` (internal).
 
 The ``_entities`` query exists to convert some number of representations (here, as scalar type ``_Any``) into entities
 (either stub entities or full entities).

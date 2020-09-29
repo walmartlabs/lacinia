@@ -228,9 +228,9 @@
     "Unknown argument type."
     {:arg-name :date
      :arg-type-name :Date
-     :schema-types {:object [:MutationRoot
-                             :QueryRoot
-                             :SubscriptionRoot]
+     :schema-types {:object [:Mutation
+                             :Query
+                             :Subscription]
                     :scalar [:Boolean
                              :Float
                              :ID
@@ -245,9 +245,9 @@
     "Directive argument is not a scalar type."
     {:arg-name :user
      :arg-type-name :User
-     :schema-types {:object [:MutationRoot
-                             :QueryRoot
-                             :SubscriptionRoot
+     :schema-types {:object [:Mutation
+                             :Query
+                             :Subscription
                              :User]
                     :scalar [:Boolean
                              :Float

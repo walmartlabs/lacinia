@@ -144,7 +144,7 @@
   (is (= {:data
           {:__schema
            {:subscriptionType
-            {:description "Root of all subscriptions."
+            {:description nil
              :fields [{:args [{:name "severity"
                                :type {:name "String"}}]
                        :name "logs"
@@ -154,7 +154,7 @@
                     {:name "ID"}
                     {:name "Int"}
                     {:name "LogEvent"}
-                    {:name "QueryRoot"}
+                    {:name "Query"}
                     {:name "String"}
-                    {:name "SubscriptionRoot"}]}}}
+                    {:name "Subscription"}]}}}
          (test-utils/execute compiled-schema "{ __schema { types { name } subscriptionType { description fields { name type { name } args { name type { name }}}}}}"))))

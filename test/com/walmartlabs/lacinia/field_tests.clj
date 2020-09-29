@@ -23,9 +23,9 @@
     "Field `Insect/legs' references unknown type `Six'."
     {:field-name :Insect/legs
      :schema-types {:object [:Insect
-                             :MutationRoot
-                             :QueryRoot
-                             :SubscriptionRoot]
+                             :Mutation
+                             :Query
+                             :Subscription]
                     :scalar [:Boolean
                              :Float
                              :ID

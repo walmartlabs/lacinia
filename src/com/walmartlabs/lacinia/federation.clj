@@ -124,7 +124,7 @@
   [schema sdl entity-resolvers]
   (let [entity-names (find-entity-names schema)
         entities-resolver (entities-resolver-factory entity-names entity-resolvers)
-        query-root (get-in schema [:roots :query] :QueryRoot)]
+        query-root (get-in schema [:roots :query] :Query)]
     (prevent-collision schema [:unions :_Entity])
     (prevent-collision schema [:objects query-root :fields :_service])
     (prevent-collision schema [:objects query-root :fields :_entities])

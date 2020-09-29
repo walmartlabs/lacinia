@@ -36,8 +36,8 @@
     (is (= {:data {:create_game "nil"}}
            (execute schema "mutation { create_game }")))
 
-    (is (= {:errors [{:extensions {:argument :__Mutations/create_game.game_data
-                                   :field-name :__Mutations/create_game
+    (is (= {:errors [{:extensions {:argument :Mutation/create_game.game_data
+                                   :field-name :Mutation/create_game
                                    :missing-key :id
                                    :required-keys [:id]
                                    :schema-type :game_template}
@@ -48,8 +48,8 @@
 
     ;; TODO: Missing some needed context from above
 
-    (is (= {:errors [{:extensions {:argument :__Mutations/create_game.game_data
-                                   :field-name :__Mutations/create_game
+    (is (= {:errors [{:extensions {:argument :Mutation/create_game.game_data
+                                   :field-name :Mutation/create_game
                                    :missing-key :id
                                    :required-keys [:id]
                                    :schema-type :game_template}
@@ -88,8 +88,8 @@
            (execute schema
                     "{ search(filter: {terms: \"lego\", max_count: 5}) }")))
 
-    (is (= {:errors [{:extensions {:argument :__Queries/search.filter
-                                   :field-name :__Queries/search
+    (is (= {:errors [{:extensions {:argument :Query/search.filter
+                                   :field-name :Query/search
                                    :schema-type :Filter}
                       :locations [{:column 3
                                    :line 1}]
@@ -97,7 +97,7 @@
            (execute schema
                     "{ search(filter: {term: \"lego\", max_count: 5}) }")))
 
-    (is (= {:errors [{:extensions {:argument :__Queries/search.filter
+    (is (= {:errors [{:extensions {:argument :Query/search.filter
                                    :field-name :term
                                    :input-object-fields [:max_count
                                                          :terms]
@@ -118,6 +118,9 @@
     "Field `Insect/legs' references unknown type `Six'."
     {:field-name :Insect/legs
      :schema-types {:input-object [:Insect]
+                    :object [:Mutation
+                             :Query
+                             :Subscription]
                     :scalar [:Boolean
                              :Float
                              :ID
@@ -133,7 +136,7 @@
     "Field `Web/spider' is type `Creepy', input objects may only be used as field arguments."
     {:field-name :Web/spider
      :schema-types {:scalar [:Boolean :Float :ID :Int :String],
-                    :object [:MutationRoot :QueryRoot :SubscriptionRoot :Web],
+                    :object [:Mutation :Query :Subscription :Web],
                     :input-object [:Creepy]}}
     (schema/compile
       {:input-objects
@@ -149,9 +152,9 @@
   (expect-exception
     "Field `Turtle/friend' is type `Hare', input objects may only contain fields that are scalar, enum, or input object."
     {:field-name :Turtle/friend
-     :schema-types  {:scalar [:Boolean :Float :ID :Int :String],
-                     :object [:Hare :MutationRoot :QueryRoot :SubscriptionRoot],
-                     :input-object [:Turtle]}}
+     :schema-types {:scalar [:Boolean :Float :ID :Int :String],
+                    :object [:Hare :Mutation :Query :Subscription],
+                    :input-object [:Turtle]}}
     (schema/compile
       {:input-objects
        {:Turtle {:fields {:friend {:type :Hare}}}}

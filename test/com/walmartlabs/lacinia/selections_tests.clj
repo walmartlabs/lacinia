@@ -55,13 +55,13 @@
         executor/selections-tree)))
 
 (deftest simple-cases
-  (is (= [:__Queries/hero :character/name]
+  (is (= [:Query/hero :character/name]
          (root-selections "{ hero { name }}")))
 
-  (is (= [:__Queries/human :human/name :human/homePlanet]
+  (is (= [:Query/human :human/name :human/homePlanet]
          (root-selections "{ human { name homePlanet }}")))
 
-  (is (= [:__Queries/human
+  (is (= [:Query/human
           :human/name :human/friends :human/enemies
           :character/name                                   ; friends
           :character/appears_in
@@ -69,19 +69,19 @@
          (root-selections "{ human { name friends { name appears_in } enemies { name }}}"))))
 
 (deftest skips-psuedo-field-in-selections
-  (is (= [:__Queries/human :human/name :human/homePlanet]
+  (is (= [:Query/human :human/name :human/homePlanet]
          (root-selections "{ human { name __typename homePlanet }}"))))
 
 (deftest selections-account-for-directives
 
-  (is (= [:__Queries/human
+  (is (= [:Query/human
           :human/name :human/friends
           ;; :human/enemies and nested :character/name omitted
           :character/name
           :character/appears_in]
          (root-selections "{ human { name friends { name appears_in } enemies @skip(if: true) { name }}}")))
 
-  (is (= [:__Queries/human
+  (is (= [:Query/human
           :human/friends
           :human/enemies
           :character/name
@@ -106,22 +106,22 @@
          { human { name }
            r2: droid { id }
          }"]
-    (is (= [:__Queries/human
-            :__Queries/droid
+    (is (= [:Query/human
+            :Query/droid
             :human/name
             :droid/id]
            (root-selections q)))
 
-    (is (= {:__Queries/droid [{:args {:id "2001"}
+    (is (= {:Query/droid [{:args {:id "2001"}
                                :alias :r2
                                :selections {:droid/id [nil]}}]
-            :__Queries/human [{:args {:id "1001"}
+            :Query/human [{:args {:id "1001"}
                                :selections {:human/name [nil]}}]}
            (tree q)))
 
-    (is (= [{:name :__Queries/human
+    (is (= [{:name :Query/human
              :args {:id "1001"}}
-            {:name :__Queries/droid
+            {:name :Query/droid
              :alias :r2
              :args {:id "2001"}}
             {:name :human/name}
@@ -129,16 +129,16 @@
            (root-selections2 q)))))
 
 (deftest introspection-cases
-  (is (= [:__Queries/hero]
+  (is (= [:Query/hero]
          (root-selections "{ hero { __typename }}")))
-  (is (= [:__Queries/hero :character/name]
+  (is (= [:Query/hero :character/name]
          (root-selections "{ hero { name __typename }}")))
-  (is (= {:__Queries/hero
+  (is (= {:Query/hero
           [{:selections {:character/name [nil]}}]}
          (tree "{ hero { name __typename }}"))))
 
 (deftest mutations
-  (is (= [:__Mutations/changeHeroHomePlanet
+  (is (= [:Mutation/changeHeroHomePlanet
           :human/name :human/homePlanet]
          (root-selections "mutation { changeHeroHomePlanet (id: \"123\",
             newHomePlanet: \"Venus\") {
@@ -147,7 +147,7 @@
          }"))))
 
 (deftest inline-fragments
-  (is (= [:__Queries/hero
+  (is (= [:Query/hero
           :character/name
           :human/homePlanet
           :droid/primary_function]
@@ -163,7 +163,7 @@
             }"))))
 
 (deftest named-fragments
-  (is (= [:__Queries/hero
+  (is (= [:Query/hero
           :character/name
           :human/homePlanet
           :droid/primary_function]
@@ -191,24 +191,24 @@
     (is (not (executor/selects-field? context :character/name)))))
 
 (deftest basic-tree
-  (is (= {:__Queries/human [{:args {:id "1001"}
+  (is (= {:Query/human [{:args {:id "1001"}
                              :selections {:human/name [nil]}}]}
          (tree "{ human { name }}")))
 
-  (is (= {:__Queries/droid [{:args {:id "2001"}
+  (is (= {:Query/droid [{:args {:id "2001"}
                              :selections {:droid/appears_in [{:alias :appears}]
                                           :droid/friends [{:selections {:character/name [nil]}}]
                                           :droid/name [nil]}}]}
          (tree "{ droid { name appears: appears_in friends { name }}}"))))
 
 (deftest directives-in-tree
-  (is (= {:__Queries/droid [{:args {:id "2001"}
+  (is (= {:Query/droid [{:args {:id "2001"}
                              :selections {:droid/appears_in [{:alias :appears}]
                                           :droid/name [nil]}}]}
          (tree "{ droid { name appears: appears_in friends @include(if: false) { name }}}")))
 
 
-  (is (= {:__Queries/human [{:args {:id "1001"}
+  (is (= {:Query/human [{:args {:id "1001"}
                              :selections {:character/appears_in [nil]
                                           :character/name [nil]
                                           :human/enemies [nil]
@@ -223,7 +223,7 @@
          fragment fcharacter on character { name appears_in }"))))
 
 (deftest skips-psuedo-field-in-tree
-  (is (= {:__Queries/human [{:args {:id "1001"}
+  (is (= {:Query/human [{:args {:id "1001"}
                              :selections {:character/appears_in [nil]
                                           :character/name [nil]
                                           :human/enemies [nil]
@@ -239,7 +239,7 @@
 
 
 (deftest inline-fragments-are-flattened-in-tree
-  (is (= {:__Queries/hero [{:selections {:character/name [nil]
+  (is (= {:Query/hero [{:selections {:character/name [nil]
                                          :droid/primary_function [nil]
                                          :human/friends [{:selections {:character/name [nil]}}]
                                          :human/homePlanet [nil]}}]}
@@ -254,7 +254,7 @@
             }"))))
 
 (deftest named-fragments-are-flattened-in-tree
-  (is (= {:__Queries/hero
+  (is (= {:Query/hero
           [{:selections {:character/name [nil]
                          :character/friends [{:selections {:character/name [nil {:alias :character_name}]
                                                            :droid/primary_function [nil]
@@ -306,7 +306,7 @@
                        nil))))
 
 (deftest tree-with-aliases
-  (is (= {:__Queries/get_root
+  (is (= {:Query/get_root
           [{:selections {:Root/detail [{:args {:int_arg 1}}
                                        {:alias :d5
                                         :args {:int_arg 5}}]}}]}

@@ -40,9 +40,10 @@ For example:
 which fields are needed to bridge relationships between the different services.
 
 Instead, federation allows the Apollo GraphQL gateway to merge together the three individual services into one composite service.
-The client is only needs access to the single gateway enpoint, and is free to make complex queries that
+The client only needs access to the single gateway endpoint, and is free to make complex queries that
 span from ``User`` to ``Review`` to ``Product`` seamlessly;
-the gateway service is responsible for communicating to the implementing services.
+the gateway service is responsible for communicating with the implementing services and merging together the final
+response.
 
 A GraphQL type (or interface) that can span services this way is called an `entity`.
 
@@ -52,7 +53,8 @@ backwards compatible, just as with a traditional GraphQL schema.
 
 In the other schemas, the ``User`` type is `external`; just a kind of stub for ``User`` is defined in the schemas for
 the products and reviews service. The full type, and the stub, must agree on fields that define the primary key
-for the entity. 
+for the entity. However, the stub can be extended by the other services to add new fields, surfacing data and relationships
+owned by the particular service.
 
 .. toctree::
     :hidden:

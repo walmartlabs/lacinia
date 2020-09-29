@@ -1,6 +1,6 @@
 {:data
  {:__schema
-  {:queryType {:name "QueryRoot"},
+  {:queryType {:name "Query"},
    :mutationType nil,
    :types
    [{:kind :SCALAR,
@@ -36,8 +36,8 @@
      :enumValues nil,
      :possibleTypes nil}
     {:kind :OBJECT,
-     :name "QueryRoot",
-     :description "Root of all queries.",
+     :name "Query",
+     :description nil,
      :fields
      [{:name "droid",
        :description nil,

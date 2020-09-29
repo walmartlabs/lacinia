@@ -96,7 +96,10 @@
               :type-name :dino}
      :schema-types {:interface [:barney
                                 :fred]
-                    :object [:dino]
+                    :object [:Mutation
+                             :Query
+                             :Subscription
+                             :dino]
                     :scalar [:Boolean
                              :Float
                              :ID
@@ -109,9 +112,9 @@
     {:field-name :dino/dinosaur
      :schema-types {:interface [:barney
                                 :fred]
-                    :object [:MutationRoot
-                             :QueryRoot
-                             :SubscriptionRoot
+                    :object [:Mutation
+                             :Query
+                             :Subscription
                              :dino]
                     :scalar [:Boolean
                              :Float
@@ -171,9 +174,9 @@
 
 (deftest typename-at-root
   (let [compiled-schema (schema/compile {})]
-    (is (= {:data {:__typename :QueryRoot}}
+    (is (= {:data {:__typename :Query}}
            (execute compiled-schema "{ __typename }")))
 
-    (is (= {:data {:__typename :MutationRoot}}
+    (is (= {:data {:__typename :Mutation}}
            (execute compiled-schema "mutation { __typename }")))))
 

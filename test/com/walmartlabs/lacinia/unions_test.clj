@@ -72,7 +72,10 @@
                       {:unions {:searchable {:members [:business :account]}}})]
     (expect-exception
       "Union `searchable' references unknown type `account'."
-      {:schema-types {:object [:business
+      {:schema-types {:object [:Mutation
+                               :Query
+                               :Subscription
+                               :business
                                :employee]
                       :scalar [:Boolean
                                :Float

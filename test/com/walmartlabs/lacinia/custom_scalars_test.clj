@@ -97,8 +97,8 @@
                                                            :name "Luke Skywalker"})}}})
               q1 "{ human(id: \"1003\") { id, name }}"
               q2 "{ events { lookup }}"]
-          (is (= {:errors [{:extensions {:argument :__Queries/human.id
-                                         :field-name :__Queries/human
+          (is (= {:errors [{:extensions {:argument :Query/human.id
+                                         :field-name :Query/human
                                          :type-name :EventId
                                          :value "1003"}
                             :locations [{:column 3
@@ -179,8 +179,8 @@
                                                            :name "Luke Skywalker"})}}})
               q1 "{ human(id: \"1003\") { id, name }}"
               q2 "{ events { lookup }}"]
-          (is (= {:errors [{:extensions {:argument :__Queries/human.id
-                                         :field-name :__Queries/human
+          (is (= {:errors [{:extensions {:argument :Query/human.id
+                                         :field-name :Query/human
                                          :type-name :EventId
                                          :value "1003"}
                             :locations [{:column 3
@@ -228,8 +228,8 @@
                     {:asOf "2017-04-05"}
                     nil))
         "should return parsed and serialized value")
-    (is (= {:errors [{:extensions {:argument :__Queries/today.asOf
-                                   :field-name :__Queries/today
+    (is (= {:errors [{:extensions {:argument :Query/today.asOf
+                                   :field-name :Query/today
                                    :type-name :Date
                                    :value "abc"}
                       :locations [{:column 31
@@ -290,8 +290,8 @@
                     {:between []}
                     nil))
         "should return empty list (:between can be an empty list) ")
-    (is (= {:errors [{:extensions {:argument :__Queries/sundays.between
-                                   :field-name :__Queries/sundays
+    (is (= {:errors [{:extensions {:argument :Query/sundays.between
+                                   :field-name :Query/sundays
                                    :variable-name :between}
                       :locations [{:column 31
                                    :line 2}]
@@ -302,8 +302,8 @@
                     {:between nil}
                     nil))
         "should return an error")
-    (is (= {:errors [{:extensions {:argument :__Queries/sundays.between
-                                   :field-name :__Queries/sundays
+    (is (= {:errors [{:extensions {:argument :Query/sundays.between
+                                   :field-name :Query/sundays
                                    :variable-name :between}
                       :locations [{:column 31
                                    :line 2}]
@@ -314,8 +314,8 @@
                     {:between [nil]}
                     nil))
         "should return an error")
-    (is (= {:errors [{:extensions {:argument :__Queries/sundays.between
-                                   :field-name :__Queries/sundays
+    (is (= {:errors [{:extensions {:argument :Query/sundays.between
+                                   :field-name :Query/sundays
                                    :variable-name :between}
                       :locations [{:column 31
                                    :line 2}]
@@ -326,8 +326,8 @@
                     {:between ["2017-03-01" nil]}
                     nil))
         "should return an error")
-    (is (= {:errors [{:extensions {:argument :__Queries/sundays.between
-                                   :field-name :__Queries/sundays
+    (is (= {:errors [{:extensions {:argument :Query/sundays.between
+                                   :field-name :Query/sundays
                                    :variable-name :between}
                       :locations [{:column 31
                                    :line 2}]
@@ -354,8 +354,8 @@
                       {:words [[["foo" "bar"]]]}
                       nil))
           "should return nested list")
-      (is (= {:errors [{:extensions {:argument :__Queries/shout.words
-                                     :field-name :__Queries/shout
+      (is (= {:errors [{:extensions {:argument :Query/shout.words
+                                     :field-name :Query/shout
                                      :variable-name :words}
                         :locations [{:column 31
                                      :line 2}]
@@ -394,8 +394,8 @@
                       {:words [[[nil]]]}
                       nil))
           "should return an error")
-      (is (= {:errors [{:extensions {:argument :__Queries/shout.words
-                                     :field-name :__Queries/shout
+      (is (= {:errors [{:extensions {:argument :Query/shout.words
+                                     :field-name :Query/shout
                                      :variable-name :words}
                         :locations [{:column 31
                                      :line 2}]
@@ -422,8 +422,8 @@
                                                     :args {:words {:type '(list (list (list (non-null :CustomType))))}}
                                                     :resolve (fn [ctx args v]
                                                                (:words args))}}})]
-      (is (= {:errors [{:extensions {:argument :__Queries/shout.words
-                                     :field-name :__Queries/shout
+      (is (= {:errors [{:extensions {:argument :Query/shout.words
+                                     :field-name :Query/shout
                                      :variable-name :words}
                         :locations [{:column 31
                                      :line 2}]
@@ -434,8 +434,8 @@
                       {:words [[[nil]]]}
                       nil))
           "should return an error")
-      (is (= {:errors [{:extensions {:argument :__Queries/shout.words
-                                     :field-name :__Queries/shout
+      (is (= {:errors [{:extensions {:argument :Query/shout.words
+                                     :field-name :Query/shout
                                      :variable-name :words}
                         :locations [{:column 31
                                      :line 2}]
@@ -514,8 +514,8 @@
       (is (= {:errors [{:locations [{:column 3
                                      :line 1}]
                         :message "Exception applying arguments to field `dupe': For argument `in', scalar value is not parsable as type `LimitedInt': Just don't like 5."
-                        :extensions {:argument :__Queries/dupe.in
-                                     :field-name :__Queries/dupe
+                        :extensions {:argument :Query/dupe.in
+                                     :field-name :Query/dupe
                                      :type-name :LimitedInt
                                      :value 5}}]}
              (execute schema
@@ -550,8 +550,8 @@
                                      {:queries/make-data (fn [_ args _]
                                                            args)
                                       :queries/bad-data (constantly {:value "not-a-number"})})]
-    (is (= {:errors [{:extensions {:argument :__Queries/make_data.value
-                                   :field-name :__Queries/make_data
+    (is (= {:errors [{:extensions {:argument :Query/make_data.value
+                                   :field-name :Query/make_data
                                    :type-name :Int
                                    :value "get real"}
                       :locations [{:column 3

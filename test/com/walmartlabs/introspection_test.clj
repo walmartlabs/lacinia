@@ -343,10 +343,10 @@
                                       {:name "Float"}
                                       {:name "ID"}
                                       {:name "Int"}
-                                      {:name "MutationRoot"}
-                                      {:name "QueryRoot"}
+                                      {:name "Mutation"}
+                                      {:name "Query"}
                                       {:name "String"}
-                                      ;; SubscriptionRoot not present, because there are no defined subscriptions
+                                      ;; Subscription not present, because there are no defined subscriptions
                                       {:name "character"}
                                       {:name "droid"}
                                       {:name "echoArgs"}
@@ -362,14 +362,14 @@
                queryType { name kind fields { name }}
              }
            }"]
-    ;; TODO: Should QueryRoot and MutationRoot appear?
+    ;; TODO: Should Query and Mutation appear?
     (is (= {:data {:__schema {:queryType {:fields [{:name "droid"}
                                                    {:name "echoArgs"}
                                                    {:name "hero"}
                                                    {:name "human"}
                                                    {:name "now"}]
                                           :kind :OBJECT
-                                          :name "QueryRoot"}
+                                          :name "Query"}
                               :types [{:description nil
                                        :kind :SCALAR
                                        :name "Boolean"}
@@ -385,12 +385,12 @@
                                       {:description nil
                                        :kind :SCALAR
                                        :name "Int"}
-                                      {:description "Root of all mutations."
+                                      {:description  nil
                                        :kind :OBJECT
-                                       :name "MutationRoot"}
-                                      {:description "Root of all queries."
+                                       :name "Mutation"}
+                                      {:description  nil
                                        :kind :OBJECT
-                                       :name "QueryRoot"}
+                                       :name "Query"}
                                       {:description nil
                                        :kind :SCALAR
                                        :name "String"}
@@ -518,8 +518,8 @@
                                                   :ofType nil}}}]
                           :description "Include the selection only when the `if` argument is true."
                           :name "include"}]
-            :mutationType {:name "MutationRoot"}
-            :queryType {:name "QueryRoot"}
+            :mutationType {:name "Mutation"}
+            :queryType {:name "Query"}
             :types [{:description nil
                      :enumValues nil
                      :fields nil
@@ -560,7 +560,7 @@
                      :kind :SCALAR
                      :name "Int"
                      :possibleTypes nil}
-                    {:description "Root of all mutations."
+                    {:description  nil
                      :enumValues nil
                      :fields [{:args [{:defaultValue nil
                                        :description nil
@@ -636,9 +636,9 @@
                      :inputFields nil
                      :interfaces []
                      :kind :OBJECT
-                     :name "MutationRoot"
+                     :name "Mutation"
                      :possibleTypes nil}
-                    {:description "Root of all queries."
+                    {:description nil
                      :enumValues nil
                      :fields [{:args [{:defaultValue "\"2001\""
                                        :description nil
@@ -721,7 +721,7 @@
                      :inputFields nil
                      :interfaces []
                      :kind :OBJECT
-                     :name "QueryRoot"
+                     :name "Query"
                      :possibleTypes nil}
                     {:description nil
                      :enumValues nil
@@ -1346,7 +1346,7 @@
                                                            :name nil
                                                            :ofType {:kind :SCALAR
                                                                     :name "ID"}}}]
-                                          :name "QueryRoot"}}}}
+                                          :name "Query"}}}}
            (utils/execute schema q nil nil)))))
 
 (deftest described-enums
@@ -1402,7 +1402,7 @@
                            }")))))
 
 (def ^:private fields-and-args-query "{
-                             __type(name: \"QueryRoot\") {
+                             __type(name: \"Query\") {
                               fields {
                                 name
                                 args { name defaultValue }
@@ -1500,8 +1500,8 @@
   (let [schema (schema/compile test-schema {:enable-introspection? false})
         q "{ __type(name: \"human\") { kind name fields { name }}}"]
     (is (= {:errors [{:extensions {:field-name :__type
-                                   :type-name :QueryRoot}
+                                   :type-name :Query}
                       :locations [{:column 3
                                    :line 1}]
-                      :message "Cannot query field `__type' on type `QueryRoot'."}]}
+                      :message "Cannot query field `__type' on type `Query'."}]}
            (execute schema q)))))

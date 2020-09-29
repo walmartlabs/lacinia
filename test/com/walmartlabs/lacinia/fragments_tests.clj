@@ -48,7 +48,7 @@
                                :power "AC"}
                               {:name "Luke"
                                :home_world "Tatooine"}]}}
-         (q "{ ... on QueryRoot {
+         (q "{ ... on Query {
            characters {
            name
            ... on droid { power }

@@ -20,10 +20,12 @@
 
 (deftest reports-unknown-argument-type
   (expect-exception
-    "Argument `__Queries/example.id' references unknown type `UUID'."
-    {:arg-name :__Queries/example.id
+    "Argument `Query/example.id' references unknown type `UUID'."
+    {:arg-name :Query/example.id
      :schema-types {:scalar [:Boolean :Float :ID :Int :String]
-                    :object [:MutationRoot :QueryRoot :SubscriptionRoot]}}
+                    :object [:Mutation
+                             :Query
+                             :Subscription]}}
     (compile-schema "unknown-argument-type-schema.edn"
                     {:example identity})))
 
@@ -101,16 +103,16 @@
     (is (= {:data {:echo "Echo: Default"}}
            (execute schema "query($s : String) { echo(input: $s) }" nil nil)))
 
-    (is (= {:errors [{:extensions {:argument :__Queries/echo.input
-                                   :field-name :__Queries/echo
+    (is (= {:errors [{:extensions {:argument :Query/echo.input
+                                   :field-name :Query/echo
                                    :variable-name :s}
                       :locations [{:column 23
                                    :line 1}]
                       :message "No value was provided for variable `s', which is non-nullable."}]}
            (execute schema "query($s : String!) { echo(input: $s) }" nil nil)))
 
-    (is (= {:errors [{:extensions {:argument :__Queries/echo.input
-                                   :field-name :__Queries/echo}
+    (is (= {:errors [{:extensions {:argument :Query/echo.input
+                                   :field-name :Query/echo}
                       :locations [{:column 22
                                    :line 1}]
                       :message "Argument `s' is required, but no value was provided."}]}

@@ -102,9 +102,9 @@ query ($who : String) {
 
 (deftest conflicting-arguments-are-identified
   (is (= {:errors [{:extensions {:arguments nil
-                                 :field-name :__Queries/human
+                                 :field-name :Query/human
                                  :incompatible-arguments {:id "1000"}}
-                    :message "Different selections of `__Queries/human' have incompatible arguments. Use alias names if this is intentional."}]}
+                    :message "Different selections of `Query/human' have incompatible arguments. Use alias names if this is intentional."}]}
          (q "
 {
   human {

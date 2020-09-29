@@ -15,7 +15,7 @@ is a list of the ``_Entities`` union, therefore each value :doc:`must be tagged 
 
 .. sidebar:: Return type
 
-    Return type here is just like a normal field resolver that returns GraphQL list; it may be seq of values, or a
+    Return type here is just like a normal field resolver that returns a GraphQL list; it may be seq of values, or a
     :doc:`ResolverResult </resolve/resolve-as>` that delivers such a seq.
 
 ``resolve-products-internal`` does the same for ``Product`` representations, but since this is the
