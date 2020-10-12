@@ -223,6 +223,20 @@
   [expected-msg expected-ex-data schema]
   `(expect-exception ~expected-msg ~expected-ex-data (schema/compile ~schema)))
 
+(deftest scalars-allowed-for-directive-args
+  (schema/compile
+    '{:directive-defs {:auth {:args {:logFailure {:type Boolean
+                                                  :default-value true}
+                                     :operationName {:default-value nil
+                                                     :type String}
+                                     :roles {:default-value [:ADMIN :MANAGER]
+                                             :type (list :Role)}}
+                              :locations #{:field-definition}}}
+      :enums {:Role {:values [{:enum-value :ADMIN}
+                              {:enum-value :MANAGER}
+                              {:enum-value :WORKER}
+                              {:enum-value :GUEST}]}}}))
+
 (deftest unknown-argument-type-for-directive
   (directive-test
     "Unknown argument type."
@@ -242,7 +256,7 @@
 
 (deftest incorrect-argument-type-for-directive
   (directive-test
-    "Directive argument is not a scalar type."
+    "Directive argument is not a scalar, enum, or input object type."
     {:arg-name :user
      :arg-type-name :User
      :schema-types {:object [:Mutation

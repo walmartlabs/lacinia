@@ -1515,8 +1515,8 @@
                                                     {:arg-name arg-name
                                                      :arg-type-name arg-type-name
                                                      :schema-types (type-map schema)})))
-                                  (when-not (= :scalar (:category arg-type))
-                                    (throw (ex-info "Directive argument is not a scalar type."
+                                  (when-not (#{:enum :scalar :input-object} (:category arg-type))
+                                    (throw (ex-info "Directive argument is not a scalar, enum, or input object type."
                                                     {:arg-name arg-name
                                                      :arg-type-name arg-type-name
                                                      :schema-types (type-map schema)})))
