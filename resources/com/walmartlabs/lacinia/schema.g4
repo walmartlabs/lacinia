@@ -224,7 +224,7 @@ K_TRUE         : 'true'         ;
 K_FALSE        : 'false'        ;
 K_NULL         : 'null'         ;
 
-BooleanValue
+booleanValue
     : K_TRUE
     | K_FALSE
     ;
@@ -238,8 +238,8 @@ value
     | FloatValue
     | StringValue
     | BlockStringValue
-    | BooleanValue
-    | NullValue
+    | booleanValue
+    | nullValue
     | enumValue
     | arrayValue
     | objectValue
@@ -261,7 +261,7 @@ objectField
     : anyName ':' value
     ;
 
-NullValue
+nullValue
     : K_NULL
     ;
 

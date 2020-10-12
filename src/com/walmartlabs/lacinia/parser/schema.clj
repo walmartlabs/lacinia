@@ -352,9 +352,13 @@
   [prod]
   (xform-second prod))
 
-(defmethod xform :booleanvalue
+(defmethod xform :booleanValue
   [prod]
-  (Boolean/valueOf ^String (second prod)))
+  (Boolean/valueOf ^String (-> prod second second)))
+
+(defmethod xform :nullValue
+  [_]
+  nil)
 
 (defmethod xform :intvalue
   [prod]
