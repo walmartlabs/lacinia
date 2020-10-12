@@ -200,9 +200,10 @@
           {:Ebb
            {:fields
             {:flow
-             {:args {:input {:type 'Boolean}}
+             {:args {:input {:type 'Boolean
+                             :default-value false}}
               :type 'String}}}}}
-         (parse-string "type Ebb { flow (input: Boolean) : String }"))))
+         (parse-string "type Ebb { flow (input: Boolean = false) : String }"))))
 
 (deftest schema-directives
   (is (= '{:directive-defs
@@ -221,6 +222,27 @@
                                  {:column 42
                                   :line 1}]}
                     (parse-string "directive @Dupe (a : String, b : String, a : String) on ENUM")))
+
+(deftest directive-arg-literals
+  (is (= '{:directive-defs {:auth {:args {:logFailure {:type Boolean
+                                                       :default-value true}
+                                          :operationName {:default-value nil
+                                                          :type String}
+                                          :roles {:default-value [:ADMIN :MANAGER]
+                                                  :type (list :Role)}}
+                                   :locations #{:field-definition}}}
+           :enums {:Role {:values [{:enum-value :ADMIN}
+                                   {:enum-value :MANAGER}
+                                   {:enum-value :WORKER}
+                                   {:enum-value :GUEST}]}}}
+         (parse-string
+           "directive @auth (
+              roles: [Role] = [ADMIN, MANAGER]
+              logFailure: Boolean = true
+              operationName: String = null
+            ) on FIELD_DEFINITION
+
+            enum Role { ADMIN, MANAGER, WORKER, GUEST }"))))
 
 (deftest field-directive
   (is (= '{:directive-defs
@@ -322,11 +344,17 @@
            {:Animal
             {:fields
              {:name {:type (non-null String)}
+              :keyword {:type String
+                         :default-value nil}
               :weight {:type (non-null Int)}
+              :imperial {:type Boolean
+                          :default-value false}
               :category {:type String :default-value "feline"}}}}}
          (parse-string "input Animal {
 	name: String!
+	keyword: String = null
 	weight: Int!
+	imperial: Boolean = false
 	category: String  = \"feline\"
 }"))))
 
@@ -387,12 +415,12 @@
                                                    :episodes {:type '(list :episode)}}
                                           :implements [:Human]}
                         :MyQuery {:fields {:in_episode {:args {:episode {:type :episode
-                                                                       :default-value :NEWHOPE
-                                                                       :description "Episode for which to find characters"}}
-                                                      :directives [{:directive-type :Trace}]
-                                                      :resolve in-episode
-                                                      :description "Find all characters for a given episode"
-                                                      :type '(list :CharacterOutput)}}}
+                                                                         :default-value :NEWHOPE
+                                                                         :description "Episode for which to find characters"}}
+                                                        :directives [{:directive-type :Trace}]
+                                                        :resolve in-episode
+                                                        :description "Find all characters for a given episode"
+                                                        :type '(list :CharacterOutput)}}}
                         :OtherQuery {:fields {:find_by_names {:args {:names {:type '(non-null (list (non-null String)))}}
                                                               :resolve find-by-names
                                                               :type '(list :CharacterOutput)}}}
@@ -570,3 +598,4 @@
                                        :members [:File
                                                  :Directory]}}}
            schema))))
+

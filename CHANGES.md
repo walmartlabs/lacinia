@@ -11,6 +11,7 @@ per [the GraphQL specification](http://spec.graphql.org/June2018/#sec-Root-Opera
 Added function `com.walmartlabs.lacinia.executor/selection` which provides access to 
 the details about the selection, including directives and nested selections.
 
+Fixed problems with the literal values `true`, `false`, and `null` when parsing Schema Definition Language files.
 ## 0.37.0 -- 30 Jun 2020
 
 Added new function `com.walmartlabs.lacinia.util/inject-streamers`, used to
