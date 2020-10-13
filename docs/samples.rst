@@ -34,3 +34,9 @@ Sample Projects
 `Hacker News GraphQL <https://www.giovanialtelino.com/project/hacker-news-graphql/>`_
   A version of Hacker News implemented using GraphQL and `Datomic <https://www.datomic.com/>`_ on the backend,
   and `re-frame <https://day8.github.io/re-frame/re-frame/>`_ on the front end.
+  
+ _Lacina LDAP backend <https://github.com/matteoredaelli/lacinia-backend-ldap/>`_
+  A sample library for quering an LDAP/Active directory using GraphQL
+  
+ _Lacina Qliksense backend <https://github.com/matteoredaelli/lacinia-backend-lqliksense/>`_
+  A sample library for quering teh rest Qliksense repository API using GraphQL 
