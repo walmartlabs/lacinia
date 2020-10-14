@@ -39,4 +39,4 @@ Sample Projects
   A sample library for querying a LDAP/Active directory using GraphQL
 
 `Lacinia Qliksense backend <https://github.com/matteoredaelli/lacinia-backend-ldap/>`_
-  A sample library for querying a Qliksense server (Repository API) using GraphQL
+  A sample library for querying an Qliksense server (Repository API) using GraphQL
