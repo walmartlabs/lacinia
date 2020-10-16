@@ -17,7 +17,7 @@
   (:require
     [clojure.test :refer [is deftest use-fixtures]]
     [com.walmartlabs.lacinia.executor :as executor]
-    [com.walmartlabs.lacinia.protocols :as p]
+    [com.walmartlabs.lacinia.selection :as selection]
     [com.walmartlabs.test-utils :refer [compile-sdl-schema execute]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.parser.schema :refer [parse-schema]]
@@ -46,30 +46,30 @@
   [context]
   (-> context
       executor/selection
-      p/root-value-type))
+      selection/root-value-type))
 
 (defn ^:private auth-role
   [context]
   (-> context
       root-type
-      p/directives
+      selection/directives
       :auth
       first
-      p/arguments
+      selection/arguments
       :role))
 
 (deftest access-to-selection
   (let [f (fn [context _ _]
             (let [s (executor/selection context)
-                  directives (p/directives s)]
-              (note :selection {:kind (p/selection-kind s)
-                               :qualified-name (p/qualified-name s)
-                               :field-name (p/field-name s)
-                               :alias (p/alias-name s)}
+                  directives (selection/directives s)]
+              (note :selection {:kind (selection/selection-kind s)
+                               :qualified-name (selection/qualified-name s)
+                               :field-name (selection/field-name s)
+                               :alias (selection/alias-name s)}
                     :directive-keys (-> directives keys sort)
                     :directive-names (->> directives
-                                         :concise
-                                         (map p/directive-type))))
+                                          :concise
+                                          (map selection/directive-type))))
             "Done")
         schema (compile-sdl-schema "selection/simple.sdl"
                                    {:Query/basic f})
@@ -87,11 +87,11 @@
 (deftest access-to-type
   (let [me (fn [context _ _]
              (let [t (root-type context)]
-               (note :type {:type-name (p/type-name t)
-                           :type-kind (p/type-kind t)})
+               (note :type {:type-name (selection/type-name t)
+                           :type-kind (selection/type-kind t)})
                {:name "Lacinia"}))
         friends (fn [context _ _]
-                  (note :type (-> context root-type p/type-name))
+                  (note :type (-> context root-type selection/type-name))
                   [{:name "Asinthe"}
                    {:name "Graphiti"}])
         schema (compile-sdl-schema "selection/object-type.sdl"
@@ -136,17 +136,17 @@
   (let [me (fn [context _ _]
              (let [type (-> context
                             executor/selection
-                            p/root-value-type)
-                   fields (p/fields type)]
+                            selection/root-value-type)
+                   fields (selection/fields type)]
                (doseq [field (vals fields)]
-                 (note :name (p/qualified-name field)
-                       :type (p/root-type-name field)
+                 (note :name (selection/qualified-name field)
+                       :type (selection/root-type-name field)
                        :auth (some-> field
-                                    p/directives
-                                    :auth
-                                    first
-                                    p/arguments
-                                    :role))))
+                                     selection/directives
+                                     :auth
+                                     first
+                                     selection/arguments
+                                     :role))))
              {:name "Lacinia"
               :department "not used"})
         schema (compile-sdl-schema "selection/object-type.sdl"
@@ -166,8 +166,8 @@
 (deftest access-to-interface-directives
   (let [me (fn [context _ _]
              (let [t (root-type context)]
-               (note :type-name (p/type-name t)
-                     :kind (p/type-kind t)
+               (note :type-name (selection/type-name t)
+                     :kind (selection/type-kind t)
                      :role (auth-role context)))
              (schema/tag-with-type {:name "Lacinia" :userId 101} :LegacyUser))
         schema (compile-sdl-schema "selection/interface-types.sdl"
@@ -191,12 +191,12 @@
   (let [me (fn [context _ _]
              (doseq [s (-> context
                            executor/selection
-                           p/selections)
-                     :let [sub-kind (p/selection-kind s)]]
+                           selection/selections)
+                     :let [sub-kind (selection/selection-kind s)]]
                (note :sub-kind sub-kind)
                (when (= :field sub-kind)
-                 (note :sub-field-name (p/field-name s)
-                       :sub-field-type (-> s p/root-value-type p/type-name))))
+                 (note :sub-field-name (selection/field-name s)
+                       :sub-field-type (-> s selection/root-value-type selection/type-name))))
 
              (schema/tag-with-type {:name "Lacinia" :userId 101} :LegacyUser))
         schema (compile-sdl-schema "selection/interface-types.sdl"
@@ -224,8 +224,8 @@
 (deftest access-to-union-directives
   (let [me (fn [context _ _]
              (let [t (root-type context)]
-               (note :type-name (p/type-name t)
-                     :kind (p/type-kind t)
+               (note :type-name (selection/type-name t)
+                     :kind (selection/type-kind t)
                      :role (auth-role context)))
              (schema/tag-with-type {:userName "Lacinia" :userId 101}
                                    :LegacyUser))
@@ -250,7 +250,7 @@
              {:name "Lacinia"})
         rank (fn [context _ _]
                (let [t (root-type context)]
-                 (note :type-name (p/type-name t)
+                 (note :type-name (selection/type-name t)
                        :role (auth-role context))
                  :SENIOR))
         schema (compile-sdl-schema "selection/enum-types.sdl"
@@ -270,7 +270,7 @@
              {:name "Lacinia"})
         uuid (str (UUID/randomUUID))
         id-resolver (fn [context _ _]
-                      (note :type-name (-> context root-type p/type-name)
+                      (note :type-name (-> context root-type selection/type-name)
                             :role (auth-role context))
                       uuid)
         schema (-> "selection/scalar-types.sdl"
@@ -295,10 +295,10 @@
   (let [f (fn [context _ _]
             (let [limit (->> context
                              executor/selection
-                             p/directives
+                             selection/directives
                              :limit
                              first
-                             p/arguments
+                             selection/arguments
                              :value)]
               (note :limit limit)
               (repeat limit "X")))

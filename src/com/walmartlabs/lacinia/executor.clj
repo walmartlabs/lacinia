@@ -24,7 +24,7 @@
     [com.walmartlabs.lacinia.selector-context :as sc]
     [com.walmartlabs.lacinia.tracing :as tracing]
     [com.walmartlabs.lacinia.constants :as constants]
-    [com.walmartlabs.lacinia.protocols :as p])
+    [com.walmartlabs.lacinia.selection :as selection])
   (:import
     (clojure.lang PersistentQueue)))
 
@@ -95,7 +95,7 @@
     (:concrete-type? field-selection)
     (-> field-selection :field-definition :resolve)
 
-    :let [field-name (p/field-name field-selection)]
+    :let [field-name (selection/field-name field-selection)]
 
     (nil? resolved-type)
     (throw (ex-info "Sanity check: value type tag is nil on abstract type."
@@ -125,7 +125,7 @@
   [execution-context field-selection]
   (try
     (let [*resolver-tracing (:*resolver-tracing execution-context)
-          arguments (p/arguments field-selection)
+          arguments (selection/arguments field-selection)
           container-value (:resolved-value execution-context)
           {:keys [context]} execution-context
           schema (get context constants/schema-key)
@@ -159,7 +159,7 @@
     (catch Throwable t
       (let [field-name (get-in field-selection [:field-definition :qualified-name])
             {:keys [location]} field-selection
-            arguments (p/arguments field-selection)]
+            arguments (selection/arguments field-selection)]
         (throw (ex-info (str "Exception in resolver for "
                              (q field-name)
                              ": "
@@ -337,12 +337,12 @@
 
   Accumulates errors in the execution context as a side-effect."
   [execution-context selection]
-  (let [is-fragment? (not= :field (p/selection-kind selection))
+  (let [is-fragment? (not= :field (selection/selection-kind selection))
         ;; When starting to execute a field, add the current alias (or field name) to the path.
         execution-context' (if is-fragment?
                              execution-context
-                             (update execution-context :path conj (p/alias-name selection)))
-        sub-selections (p/selections selection)
+                             (update execution-context :path conj (selection/alias-name selection)))
+        sub-selections (selection/selections selection)
 
         apply-errors (fn [selection-context sc-key ec-atom-key]
                        (when-let [errors (get selection-context sc-key)]
@@ -383,7 +383,7 @@
         selector (if is-fragment?
                    schema/floor-selector
                    (or (-> selection :field-definition :selector)
-                       (let [field-name (p/field-name selection)]
+                       (let [field-name (selection/field-name selection)]
                          (-> execution-context'
                              :context
                              (get constants/schema-key)
@@ -416,8 +416,8 @@
                                      (if @*pass-through-exceptions
                                        (throw t)
                                        (let [{:keys [location]} selection
-                                             arguments (p/arguments selection)
-                                             qualified-name (p/qualified-name selection)]
+                                             arguments (selection/arguments selection)
+                                             qualified-name (selection/qualified-name selection)]
                                          (throw (ex-info (str "Exception processing resolved value for "
                                                               (q qualified-name)
                                                               ": "

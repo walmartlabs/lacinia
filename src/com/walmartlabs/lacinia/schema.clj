@@ -34,7 +34,7 @@
     [clojure.string :as str]
     [clojure.set :refer [difference]]
     [clojure.pprint :as pprint]
-    [com.walmartlabs.lacinia.protocols :as p]
+    [com.walmartlabs.lacinia.selection :as selection]
     [com.walmartlabs.lacinia.selector-context :as sc])
   (:import
     (clojure.lang IObj)
@@ -441,28 +441,28 @@
 
 (defrecord ^:private Directive [directive-type arguments effector arguments-extractor]
 
-  p/Directive
+  selection/Directive
 
   (directive-type [_] directive-type)
 
-  p/Arguments
+  selection/Arguments
 
   (arguments [_] arguments))
 
 (defrecord ^:private Type [category type-name description fields directives compiled-directives
                            implements tag]
 
-  p/Type
+  selection/Type
 
   (type-name [_] type-name)
 
   (type-kind [_] :object)
 
-  p/Fields
+  selection/Fields
 
   (fields [_] fields)
 
-  p/Directives
+  selection/Directives
 
   (directives [_] compiled-directives))
 
@@ -481,43 +481,43 @@
 (defrecord ^:private Field [type type-string directives compiled-directives
                             field-name qualified-name args]
 
-  p/Field
+  selection/Field
 
   (root-type-name [_] (root-type-name type))
 
-  p/QualifiedName
+  selection/QualifiedName
 
   (qualified-name [_] qualified-name)
 
-  p/Directives
+  selection/Directives
 
   (directives [_] compiled-directives))
 
 (defrecord ^:private Interface [category type-name member fields directives compiled-directives]
 
-  p/Type
+  selection/Type
 
   (type-name [_] type-name)
 
   (type-kind [_] :interface)
 
-  p/Fields
+  selection/Fields
 
   (fields [_] fields)
 
-  p/Directives
+  selection/Directives
 
   (directives [_] compiled-directives))
 
 (defrecord ^:private Union [category type-name description directives compiled-directives]
 
-  p/Type
+  selection/Type
 
   (type-name [_] type-name)
 
   (type-kind [_] :union)
 
-  p/Directives
+  selection/Directives
 
   (directives [_] compiled-directives))
 
@@ -525,25 +525,25 @@
                                values-detail values-set
                                directives compiled-directives]
 
-  p/Type
+  selection/Type
 
   (type-name [_] type-name)
 
   (type-kind [_] :enum)
 
-  p/Directives
+  selection/Directives
 
   (directives [_] compiled-directives))
 
 (defrecord ^:private Scalar [category type-name description parsae serialize directives compiled-directives]
 
-  p/Type
+  selection/Type
 
   (type-name [_] type-name)
 
   (type-kind [_] :enum)
 
-  p/Directives
+  selection/Directives
 
   (directives [_] compiled-directives))
 
@@ -556,7 +556,7 @@
                                                       (map->Directive
                                                         {:directive-type directive-type
                                                          :arguments directive-args})))
-                                               (group-by p/directive-type)))
+                                               (group-by selection/directive-type)))
       element)))
 
 (defmulti ^:private check-compatible
