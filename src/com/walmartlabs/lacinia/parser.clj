@@ -776,6 +776,8 @@
 
    :field-name :__typename
 
+   :null-collapser identity
+
    :resolve (fn [context _ _]
               (-> context
                   :com.walmartlabs.lacinia/container-type-name

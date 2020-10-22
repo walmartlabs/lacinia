@@ -479,7 +479,7 @@
         (recur (:type type-def))))))
 
 (defrecord ^:private Field [type type-string directives compiled-directives
-                            field-name qualified-name args]
+                            field-name qualified-name args null-collapser]
 
   selection/Field
 
@@ -705,21 +705,99 @@
       rewrite-type
       (assoc :arg-name arg-name)))
 
+(defn ^:private is-null?
+  [v]
+  (= v ::null))
+
+(defn ^:private null-to-nil
+  [v]
+  (if (is-null? v) nil v))
+
+(defn ^:private collapse-nulls-in-object
+  [forgive-null? map-type? value]
+  (cond
+    (nil? value)
+    value
+
+    (is-null? value)
+    (if forgive-null?
+      nil
+      ::null)
+
+    (not map-type?)
+    value
+
+    (some is-null? (vals value))
+    (if forgive-null? nil ::null)
+
+    :else
+    (map-vals null-to-nil value)))
+
+(defn ^:no-doc collapse-nulls-in-map
+  [m]
+  (collapse-nulls-in-object true true m))
+
+(defn ^:private build-null-collapser
+  "Builds a null-collapser for a field definition; the null collapser transforms a resolved value
+  for the field, potentially to the value ::null if it is nil but non-nullable OR if any sub-selection
+  collapses to ::null.
+
+  A nullable field that contains a value of ::null collapses to nil.
+
+  For lists, a list that contains a ::null collapses down to either nil or ::null."
+  [schema forgive-null? type]
+  (let [{:keys [kind]
+         nested-type :type} type]
+    (case kind
+      :root
+      (let [element-def (get schema nested-type)
+            {:keys [category]} element-def
+            map-type? (contains? #{:union :object :interface} category)]
+        (fn [value]
+          (collapse-nulls-in-object forgive-null? map-type? value)))
+
+      :non-null
+      (let [nested-collapser (build-null-collapser schema false nested-type)]
+        (fn [value]
+          (let [value' (nested-collapser value)]
+            (if (nil? value')
+              ::null
+              value'))))
+
+      :list
+      (let [nested-collapser (build-null-collapser schema true nested-type)
+            promote-nils-to-empty-list (get-in schema [::options :promote-nils-to-empty-list?])
+            empty-list (if promote-nils-to-empty-list [] nil)]
+        (fn [values]
+          (let [values' (when values
+                          (map nested-collapser values))]
+            (cond
+              (nil? values')
+              empty-list
+
+              (some is-null? values')
+              (if forgive-null? empty-list ::null)
+
+              :else
+              values')))))))
+
 (defn ^:private compile-field
   "Rewrites the type of the field, and the type of any arguments."
-  [type-def field-name field-def]
-  (let [{:keys [type-name]} type-def]
-    (-> field-def
-        map->Field
-        rewrite-type
-        add-type-string
-        compile-directives
-        (assoc :field-name field-name
-               :qualified-name (qualified-name type-name field-name))
-        (update :args #(map-kvs (fn [arg-name arg-def]
-                                  [arg-name (assoc (compile-arg arg-name arg-def)
-                                                   :qualified-name (qualified-name type-name field-name arg-name))])
-                                %)))))
+  [schema type-def field-name field-def]
+  (let [{:keys [type-name]} type-def
+        field-def' (-> field-def
+                       map->Field
+                       rewrite-type
+                       add-type-string
+                       compile-directives
+                       (assoc :field-name field-name
+                              :qualified-name (qualified-name type-name field-name))
+                       (update :args #(map-kvs (fn [arg-name arg-def]
+                                                 [arg-name (assoc (compile-arg arg-name arg-def)
+                                                                  :qualified-name (qualified-name type-name field-name arg-name))])
+                                               %)))
+        collapser (build-null-collapser schema true (:type field-def'))]
+    (assoc field-def' :null-collapser collapser)))
 
 (defn ^:private wrap-resolver-to-ensure-resolver-result
   [resolver]
@@ -1089,9 +1167,9 @@
        (filter #(= category (:category %)))))
 
 (defn ^:private compile-fields
-  [type-def]
+  [schema type-def]
   (update type-def :fields #(map-kvs (fn [field-name field-def]
-                                       [field-name (compile-field type-def field-name field-def)])
+                                       [field-name (compile-field schema type-def field-name field-def)])
                                      %)))
 
 (defmulti ^:private compile-type
@@ -1226,16 +1304,16 @@
                                 (q interface))
                         {:object object
                          :schema-types (type-map schema)}))))
-    (-> object
-        map->Type
-        (assoc :implements implements
-               :tag tag-class)
-        compile-directives
-        compile-fields)))
+    (let [object' (-> object
+                      map->Type
+                      (assoc :implements implements
+                             :tag tag-class)
+                      compile-directives)]
+      (compile-fields schema object'))))
 
 (defmethod compile-type :input-object
   [input-object schema]
-  (let [input-object' (compile-fields input-object)]
+  (let [input-object' (compile-fields schema input-object)]
     (doseq [field-def (-> input-object' :fields vals)
             :let [field-type-name (root-type-name field-def)
                   qualified-field-name (:qualified-name field-def)
@@ -1251,10 +1329,10 @@
 
 (defmethod compile-type :interface
   [interface schema]
-  (-> interface
-      map->Interface
-      compile-directives
-      compile-fields))
+  (->> interface
+       map->Interface
+       compile-directives
+       (compile-fields schema)))
 
 (defn ^:private extract-type-name
   "Navigates a type map down to the root kind and returns the type name."

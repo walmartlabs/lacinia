@@ -184,99 +184,16 @@
   ;; schema is the compiled schema (obtained from the parsed query)
   [context resolved-value resolved-type *errors *warnings *extensions *resolver-tracing path schema])
 
-(defn ^:private is-null?
-  [v]
-  (= v ::null))
-
-(defn ^:private null-to-nil
-  [v]
-  (if (is-null? v) nil v))
-
-(defn ^:private collapse-nulls-in-object
-   [forgive-null? map-type? value]
-  (cond
-    (nil? value)
-    value
-
-    (is-null? value)
-    (if forgive-null?
-      nil
-      ::null)
-
-    (not map-type?)
-    value
-
-    (some is-null? (vals value))
-    (if forgive-null?
-      nil
-      ::null)
-
-    :else
-    (map-vals null-to-nil value))  )
-
-(defn ^:private collapse-nulls-in-map
-  [m]
-  (collapse-nulls-in-object true true m))
-
-(defn ^:private collapse-nulls*
-  [schema forgive-null? type value]
-  (let [{:keys [kind]
-         nested-type :type} type]
-    (case kind
-      :root
-      (let [element-def (get schema nested-type)
-            {:keys [category]} element-def
-            map-type? (contains? #{:union :object :interface} category)]
-        (collapse-nulls-in-object forgive-null? map-type? value))
-
-      :non-null
-      (let [value' (collapse-nulls* schema false nested-type value)]
-        (cond
-          (nil? value')
-          ::null
-
-          ;; Anything else passes through; the :forgive-null? flag controls whether nested lists or maps
-          ;; containing ::null collapse down to ::null.
-          :else
-          value'))
-
-      :list
-      (let [values (when (some? value)
-                     (map #(collapse-nulls* schema true nested-type %) value))]
-        (cond
-          (nil? values)
-          (if (get-in schema [::schema/options :promote-nils-to-empty-list?])
-            []
-            nil)
-
-          ;; When a list contains a ::null, then it collapses to either nil or ::null
-          (some is-null? values)
-          (if forgive-null?
-            nil
-            ::null)
-
-          :else
-          values)))))
-
-(defn ^:private collapse-nulls
-  [schema field-selection value]
-  (collapse-nulls* schema
-                   ;; Start with the assumption that ::null can be "forgiven" back to nil, until
-                   ;; a :non-null kind is found.
-                   true
-                   (-> field-selection :field-definition :type)
-                   value))
-
 (defrecord ^:private ResultTuple [alias value])
 
 (defn ^:private apply-field-selection
   [execution-context field-selection]
   (let [{:keys [alias]} field-selection
-        {:keys [schema]} execution-context
+        null-collapser (get-in field-selection [:field-definition :null-collapser])
         resolver-result (resolve-and-select execution-context field-selection)]
     (transform-result resolver-result
                       (fn [resolved-field-value]
-                        (->ResultTuple alias (collapse-nulls schema field-selection resolved-field-value))))))
+                        (->ResultTuple alias (null-collapser resolved-field-value))))))
 
 (defn ^:private maybe-apply-fragment
   [execution-context fragment-selection concrete-types]
@@ -538,7 +455,7 @@
                                              warnings (seq @*warnings)
                                              extensions @*extensions]
                                          (resolve/deliver! result-promise
-                                                           (cond-> {:data (collapse-nulls-in-map selected-data)}
+                                                           (cond-> {:data (schema/collapse-nulls-in-map selected-data)}
                                                              (seq extensions) (assoc :extensions extensions)
                                                              *resolver-tracing
                                                              (tracing/inject-tracing timing-start
