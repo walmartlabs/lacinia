@@ -315,7 +315,7 @@
           (apply-errors selection-context :warnings :*warnings)
 
           (if (and (or (= [] (:path execution-context)) (some? resolved-value))
-                   resolved-type                            ;; TODO: This line is suspect
+                   resolved-type
                    (seq sub-selections))
             (execute-nested-selections
               (assoc execution-context
