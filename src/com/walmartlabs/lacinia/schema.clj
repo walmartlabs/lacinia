@@ -949,20 +949,20 @@
   (case (:kind type)
 
     :list
-    (let [next-selector (assemble-selector schema object-type field (:type type))
-          allow-nil? (not (get-in schema [::options :promote-nils-to-empty-list?]))]
+    (let [next-selector (assemble-selector schema object-type field (:type type))]
       (fn select-list [{:keys [resolved-value callback]
                         :as selector-context}]
         (cond
-          (and allow-nil? (nil? resolved-value))
+          (nil? resolved-value)
           (callback (assoc selector-context
                            :resolved-value nil
                            :resolved-type nil))
 
-          (and allow-nil? (not (sequential-or-set? resolved-value)))
+          (not (sequential-or-set? resolved-value))
           (selector-error selector-context
                           (error "Field resolver returned a single value, expected a collection of values."))
 
+          ;; Optimization for empty seqs:
           (not (seq resolved-value))
           (callback (assoc selector-context
                            :resolved-value []

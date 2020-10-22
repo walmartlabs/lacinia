@@ -65,9 +65,8 @@
          }"))))
 
 (deftest enforces-non-null-in-nested-lists
-  (is (= {:data {:verse_echo [["oops"
-                               nil
-                               "fail!"]]}
+  ;; [["oops" nil "fail"]] -> [["oops" ::null "fail"]] -> [::null] -> [nil]
+  (is (= {:data {:verse_echo [nil]}
           :errors [{:locations [{:column 2
                                  :line 1}]
                     :message "Non-nullable field was null."

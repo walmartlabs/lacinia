@@ -25,8 +25,8 @@
                                              :non_empty_list ["Peekaboo"]
                                              :null_list nil})})]
     (is (= {:data {:container {:empty_list []
-                    :non_empty_list ["Peekaboo"]
-                    :null_list nil}}}
+                               :non_empty_list ["Peekaboo"]
+                               :null_list nil}}}
            (execute schema
                     "{ container { empty_list non_empty_list null_list }}")))))
 
@@ -58,3 +58,25 @@
                                :null_list []}}}
            (execute schema
                     "{ container { empty_list non_empty_list null_list }}")))))
+
+(deftest nil-collapase
+  (let [schema (compile-schema "nullability.edn"
+                               {:query/user (constantly {:id "1"
+                                                         :employer {:id "10"}})})]
+
+    ;; Because Employer/name was nil, the employer field collapses to nil (because
+    ;; User/employer is nullable).
+    (is (= {:data {:user {:employer nil
+                          :id "1"}}
+            :errors [{:locations [{:column 30
+                                   :line 4}]
+                      :message "Non-nullable field was null."
+                      :path [:user
+                             :employer
+                             :name]}]}
+           (execute schema "
+           { user(id: \"1\") {
+               id
+               employer { id name }
+             }
+           }")))))

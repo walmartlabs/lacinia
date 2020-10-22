@@ -100,8 +100,7 @@
 (deftest nil-passes-through-as-is
   (let [schema (utils/compile-schema "opt-req-enum.edn"
                                      {:null (constantly nil)})]
-    (is (= {:data {:bad nil
-                   :ok nil}
+    (is (= {:data nil
             :errors [{:locations [{:column 6
                                    :line 1}]
                       :message "Non-nullable field was null."

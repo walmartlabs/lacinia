@@ -382,7 +382,7 @@
                                                     :args {:words {:type '(list (list (list :CustomType)))}}
                                                     :resolve (fn [ctx args v]
                                                                (:words args))}}})]
-      (is (= {:data {:shout [[[nil]]]},
+      (is (= {:data {:shout [[nil]]},
               :errors [{:message "Non-nullable field was null.",
                         :locations [{:column 31
                                      :line 2}]
