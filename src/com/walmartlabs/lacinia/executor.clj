@@ -24,7 +24,7 @@
     [com.walmartlabs.lacinia.selector-context :as sc]
     [com.walmartlabs.lacinia.tracing :as tracing]
     [com.walmartlabs.lacinia.constants :as constants]
-    [com.walmartlabs.lacinia.protocols :as p])
+    [com.walmartlabs.lacinia.selection :as selection])
   (:import
     (clojure.lang PersistentQueue)))
 
@@ -95,7 +95,7 @@
     (:concrete-type? field-selection)
     (-> field-selection :field-definition :resolve)
 
-    :let [field-name (p/field-name field-selection)]
+    :let [field-name (selection/field-name field-selection)]
 
     (nil? resolved-type)
     (throw (ex-info "Sanity check: value type tag is nil on abstract type."
@@ -125,10 +125,9 @@
   [execution-context field-selection]
   (try
     (let [*resolver-tracing (:*resolver-tracing execution-context)
-          arguments (p/arguments field-selection)
+          arguments (selection/arguments field-selection)
           container-value (:resolved-value execution-context)
-          {:keys [context]} execution-context
-          schema (get context constants/schema-key)
+          {:keys [context schema]} execution-context
           resolved-type (:resolved-type execution-context)
           resolve-context (assoc context
                                  :com.walmartlabs.lacinia/container-type-name resolved-type
@@ -159,7 +158,7 @@
     (catch Throwable t
       (let [field-name (get-in field-selection [:field-definition :qualified-name])
             {:keys [location]} field-selection
-            arguments (p/arguments field-selection)]
+            arguments (selection/arguments field-selection)]
         (throw (ex-info (str "Exception in resolver for "
                              (q field-name)
                              ": "
@@ -182,70 +181,19 @@
   ;; accumulates timing data during execution.
   ;; *extensions is an atom containing a map, if non-empty, it is added to the result map as :extensions
   ;; path is used when reporting errors
-  [context resolved-value resolved-type *errors *warnings *extensions *resolver-tracing path])
-
-(defn ^:private null-to-nil
-  [v]
-  (cond
-    (vector? v)
-    (map null-to-nil v)
-
-    (= ::null v)
-    nil
-
-    :else
-    v))
-
-(defn ^:private propogate-nulls
-  "When all values for a selected value are ::null, it is replaced with
-  ::null (if non-nullable) or nil (if nullable).
-
-  Otherwise, the selected values are a mix of real values and ::null, so replace
-  the ::null values with nil."
-  [non-nullable? selected-value]
-  (cond
-    ;; This sometimes happens when a field returns multiple scalars:
-    (not (map? selected-value))
-    selected-value
-
-    (and (seq selected-value)
-         (every? (fn [[_ v]] (= v ::null))
-                 selected-value))
-    (if non-nullable? ::null nil)
-
-    :else
-    (map-vals null-to-nil selected-value)))
+  ;; schema is the compiled schema (obtained from the parsed query)
+  [context resolved-value resolved-type *errors *warnings *extensions *resolver-tracing path schema])
 
 (defrecord ^:private ResultTuple [alias value])
 
 (defn ^:private apply-field-selection
   [execution-context field-selection]
   (let [{:keys [alias]} field-selection
-        non-nullable-field? (-> field-selection :field-definition :type :kind (= :non-null))
+        null-collapser (get-in field-selection [:field-definition :null-collapser])
         resolver-result (resolve-and-select execution-context field-selection)]
     (transform-result resolver-result
                       (fn [resolved-field-value]
-                        (let [sub-selection (cond
-                                              (and non-nullable-field?
-                                                   (nil? resolved-field-value))
-                                              ::null
-
-                                              ;; child field was non-nullable and resolved to null,
-                                              ;; but parent is nullable so let's null parent
-                                              (and (= resolved-field-value ::null)
-                                                   (not non-nullable-field?))
-                                              nil
-
-                                              (map? resolved-field-value)
-                                              (propogate-nulls non-nullable-field? resolved-field-value)
-
-                                              ;; TODO: We also support sets
-                                              (vector? resolved-field-value)
-                                              (mapv #(propogate-nulls non-nullable-field? %) resolved-field-value)
-
-                                              :else
-                                              resolved-field-value)]
-                          (->ResultTuple alias sub-selection))))))
+                        (->ResultTuple alias (null-collapser resolved-field-value))))))
 
 (defn ^:private maybe-apply-fragment
   [execution-context fragment-selection concrete-types]
@@ -337,12 +285,12 @@
 
   Accumulates errors in the execution context as a side-effect."
   [execution-context selection]
-  (let [is-fragment? (not= :field (p/selection-kind selection))
+  (let [is-fragment? (not= :field (selection/selection-kind selection))
         ;; When starting to execute a field, add the current alias (or field name) to the path.
         execution-context' (if is-fragment?
                              execution-context
-                             (update execution-context :path conj (p/alias-name selection)))
-        sub-selections (p/selections selection)
+                             (update execution-context :path conj (selection/alias-name selection)))
+        sub-selections (selection/selections selection)
 
         apply-errors (fn [selection-context sc-key ec-atom-key]
                        (when-let [errors (get selection-context sc-key)]
@@ -383,10 +331,9 @@
         selector (if is-fragment?
                    schema/floor-selector
                    (or (-> selection :field-definition :selector)
-                       (let [field-name (p/field-name selection)]
+                       (let [field-name (selection/field-name selection)]
                          (-> execution-context'
-                             :context
-                             (get constants/schema-key)
+                             :schema
                              (get resolved-type)
                              :fields
                              (get field-name)
@@ -416,8 +363,8 @@
                                      (if @*pass-through-exceptions
                                        (throw t)
                                        (let [{:keys [location]} selection
-                                             arguments (p/arguments selection)
-                                             qualified-name (p/qualified-name selection)]
+                                             arguments (selection/arguments selection)
+                                             qualified-name (selection/qualified-name selection)]
                                          (throw (ex-info (str "Exception processing resolved value for "
                                                               (q qualified-name)
                                                               ": "
@@ -486,6 +433,7 @@
         ;; For subscriptions, the :resolved-value will be set to a non-nil value before
         ;; executing the query.
         execution-context (map->ExecutionContext {:context context'
+                                                  :schema (get parsed-query constants/schema-key)
                                                   :*errors *errors
                                                   :*warnings *warnings
                                                   :*resolver-tracing *resolver-tracing
@@ -503,20 +451,19 @@
                                        (execute-nested-selections execution-context enabled-selections))]
                 (resolve/on-deliver! operation-result
                                      (fn [selected-data]
-                                       (let [data (propogate-nulls false selected-data)]
-                                         (let [errors (seq @*errors)
-                                               warnings (seq @*warnings)
-                                               extensions @*extensions]
-                                           (resolve/deliver! result-promise
-                                                             (cond-> {:data data}
-                                                               (seq extensions) (assoc :extensions extensions)
-                                                               *resolver-tracing
-                                                               (tracing/inject-tracing timing-start
-                                                                                       (::tracing/parsing parsed-query)
-                                                                                       (::tracing/validation context)
-                                                                                       @*resolver-tracing)
-                                                               errors (assoc :errors (distinct errors))
-                                                               warnings (assoc-in [:extensions :warnings] (distinct warnings)))))))))
+                                       (let [errors (seq @*errors)
+                                             warnings (seq @*warnings)
+                                             extensions @*extensions]
+                                         (resolve/deliver! result-promise
+                                                           (cond-> {:data (schema/collapse-nulls-in-map selected-data)}
+                                                             (seq extensions) (assoc :extensions extensions)
+                                                             *resolver-tracing
+                                                             (tracing/inject-tracing timing-start
+                                                                                     (::tracing/parsing parsed-query)
+                                                                                     (::tracing/validation context)
+                                                                                     @*resolver-tracing)
+                                                             errors (assoc :errors (distinct errors))
+                                                             warnings (assoc-in [:extensions :warnings] (distinct warnings))))))))
               (catch Throwable t
                 (resolve/deliver! result-promise t))))]
 

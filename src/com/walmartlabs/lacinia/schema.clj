@@ -34,7 +34,7 @@
     [clojure.string :as str]
     [clojure.set :refer [difference]]
     [clojure.pprint :as pprint]
-    [com.walmartlabs.lacinia.protocols :as p]
+    [com.walmartlabs.lacinia.selection :as selection]
     [com.walmartlabs.lacinia.selector-context :as sc])
   (:import
     (clojure.lang IObj)
@@ -441,28 +441,28 @@
 
 (defrecord ^:private Directive [directive-type arguments effector arguments-extractor]
 
-  p/Directive
+  selection/Directive
 
   (directive-type [_] directive-type)
 
-  p/Arguments
+  selection/Arguments
 
   (arguments [_] arguments))
 
 (defrecord ^:private Type [category type-name description fields directives compiled-directives
                            implements tag]
 
-  p/Type
+  selection/Type
 
   (type-name [_] type-name)
 
   (type-kind [_] :object)
 
-  p/Fields
+  selection/Fields
 
   (fields [_] fields)
 
-  p/Directives
+  selection/Directives
 
   (directives [_] compiled-directives))
 
@@ -479,45 +479,45 @@
         (recur (:type type-def))))))
 
 (defrecord ^:private Field [type type-string directives compiled-directives
-                            field-name qualified-name args]
+                            field-name qualified-name args null-collapser]
 
-  p/Field
+  selection/Field
 
   (root-type-name [_] (root-type-name type))
 
-  p/QualifiedName
+  selection/QualifiedName
 
   (qualified-name [_] qualified-name)
 
-  p/Directives
+  selection/Directives
 
   (directives [_] compiled-directives))
 
 (defrecord ^:private Interface [category type-name member fields directives compiled-directives]
 
-  p/Type
+  selection/Type
 
   (type-name [_] type-name)
 
   (type-kind [_] :interface)
 
-  p/Fields
+  selection/Fields
 
   (fields [_] fields)
 
-  p/Directives
+  selection/Directives
 
   (directives [_] compiled-directives))
 
 (defrecord ^:private Union [category type-name description directives compiled-directives]
 
-  p/Type
+  selection/Type
 
   (type-name [_] type-name)
 
   (type-kind [_] :union)
 
-  p/Directives
+  selection/Directives
 
   (directives [_] compiled-directives))
 
@@ -525,25 +525,25 @@
                                values-detail values-set
                                directives compiled-directives]
 
-  p/Type
+  selection/Type
 
   (type-name [_] type-name)
 
   (type-kind [_] :enum)
 
-  p/Directives
+  selection/Directives
 
   (directives [_] compiled-directives))
 
 (defrecord ^:private Scalar [category type-name description parsae serialize directives compiled-directives]
 
-  p/Type
+  selection/Type
 
   (type-name [_] type-name)
 
   (type-kind [_] :enum)
 
-  p/Directives
+  selection/Directives
 
   (directives [_] compiled-directives))
 
@@ -556,7 +556,7 @@
                                                       (map->Directive
                                                         {:directive-type directive-type
                                                          :arguments directive-args})))
-                                               (group-by p/directive-type)))
+                                               (group-by selection/directive-type)))
       element)))
 
 (defmulti ^:private check-compatible
@@ -705,21 +705,99 @@
       rewrite-type
       (assoc :arg-name arg-name)))
 
+(defn ^:private is-null?
+  [v]
+  (= v ::null))
+
+(defn ^:private null-to-nil
+  [v]
+  (if (is-null? v) nil v))
+
+(defn ^:private collapse-nulls-in-object
+  [forgive-null? map-type? value]
+  (cond
+    (nil? value)
+    value
+
+    (is-null? value)
+    (if forgive-null?
+      nil
+      ::null)
+
+    (not map-type?)
+    value
+
+    (some is-null? (vals value))
+    (if forgive-null? nil ::null)
+
+    :else
+    (map-vals null-to-nil value)))
+
+(defn ^:no-doc collapse-nulls-in-map
+  [m]
+  (collapse-nulls-in-object true true m))
+
+(defn ^:private build-null-collapser
+  "Builds a null-collapser for a field definition; the null collapser transforms a resolved value
+  for the field, potentially to the value ::null if it is nil but non-nullable OR if any sub-selection
+  collapses to ::null.
+
+  A nullable field that contains a value of ::null collapses to nil.
+
+  For lists, a list that contains a ::null collapses down to either nil or ::null."
+  [schema forgive-null? type]
+  (let [{:keys [kind]
+         nested-type :type} type]
+    (case kind
+      :root
+      (let [element-def (get schema nested-type)
+            {:keys [category]} element-def
+            map-type? (contains? #{:union :object :interface} category)]
+        (fn [value]
+          (collapse-nulls-in-object forgive-null? map-type? value)))
+
+      :non-null
+      (let [nested-collapser (build-null-collapser schema false nested-type)]
+        (fn [value]
+          (let [value' (nested-collapser value)]
+            (if (nil? value')
+              ::null
+              value'))))
+
+      :list
+      (let [nested-collapser (build-null-collapser schema true nested-type)
+            promote-nils-to-empty-list (get-in schema [::options :promote-nils-to-empty-list?])
+            empty-list (if promote-nils-to-empty-list [] nil)]
+        (fn [values]
+          (let [values' (when values
+                          (map nested-collapser values))]
+            (cond
+              (nil? values')
+              empty-list
+
+              (some is-null? values')
+              (if forgive-null? empty-list ::null)
+
+              :else
+              values')))))))
+
 (defn ^:private compile-field
   "Rewrites the type of the field, and the type of any arguments."
-  [type-def field-name field-def]
-  (let [{:keys [type-name]} type-def]
-    (-> field-def
-        map->Field
-        rewrite-type
-        add-type-string
-        compile-directives
-        (assoc :field-name field-name
-               :qualified-name (qualified-name type-name field-name))
-        (update :args #(map-kvs (fn [arg-name arg-def]
-                                  [arg-name (assoc (compile-arg arg-name arg-def)
-                                                   :qualified-name (qualified-name type-name field-name arg-name))])
-                                %)))))
+  [schema type-def field-name field-def]
+  (let [{:keys [type-name]} type-def
+        field-def' (-> field-def
+                       map->Field
+                       rewrite-type
+                       add-type-string
+                       compile-directives
+                       (assoc :field-name field-name
+                              :qualified-name (qualified-name type-name field-name))
+                       (update :args #(map-kvs (fn [arg-name arg-def]
+                                                 [arg-name (assoc (compile-arg arg-name arg-def)
+                                                                  :qualified-name (qualified-name type-name field-name arg-name))])
+                                               %)))
+        collapser (build-null-collapser schema true (:type field-def'))]
+    (assoc field-def' :null-collapser collapser)))
 
 (defn ^:private wrap-resolver-to-ensure-resolver-result
   [resolver]
@@ -949,20 +1027,20 @@
   (case (:kind type)
 
     :list
-    (let [next-selector (assemble-selector schema object-type field (:type type))
-          allow-nil? (not (get-in schema [::options :promote-nils-to-empty-list?]))]
+    (let [next-selector (assemble-selector schema object-type field (:type type))]
       (fn select-list [{:keys [resolved-value callback]
                         :as selector-context}]
         (cond
-          (and allow-nil? (nil? resolved-value))
+          (nil? resolved-value)
           (callback (assoc selector-context
                            :resolved-value nil
                            :resolved-type nil))
 
-          (and allow-nil? (not (sequential-or-set? resolved-value)))
+          (not (sequential-or-set? resolved-value))
           (selector-error selector-context
                           (error "Field resolver returned a single value, expected a collection of values."))
 
+          ;; Optimization for empty seqs:
           (not (seq resolved-value))
           (callback (assoc selector-context
                            :resolved-value []
@@ -1089,9 +1167,9 @@
        (filter #(= category (:category %)))))
 
 (defn ^:private compile-fields
-  [type-def]
+  [schema type-def]
   (update type-def :fields #(map-kvs (fn [field-name field-def]
-                                       [field-name (compile-field type-def field-name field-def)])
+                                       [field-name (compile-field schema type-def field-name field-def)])
                                      %)))
 
 (defmulti ^:private compile-type
@@ -1226,16 +1304,16 @@
                                 (q interface))
                         {:object object
                          :schema-types (type-map schema)}))))
-    (-> object
-        map->Type
-        (assoc :implements implements
-               :tag tag-class)
-        compile-directives
-        compile-fields)))
+    (let [object' (-> object
+                      map->Type
+                      (assoc :implements implements
+                             :tag tag-class)
+                      compile-directives)]
+      (compile-fields schema object'))))
 
 (defmethod compile-type :input-object
   [input-object schema]
-  (let [input-object' (compile-fields input-object)]
+  (let [input-object' (compile-fields schema input-object)]
     (doseq [field-def (-> input-object' :fields vals)
             :let [field-type-name (root-type-name field-def)
                   qualified-field-name (:qualified-name field-def)
@@ -1251,10 +1329,10 @@
 
 (defmethod compile-type :interface
   [interface schema]
-  (-> interface
-      map->Interface
-      compile-directives
-      compile-fields))
+  (->> interface
+       map->Interface
+       compile-directives
+       (compile-fields schema)))
 
 (defn ^:private extract-type-name
   "Navigates a type map down to the root kind and returns the type name."

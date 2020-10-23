@@ -27,7 +27,7 @@
     [com.walmartlabs.lacinia.resolve :as resolve]
     [com.walmartlabs.lacinia.parser.query :as qp]
     [com.walmartlabs.lacinia.tracing :as tracing]
-    [com.walmartlabs.lacinia.protocols :as p]
+    [com.walmartlabs.lacinia.selection :as selection]
     [flatland.ordered.map :refer [ordered-map]])
   (:import
     (clojure.lang ExceptionInfo)))
@@ -727,11 +727,11 @@
 
 (defrecord ^:private Directive [directive-name effector arguments arguments-extractor]
 
-  p/Directive
+  selection/Directive
 
   (directive-type [_] directive-name)
 
-  p/Arguments
+  selection/Arguments
 
   (arguments [_] arguments))
 
@@ -776,6 +776,8 @@
 
    :field-name :__typename
 
+   :null-collapser identity
+
    :resolve (fn [context _ _]
               (-> context
                   :com.walmartlabs.lacinia/container-type-name
@@ -787,17 +789,17 @@
                                      alias field-name selections directives arguments
                                      location locations root-value-type]
 
-  p/QualifiedName
+  selection/QualifiedName
 
   (qualified-name [_] (:qualified-name field-definition))
 
-  p/SelectionSet
+  selection/SelectionSet
 
   (selection-kind [_] :field)
 
   (selections [_] selections)
 
-  p/FieldSelection
+  selection/FieldSelection
 
   (field-name [_] field-name)
 
@@ -805,10 +807,10 @@
 
   (root-value-type [_] root-value-type)
 
-  p/Arguments
+  selection/Arguments
   (arguments [_] arguments)
 
-  p/Directives
+  selection/Directives
 
   (directives [_]
     (nil-map (group-by :directive-name directives))))
@@ -816,11 +818,11 @@
 (defrecord ^:private InlineFragment [selection-type selections directives
                                      location locations concrete-types]
 
-  p/Directives
+  selection/Directives
 
   (directives [_] directives)
 
-  p/SelectionSet
+  selection/SelectionSet
 
   (selection-kind [_] :inline-fragment)
 
@@ -829,13 +831,13 @@
 (defrecord ^:private NamedFragment [selection-type directives selections
                                     location locations concrete-types]
 
-  p/SelectionSet
+  selection/SelectionSet
 
   (selection-kind [_] :named-fragment)
 
   (selections [_] selections)
 
-  p/Directives
+  selection/Directives
 
   (directives [_] directives))
 

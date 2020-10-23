@@ -425,7 +425,7 @@
            executed)))
   (let [q "{ human(id: \"1000\") { name foo }}"
         executed (execute default-schema q nil nil)]
-    (is (= {:data {:human {:name "Luke Skywalker" :foo nil}}
+    (is (= {:data nil
             :errors [{:message "Non-nullable field was null."
                       :path [:human :foo]
                       :locations [{:line 1

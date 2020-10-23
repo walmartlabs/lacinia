@@ -12,7 +12,7 @@
 ;; See the License for the specific language governing permissions and
 ;; limitations under the License.
 
-(ns com.walmartlabs.lacinia.protocols
+(ns com.walmartlabs.lacinia.selection
   "Protocols for selection-related objects accessible from the [[selection]] function, and
    as well as the schema type objects navigable to from the selection."
   {:added "0.38.0"})

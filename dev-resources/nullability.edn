@@ -1,0 +1,14 @@
+{:objects
+ {:Employer
+  {:fields
+   {:id {:type (non-null ID)}
+    :name {:type (non-null String)}}}
+  :User
+  {:fields
+   {:id {:type (non-null ID)}
+    :employer {:type :Employer}}}
+  :Query
+  {:fields
+   {:user {:type (non-null :User)
+           :args {:id {:type (non-null ID)}}
+           :resolve :query/user}}}}}

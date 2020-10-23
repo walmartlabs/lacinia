@@ -23,5 +23,4 @@
   :jvm-opts ["-Xmx1g" "-XX:-OmitStackTraceInFastThrow"]
   :test2junit-output-dir ~(or (System/getenv "CIRCLE_TEST_REPORTS") "target/test2junit")
   :codox {:source-uri "https://github.com/walmartlabs/lacinia/blob/master/{filepath}#L{line}"
-          :source-paths ["src"]                             ; and not vendor-src
           :metadata   {:doc/format :markdown}})
