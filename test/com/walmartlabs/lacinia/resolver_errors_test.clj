@@ -17,7 +17,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [com.walmartlabs.lacinia.resolve :refer [resolve-as]]
-   [com.walmartlabs.test-utils :refer [execute] :as utils]
+   [com.walmartlabs.test-utils :refer [execute compile-schema] :as utils]
    [com.walmartlabs.lacinia.schema :as schema])
   (:import (clojure.lang ExceptionInfo)
            (java.awt Color)))
@@ -166,3 +166,17 @@
                             :path [:container :contents]}]}
                  (execute schema q))))))))
 
+;; When the non-null selector sees an invalid null, it normally identifies the field BUT
+;; according to the spec, there should only be one error per field, so if there's already any errors
+;; (perhaps created by the application resolver code) then, yes, skip the rest of the selector pipeline but
+;; don't record a new error.
+(deftest non-chatty-library-failures
+  (let [schema (compile-schema "non-chatty-library-failures.edn"
+                               {:hello (fn [_ _ _]
+                                         (resolve-as nil {:message "Error processing request"}))})]
+    (is (= {:data nil
+            :errors [{:locations [{:column 3
+                                   :line 1}]
+                      :message "Error processing request"
+                      :path [:hello]}]}
+           (execute schema "{ hello }")))))

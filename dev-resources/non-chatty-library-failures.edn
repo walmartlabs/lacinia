@@ -1,0 +1,5 @@
+{:objects
+ {:Query
+  {:fields
+   {:hello {:type (non-null String)
+            :resolve :hello}}}}}

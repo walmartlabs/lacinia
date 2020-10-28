@@ -11,10 +11,17 @@
 ; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 ; See the License for the specific language governing permissions and
 ; limitations under the License.
+
 (ns ^:no-doc com.walmartlabs.lacinia.selector-context
   "Some code factored out of executor and schema.")
 
-(defrecord SelectorContext [execution-context callback resolved-value resolved-type])
+(defrecord SelectorContext [execution-context callback resolved-value resolved-type errors warnings])
+
+(defn new-context
+  ([execution-context callback]
+   (->SelectorContext execution-context callback nil nil nil nil))
+  ([execution-context callback resolved-value resolved-type]
+   (->SelectorContext execution-context callback resolved-value resolved-type nil nil)))
 
 (defrecord WrappedValue [value behavior data])
 
