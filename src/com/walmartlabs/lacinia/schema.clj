@@ -838,7 +838,7 @@
         (assoc
           :resolved-value nil
           :resolved-type nil)
-        (update :errors conj error)
+        (cond-> error (update :errors conj error))
         callback)))
 
 (defn ^:private create-root-selector
@@ -1076,12 +1076,12 @@
                          :type (:type field)})))
       (fn select-non-null [{:keys [resolved-value]
                             :as selector-context}]
-        (cond
-          (nil? resolved-value)
-          (selector-error selector-context (error "Non-nullable field was null."))
-
-          :else
-          (next-selector selector-context))))
+        (if (some? resolved-value)
+          (next-selector selector-context)
+          (selector-error selector-context
+                          ;; If there's already errors (from the application's resolver function) then don't add more
+                          (when-not (-> selector-context :errors seq)
+                            (error "Non-nullable field was null."))))))
 
     :root                                                   ;;
     (create-root-selector schema field (:type type))))

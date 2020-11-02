@@ -314,7 +314,8 @@
           (apply-errors selection-context :errors :*errors)
           (apply-errors selection-context :warnings :*warnings)
 
-          (if (and (or (= [] (:path execution-context)) (some? resolved-value))
+          (if (and (or (some? resolved-value)
+                       (= [] (:path execution-context)))    ;; This covers the root operation
                    resolved-type
                    (seq sub-selections))
             (execute-nested-selections
@@ -345,10 +346,7 @@
         process-resolved-value (fn [resolved-value]
                                  (try
                                    (loop [resolved-value resolved-value
-                                          selector-context (sc/->SelectorContext execution-context'
-                                                                                 selector-callback
-                                                                                 nil
-                                                                                 nil)]
+                                          selector-context (sc/new-context  execution-context' selector-callback)]
                                      (if (sc/is-wrapped-value? resolved-value)
                                        (recur (:value resolved-value)
                                               (sc/apply-wrapped-value selector-context resolved-value))
@@ -395,10 +393,10 @@
     (cond
 
       is-fragment?
-      (selector (sc/->SelectorContext execution-context'
-                                      selector-callback
-                                      (:resolved-value execution-context')
-                                      resolved-type))
+      (selector (sc/new-context execution-context'
+                                selector-callback
+                                (:resolved-value execution-context')
+                                resolved-type))
 
       ;; Here's where it comes together.  The field's selector
       ;; does the validations, and for list types, does the mapping.
