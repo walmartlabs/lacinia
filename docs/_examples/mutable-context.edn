@@ -1,4 +1,4 @@
-(require '[com.walmartlabs.lacina.resolve :as resolve])
+(require '[com.walmartlabs.lacinia.resolve :as resolve])
 
 (defn resolve-products
   [_ args _]
