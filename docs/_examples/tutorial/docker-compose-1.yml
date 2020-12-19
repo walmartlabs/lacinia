@@ -1,0 +1,7 @@
+version: '3'
+services:
+  db:
+    ports:
+    - 25432:5432
+    image: postgres:10.2-alpine
+

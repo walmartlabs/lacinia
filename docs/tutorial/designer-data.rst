@@ -8,7 +8,8 @@ Let's see what we can do when we add the Designer entity type to the mix.
 Initially, we'll define each Designer in terms of an id, a name, and an optional
 home page URL.
 
-.. ex:: add-designers dev-resources/cgg-data.edn
+.. literalinclude:: /_examples/tutorial/cgg-data-2.edn
+   :caption: dev-resources/cgg-data.edn
    :emphasize-lines: 7,11,16,22,26-
 
 If this was a relational database, we'd likely have a join table between
@@ -18,7 +19,8 @@ For now, we have a set of designer `ids` inside each BoardGame.
 Schema Changes
 --------------
 
-.. ex:: add-designers resources/cgg-schema.edn
+.. literalinclude:: /_examples/tutorial/cgg-schema-3.edn
+   :caption: resources/cgg-schema.edn
    :emphasize-lines: 11-13,21-30
 
 We've added a ``:designers`` field to BoardGame, and added
@@ -53,7 +55,8 @@ are associated with the designer.
 Code Changes
 ------------
 
-.. ex:: add-designers src/clojure_game_geek/schema.clj
+.. literalinclude:: /_examples/tutorial/schema-2.clj
+   :caption: src/clojure_game_geek/schema.clj
    :emphasize-lines: 14-31, 38-39, 41-42
 
 As with all field resolvers [#root]_, ``resolve-board-game-designers`` is passed the containing resolved value
@@ -114,8 +117,6 @@ With that in place, the same :api:`/execute` function that gives us data about a
 return data from a variety of entities, organized however you need it.
 
 Next up, we'll take what we have and make it easy to access via HTTP.
-
-
 
 
 .. [#root] Root resolvers, such as for the ``game_by_id`` query operation, are the

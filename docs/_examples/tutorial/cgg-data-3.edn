@@ -1,0 +1,55 @@
+{:games
+ [{:id "1234"
+   :name "Zertz"
+   :summary "Two player abstract with forced moves and shrinking board"
+   :min_players 2
+   :max_players 2
+   :designers #{"200"}}
+  {:id "1235"
+   :name "Dominion"
+   :summary "Created the deck-building genre; zillions of expansions"
+   :designers #{"204"}
+   :min_players 2}
+  {:id "1236"
+   :name "Tiny Epic Galaxies"
+   :summary "Fast dice-based sci-fi space game with a bit of chaos"
+   :designers #{"203"}
+   :min_players 1
+   :max_players 4}
+  {:id "1237"
+   :name "7 Wonders: Duel"
+   :summary "Tense, quick card game of developing civilizations"
+   :designers #{"201" "202"}
+   :min_players 2
+   :max_players 2}]
+
+ :members
+ [{:id "37"
+   :member_name "curiousattemptbunny"}
+  {:id "1410"
+   :member_name "bleedingedge"}
+  {:id "2812"
+   :member_name "missyo"}]
+
+ :ratings
+ [{:member_id "37" :game_id "1234" :rating 3}
+  {:member_id "1410" :game_id "1234" :rating 5}
+  {:member_id "1410" :game_id "1236" :rating 4}
+  {:member_id "1410" :game_id "1237" :rating 4}
+  {:member_id "2812" :game_id "1237" :rating 4}
+  {:member_id "37" :game_id "1237" :rating 5}]
+
+ :designers
+ [{:id "200"
+   :name "Kris Burm"
+   :url "http://www.gipf.com/project_gipf/burm/burm.html"}
+  {:id "201"
+   :name "Antoine Bauza"
+   :url "http://www.antoinebauza.fr/"}
+  {:id "202"
+   :name "Bruno Cathala"
+   :url "http://www.brunocathala.com/"}
+  {:id "203"
+   :name "Scott Almes"}
+  {:id "204"
+   :name "Donald X. Vaccarino"}]}

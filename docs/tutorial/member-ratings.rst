@@ -13,7 +13,8 @@ Schema Changes
 
 First, let's add new fields, types, and queries to support these new features:
 
-.. ex:: member-ratings resources/cgg-schema.edn
+.. literalinclude:: /_examples/tutorial/cgg-schema-4.edn
+   :caption: resources/cgg-schema.edn
    :emphasize-lines: 7-8,23-29,37-48,69-
 
 For a particular BoardGame, you can get just a simple summary of the ratings: the total number,
@@ -29,7 +30,8 @@ We'll model these ratings in our test data, much as we would a many-to-many rela
 a SQL database:
 
 
-.. ex:: member-ratings dev-resources/cgg-data.edn
+.. literalinclude:: /_examples/tutorial/cgg-data-3.edn
+   :caption: dev-resources/cgg-data.edn
    :emphasize-lines: 26-40
 
 New Resolvers
@@ -37,7 +39,8 @@ New Resolvers
 
 Our schema changes introduced a few new field resolvers, which we must implement:
 
-.. ex:: member-ratings src/clojure_game_geek/schema.clj
+.. literalinclude:: /_examples/tutorial/schema-4.clj
+  :caption: src/clojure_game_geek/schema.clj
   :emphasize-lines: 10-13,34-58,69,71,72,74
 
 We've generalized ``resolve-game-by-id`` into ``resolve-element-by-id``.

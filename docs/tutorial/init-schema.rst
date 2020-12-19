@@ -11,7 +11,8 @@ Schema EDN File
 Our initial schema is just for the BoardGame entity, and a single operation to retrieve
 a game by its id:
 
-.. ex:: initial-schema-a resources/cgg-schema.edn
+.. literalinclude:: /_examples/tutorial/cgg-schema-1.edn
+   :caption: resources/cgg-schema.edn
 
 .. sidebar:: Details
 
@@ -85,7 +86,8 @@ schema namespace
 
 With the schema defined, the next step is to write code to load the schema into memory, and make it operational for queries:
 
-.. ex:: init-schema src/clojure_game_geek/schema.clj
+.. literalinclude:: /_examples/tutorial/cgg-schema-2.edn
+   :caption: resources/cgg-schema.edn
 
 This code loads the schema EDN file, :doc:`attaches field resolvers </resolve/attach>` to the schema,
 then `compiles` the schema.
@@ -129,7 +131,9 @@ We can define the user namespace in the ``dev-resources`` folder; this ensures
 that it is not packaged up with the rest of our application when we eventually package
 and deploy the application.
 
-.. ex:: init-schema dev-resources/user.clj
+.. literalinclude:: /_examples/tutorial/user-1.clj
+   :caption: dev-resources/user.clj
+
 
 The key function is ``q``, which invokes :api:`/execute`.
 

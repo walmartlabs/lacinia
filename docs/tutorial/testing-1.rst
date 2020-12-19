@@ -18,7 +18,8 @@ Unfortunately, we still have one conflict: the HTTP port for inbound requests.
 Only one of the systems can bind to the default 8888 port, so let's make sure our tests use
 a different port.
 
-.. ex:: 7783822f9b2606d95b5db79391e60a444fd05dac src/clojure_game_geek/server.clj
+.. literalinclude:: /_examples/tutorial/server-2.clj
+   :caption: src/clojure_game_geek/server.clj
    :emphasize-lines: 6,12-13,23
 
 We've added a bit of configuration for the ``:server`` component, the port to bind to.
@@ -31,7 +32,8 @@ To keep our tests simple, we'll want to use the ``simplify`` utility function di
 Here, we're creating a new namespace for test utilities, and moving the ``simplify`` function
 from the ``user`` namespace to the ``test-utils`` namespace:
 
-.. ex:: 4388d0d7974e498fb600da77a2d7915c8e8a0812 dev-resources/clojure_game_geek/test_utils.clj
+.. literalinclude:: /_examples/tutorial/test_utils-1.clj
+   :caption: dev-resources/clojure_game_geek/test_utils.clj
 
 This is located in the ``dev-resource`` folder, so that that Leiningen
 won't treat it as a namespace containing tests to execute.
@@ -78,7 +80,7 @@ don't work with the field resolver functions calling that code.
 Likewise, for nominal success cases, there's no point in testing the raw database code if
 the exact same code will be exercised when testing the field resolver functions.
 
-There's still a place for more focused testing, especially testing o failure
+There's still a place for more focused testing, especially testing of failure
 scenarios and other edge cases.
 
 Likewise, as we build up more code in our application outside of Lacinia, such as request
@@ -98,7 +100,8 @@ First Test
 Our first test will replicate a bit of the manual testing we've already done in the REPL: reading
 an existing board game by its primary key.
 
-.. ex:: 7783822f9b2606d95b5db79391e60a444fd05dac test/clojure_game_geek/system_tests.clj
+.. literalinclude:: /_examples/tutorial/system_tests-1.clj
+   :caption: test/clojure_game_geek/system_tests.clj
 
 We're making use of the standard ``clojure.test`` library.
 

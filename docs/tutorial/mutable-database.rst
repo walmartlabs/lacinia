@@ -32,7 +32,8 @@ to encapsulate the database itself.
 db namespace
 ------------
 
-.. ex:: mutable-database src/clojure_game_geek/db.clj
+.. literalinclude:: /_examples/tutorial/db-1.clj
+   :caption: src/clojure_game_geek/db.clj
 
 This namespace does two things:
 
@@ -68,7 +69,8 @@ implementation.
 system namespace
 ----------------
 
-.. ex:: mutable-database src/clojure_game_geek/system.clj
+.. literalinclude:: /_examples/tutorial/system-2.clj
+   :caption: src/clojure_game_geek/system.clj
    :emphasize-lines: 13
 
 The ``:db`` component doesn't effectively exist until it is part of the system map.
@@ -81,7 +83,8 @@ schema namespace
 
 The schema namespace has shrunk, and improved:
 
-.. ex:: mutable-database src/clojure_game_geek/schema.clj
+.. literalinclude:: /_examples/tutorial/schema-5.clj
+   :caption: src/clojure_game_geek/schema.clj
 
 Now all of the resolver functions are following the factory style, but they're largely just wrappers
 around the functions from the ``clojure-game-geek.db`` namespace.

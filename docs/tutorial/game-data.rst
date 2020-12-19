@@ -15,7 +15,8 @@ We can fuss with database access and all that later in the tutorial.
 cgg-data.edn
 ------------
 
-.. ex:: game-data dev-resources/cgg-data.edn
+.. literalinclude:: /_examples/tutorial/cgg-data-1.edn
+   :caption: dev-resources/cgg-data.edn
 
 This file defines just a few games I've recently played.
 It will take the place of an external database.
@@ -29,7 +30,8 @@ Resolver
 Inside our ``schema`` namespace, we need to read the data and provide a resolver
 that can access it.
 
-.. ex:: game-data src/clojure_game_geek/schema.clj
+.. literalinclude:: /_examples/tutorial/schema-1.clj
+   :caption: src/clojure_game_geek/schema.clj
    :emphasize-lines: 9-22
 
 The ``attach-resolvers`` function walks a schema, locating the ``:resolve`` keys and swapping the
@@ -81,7 +83,8 @@ Running Queries
 We're finally almost ready to run queries ... but first, let's get rid of
 that ``#ordered/map`` business.
 
-.. ex:: game-data dev-resources/user.clj
+.. literalinclude:: /_examples/tutorial/user-2.clj
+   :caption: dev-resources/user.clj
    :emphasize-lines: 5-6,10-25,29-30
 
 This ``simplify`` function finds all the ordered maps and converts them into

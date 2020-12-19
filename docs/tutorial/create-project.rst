@@ -21,11 +21,13 @@ but for simplicity we'll just ignore those.
 
 Initially, the :file:`project.clj` is almost empty:
 
-.. ex:: create-project project.clj
+.. literalinclude:: /_examples/tutorial/project-1.clj
+   :caption: project.clj
 
 Our first step is to fill in a few details, including the dependency on Lacinia:
 
-.. ex:: add-lacinia-dep project.clj
+.. literalinclude:: /_examples/tutorial/project-2.clj
+   :caption: project.clj
    :emphasize-lines: 2,3,7
 
 Lacinia has just a few dependencies of its own:

@@ -46,7 +46,8 @@ our Clojure Game Geek application.
 Add Dependencies
 ----------------
 
-.. ex:: component project.clj
+.. literalinclude:: /_examples/tutorial/project-4.clj
+   :caption: project.clj
    :emphasize-lines: 7
 
 We've added the ``component`` library.
@@ -102,7 +103,8 @@ of the initial map.
 The ``clojure-game-geek.schema`` namespace has been extended to provide
 the ``:schema-provider`` component.
 
-.. ex:: component src/clojure_game_geek/schema.clj
+.. literalinclude:: /_examples/tutorial/schema-3.clj
+   :caption: src/clojure_game_geek/schema.clj
    :emphasize-lines: 7, 35, 46, 50, 53-
 
 The real changes are at the bottom of the namespace.
@@ -141,7 +143,8 @@ the component with the initial iteration of the component itself. [#system]_
 Likewise, the ``clojure-game-geek.server`` namespace now provides the
 ``:server`` component.
 
-.. ex:: component src/clojure_game_geek/server.clj
+.. literalinclude:: /_examples/tutorial/server-1.clj
+   :caption: src/clojure_game_geek/server.clj
 
 Much of the code previously in the ``user`` namespace has moved here.
 
@@ -164,7 +167,8 @@ system namespace
 
 A new, tiny namespace has been created, just to put together the Component system map.
 
-.. ex:: component src/clojure_game_geek/system.clj
+.. literalinclude:: /_examples/tutorial/system-1.clj
+   :caption: src/clojure_game_geek/system.clj
 
 You can imagine that, as the system grows larger, so will this namespace.
 But at the same time, individual components will only need to know about
@@ -173,7 +177,8 @@ the components they directly depend upon.
 user namespace
 --------------
 
-.. ex:: component dev-resources/user.clj
+.. literalinclude:: /_examples/tutorial/user-4.clj
+  :caption: dev-resources/user.clj
   :emphasize-lines: 5, 7, 27, 31-34, 37-
 
 The user namespace has shrunk; previously

@@ -13,10 +13,12 @@ field resolvers, will be unaffected.
 Dependency Changes
 ------------------
 
-.. ex:: eebe71c16781d549aa3b1b48b8802282e709b65d project.clj
-   :emphasize-lines: 6,8-14
+.. literalinclude:: /_examples/tutorial/project-5.clj
+   :caption: project.clj
+   :emphasize-lines: 6,8-
 
-We're bringing in the very latest versions of lacinia and lacinia-pedestal (something we'll
+We're bringing in the latest versions of lacinia and lacinia-pedestal available at the time
+this page was written (something we'll
 likely do almost every chapter).
 Since these are now based on Clojure 1.9, it's a fine time to upgrade
 to that.
@@ -36,7 +38,8 @@ We've added a number of scripts to project.
 
 First, a file used to start PostgreSQL:
 
-.. ex:: database-1c docker-compose.yml
+.. literalinclude:: /_examples/tutorial/docker-compose-1.yml
+   :caption: docker-compose.yml
 
 This file is used with the ``docker-compose`` command to set up one or more containers.
 We only define a single container right now.
@@ -49,7 +52,8 @@ can reach the server as port 25432 on ``localhost``.
 
 The ``docker-up.sh`` script is used to start the container:
 
-.. ex:: database-1 bin/docker-up.sh
+.. literalinclude:: /_examples/tutorial/docker-up-1.sh
+   :caption: bin/docker-up.sh
 
 There's also a ``bin/docker-down.sh`` script to shut down the container, and a ``bin/psql.sh`` to launch a SQL command
 prompt for the ``cggdb`` database.
@@ -57,7 +61,8 @@ prompt for the ``cggdb`` database.
 After starting the container, it is necessary to create the ``cggdb`` database and populate it with initial data, using
 the ``setup-db.sh`` script:
 
-.. ex:: database-1d bin/setup-db.sh
+.. literalinclude:: /_examples/tutorial/setup-db-1.sh
+   :caption: bin/setup-db.sh
 
 The DDL for the ``cggdb`` database includes a pair of timestamp columns, ``created_at`` and ``updated_at``, in most tables.
 Defaults and database triggers ensure that these are maintained by PostgreSQL.
@@ -81,7 +86,8 @@ We'll circle back to this issue when we add mutations to create new entities.
 In the meantime, the schema has changed; the id fields have changed type from type ``ID`` (which, in GraphQL,
 is a kind of opaque string) to type ``Int`` (which is a 32 bit, signed integer).
 
-.. ex:: database-1b resources/cgg-schema.edn
+.. literalinclude:: /_examples/tutorial/cgg-schema-6.edn
+  :caption: resources/cgg-schema.edn
   :emphasize-lines: 5, 34, 53, 66, 73, 84-85
 
 In addition, the ``id`` field on the BoardGame, Member, and Publisher objects has been renamed: to ``game_id``, ``member_id``,
@@ -126,7 +132,8 @@ Our goal in this chapter is to update just one basic query to use the database,
 the query that retrieves a board game by its unique id.
 We'll make just the changes necessary for that one query before moving on.
 
-.. ex:: eebe71c16781d549aa3b1b48b8802282e709b65d src/clojure_game_geek/db.clj
+.. literalinclude:: /_examples/tutorial/db-3.clj
+   :caption: src/clojure_game_geek/db.clj
    :emphasize-lines: 3-26,33-38
 
 The requires for the ``db`` namespace have changed; we're using the ``clojure.java.jdbc`` namespace to
@@ -191,7 +198,8 @@ User Namespace Improvements
 
 We've made some tiny changes to the ``user`` namespace:
 
-.. ex:: database-1b dev-resources/user.clj
+.. literalinclude:: /_examples/tutorial/user-5.clj
+   :caption: dev-resources/user.clj
    :emphasize-lines: 27, 37-55
 
 To make loading and reloading the ``user`` namespace easier, we've changed the ``system`` Var to

@@ -33,7 +33,8 @@ We'll consider the changes here back-to-front, starting with our database
 Database Layer Changes
 ----------------------
 
-.. ex:: rating-mutation src/clojure_game_geek/db.clj
+.. literalinclude:: /_examples/tutorial/db-2.clj
+   :caption: src/clojure_game_geek/db.clj
    :emphasize-lines: 75-
 
 .. sidebar:: What's an upsert?
@@ -54,7 +55,8 @@ Schema Changes
 
 Our only change to the schema is to introduce the new mutation.
 
-.. ex:: rating-mutation resources/cgg-schema.edn
+.. literalinclude:: /_examples/tutorial/cgg-schema-5.edn
+   :caption: resources/cgg-schema.edn
    :emphasize-lines: 76-
 
 Mutations nearly always include field arguments to define what
@@ -83,7 +85,8 @@ Code Changes
 Finally, we knit together the schema changes and the database changes
 in the ``schema`` namespace.
 
-.. ex:: rating-mutation src/clojure_game_geek/schema.clj
+.. literalinclude:: /_examples/tutorial/schema-6.clj
+   :caption: src/clojure_game_geek/schema.clj
    :emphasize-lines: 22-46,84,7
 
 It all comes together in the ``rate-game`` function;

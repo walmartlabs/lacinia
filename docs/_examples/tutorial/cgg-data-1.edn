@@ -1,0 +1,21 @@
+{:games
+ [{:id "1234"
+   :name "Zertz"
+   :summary "Two player abstract with forced moves and shrinking board"
+   :min_players 2
+   :max_players 2
+   }
+  {:id "1235"
+   :name "Dominion"
+   :summary "Created the deck-building genre; zillions of expansions"
+   :min_players 2}
+  {:id "1236"
+   :name "Tiny Epic Galaxies"
+   :summary "Fast dice-based sci-fi space game with a bit of chaos"
+   :min_players 1
+   :max_players 4}
+  {:id "1237"
+   :name "7 Wonders: Duel"
+   :summary "Tense, quick card game of developing civilizations"
+   :min_players 2
+   :max_players 2}]}

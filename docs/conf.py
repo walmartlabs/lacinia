@@ -58,7 +58,7 @@ sys.path.append(os.path.abspath('_exts'))
 # ones.
 extensions = ['sphinx.ext.graphviz', 'sphinx.ext.todo',
               'sphinx.ext.extlinks',
-              'remote']
+              'api_link']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

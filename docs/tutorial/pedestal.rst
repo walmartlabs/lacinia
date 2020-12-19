@@ -11,7 +11,8 @@ In addition, for free, we get GraphQL's own REPL: `GraphiQL <https://github.com/
 Add Dependencies
 ----------------
 
-.. ex:: pedestal project.clj
+.. literalinclude:: /_examples/tutorial/project-3.clj
+   :caption: project.clj
    :emphasize-lines: 7-8
 
 We've added two libraries: ``lacinia-pedestal`` and ``io.aviso/logging``.
@@ -33,7 +34,9 @@ Some Configuration
 For best results, we can configure Logback; this keeps startup and request handling
 from being very chatty:
 
-.. ex:: pedestal dev-resources/logback-test.xml
+.. literalinclude:: /_examples/tutorial/logback-test-1.xml
+   :caption: dev-resources/logback-test.xml
+
 
 This configuration hides log events below the warning level (that is, debug and info events).
 If any warnings or errors do occur, minimal output is sent to the console.
@@ -47,7 +50,8 @@ User Namespace
 We'll add more scaffolding to the ``user`` namespace, to make it possible to start and stop
 the Pedestal server.
 
-.. ex:: pedestal dev-resources/user.clj
+.. literalinclude:: /_examples/tutorial/user-3.clj
+   :caption: dev-resources/user.clj
    :emphasize-lines: 5-7,35-
 
 This new code is almost entirely boilerplate for Pedestal and for Lacinia-Pedestal.

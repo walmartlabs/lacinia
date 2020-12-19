@@ -1,0 +1,88 @@
+{:objects
+ {:BoardGame
+  {:description "A physical or virtual board game."
+   :fields
+   {:id {:type (non-null ID)}
+    :name {:type (non-null String)}
+    :rating_summary {:type (non-null :GameRatingSummary)
+                     :resolve :BoardGame/rating-summary}
+    :summary {:type String
+              :description "A one-line summary of the game."}
+    :description {:type String
+                  :description "A long-form description of the game."}
+    :designers {:type (non-null (list :Designer))
+                :description "Designers who contributed to the game."
+                :resolve :BoardGame/designers}
+    :min_players {:type Int
+                  :description "The minimum number of players the game supports."}
+    :max_players {:type Int
+                  :description "The maximum number of players the game supports."}
+    :play_time {:type Int
+                :description "Play time, in minutes, for a typical game."}}}
+
+  :GameRatingSummary
+  {:description "Summary of ratings for a single game."
+   :fields
+   {:count {:type (non-null Int)
+            :description "Number of ratings provided for the game.  Ratings are 1 to 5 stars."}
+    :average {:type (non-null Float)
+              :description "The average value of all ratings, or 0 if never rated."}}}
+
+  :Member
+  {:description "A member of Clojure Game Geek.  Members can rate games."
+   :fields
+   {:id {:type (non-null ID)}
+    :member_name {:type (non-null String)
+                  :description "Unique name of member."}
+    :ratings {:type (list :GameRating)
+              :description "List of games and ratings provided by this member."
+              :resolve :Member/ratings}}}
+
+  :GameRating
+  {:description "A member's rating of a particular game."
+   :fields
+   {:game {:type (non-null :BoardGame)
+           :description "The Game rated by the member."
+           :resolve :GameRating/game}
+    :rating {:type (non-null Int)
+             :description "The rating as 1 to 5 stars."}}}
+
+  :Designer
+  {:description "A person who may have contributed to a board game design."
+   :fields
+   {:id {:type (non-null ID)}
+    :name {:type (non-null String)}
+    :url {:type String
+          :description "Home page URL, if known."}
+    :games {:type (non-null (list :BoardGame))
+            :description "Games designed by this designer."
+            :resolve :Designer/games}}}}
+
+ :queries
+ {:game_by_id
+  {:type :BoardGame
+   :description "Select a BoardGame by its unique id, if it exists."
+   :args
+   {:id {:type (non-null ID)}}
+   :resolve :query/game-by-id}
+
+  :member_by_id
+  {:type :Member
+   :description "Select a ClojureGameGeek Member by their unique id, if it exists."
+   :args
+   {:id {:type (non-null ID)}}
+   :resolve :query/member-by-id}}
+
+ :mutations
+ {:rate_game
+  {:type :BoardGame
+   :description "Establishes a rating of a board game, by a Member.
+
+   On success (the game and member both exist), selects the BoardGame.
+   Otherwise, selects nil and an error."
+   :args
+   {:game_id {:type (non-null ID)}
+    :member_id {:type (non-null ID)}
+    :rating {:type (non-null Int)
+             :description "Game rating as a number between 1 and 5."}}
+   :resolve :mutation/rate-game}}}

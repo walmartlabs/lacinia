@@ -13,7 +13,8 @@ It's always a good idea to know exactly what SQL queries are executing in
 your application; you'll never figure out what's slowing down your application
 if you don't know what queries are even executing.
 
-.. ex:: cb2d1187d6cd244ad3b7435ec6e94b127c37e69d src/clojure_game_geek/db.clj
+.. literalinclude:: /_examples/tutorial/db-4.clj
+   :caption: src/clojure_game_geek/db.clj
    :emphasize-lines: 4,35-40
    :lines: 1-40
 
@@ -64,9 +65,10 @@ an override of the ``toString()`` method.
 
 When it comes time to execute a query, not much has changed
 except that it isn't necessary to extract the databased spec from
-the componment:
+the component:
 
-.. ex:: database-2a src/clojure_game_geek/db.clj
+.. literalinclude:: /_examples/tutorial/db-5.clj
+   :caption: src/clojure_game_geek/db.clj
    :lines: 42-47
    :emphasize-lines: 4
 
@@ -75,7 +77,8 @@ logback-test.xml
 
 We can enable logging, just for testing purposes, in our ``logback-test.xml``:
 
-.. ex:: 9d588edac8afa44afd9a5ae095f88332fdba6c25 dev-resources/logback-test.xml
+.. literalinclude:: /_examples/tutorial/logback-test-2.xml
+   :caption: dev-resources/logback-test.xml
    :emphasize-lines: 13
 
 Nicely, Logback will pick up this change to the configuration file without
@@ -100,7 +103,8 @@ More code updates
 The remaining functions in ``clojure-game-geek.db`` can be rewritten to make use of ``query`` and
 operate on the real database:
 
-.. ex:: database-2a src/clojure_game_geek/db.clj
+.. literalinclude:: /_examples/tutorial/db-5.clj
+   :caption: src/clojure_game_geek/db.clj
    :lines: 49-
 
 The majority of this is quite straight-forward, except for
