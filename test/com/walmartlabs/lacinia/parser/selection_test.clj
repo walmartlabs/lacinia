@@ -76,12 +76,36 @@
         result (execute schema "{ basic @concise }")]
     (is (= {:data {:basic "Done"}}
            result))
-    (is (= '[[:selection {:kind :field
+    (is (= [[:selection {:kind :field
                           :qualified-name :Query/basic
                           :field-name :basic
                           :alias :basic}]
              [:directive-keys [:concise]]
              [:directive-names [:concise]]]
+           @*facts))))
+
+(deftest access-to-type-system-directives
+  (let [f (fn [context _ _]
+            (let [s (executor/selection context)
+                  field (selection/field s)
+                  directives (selection/directives field)]
+              (note :field {:root-type-name (selection/root-type-name field)
+                            :qualified-name (selection/qualified-name field)}
+                    :directives  (->> directives
+                                      :auth
+                                      (mapv (juxt selection/directive-type selection/arguments )))))
+            "Fini")
+        schema (compile-sdl-schema "selection/simple.sdl"
+                                   {:Query/basic f})
+        result (execute schema "{ basic  }")]
+    (is (= {:data {:basic "Fini"}}
+           result))
+    (is (= [[:field
+             {:qualified-name :Query/basic
+              :root-type-name :String}]
+            [:directives
+             [[:auth
+               {:role "basic"}]]]]
            @*facts))))
 
 (deftest access-to-type

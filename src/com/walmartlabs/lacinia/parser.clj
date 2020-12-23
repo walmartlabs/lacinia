@@ -807,7 +807,13 @@
 
   (root-value-type [_] root-value-type)
 
+  ;; If we eventually allow navigation from the Field to the enclosing Type, or the root type,
+  ;; then we'll need to assoc in the compiled schema to look those things up.
+
+  (field [_] field-definition)
+
   selection/Arguments
+
   (arguments [_] arguments)
 
   selection/Directives

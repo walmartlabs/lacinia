@@ -66,10 +66,16 @@
   "A [[SelectionSet]] that extracts a value from a field and records it into the
    result as a name or alias; for non-scalar types, may have sub-selections.
 
-   Also implements [[QualifiedName]], [[Arguments]], and [[Directives]]."
+   Also implements [[QualifiedName]], [[Arguments]], and [[Directives]].
+
+   Directives here are the directives on the selection (the executable directives);
+   access the underlying field to get the type system directives."
 
   (field-name [fs]
     "Returns the name of the field (as an unqualified keyword).")
+
+  (field [fs]
+    "Returns the field actually selected, a [[Field]].")
 
   (root-value-type [fs]
     "Returns the root value type for this field (the actual type may
