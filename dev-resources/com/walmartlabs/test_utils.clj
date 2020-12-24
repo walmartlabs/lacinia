@@ -73,12 +73,14 @@
 
 (defn compile-sdl-schema
   "Reads a schema SDL file, injects resolvers, and compiles the schema."
-  [resource-path resolvers]
-  (-> (io/resource resource-path)
-      slurp
-      parse-schema
-      (util/inject-resolvers resolvers)
-      schema/compile))
+  ([resource-path resolvers]
+   (compile-sdl-schema resource-path resolvers nil))
+  ([resource-path resolvers options]
+   (-> (io/resource resource-path)
+       slurp
+       parse-schema
+       (util/inject-resolvers resolvers)
+       (schema/compile options))))
 
 (defn execute
   ([compiled-schema query]

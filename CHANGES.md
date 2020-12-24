@@ -11,8 +11,12 @@ per [the GraphQL specification](http://spec.graphql.org/June2018/#sec-Root-Opera
 Added function `com.walmartlabs.lacinia.executor/selection` which provides access to 
 the details about the selection, including directives and nested selections.
 
+A new schema compilation option can be used to implement field definition directives by wrapping
+field resolvers; the `selection` API can expose information about the field, including a field's
+type system directives. 
+
 Fixed an issue where a Schema Definition Language that contained
-the literal values  `true`, `false`, or `null` would fail to parse.
+the literal values `true`, `false`, or `null` would fail to parse.
 
 Lacinia now correctly conforms to the GraphQL specification related to 
 [Errors and Non-Nullability](https://spec.graphql.org/June2018/#sec-Errors-and-Non-Nullability).

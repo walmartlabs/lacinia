@@ -1,0 +1,9 @@
+directive @changecase (mode: ChangeCaseMode = UPPER_CASE) on FIELD_DEFINITION
+
+enum ChangeCaseMode { UPPER_CASE LOWER_CASE AS_IS }
+
+type Query {
+    echoUpper(input: String!) : String @changecase
+    echoLower(input: String!) : String @changecase(mode: LOWER_CASE)
+    echoAsIs(input: String!) : String @deprecated
+}

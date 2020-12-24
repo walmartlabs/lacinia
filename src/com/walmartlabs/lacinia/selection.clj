@@ -41,8 +41,8 @@
   "An element that may contain directives."
 
   (directives [element]
-    "Returns a map of directives for this element; keys are keywords identifying,
-    the directive, values are a seq of Directive of that type (directives
+    "Returns a map of directives for this element; keys are keywords identifying
+    the directive, values are a seq of [[Directive]] of that type (directives
     are inherently repeatable).
 
     May return nil."))

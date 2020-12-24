@@ -435,9 +435,12 @@
 
 (s/def ::enable-introspection? boolean?)
 
+(s/def ::apply-field-directives fn?)
+
 (s/def ::compile-options (s/keys :opt-un [::default-field-resolver
                                           ::promote-nils-to-empty-list?
-                                          ::enable-introspection?]))
+                                          ::enable-introspection?
+                                          ::apply-field-directives]))
 
 (defrecord ^:private Directive [directive-type arguments effector arguments-extractor]
 
@@ -558,6 +561,29 @@
                                                          :arguments directive-args})))
                                                (group-by selection/directive-type)))
       element)))
+
+(defn ^:private apply-directive-arg-defaults
+  "Called, late during compilation, to inject default values for
+  directive arguments into the directives on the element."
+  [schema element]
+  (if-not (:compiled-directives element)
+    element
+    (let [{:keys [::directive-defs]} schema
+          f (fn [compiled-directive]
+              (let [{:keys [directive-type arguments]} compiled-directive
+                    directive-def (get directive-defs directive-type)
+                    apply-defaults (fn [m k]
+                        (let [default-value (get-in directive-def [:args k :default-value])]
+                          (if (and (some? default-value)
+                                   (nil? (get m k)))
+                            (assoc m k default-value)
+                            m)))
+                     arguments' (reduce apply-defaults arguments (-> directive-def :args keys))]
+                (assoc compiled-directive :arguments arguments')))
+          g (fn [directives]
+              (mapv f directives))]
+      (update element :compiled-directives
+              #(map-vals g %)))))
 
 (defmulti ^:private check-compatible
   "Given two type definitions, dispatches on a vector of the category of the two types.
@@ -1109,28 +1135,32 @@
     (update field-def :args #(reduce-kv reducer {} %))))
 
 (defn ^:private prepare-field
-  "Prepares a field for execution. Provides a default resolver, and wraps it to
+  "Prepares a field for execution. Provides a default resolver if necessary, optionally
+  wraps that function to handle field directives, and the wraps the result to
   ensure it returns a ResolverResult.
 
   Inherits :documentation from matching inteface field as necessary.
 
   Adds a :selector function."
   [schema options type-def field-def]
-  (let [provided-resolver (:resolve field-def)
-        {:keys [default-field-resolver]} options
-        {:keys [field-name description]} field-def
+  (let [{:keys [default-field-resolver apply-field-directives]} options
+        field-def' (apply-directive-arg-defaults schema field-def)
+        {:keys [field-name description compiled-directives]} field-def'
         type-name (:type-name type-def)
-        base-resolver (if provided-resolver
-                        provided-resolver
-                        (default-field-resolver field-name))
-        selector (assemble-selector schema type-def field-def (:type field-def))
-        wrapped-resolver (cond-> (wrap-resolver-to-ensure-resolver-result base-resolver)
-                           (nil? provided-resolver) (vary-meta assoc ::default-resolver? true))]
-    (-> field-def
+        resolver (or (:resolve field-def')
+                     (default-field-resolver field-name))
+        resolver' (if-not (and apply-field-directives
+                               (seq compiled-directives))
+                    resolver
+                    (or (apply-field-directives field-def' resolver)
+                        resolver))
+        selector (assemble-selector schema type-def field-def' (:type field-def'))
+        final-resolver (wrap-resolver-to-ensure-resolver-result resolver')]
+    (-> field-def'
         (assoc :type-name type-name
                :description (or description
                                 (default-field-description schema type-def field-name))
-               :resolve wrapped-resolver
+               :resolve final-resolver
                :selector selector)
         (provide-default-arg-descriptions schema type-def))))
 
@@ -1533,12 +1563,13 @@
                             {:interface-name interface-name
                              :argument-name (-> object-field-args (get additional-arg-name) :qualified-name)}))))))
 
-    (update object :fields #(reduce-kv (fn [m field-name field]
-                                         (assoc m field-name
-                                                (cond-> (prepare-field schema options object field)
-                                                  object-def? apply-deprecated-directive)))
-                                       {}
-                                       %))))
+    (-> (apply-directive-arg-defaults schema object)
+      (update  :fields #(reduce-kv (fn [m field-name field]
+                                           (assoc m field-name
+                                                  (cond-> (prepare-field schema options object field)
+                                                    object-def? apply-deprecated-directive)))
+                                         {}
+                                         %)))))
 
 (defn ^:private prepare-and-validate-objects
   "Comes very late in the compilation process to prepare objects, including validation that
@@ -1682,9 +1713,6 @@
         (add-root subscription :subscriptions defaulted-subscriptions)
         (as-> s
               (map-vals #(compile-type % s) s))
-        ;(merge-root :query :__Queries query)
-        ;(merge-root :mutation :__Mutations mutation)
-        ;(merge-root :subscription :__Subscriptions subscription)
         (compile-directive-defs (:directive-defs schema))
         (prepare-and-validate-interfaces)
         (prepare-and-validate-objects :object options)
@@ -1746,6 +1774,16 @@
   :enable-introspection?
   : If true (the default), then Schema introspection is enabled. Some applications
     may disable introspection in production.
+
+  :apply-field-directives
+  : An optional callback function; for fields that have any directives on the field definition,
+    the callback is invoked; it is passed the [[Field]] (from which directives may be extracted)
+    and the base field resolver function (possibly, a default field resolver).
+    The callback may return a new field resolver function, or return nil to use the base field resolver function.
+
+    The callback should be aware that the base resolver function may return a raw value, or a [[ResolverResult]].
+
+    This processing occurs at the very end of schema compilation.
 
   Produces a form ready for use in executing a query."
   ([schema]

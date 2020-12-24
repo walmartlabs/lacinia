@@ -22,7 +22,8 @@
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.parser.schema :refer [parse-schema]]
     [clojure.java.io :as io]
-    [com.walmartlabs.lacinia.util :as util])
+    [com.walmartlabs.lacinia.util :as util]
+    [clojure.string :as str])
   (:import
     (java.util UUID)))
 
@@ -346,3 +347,44 @@
             [:limit 2]
             [:limit 1]]
            @*facts))))
+
+
+(defn ^:private changecase-wrapper
+  [field resolver-fn]
+  (when-let [directive (-> field
+                           selection/directives
+                           :changecase
+                           first)]
+    (let [mode (-> directive
+                   selection/arguments
+                   :mode)
+          xf (condp = mode
+               :UPPER_CASE str/upper-case
+               :LOWER_CASE str/lower-case
+               nil)]
+      ;; Return nil for AS_IS case, and Lacinia uses the original resolver unchanged
+      (when xf
+        (fn [context args value]
+          ;; TODO: Simplified in that we know that resolver-fn returns a bare value
+          ;; a full implementation would see if a ResolverResult was returned.
+          (xf (resolver-fn context args value)))))))
+
+(deftest application-of-directives-to-fields
+  (let [echo (fn [_ args _] (:input args))
+        schema (compile-sdl-schema "selection/wrap-field-directive.sdl"
+                                   {:Query/echoUpper echo
+                                    :Query/echoLower echo
+                                    :Query/echoAsIs echo}
+                                   {:apply-field-directives changecase-wrapper})
+        q "
+        query ($input : String!) {
+          upper: echoUpper(input: $input)
+          lower: echoLower(input: $input)
+          asis: echoAsIs(input: $input)
+        }"]
+    (is (= {:data {:upper "LACINIA"
+                   :lower "lacinia"
+                   ;; Had directives, but not @changecase, so nil was returned and the default
+                   ;; resolver was used:
+                   :asis "Lacinia"}}
+           (execute schema q {:input "Lacinia"} nil)))))
