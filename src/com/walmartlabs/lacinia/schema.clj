@@ -1152,7 +1152,7 @@
         resolver' (if-not (and apply-field-directives
                                (seq compiled-directives))
                     resolver
-                    (or (apply-field-directives field-def' resolver)
+                    (or (apply-field-directives field-def' (resolve/as-resolver-fn resolver))
                         resolver))
         selector (assemble-selector schema type-def field-def' (:type field-def'))
         final-resolver (wrap-resolver-to-ensure-resolver-result resolver')]
@@ -1780,6 +1780,8 @@
     the callback is invoked; it is passed the [[Field]] (from which directives may be extracted)
     and the base field resolver function (possibly, a default field resolver).
     The callback may return a new field resolver function, or return nil to use the base field resolver function.
+
+    A [[FieldResolver]] instance is converted to a function before being passed to the callback.
 
     The callback should be aware that the base resolver function may return a raw value, or a [[ResolverResult]].
 
