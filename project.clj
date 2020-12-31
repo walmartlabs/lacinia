@@ -1,4 +1,4 @@
-(defproject com.walmartlabs/lacinia "0.38.0-alpha-8"
+(defproject com.walmartlabs/lacinia "0.38.0-alpha-9"
   :description "A GraphQL server implementation in Clojure"
   :url "https://github.com/walmartlabs/lacinia"
   :license {:name "Apache, Version 2.0"
@@ -6,13 +6,14 @@
   :plugins [[lein-codox "0.10.7"]
             [test2junit "1.2.5"]]
   :dependencies [[org.clojure/clojure "1.10.1"]
+                 ;; NOTE: 0.2.8 doesn't appear to be compatible with JDK 1.8
                  [clj-antlr "0.2.7"]
                  [org.flatland/ordered "1.5.9"]
                  [org.clojure/data.json "1.0.0"]]
   :source-paths ["src"]
   :profiles {:dev {:dependencies [[criterium "0.4.6"]
                                   [expound "0.8.7"]
-                                  [joda-time "2.10.8"]
+                                  [joda-time "2.10.9"]
                                   [com.walmartlabs/test-reporting "1.0.0"]
                                   [io.aviso/logging "0.3.2"]
                                   [io.pedestal/pedestal.log "0.5.5"]
