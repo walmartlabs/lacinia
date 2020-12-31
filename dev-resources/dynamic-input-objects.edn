@@ -1,0 +1,11 @@
+{:input-objects
+ {:Filter
+  {:fields
+   {:id {:type (non-null :ID)}
+    :limit {:type (non-null :Int)}}}}
+ :queries
+ {:filter
+  {:type String
+   :resolve :queries/filter
+   :args
+   {:input {:type (non-null :Filter)}}}}}

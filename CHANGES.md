@@ -21,6 +21,8 @@ the literal values `true`, `false`, or `null` would fail to parse.
 Lacinia now correctly conforms to the GraphQL specification related to 
 [Errors and Non-Nullability](https://spec.graphql.org/June2018/#sec-Errors-and-Non-Nullability).
 
+It is now possible to use query variables inside a list or input object type.
+
 ## 0.37.0 -- 30 Jun 2020
 
 Added new function `com.walmartlabs.lacinia.util/inject-streamers`, used to

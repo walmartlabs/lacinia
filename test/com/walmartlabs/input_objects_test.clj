@@ -73,12 +73,44 @@
                     {:t ["lego"]}
                     nil)))
 
+    ;; Supports default values for inputs
+
+    (is (= {:data {:search ["{:filter {:terms \"whatsit\", :max_count 10}}"]}}
+           (execute schema
+                    "query namedQuery($t: String! = \"whatsit\", $c: Int! = 10) {
+                      search(filter: {terms: $t, max_count: $c})
+                    }")))
+
+    ;; Can handle a variable in the middle of a list
+
+   (is (= {:data {:search ["{:filter {:terms [\"alpha\" \"beta\" \"gamma\"], :max_count 10}}"]}}
+           (execute schema
+                    "query namedQuery($t: String! = \"beta\", $c: Int! = 10) {
+                      search(filter: {terms: [\"alpha\", $t, \"gamma\"], max_count: $c})
+                    }")))
+
     ;; Here we're testing promotion of a single value to a list of that value
     (is (= {:data {:search ["{:filter {:max_count 5, :terms [\"lego\"]}}"]}}
            (execute schema
                     "query($t: String) { search(filter: {terms: $t, max_count: 5}) }"
                     {:t "lego"}
                     nil)))))
+
+(deftest id-type-in-nested-field
+  (let [schema (compile-schema "dynamic-input-objects.edn"
+                               {:queries/filter (fn [_ args _]
+                                                  (pr-str args))})]
+    ;; Typical approach:
+
+    (is (= {:data {:filter "{:input {:id \"starwars\", :limit 3}}"}}
+           (execute schema
+                    "query($id : ID!, $limit: Int!) {
+                      filter(input: {id: $id, limit: $limit })
+                    }"
+                    {:id "starwars"
+                     :limit 3}
+                    nil)))))
+
 
 (deftest correct-error-for-unknown-field-in-input-object
   (let [schema (compile-schema "input-object-schema.edn"

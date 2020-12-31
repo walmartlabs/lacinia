@@ -283,7 +283,7 @@
         coerced))))
 
 (defmethod process-literal-argument :null
-  [schema argument-definition arg-value]
+  [_schema argument-definition _argument]
   (when (non-null-kind? argument-definition)
     (throw-exception "An explicit null value was provided for a non-nullable argument."))
 
@@ -630,11 +630,32 @@
 
 (defmethod process-dynamic-argument :object
   [schema argument-definition arg]
-  (let [object-fields (->> argument-definition :type :type (get schema) :fields)
+  (let [object-fields (->> argument-definition schema/root-type-name (get schema) :fields)
         [literal-values dynamic-extractor] (process-arguments schema object-fields (second arg))]
     (fn [arguments]
       (merge literal-values
              (dynamic-extractor arguments)))))
+
+(defmethod process-dynamic-argument :array
+  [schema argument-definition arg]
+  ;; Sneaky: strip off the outer layer of `(list T)` to be just `T`:
+  (let [argument-definition' (update argument-definition :type :type)
+        extractors (mapv #(process-dynamic-argument schema argument-definition' %)
+                         ;; The list of values for the array argument
+                         (second arg))]
+    (fn [arguments]
+      (mapv #(% arguments) extractors))))
+
+(defmethod process-dynamic-argument :null
+  [_ _ _]
+  (fn [_] nil))
+
+(defmethod process-dynamic-argument :scalar
+  ;; This happens when an array argument is a mix of scalar and dynamic values
+  [schema argument-definition arg]
+  (let [arg-value (process-literal-argument schema argument-definition arg)]
+    (fn [_]
+      arg-value)))
 
 (defn ^:private construct-dynamic-arguments-extractor
   [schema argument-definitions arguments]
@@ -642,8 +663,9 @@
     (let [process-arg (fn [arg-name arg-value]
                         (let [arg-def (get argument-definitions arg-name)
                               arg-type-name (schema/root-type-name arg-def)
-                              arg-type (get schema arg-type-name)]
-                          (when (and (= :scalar (:category arg-type))
+                              arg-type (get schema arg-type-name)
+                              category (:category arg-type)]
+                          (when (and (= :scalar category)
                                      (= :object (first arg-value)))
                             (throw-exception (format "Argument %s contains a scalar argument with nested variables, which is not allowed."
                                                      (q arg-name))
