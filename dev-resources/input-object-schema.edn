@@ -1,7 +1,7 @@
 {:input-objects
  {:Filter
   {:fields
-   {:terms {:type (list String)}
+   {:terms {:type (list (non-null String))}
     :max_count {:type Int}}}}
 
  :queries
