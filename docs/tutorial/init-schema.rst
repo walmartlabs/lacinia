@@ -86,8 +86,8 @@ schema namespace
 
 With the schema defined, the next step is to write code to load the schema into memory, and make it operational for queries:
 
-.. literalinclude:: /_examples/tutorial/cgg-schema-2.edn
-   :caption: resources/cgg-schema.edn
+.. literalinclude:: /_examples/tutorial/schema-0.clj
+   :caption: src/clojure_game_geek/schema.clj
 
 This code loads the schema EDN file, :doc:`attaches field resolvers </resolve/attach>` to the schema,
 then `compiles` the schema.
@@ -128,7 +128,7 @@ our needs in this project.
 When you launch a REPL, it always starts in this namespace.
 
 We can define the user namespace in the ``dev-resources`` folder; this ensures
-that it is not packaged up with the rest of our application when we eventually package
+that it is not included with the rest of our application when we eventually package
 and deploy the application.
 
 .. literalinclude:: /_examples/tutorial/user-1.clj
@@ -169,7 +169,7 @@ This is not an error ... remember that we defined the type of the
 ``game_by_id`` operation to allow nulls, just for this specific situation.
 
 However, Lacinia still returns a map with the operation name and operation selection.
-Failure to return a result with a ``:data`` key would signify an error executing
+Failure to return a result with a top-level ``:data`` key would signify an error executing
 the query, such as a parse error.
 That's not the case here at all.
 
@@ -189,7 +189,7 @@ In the next chapter, we'll build on this modest start, introducing more schema t
    to use symbols everywhere, nothing will break. This is part of the schema compilation
    process.
 
-.. [#spec] Because the input schema format is so complex, it `always` validated
+.. [#spec] Because the input schema format is so complex, it is `always` validated
    using clojure.spec. This helps to ensure that minor typos or other gaffes
    are caught early rather than causing you great confusion later.
 
