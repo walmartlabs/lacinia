@@ -1,4 +1,4 @@
-## 0.38.0 -- UNRELEASED
+## 0.38.0 -- 22 Jan 2021
 
 Optional request tracing is now designed to be compatible with Apollo GraphQL's implementation.
 
