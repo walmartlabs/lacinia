@@ -29,6 +29,7 @@
 (defn q
   [query-string]
   (-> system
+      component/start-system
       :schema-provider
       :schema
       (lacinia/execute query-string nil nil)
