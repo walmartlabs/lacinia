@@ -179,7 +179,7 @@ user namespace
 
 .. literalinclude:: /_examples/tutorial/user-4.clj
   :caption: dev-resources/user.clj
-  :emphasize-lines: 5, 7, 27, 31-34, 37-
+  :emphasize-lines: 5, 7, 27, 31-35, 38-
 
 The user namespace has shrunk; previously
 it was responsible for loading the schema, and creating and starting
