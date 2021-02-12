@@ -611,7 +611,7 @@
               (throw-exception (format "Argument %s is required, but no value was provided."
                                        (q arg-value))))
 
-            (contains? argument-definition :default-value)
+            (:has-default-value? argument-definition)
             (:default-value argument-definition)
 
             arg-non-nullable?
@@ -703,11 +703,6 @@
   [set ks]
   (apply disj set ks))
 
-(defn ^:private required-argument?
-  [arg-def]
-  (and (non-null-kind? arg-def)
-       (not (contains? arg-def :default-value))))
-
 (defn ^:private process-arguments
   "Processes arguments to a field or a directive, doing some organizing and some
    validation.
@@ -721,7 +716,7 @@
         literal-argument-values (construct-literal-arguments schema argument-definitions literal-args)
         dynamic-extractor (construct-dynamic-arguments-extractor schema argument-definitions dynamic-args)
         missing-keys (-> argument-definitions
-                         (as-> $ (filter-vals required-argument? $))
+                         (as-> $ (filter-vals :is-required? $))
                          keys
                          set
                          (disj* (keys literal-args))
@@ -809,7 +804,8 @@
 
 (defrecord ^:private FieldSelection [selection-type field-definition leaf? concrete-type? reportable-arguments
                                      alias field-name selections directives arguments
-                                     location locations root-value-type]
+                                     location locations root-value-type
+                                     compiled-schema]
 
   selection/QualifiedName
 
@@ -819,7 +815,7 @@
 
   (selection-kind [_] :field)
 
-  (selections [_] selections)
+  (selections [_] (mapv #(assoc % :compiled-schema compiled-schema) selections))
 
   selection/FieldSelection
 
@@ -829,10 +825,7 @@
 
   (root-value-type [_] root-value-type)
 
-  ;; If we eventually allow navigation from the Field to the enclosing Type, or the root type,
-  ;; then we'll need to assoc in the compiled schema to look those things up.
-
-  (field [_] field-definition)
+  (field [_] (assoc field-definition :compiled-schema compiled-schema))
 
   selection/Arguments
 

@@ -1,0 +1,20 @@
+{:objects
+ {:Order
+  {:fields
+   {:id {:type (non-null String)}
+    :items {:type (non-null (list (non-null :Item)))}}}
+
+  :Item
+  {:fields
+   {:quantity {:type (non-null Int)}
+    :product {:type (non-null Product)}}}
+
+  :Product
+  {:fields
+   {:name {:type (non-null String)}}
+   :upc {:type (non-null String)}}
+
+  :Query
+  {:fields
+   {:order {:type :Order
+           :args {:id {:type (non-null String)}}}}}}}
