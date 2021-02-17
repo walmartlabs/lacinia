@@ -30,6 +30,16 @@
 
      The value may reflect query variables or argument defaults."))
 
+(defprotocol ArgumentDefs
+
+  "Definition of arguments to a [[Field]]."
+
+  (argument-defs [element]
+    "Returns a map of keyword name to [[Argument]], or nil."))
+
+(defprotocol Argument
+  "An argument definition, implements [[TypeDef]] and [[QualifiedName]].")
+
 (defprotocol Directive
 
   "Implements [[Arguments]]."
@@ -49,7 +59,7 @@
 
 (defprotocol SelectionSet
 
-  "An selection that may contain sub-selections."
+  "A selection that may contain sub-selections."
 
   (selection-kind [selection]
     "The type of selection: either :field, :inline-fragment or :named-fragment.
@@ -78,13 +88,13 @@
     "Returns the field actually selected, a [[Field]].")
 
   (root-value-type [fs]
-    "Returns the root value type for this field (the actual type may
+    "Returns the root value [[SchemaType]] for this field (the actual type may
     include `list` or `non-null` qualifiers).")
 
   (alias-name [fs]
     "Returns the alias for the field selection, or name of the field."))
 
-(defprotocol Type
+(defprotocol SchemaType
 
   "A type defined in a GraphQL schema.  Implements the [[Directives]] protocol as well."
 
@@ -96,16 +106,24 @@
 
 (defprotocol Fields
 
-  "Implemented by the :object and :interface [[Type]] kinds to expose fields."
+  "Implemented by the :object and :interface [[SchemaType]] kinds to expose the type's fields."
 
   (fields [type]
     "Returns a map of keyword to [[Field]]."))
 
+(defprotocol Type
+
+  "For a typed element, such as a [[Field]] or an [[ArgumentDef]], details the
+  schema type."
+
+  (root-type [element]
+    "Returns the root [[SchemaType]] of the element.")
+
+  (root-type-name [element]
+    "Returns the keyword name of root type of the element."))
+
 (defprotocol Field
 
-  "A field within a [[Type]].  Implements [[Directives]] and [[QualifiedName]]."
-
-  (root-type-name [field]
-     "Returns the keyword name of root type of the field."))
+  "A field within a [[SchemaType]].  Implements [[Directives]], [[Arguments]], and [[QualifiedName]].")
 
 

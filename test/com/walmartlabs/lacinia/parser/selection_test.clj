@@ -91,6 +91,7 @@
                   field (selection/field s)
                   directives (selection/directives field)]
               (note :field {:root-type-name (selection/root-type-name field)
+                            :root-type-name2 (-> field selection/root-type selection/type-name)
                             :qualified-name (selection/qualified-name field)}
                     :directives  (->> directives
                                       :auth
@@ -103,7 +104,9 @@
            result))
     (is (= [[:field
              {:qualified-name :Query/basic
-              :root-type-name :String}]
+              :root-type-name :String
+              ;; This is by type navigation:
+              :root-type-name2 :String}]
             [:directives
              [[:auth
                {:role "basic"}]]]]

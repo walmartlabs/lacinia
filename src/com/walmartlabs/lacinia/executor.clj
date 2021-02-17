@@ -532,7 +532,9 @@
   [[FieldSelection]], [[QualifiedName]], [[SelectionSet]], [[Arguments]], and [[Directives]] protocols."
   [context]
   {:added "0.38.0"}
-  (get context constants/selection-key))
+  (let [schema (get context constants/schema-key)
+        selection (get context constants/selection-key)]
+    (assoc selection :compiled-schema schema)))
 
 (defn selections-seq
   "A width-first traversal of the selections tree, returning a lazy sequence

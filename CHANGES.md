@@ -1,3 +1,13 @@
+## 0.39 - UNRELEASED
+
+A new function, `com.walmartlabs.lacinia.schema/select-type`, allows a type within the
+compiled schema to be selected; this exposes the type, fields, arguments, and so forth,
+much like GraphQL introspection, but at the Clojure API level.
+
+Some additions and incompatible changes have been made to the protocols in the `com.walmartlabs.lacinia.selection`;
+these protocols are not meant to be implemented except by the library, and prior code will be
+source compatible with the new names.  Further such changes are expected.
+
 ## 0.38.0 -- 22 Jan 2021
 
 Optional request tracing is now designed to be compatible with Apollo GraphQL's implementation.

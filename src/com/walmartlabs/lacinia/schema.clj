@@ -442,6 +442,25 @@
                                           ::enable-introspection?
                                           ::apply-field-directives]))
 
+(defn ^:private wrap-map
+  [compiled-schema m]
+  (map-vals #(assoc % :compiled-schema compiled-schema) m))
+
+(defn ^:private wrap-list
+  [compiled-schema coll]
+  (mapv #(assoc % :compiled-schema compiled-schema) coll))
+
+(defn select-type
+  "Given a compiled schema and a keyword type name, returns a [[Type]], or nil if not found."
+  {:added "0.39"}
+  [compiled-schema type-name]
+  (let [type (get compiled-schema type-name)]
+    (when (and (some? type)
+               (satisfies? selection/SchemaType type))
+      ;; Essentially, a bucket-brigade approach to passing the compiled schema along, so that
+      ;; at field and argument definitions it is possible to jump to the selection/SchemaType of the element.
+      (assoc type :compiled-schema compiled-schema))))
+
 (defrecord ^:private Directive [directive-type arguments effector arguments-extractor]
 
   selection/Directive
@@ -453,9 +472,9 @@
   (arguments [_] arguments))
 
 (defrecord ^:private Type [category type-name description fields directives compiled-directives
-                           implements tag]
+                           implements tag compiled-schema]
 
-  selection/Type
+  selection/SchemaType
 
   (type-name [_] type-name)
 
@@ -463,7 +482,7 @@
 
   selection/Fields
 
-  (fields [_] fields)
+  (fields [_] (wrap-map compiled-schema fields))
 
   selection/Directives
 
@@ -472,19 +491,29 @@
 (defn ^:no-doc root-type-name
   "For a compiled field (or argument) definition, delves down through the :type tag to find
   the root type name, a keyword."
-  [field-def]
+  [element]
   ;; In some error scenarios, the query references an unknown field and
   ;; the field-def is nil. Without this check, this loops endlessly.
-  (when field-def
-    (loop [type-def (:type field-def)]
+  (when element
+    (loop [type-def (:type element)]
       (if (-> type-def :kind (= :root))
         (:type type-def)
         (recur (:type type-def))))))
 
-(defrecord ^:private Field [type type-string directives compiled-directives
+(defrecord ^:private Field [type type-string directives compiled-directives compiled-schema
                             field-name qualified-name args null-collapser]
 
   selection/Field
+
+  selection/ArgumentDefs
+
+  (argument-defs [_]
+    (wrap-map compiled-schema args))
+
+  selection/Type
+
+  (root-type [_]
+    (select-type compiled-schema (root-type-name type)))
 
   (root-type-name [_] (root-type-name type))
 
@@ -496,9 +525,10 @@
 
   (directives [_] compiled-directives))
 
-(defrecord ^:private Interface [category type-name member fields directives compiled-directives]
+(defrecord ^:private Interface [category type-name member fields directives compiled-directives
+                                compiled-schema]
 
-  selection/Type
+  selection/SchemaType
 
   (type-name [_] type-name)
 
@@ -506,7 +536,7 @@
 
   selection/Fields
 
-  (fields [_] fields)
+  (fields [_] (wrap-map compiled-schema fields))
 
   selection/Directives
 
@@ -514,7 +544,7 @@
 
 (defrecord ^:private Union [category type-name description directives compiled-directives]
 
-  selection/Type
+  selection/SchemaType
 
   (type-name [_] type-name)
 
@@ -528,7 +558,7 @@
                                values-detail values-set
                                directives compiled-directives]
 
-  selection/Type
+  selection/SchemaType
 
   (type-name [_] type-name)
 
@@ -538,13 +568,13 @@
 
   (directives [_] compiled-directives))
 
-(defrecord ^:private Scalar [category type-name description parsae serialize directives compiled-directives]
+(defrecord ^:private Scalar [category type-name description parse serialize directives compiled-directives]
 
-  selection/Type
+  selection/SchemaType
 
   (type-name [_] type-name)
 
-  (type-kind [_] :enum)
+  (type-kind [_] :scalar)
 
   selection/Directives
 
@@ -716,20 +746,41 @@
 
   :type is a nested type map, or (for :root kind), the keyword name of a
   schema type (a scalar, enum, object, etc.)."
-  [field]
+  [element]
   (try
-    (update field :type expand-type)
+    (update element :type expand-type)
     (catch Throwable t
-      (throw (ex-info "Could not identify type of field."
-                      {:field field}
+      (throw (ex-info "Could not identify type of element (field or argument)."
+                      {:element element}
                       t)))))
 
+(defrecord Argument [arg-name compiled-schema type qualified-name
+                     description directives default-value has-default-value? is-required?]
+
+  selection/Argument
+
+  selection/QualifiedName
+  (qualified-name [_] qualified-name)
+
+  selection/Type
+
+  (root-type [element]
+    (select-type compiled-schema (root-type-name element)))
+
+  (root-type-name [element] (root-type-name element)))
+
 (defn ^:private compile-arg
-  "It's convinient to treat fields and arguments the same at this level."
   [arg-name arg-def]
-  (-> arg-def
-      rewrite-type
-      (assoc :arg-name arg-name)))
+  (let [arg-def' (-> (rewrite-type arg-def) map->Argument)
+        has-default-value? (contains? arg-def :default-value)
+        is-required? (and (= :non-null (get-in arg-def' [:type :kind]))
+                          (not has-default-value?))]
+    (assoc arg-def'
+           :arg-name arg-name
+           ;; Older code used (contains? arg :default-value) but that doesn't work anymore
+           ;; with a record that has a default-value field, so ... even more fields.
+           :has-default-value? has-default-value?
+           :is-required? is-required?)))
 
 (defn ^:private is-null?
   [v]
