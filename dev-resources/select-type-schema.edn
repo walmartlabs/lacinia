@@ -1,6 +1,12 @@
-{:objects
- {:Order
+{:interfaces
+ {:ItemsContainer
   {:fields
+   {:items {:type (non-null (list (non-null :Item)))}}}}
+
+ :objects
+ {:Order
+  {:implements [:ItemsContainer]
+   :fields
    {:id {:type (non-null String)}
     :items {:type (non-null (list (non-null :Item)))}}}
 

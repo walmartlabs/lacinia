@@ -23,10 +23,12 @@
                set)))))
 
 (deftest can-navigate-to-field-type
-  (let [items (-> (schema/select-type schema :Order)
-            sel/fields
-            :items
-            sel/root-type)]
+  (let [order-type (schema/select-type schema :Order)
+        items (-> order-type
+                  sel/fields
+                  :items
+                  sel/root-type)]
+    (is (= :object (sel/type-kind order-type)))
     (is (some? items))
     (is (= :object (sel/type-kind items)))))
 
@@ -43,3 +45,12 @@
            (-> argument
                sel/root-type
                sel/type-kind)))))
+
+(deftest can-navigate-to-field-type-of-interface
+  (let [container (schema/select-type schema :ItemsContainer)
+        items (-> container
+                  sel/fields
+                  :items
+                  sel/root-type)]
+    (is (= :interface (sel/type-kind container)))
+    (is (= :object (sel/type-kind items)))))
