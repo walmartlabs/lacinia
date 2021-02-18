@@ -515,10 +515,10 @@
   (kind [_]
     (assoc type :compiled-schema compiled-schema))
 
-  (root-type [_]
-    (select-type compiled-schema (root-type-name type)))
+  (root-type [this]
+    (select-type compiled-schema (root-type-name this)))
 
-  (root-type-name [_] (root-type-name type))
+  (root-type-name [this] (root-type-name this))
 
   selection/QualifiedName
 
@@ -791,10 +791,10 @@
   (kind [_]
     (assoc type :compiled-schema compiled-schema))
 
-  (root-type [element]
-    (select-type compiled-schema (root-type-name element)))
+  (root-type [this]
+    (select-type compiled-schema (root-type-name this)))
 
-  (root-type-name [element] (root-type-name element)))
+  (root-type-name [this] (root-type-name this)))
 
 (defn ^:private compile-arg
   [arg-name arg-def]
