@@ -478,7 +478,7 @@
 
   (type-name [_] type-name)
 
-  (type-kind [_] :object)
+  (type-category [_] :object)
 
   selection/Fields
 
@@ -512,6 +512,9 @@
 
   selection/Type
 
+  (kind [_]
+    (assoc type :compiled-schema compiled-schema))
+
   (root-type [_]
     (select-type compiled-schema (root-type-name type)))
 
@@ -532,7 +535,7 @@
 
   (type-name [_] type-name)
 
-  (type-kind [_] :interface)
+  (type-category [_] :interface)
 
   selection/Fields
 
@@ -548,7 +551,7 @@
 
   (type-name [_] type-name)
 
-  (type-kind [_] :union)
+  (type-category [_] :union)
 
   selection/Directives
 
@@ -562,7 +565,7 @@
 
   (type-name [_] type-name)
 
-  (type-kind [_] :enum)
+  (type-category [_] :enum)
 
   selection/Directives
 
@@ -574,7 +577,7 @@
 
   (type-name [_] type-name)
 
-  (type-kind [_] :scalar)
+  (type-category [_] :scalar)
 
   selection/Directives
 
@@ -688,6 +691,36 @@
 ;;-------------------------------------------------------------------------------
 ;; ## Types
 
+(defn ^:private type->string
+  "Converts the result of expand-type back into a string, as a type reference would appear in the
+  query language or SDL (e.g., `[String]!`)."
+  [input-type]
+  (let [{:keys [kind type]} input-type]
+    (case kind
+      :root (name type)
+      :list (str "[" (type->string type) "]")
+      :non-null (str (type->string type) "!"))))
+
+(defrecord ^:private Kind [compiled-schema kind type]
+
+  ;; For historical reasons, the naming here is all over the place.
+  ;; kind is one of :root, :non-null, or :list
+  ;; type is either another Kind, or the name of a SchemaType
+
+  selection/Kind
+
+  (kind-type [_] kind)
+
+  (as-type-string [this] (type->string this))
+
+  (of-kind [_]
+    (when-not (= :root kind)
+      (assoc type :compiled-schema compiled-schema)))
+
+  (of-type [_]
+    (when (= :root kind)
+      (select-type compiled-schema type))))
+
 (defn ^:private expand-type
   "Compiles a type from the input schema to the format used in the
   compiled schema."
@@ -707,29 +740,19 @@
         (throw (ex-info "Expected (list|non-null <type>)."
                         {:type type})))
 
-      {:kind kind
-       :type (expand-type next-type)})
+      (map->Kind {:kind kind
+                  :type (expand-type next-type)}))
 
     ;; By convention, symbols are used for pre-defined scalar types, and
     ;; keywords are used for user-defined types, interfaces, unions, enums, etc.
     (or (keyword? type)
         (symbol? type))
-    {:kind :root
-     :type (as-keyword type)}
+    (map->Kind {:kind :root
+                :type (as-keyword type)})
 
     :else
     (throw (ex-info "Could not process type."
                     {:type type}))))
-
-(defn ^:private type->string
-  "Converts the result of expand-type back into a string, as a type reference would appear in the
-  query language or SDL (e.g., `[String]!`)."
-  [input-type]
-  (let [{:keys [kind type]} input-type]
-    (case kind
-      :root (name type)
-      :list (str "[" (type->string type) "]")
-      :non-null (str (type->string type) "!"))))
 
 (defn ^:private add-type-string
   [field-definition]
@@ -760,9 +783,13 @@
   selection/Argument
 
   selection/QualifiedName
+
   (qualified-name [_] qualified-name)
 
   selection/Type
+
+  (kind [_]
+    (assoc type :compiled-schema compiled-schema))
 
   (root-type [element]
     (select-type compiled-schema (root-type-name element)))
@@ -1150,7 +1177,7 @@
         (throw (ex-info (format "Field %s is both non-nullable and has a default value."
                                 (-> field :qualified-name q))
                         {:field-name (:qualified-name field)
-                         :type (:type field)})))
+                         :type (-> field :type type->string)})))
       (fn select-non-null [{:keys [resolved-value]
                             :as selector-context}]
         (if (some? resolved-value)

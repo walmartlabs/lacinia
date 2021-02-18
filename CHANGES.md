@@ -6,7 +6,7 @@ much like GraphQL introspection, but at the Clojure API level.
 
 Some additions and incompatible changes have been made to the protocols in the `com.walmartlabs.lacinia.selection`;
 these protocols are not meant to be implemented except by the library, and prior code will be
-source compatible with the new names.  Further such changes are expected.
+largely source compatible with the new names.  Further such changes are expected.
 
 ## 0.38.0 -- 22 Jan 2021
 

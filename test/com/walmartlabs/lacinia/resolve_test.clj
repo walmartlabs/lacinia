@@ -22,7 +22,8 @@
     [clojure.walk :refer [postwalk]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :as resolve]
-    [com.walmartlabs.lacinia.util :as util]))
+    [com.walmartlabs.lacinia.util :as util]
+    [com.walmartlabs.lacinia.selection :as sel]))
 
 (def resolve-contexts (atom []))
 
@@ -72,10 +73,8 @@
 
     (is (= :human (-> c1 ::graphql/selection :field-name)))
 
-    (is (= {:kind :non-null
-            :type {:kind :root
-                   :type :human}}
-           (-> c1 ::graphql/selection :field-definition :type)))
+    (is (= "human!"
+           (-> c1 ::graphql/selection sel/field sel/kind sel/as-type-string)))
 
     ;; This is pretty important: can we see what else will be queried?
     ;; We're focusing in these tests on sub-fields with the root query field.

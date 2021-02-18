@@ -576,9 +576,7 @@
     (expect-exception
       "Field `person/id' is both non-nullable and has a default value."
       {:field-name :person/id
-       :type {:kind :non-null
-              :type {:kind :root
-                     :type :String}}}
+       :type "String!"}
       (schema/compile schema-non-nullable-with-defaults))))
 
 (deftest allow-single-value-on-list-type-input
