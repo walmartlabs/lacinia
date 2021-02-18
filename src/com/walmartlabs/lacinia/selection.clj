@@ -101,8 +101,8 @@
   (type-name [type]
     "Returns the name of the type, as a keyword.")
 
-  (type-kind [type]
-    "Returns the kind of type, one of: `:object`, `:union`, `:interface`, `:scalar`, or `:enum`."))
+  (type-category [type]
+    "Returns the category of the type, one of: `:object`, `:union`, `:interface`, `:scalar`, or `:enum`."))
 
 (defprotocol Fields
 
@@ -116,14 +116,34 @@
   "For a typed element, such as a [[Field]] or an [[ArgumentDef]], details the
   schema type."
 
+  (kind [element]
+    "The [[Kind]] of the element.")
+
   (root-type [element]
     "Returns the root [[SchemaType]] of the element.")
 
   (root-type-name [element]
     "Returns the keyword name of root type of the element."))
 
+(defprotocol Kind
+  "A Kind is a root type with qualifiers (list, or not-null). A root kind identifies a schema [[Type]].
+  A Kind can be converted to an GraphQL."
+
+  (kind-type [kind]
+    "One of :non-null, :list, or :root.")
+
+  (as-type-string [kind]
+    "Returns the kind as an GraphQL language string, e.g. `[String!]`.")
+
+  (of-kind [kind]
+    "Returns the nested [[Kind]], or nil if a root kind.")
+
+  (of-type [kind]
+    "Returns the root [[Type]], or nil if not a root kind."))
+
 (defprotocol Field
 
-  "A field within a [[SchemaType]].  Implements [[Directives]], [[Arguments]], and [[QualifiedName]].")
+  "A field within a [[SchemaType]].  Implements [[Type]], [[Directives]], [[Arguments]], and [[QualifiedName]].")
+
 
 

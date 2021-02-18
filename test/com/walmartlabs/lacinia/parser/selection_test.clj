@@ -116,7 +116,7 @@
   (let [me (fn [context _ _]
              (let [t (root-type context)]
                (note :type {:type-name (selection/type-name t)
-                           :type-kind (selection/type-kind t)})
+                           :type-category (selection/type-category t)})
                {:name "Lacinia"}))
         friends (fn [context _ _]
                   (note :type (-> context root-type selection/type-name))
@@ -132,7 +132,7 @@
                              {:name "Graphiti"}]}}
            (execute schema "{ friends { name }}")))
 
-    (is (= [[:type {:type-kind :object
+    (is (= [[:type {:type-category :object
                     :type-name :User}]
             ;; Still :User, because we unwrap list and non-null
             [:type :User]]
@@ -195,7 +195,7 @@
   (let [me (fn [context _ _]
              (let [t (root-type context)]
                (note :type-name (selection/type-name t)
-                     :kind (selection/type-kind t)
+                     :kind (selection/type-category t)
                      :role (auth-role context)))
              (schema/tag-with-type {:name "Lacinia" :userId 101} :LegacyUser))
         schema (compile-sdl-schema "selection/interface-types.sdl"
@@ -253,7 +253,7 @@
   (let [me (fn [context _ _]
              (let [t (root-type context)]
                (note :type-name (selection/type-name t)
-                     :kind (selection/type-kind t)
+                     :kind (selection/type-category t)
                      :role (auth-role context)))
              (schema/tag-with-type {:userName "Lacinia" :userId 101}
                                    :LegacyUser))

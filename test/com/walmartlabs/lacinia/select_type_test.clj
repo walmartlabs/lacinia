@@ -15,7 +15,7 @@
 (deftest basic-type
   (let [order (schema/select-type schema :Order)]
     (is (some? order))
-    (is (= :object (sel/type-kind order)))
+    (is (= :object (sel/type-category order)))
     (is (= #{:id :items}
            (-> order
                sel/fields
@@ -28,9 +28,46 @@
                   sel/fields
                   :items
                   sel/root-type)]
-    (is (= :object (sel/type-kind order-type)))
+    (is (= :object (sel/type-category order-type)))
     (is (some? items))
-    (is (= :object (sel/type-kind items)))))
+    (is (= :object (sel/type-category items)))))
+
+(defn ^:private kind-types [kind]
+  (when (some? kind)
+    (cons (sel/kind-type kind)
+          (kind-types (sel/of-kind kind)))))
+
+(deftest kind-of-field
+  (let [order-type (schema/select-type schema :Order)
+        items-field (-> order-type sel/fields :items)
+        items-kind (sel/kind items-field)]
+  (is (= "[Item!]!" (sel/as-type-string items-kind)))
+  (is (= [:non-null :list :non-null :root]
+         (kind-types items-kind)))
+  (is (nil?
+        (sel/of-type items-kind)))
+  (is (= :Item
+        (-> items-kind
+            sel/of-kind                                     ; !
+            sel/of-kind                                     ; []
+            sel/of-kind                                     ; !
+            sel/of-type                                     ; Item
+            sel/type-name)))))
+
+(deftest kind-of-argument
+  (let [id-arg (-> (schema/select-type schema :Query )
+                        sel/fields
+                        :order
+                        sel/argument-defs
+                        :id)
+        id-kind (sel/kind id-arg)]
+    (is (= "String!" (sel/as-type-string id-kind)))
+
+    (is (= :String
+           (-> id-kind
+               sel/of-kind                                  ; !
+               sel/of-type
+               sel/type-name)))))
 
 (deftest can-navigate-to-argument-type
   (let [argument (-> (schema/select-type schema :Query)
@@ -44,7 +81,7 @@
     (is (= :scalar
            (-> argument
                sel/root-type
-               sel/type-kind)))))
+               sel/type-category)))))
 
 (deftest can-navigate-to-field-type-of-interface
   (let [container (schema/select-type schema :ItemsContainer)
@@ -52,5 +89,5 @@
                   sel/fields
                   :items
                   sel/root-type)]
-    (is (= :interface (sel/type-kind container)))
-    (is (= :object (sel/type-kind items)))))
+    (is (= :interface (sel/type-category container)))
+    (is (= :object (sel/type-category items)))))
