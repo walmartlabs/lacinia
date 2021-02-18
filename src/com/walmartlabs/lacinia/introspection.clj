@@ -264,9 +264,8 @@
                                                           (:type field-def)
                                                           (get value field-name))]
                       (when field-value
-                        (str \"
-                             (name field-name)
-                             "\":"
+                        (str (name field-name)
+                             ":"
                              field-value))))
                   (->> type-def :fields vals (sort-by :field-name)))]
     (str "{"

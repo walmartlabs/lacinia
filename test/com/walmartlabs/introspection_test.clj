@@ -1451,7 +1451,7 @@
     (is (= {:data
             {:__type
              {:fields
-              [{:args [{:defaultValue "{\"checked\":false,\"count\":20,\"target\":3.14,\"title\":\"gorge\"}"
+              [{:args [{:defaultValue "{checked:false,count:20,target:3.14,title:\"gorge\"}"
                         :name "filter"}]
                 :name "search"}]}}}
            (utils/execute schema fields-and-args-query)))
