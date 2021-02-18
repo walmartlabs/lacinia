@@ -14,12 +14,13 @@
 
 (ns com.walmartlabs.lacinia.selection
   "Protocols for selection-related objects accessible from the [[selection]] function, and
-   as well as the schema type objects navigable to from the selection."
+   as well as the schema type objects navigable to from the selection, or via
+   [[select-type]]."
   {:added "0.38.0"})
 
 (defprotocol QualifiedName
   (qualified-name [named]
-    "Returns a keyword whose namespace is the containing element; e.g., :User/id for the id field of the User type."))
+    "Returns a keyword whose namespace is the containing element; e.g., `:User/id `for the `id` field of the `User` type."))
 
 (defprotocol Arguments
 
@@ -37,8 +38,8 @@
   (argument-defs [element]
     "Returns a map of keyword name to [[Argument]], or nil."))
 
-(defprotocol Argument
-  "An argument definition, implements [[TypeDef]] and [[QualifiedName]].")
+(defprotocol ArgumentDef
+  "An argument definition, implements [[Type]] and [[QualifiedName]].")
 
 (defprotocol Directive
 
@@ -76,25 +77,22 @@
   "A [[SelectionSet]] that extracts a value from a field and records it into the
    result as a name or alias; for non-scalar types, may have sub-selections.
 
-   Also implements [[QualifiedName]], [[Arguments]], and [[Directives]].
+   Also implements [[Arguments]], and [[Directives]].
 
    Directives here are the directives on the selection (the executable directives);
    access the underlying field to get the type system directives."
 
-  (field-name [fs]
-    "Returns the name of the field (as an unqualified keyword).")
-
   (field [fs]
-    "Returns the field actually selected, a [[Field]].")
+    "Returns the definition of the [[FieldDef]] selected.")
 
   (root-value-type [fs]
-    "Returns the root value [[SchemaType]] for this field (the actual type may
+    "Returns the root value [[TypeDef]] for this field (the actual type may
     include `list` or `non-null` qualifiers).")
 
   (alias-name [fs]
     "Returns the alias for the field selection, or name of the field."))
 
-(defprotocol SchemaType
+(defprotocol TypeDef
 
   "A type defined in a GraphQL schema.  Implements the [[Directives]] protocol as well."
 
@@ -106,7 +104,7 @@
 
 (defprotocol Fields
 
-  "Implemented by the :object and :interface [[SchemaType]] kinds to expose the type's fields."
+  "Implemented by the :object and :interface [[TypeDef]] kinds to expose the type's fields."
 
   (fields [type]
     "Returns a map of keyword to [[Field]]."))
@@ -120,14 +118,14 @@
     "The [[Kind]] of the element.")
 
   (root-type [element]
-    "Returns the root [[SchemaType]] of the element.")
+    "Returns the root [[TypeDef]] of the element.")
 
   (root-type-name [element]
     "Returns the keyword name of root type of the element."))
 
 (defprotocol Kind
-  "A Kind is a root type with qualifiers (list, or not-null). A root kind identifies a schema [[Type]].
-  A Kind can be converted to an GraphQL."
+  "A Kind is a root type with qualifiers (list, or non-null). A root kind identifies a [[TypeDef]].
+  A Kind can be converted to a GraphQL type string."
 
   (kind-type [kind]
     "One of :non-null, :list, or :root.")
@@ -139,11 +137,14 @@
     "Returns the nested [[Kind]], or nil if a root kind.")
 
   (of-type [kind]
-    "Returns the root [[Type]], or nil if not a root kind."))
+    "Returns the root [[TypeDef]], or nil if not a root kind."))
 
-(defprotocol Field
+(defprotocol FieldDef
 
-  "A field within a [[SchemaType]].  Implements [[Type]], [[Directives]], [[Arguments]], and [[QualifiedName]].")
+  "A field within a [[TypeDef]].  Implements [[Type]], [[Directives]], [[ArgumentDefs]], and [[QualifiedName]]."
+
+  (field-name [fs]
+    "Returns the name of the field (as an unqualified keyword)."))
 
 
 
