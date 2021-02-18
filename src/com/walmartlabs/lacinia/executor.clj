@@ -95,7 +95,7 @@
     (:concrete-type? field-selection)
     (-> field-selection :field-definition :resolve)
 
-    :let [field-name (selection/field-name field-selection)]
+    :let [field-name (-> field-selection selection/field selection/field-name)]
 
     (nil? resolved-type)
     (throw (ex-info "Sanity check: value type tag is nil on abstract type."
@@ -332,7 +332,7 @@
         selector (if is-fragment?
                    schema/floor-selector
                    (or (-> selection :field-definition :selector)
-                       (let [field-name (selection/field-name selection)]
+                       (let [field-name (:field-name selection)]
                          (-> execution-context'
                              :schema
                              (get resolved-type)
@@ -362,7 +362,7 @@
                                        (throw t)
                                        (let [{:keys [location]} selection
                                              arguments (selection/arguments selection)
-                                             qualified-name (selection/qualified-name selection)]
+                                             qualified-name  (:qualified-name selection)]
                                          (throw (ex-info (str "Exception processing resolved value for "
                                                               (q qualified-name)
                                                               ": "
@@ -529,12 +529,10 @@
 
 (defn selection
   "Returns the field selection, an object that implements the
-  [[FieldSelection]], [[QualifiedName]], [[SelectionSet]], [[Arguments]], and [[Directives]] protocols."
+  [[FieldSelection]], [[SelectionSet]], [[Arguments]], and [[Directives]] protocols."
   [context]
   {:added "0.38.0"}
-  (let [schema (get context constants/schema-key)
-        selection (get context constants/selection-key)]
-    (assoc selection :compiled-schema schema)))
+  (get context constants/selection-key))
 
 (defn selections-seq
   "A width-first traversal of the selections tree, returning a lazy sequence

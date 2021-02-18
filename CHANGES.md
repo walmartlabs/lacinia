@@ -5,7 +5,7 @@ compiled schema to be selected; this exposes the type, fields, arguments, and so
 much like GraphQL introspection, but at the Clojure API level.
 
 Some additions and incompatible changes have been made to the protocols in the `com.walmartlabs.lacinia.selection`;
-these protocols are not meant to be implemented except by the library, and prior code will be
+these protocols are not meant to be implemented except by the library, and prior code (from 0.38) will be
 largely source compatible with the new names.  Further such changes are expected.
 
 ## 0.38.0 -- 22 Jan 2021
@@ -294,7 +294,7 @@ Compiled schemas now print and pretty-print as `#CompiledSchema<>`.
 
 Added the FieldResolver protocol that allows a Clojure record, such as a
 [Component](https://github.com/stuartsierra/component), to act as a field resolver.
-
+""
 Field resolvers for enum types are now required to return a keyword, and that
 keyword must match one of the values defined for the enum.
 Previously, Lacinia failed to perform any checks in this case, which could result

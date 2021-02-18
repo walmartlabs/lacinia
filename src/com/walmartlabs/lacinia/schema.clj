@@ -451,14 +451,14 @@
   (mapv #(assoc % :compiled-schema compiled-schema) coll))
 
 (defn select-type
-  "Given a compiled schema and a keyword type name, returns a [[Type]], or nil if not found."
+  "Given a compiled schema and a keyword type name, returns a [[TypeDef]], or nil if not found."
   {:added "0.39"}
   [compiled-schema type-name]
   (let [type (get compiled-schema type-name)]
     (when (and (some? type)
-               (satisfies? selection/SchemaType type))
+               (satisfies? selection/TypeDef type))
       ;; Essentially, a bucket-brigade approach to passing the compiled schema along, so that
-      ;; at field and argument definitions it is possible to jump to the selection/SchemaType of the element.
+      ;; at field and argument definitions it is possible to jump to the selection/TypeDef of the element.
       (assoc type :compiled-schema compiled-schema))))
 
 (defrecord ^:private Directive [directive-type arguments effector arguments-extractor]
@@ -474,7 +474,7 @@
 (defrecord ^:private Type [category type-name description fields directives compiled-directives
                            implements tag compiled-schema]
 
-  selection/SchemaType
+  selection/TypeDef
 
   (type-name [_] type-name)
 
@@ -500,10 +500,12 @@
         (:type type-def)
         (recur (:type type-def))))))
 
-(defrecord ^:private Field [type type-string directives compiled-directives compiled-schema
-                            field-name qualified-name args null-collapser]
+(defrecord ^:private FieldDef [type type-string directives compiled-directives compiled-schema
+                               field-name qualified-name args null-collapser]
 
-  selection/Field
+  selection/FieldDef
+
+  (field-name [_] field-name)
 
   selection/ArgumentDefs
 
@@ -531,7 +533,7 @@
 (defrecord ^:private Interface [category type-name member fields directives compiled-directives
                                 compiled-schema]
 
-  selection/SchemaType
+  selection/TypeDef
 
   (type-name [_] type-name)
 
@@ -547,7 +549,7 @@
 
 (defrecord ^:private Union [category type-name description directives compiled-directives]
 
-  selection/SchemaType
+  selection/TypeDef
 
   (type-name [_] type-name)
 
@@ -561,7 +563,7 @@
                                values-detail values-set
                                directives compiled-directives]
 
-  selection/SchemaType
+  selection/TypeDef
 
   (type-name [_] type-name)
 
@@ -573,7 +575,7 @@
 
 (defrecord ^:private Scalar [category type-name description parse serialize directives compiled-directives]
 
-  selection/SchemaType
+  selection/TypeDef
 
   (type-name [_] type-name)
 
@@ -705,7 +707,7 @@
 
   ;; For historical reasons, the naming here is all over the place.
   ;; kind is one of :root, :non-null, or :list
-  ;; type is either another Kind, or the name of a SchemaType
+  ;; type is either another Kind, or the name of a TypeDef
 
   selection/Kind
 
@@ -721,13 +723,9 @@
     (when (= :root kind)
       (select-type compiled-schema type))))
 
-(defn ^:private expand-type
+(defn ^:no-doc expand-type
   "Compiles a type from the input schema to the format used in the
   compiled schema."
-  ;; TODO: This nested maps format works, but given the simple modifiers
-  ;; we have, just converting from nested lists to a flattened vector
-  ;; might work just as well. It would also make finding the root type
-  ;; cheap: just use last.
   [type]
   (cond
     (sequential? type)
@@ -777,10 +775,10 @@
                       {:element element}
                       t)))))
 
-(defrecord Argument [arg-name compiled-schema type qualified-name
-                     description directives default-value has-default-value? is-required?]
+(defrecord ArgumentDef [arg-name compiled-schema type qualified-name
+                        description directives default-value has-default-value? is-required?]
 
-  selection/Argument
+  selection/ArgumentDef
 
   selection/QualifiedName
 
@@ -798,7 +796,7 @@
 
 (defn ^:private compile-arg
   [arg-name arg-def]
-  (let [arg-def' (-> (rewrite-type arg-def) map->Argument)
+  (let [arg-def' (-> (rewrite-type arg-def) map->ArgumentDef)
         has-default-value? (contains? arg-def :default-value)
         is-required? (and (= :non-null (get-in arg-def' [:type :kind]))
                           (not has-default-value?))]
@@ -890,7 +888,7 @@
   [schema type-def field-name field-def]
   (let [{:keys [type-name]} type-def
         field-def' (-> field-def
-                       map->Field
+                       map->FieldDef
                        rewrite-type
                        add-type-string
                        compile-directives
@@ -1220,27 +1218,30 @@
   Inherits :documentation from matching inteface field as necessary.
 
   Adds a :selector function."
-  [schema options type-def field-def]
-  (let [{:keys [default-field-resolver apply-field-directives]} options
-        field-def' (apply-directive-arg-defaults schema field-def)
-        {:keys [field-name description compiled-directives]} field-def'
+  [schema type-def field-def]
+  (let [field-def' (apply-directive-arg-defaults schema field-def)
+        {:keys [field-name description]} field-def'
         type-name (:type-name type-def)
-        resolver (or (:resolve field-def')
-                     (default-field-resolver field-name))
-        resolver' (if-not (and apply-field-directives
-                               (seq compiled-directives))
-                    resolver
-                    (or (apply-field-directives field-def' (resolve/as-resolver-fn resolver))
-                        resolver))
-        selector (assemble-selector schema type-def field-def' (:type field-def'))
-        final-resolver (wrap-resolver-to-ensure-resolver-result resolver')]
+        selector (assemble-selector schema type-def field-def' (:type field-def'))]
     (-> field-def'
         (assoc :type-name type-name
                :description (or description
                                 (default-field-description schema type-def field-name))
-               :resolve final-resolver
                :selector selector)
         (provide-default-arg-descriptions schema type-def))))
+
+(defn ^:private prepare-field-resolver
+  [schema options field-def]
+  (let [{:keys [default-field-resolver apply-field-directives]} options
+        {:keys [field-name compiled-directives]} field-def
+        resolver (or (:resolve field-def)
+                     (default-field-resolver field-name))
+        resolver' (if-not (and apply-field-directives
+                               (seq compiled-directives))
+                    resolver
+                    (or (apply-field-directives (assoc field-def :compiled-schema schema) (resolve/as-resolver-fn resolver))
+                        resolver))]
+    (assoc field-def :resolve (wrap-resolver-to-ensure-resolver-result resolver'))))
 
 ;;-------------------------------------------------------------------------------
 ;; ## Compile schema
@@ -1594,15 +1595,15 @@
                        (dissoc :resolve)))))))
 
 (defn ^:private prepare-and-validate-object
-  [schema object options]
-  (verify-fields-and-args schema object)
-  (let [object-def? (= :object (:category object))]
-    (validate-directives-in-def schema object (if object-def? :object :input-object))
-    (doseq [interface-name (:implements object)
+  [schema object-def]
+  (verify-fields-and-args schema object-def)
+  (let [object-def? (= :object (:category object-def))]
+    (validate-directives-in-def schema object-def (if object-def? :object :input-object))
+    (doseq [interface-name (:implements object-def)
             :let [interface (get schema interface-name)
-                  type-name (:type-name object)]
+                  type-name (:type-name object-def)]
             [field-name interface-field] (:fields interface)
-            :let [object-field (get-in object [:fields field-name])
+            :let [object-field (get-in object-def [:fields field-name])
                   interface-field-args (:args interface-field)
                   object-field-args (:args object-field)]]
 
@@ -1641,20 +1642,29 @@
                             {:interface-name interface-name
                              :argument-name (-> object-field-args (get additional-arg-name) :qualified-name)}))))))
 
-    (-> (apply-directive-arg-defaults schema object)
-      (update  :fields #(reduce-kv (fn [m field-name field]
-                                           (assoc m field-name
-                                                  (cond-> (prepare-field schema options object field)
-                                                    object-def? apply-deprecated-directive)))
-                                         {}
-                                         %)))))
+    (-> (apply-directive-arg-defaults schema object-def)
+        (update :fields #(map-vals (fn [field-def]
+                                     (cond-> (prepare-field schema object-def field-def)
+                                       object-def? apply-deprecated-directive))
+                                   %)))))
 
 (defn ^:private prepare-and-validate-objects
   "Comes very late in the compilation process to prepare objects, including validation that
   all implemented interface fields are present in each object."
-  [schema category options]
+  [schema category]
   (map-types schema category
-             #(prepare-and-validate-object schema % options)))
+             #(prepare-and-validate-object schema %)))
+
+(defn ^:private prepare-resolvers-in-object
+  [schema object-def options]
+  (update object-def :fields #(map-vals (fn [field-def]
+                                          (prepare-field-resolver schema options field-def))
+                                        %)))
+
+(defn ^:private prepare-field-resolvers
+  [schema options]
+  (map-types schema :object
+             #(prepare-resolvers-in-object schema % options)))
 
 (def ^:private default-subscription-resolver
 
@@ -1793,11 +1803,13 @@
               (map-vals #(compile-type % s) s))
         (compile-directive-defs (:directive-defs schema))
         (prepare-and-validate-interfaces)
-        (prepare-and-validate-objects :object options)
-        (prepare-and-validate-objects :input-object options)
+        (prepare-and-validate-objects :object)
+        (prepare-and-validate-objects :input-object)
         (validate-directives-by-category :union)
         (validate-directives-by-category :scalar)
         validate-enum-directives
+        ;; Last so that schema is as close to final and verified state as possible
+        (prepare-field-resolvers options)
         map->CompiledSchema)))
 
 (defn default-field-resolver
@@ -1855,13 +1867,14 @@
 
   :apply-field-directives
   : An optional callback function; for fields that have any directives on the field definition,
-    the callback is invoked; it is passed the [[Field]] (from which directives may be extracted)
+    the callback is invoked; it is passed the [[FieldDef]] (from which directives may be extracted)
     and the base field resolver function (possibly, a default field resolver).
     The callback may return a new field resolver function, or return nil to use the base field resolver function.
 
     A [[FieldResolver]] instance is converted to a function before being passed to the callback.
 
     The callback should be aware that the base resolver function may return a raw value, or a [[ResolverResult]].
+    Generally, this option is used with the [[wrap-resolver-result]] function.
 
     This processing occurs at the very end of schema compilation.
 

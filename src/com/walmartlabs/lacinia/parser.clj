@@ -787,29 +787,24 @@
 (def ^:private typename-field-definition
   "A psuedo field definition that exists to act as a placeholder when the
   __typename metafield is encountered."
-  {:type {:kind :non-null
-          :type {:kind :root
-                 :type :String}}
+  (schema/map->FieldDef
+    {:type (schema/expand-type '(non-null String))
 
-   :field-name :__typename
+     :field-name :__typename
 
-   :null-collapser identity
+     :null-collapser identity
 
-   :resolve (fn [context _ _]
-              (-> context
-                  :com.walmartlabs.lacinia/container-type-name
-                  resolve/resolve-as))
+     :resolve (fn [context _ _]
+                (-> context
+                    :com.walmartlabs.lacinia/container-type-name
+                    resolve/resolve-as))
 
-   :selector schema/floor-selector})
+     :selector schema/floor-selector}))
 
 (defrecord ^:private FieldSelection [selection-type field-definition leaf? concrete-type? reportable-arguments
-                                     alias field-name selections directives arguments
+                                     alias field-name qualified-name selections directives arguments
                                      location locations root-value-type
                                      compiled-schema]
-
-  selection/QualifiedName
-
-  (qualified-name [_] (:qualified-name field-definition))
 
   selection/SelectionSet
 
@@ -819,11 +814,9 @@
 
   selection/FieldSelection
 
-  (field-name [_] field-name)
-
   (alias-name [_] alias)
 
-  (root-value-type [_] root-value-type)
+  (root-value-type [_] (assoc root-value-type :compiled-schema compiled-schema))
 
   (field [_] (assoc field-definition :compiled-schema compiled-schema))
 
@@ -1138,6 +1131,8 @@
                                                nil
                                                e)))]
                       (assoc result
+                             :compiled-schema schema
+                             :qualified-name qualified-field-name
                              :root-value-type nested-type
                              :directives (convert-parsed-directives schema directives)
                              :leaf? (scalar? nested-type)

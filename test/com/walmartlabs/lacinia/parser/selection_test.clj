@@ -23,7 +23,8 @@
     [com.walmartlabs.lacinia.parser.schema :refer [parse-schema]]
     [clojure.java.io :as io]
     [com.walmartlabs.lacinia.util :as util]
-    [clojure.string :as str])
+    [clojure.string :as str]
+    [com.walmartlabs.lacinia.resolve :as resolve])
   (:import
     (java.util UUID)))
 
@@ -62,11 +63,12 @@
 (deftest access-to-selection
   (let [f (fn [context _ _]
             (let [s (executor/selection context)
-                  directives (selection/directives s)]
+                  directives (selection/directives s)
+                  field (selection/field s)]
               (note :selection {:kind (selection/selection-kind s)
-                               :qualified-name (selection/qualified-name s)
-                               :field-name (selection/field-name s)
-                               :alias (selection/alias-name s)}
+                                :qualified-name (selection/qualified-name field)
+                                :field-name (selection/field-name field)
+                                :alias (selection/alias-name s)}
                     :directive-keys (-> directives keys sort)
                     :directive-names (->> directives
                                           :concise
@@ -223,7 +225,7 @@
                      :let [sub-kind (selection/selection-kind s)]]
                (note :sub-kind sub-kind)
                (when (= :field sub-kind)
-                 (note :sub-field-name (selection/field-name s)
+                 (note :sub-field-name (-> s selection/field selection/field-name)
                        :sub-field-type (-> s selection/root-value-type selection/type-name))))
 
              (schema/tag-with-type {:name "Lacinia" :userId 101} :LegacyUser))
@@ -367,10 +369,9 @@
                nil)]
       ;; Return nil for AS_IS case, and Lacinia uses the original resolver unchanged
       (when xf
-        (fn [context args value]
-          ;; TODO: Simplified in that we know that resolver-fn returns a bare value
-          ;; a full implementation would see if a ResolverResult was returned.
-          (xf (resolver-fn context args value)))))))
+        (resolve/wrap-resolver-result resolver-fn
+                                      (fn [_ _ _ v]
+                                        (xf v)))))))
 
 (deftest application-of-directives-to-fields
   (let [echo (fn [_ args _] (:input args))
