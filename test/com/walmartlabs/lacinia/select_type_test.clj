@@ -32,6 +32,26 @@
     (is (some? items))
     (is (= :object (sel/type-category items)))))
 
+(deftest root-type-of-simple-field
+  (let [item-field (-> (schema/select-type schema :Item)
+                       sel/fields
+                       :description)]
+    (is (= :String (sel/root-type-name item-field)))
+    (is (= :String (-> item-field
+                       sel/root-type
+                       sel/type-name)))))
+
+(deftest root-type-of-simple-argument
+  (let [search-argument (-> (schema/select-type schema :Query)
+                            sel/fields
+                            :order
+                            sel/argument-defs
+                            :search)]
+    (is (= :String (sel/root-type-name search-argument)))
+    (is (= :String (-> search-argument
+                       sel/root-type
+                       sel/type-name)))))
+
 (defn ^:private kind-types [kind]
   (when (some? kind)
     (cons (sel/kind-type kind)
