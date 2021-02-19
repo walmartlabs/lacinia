@@ -208,13 +208,25 @@
 (defn as-resolver-fn
   "Wraps a [[FieldResolver]] instance as a field resolver function.
 
-  If the field-resolver provided is a function, it is returned unchanged."
+  If the field-resolver provided is a function or a Var, it is returned unchanged.
+
+  Anything other value will cause an exception to be thrown."
   {:added "0.24.0"}
   [field-resolver]
-  (if (fn? field-resolver)
+  (cond
+    (fn? field-resolver)
     field-resolver
+
+    (var? field-resolver)
+    field-resolver
+
+    (satisfies? FieldResolver field-resolver)
     (fn [context args value]
-      (resolve-value field-resolver context args value))))
+      (resolve-value field-resolver context args value))
+
+    :else
+    (throw (ex-info "Not a field resolver function of FieldResolver instance."
+                    {:field-resolver field-resolver}))))
 
 (defn wrap-resolver-result
   "Wraps a resolver function or ([[FieldResolver]] instance), passing the result through a wrapper function.

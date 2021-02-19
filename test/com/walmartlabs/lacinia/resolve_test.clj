@@ -23,7 +23,8 @@
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :as resolve]
     [com.walmartlabs.lacinia.util :as util]
-    [com.walmartlabs.lacinia.selection :as sel]))
+    [com.walmartlabs.lacinia.selection :as sel])
+  (:import (clojure.lang ExceptionInfo)))
 
 (def resolve-contexts (atom []))
 
@@ -142,3 +143,15 @@
                                    (util/inject-resolvers {:queries/data data-resolver})))]
     (is (= {:data {:data {:value "Ahsoka Tano"}}}
            (tu/execute schema "{ data { value } }")))))
+
+(deftest as-resolver-fn-var
+  (is (identical? #'identity
+                  (resolve/as-resolver-fn #'identity))))
+
+(deftest invalid-arg-to-as-resolver-fn
+  (let [e (is (thrown? ExceptionInfo
+                       (resolve/as-resolver-fn :not-a-fn)))]
+    (is (= "Not a field resolver function of FieldResolver instance."
+           (ex-message e)))
+    (is (= {:field-resolver :not-a-fn}
+           (ex-data e)))))
