@@ -176,8 +176,7 @@ parsing and executing queries against a compiled schema.
 A companion library, [lacinia-pedestal](https://github.com/walmartlabs/lacinia-pedestal),
 is one way to expose your schema on the web.
 
-User queries are provided as the body of a request with the content type `application/graphql`.
-The GraphQL query language is designed to look familiar to someone who is versant in JSON.
+Clients will typically send a JSON POST request, with a `query` key containing the GraphQL query document:
 
 ```
 {
@@ -234,11 +233,6 @@ More details are [in the manual](http://lacinia.readthedocs.io/en/latest/clojure
 
 ## License
 
-Copyright © 2017-2020 WalmartLabs
+Copyright © 2017-2021 WalmartLabs
 
 Distributed under the Apache License, Version 2.0.
-
-Portions of the code are derived from
-the [ordered](https://github.com/amalloy/ordered)
-and [useful](https://github.com/amalloy/useful) libraries, which are released under the terms
-of the [Eclipse Public License - v 1.0](LICENSE.ordered.txt).
