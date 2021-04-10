@@ -1,17 +1,20 @@
 {:interfaces
  {:character
   {:fields
-   {:name {:type String}}}}
+   {:name {:type String}
+    :friends {:type (list :character)}}}}
 
  :objects
  {:droid
   {:implements [:character]
    :fields {:name {:type String}
-            :power {:type String}}}
+            :power {:type String}
+            :friends {:type (list :character)}}}
 
   :human
   {:implements [:character]
    :fields {:name {:type String}
+            :friends {:type (list :character) }
             :home_world {:type String}}}}
 
  :queries

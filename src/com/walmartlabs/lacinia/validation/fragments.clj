@@ -12,10 +12,11 @@
 ; See the License for the specific language governing permissions and
 ; limitations under the License.
 
-(ns com.walmartlabs.lacinia.validation.fragment-names
+(ns com.walmartlabs.lacinia.validation.fragments
   {:no-doc true}
   (:require
-    [com.walmartlabs.lacinia.internal-utils :refer [q]]))
+    [com.walmartlabs.lacinia.describe :refer [description-for]]
+    [com.walmartlabs.lacinia.internal-utils :refer [q seek]]))
 
 (defn ^:private fragment-defined?
   "Returns empty sequence if a fragment spread is defined
@@ -29,7 +30,7 @@
                        (-> fragment-spread :fragment-name q))
       :locations [(:location fragment-spread)]}]))
 
-(defn ^:private validate-fragments
+(defn ^:private validate-fragments-in-selection
   "Validates fragment spreads in a selection,
   when present, against a list of fragment definitions.
   Returns a sequence of errors if errors are found.
@@ -40,9 +41,38 @@
   ;; inline fragments do have nested selections.
   (if (:fragment-name sel)
     (fragment-defined? fragment-defs sel)
-    (mapcat #(validate-fragments fragment-defs %) (:selections sel))))
+    (mapcat #(validate-fragments-in-selection fragment-defs %) (:selections sel))))
 
-(defn known-fragment-names
+(defn ^:private references-fragment?
+  [fragment-defs fragment-name selection]
+  (case (:selection-type selection)
+    :field
+    (contains? (:nested-fragments selection) fragment-name)
+
+    :fragment-spread
+    (let [spread-name (:fragment-name selection)
+          referred-fragment (get fragment-defs spread-name)]
+      (or
+        (contains? (:nested-fragments referred-fragment) fragment-name)
+        (seek #(references-fragment? fragment-defs fragment-name %)
+              (:selections referred-fragment))))
+
+    :inline-fragment
+    (seek #(references-fragment? fragment-defs fragment-name %)
+          (:selections selection))))
+
+(defn ^:private validate-non-cyclic
+  [fragment-defs]
+  (keep (fn [[fragment-name frag-def]]
+          (when-let [selection (seek #(references-fragment? fragment-defs fragment-name %)
+                                     (:selections frag-def))]
+            {:message (format "Fragment %s is self-referential via %s, forming a cycle."
+                               (q fragment-name)
+                              (description-for selection))
+             :locations [(:location selection)]}))
+    fragment-defs))
+
+(defn validate-fragments
   "Validates that all `...Fragment` fragment spreads refer
   to fragments defined in the same document.
   Checks fragments nested in fragment definitions, e.g.
@@ -60,8 +90,9 @@
   (let [fragments (:fragments prepared-query)
         selections (:selections prepared-query)]
     (concat
-     ;; Validate nested fragments
-     (mapcat (fn [[_ f-definition]]
-               (validate-fragments fragments f-definition)) fragments)
-     ;; Validate fragments in selections
-     (mapcat (partial validate-fragments fragments) selections))))
+      ;; Validate nested fragments
+      (mapcat (fn [[_ f-definition]]
+               (validate-fragments-in-selection fragments f-definition)) fragments)
+      ;; Validate fragments in selections
+      (mapcat (partial validate-fragments-in-selection fragments) selections)
+      (validate-non-cyclic fragments))))

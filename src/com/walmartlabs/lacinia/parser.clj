@@ -28,6 +28,7 @@
     [com.walmartlabs.lacinia.parser.query :as qp]
     [com.walmartlabs.lacinia.tracing :as tracing]
     [com.walmartlabs.lacinia.selection :as selection]
+    [com.walmartlabs.lacinia.describe :refer [Describe]]
     [flatland.ordered.map :refer [ordered-map]])
   (:import
     (clojure.lang ExceptionInfo)))
@@ -806,6 +807,11 @@
                                      location locations root-value-type
                                      compiled-schema]
 
+  Describe
+
+  (description-for [_]
+    (str "field " (q field-name)))
+
   selection/SelectionSet
 
   (selection-kind [_] :field)
@@ -829,8 +835,13 @@
   (directives [_]
     (nil-map (group-by :directive-name directives))))
 
-(defrecord ^:private InlineFragment [selection-type selections directives
+(defrecord ^:private InlineFragment [selection-type selections directives on-type-name
                                      location locations concrete-types]
+
+  Describe
+
+  (description-for [_]
+    (str "inline fragment on type " (q on-type-name)))
 
   selection/Directives
 
@@ -842,8 +853,13 @@
 
   (selections [_] selections))
 
-(defrecord ^:private NamedFragment [selection-type directives selections
+(defrecord ^:private NamedFragment [selection-type directives selections fragment-name
                                     location locations concrete-types]
+
+  Describe
+
+  (description-for [_]
+    (str "named fragment " (q fragment-name)))
 
   selection/SelectionSet
 
@@ -1024,16 +1040,23 @@
            vals))))
 ;
 (defn ^:private normalize-selections
-  "Starting with a selection (a field or fragment) recursively normalize any nested selections selections,
+  "Starting with a selection (a field or fragment) recursively normalize any nested selections,
   and handle marking the node for any necessary prepare phase operations."
   [schema m type]
-  (let [sub-selections (:selections m)]
-    (mark-node-for-prepare
-      (if (seq sub-selections)
-        (assoc m :selections (->> sub-selections
-                                  (mapv #(selection schema % type))
-                                  coalesce-selections))
-        m))))
+  (mark-node-for-prepare
+    (if-let [sub-selections (-> m :selections seq)]
+      (let [selections' (->> sub-selections
+                             (mapv #(selection schema % type))
+                             coalesce-selections)
+            all-nested-fragments (keep :nested-fragments selections')
+            nested-fragments' (when (seq all-nested-fragments)
+                                (reduce into
+                                        (or (:nested-fragments m) #{})
+                                        all-nested-fragments))]
+        (assoc m
+               :selections selections'
+               :nested-fragments nested-fragments'))
+      m)))
 
 (defn ^:private expand-fragment-type-to-concrete-types
   "Expands a single type to a set of concrete types names.  For unions, this is
@@ -1066,7 +1089,7 @@
   form {:<definition-name> {...}}."
   [schema fragment-definitions]
   (let [f (fn [def]
-            (let [defaults {:location (meta def)}
+            (let [defaults (default-node-map def)
                   {:keys [on-type fragment-name selections directives]} def
                   m (-> defaults
                         (assoc :fragment-name fragment-name
@@ -1075,7 +1098,6 @@
                         (cond-> directives
                                 (assoc :directives (convert-parsed-directives schema directives))))
                   fragment-type (get schema on-type)]
-              ;; TODO: Verify fragment type exists
               (normalize-selections schema
                                     m
                                     fragment-type)))]
@@ -1160,7 +1182,8 @@
         (let [concrete-types (expand-fragment-type-to-concrete-types fragment-type)
               inline-fragment (-> selection
                                   (assoc :selection-type :inline-fragment
-                                         :concrete-types concrete-types)
+                                         :concrete-types concrete-types
+                                         :on-type-name type-name)
                                   (cond-> directives (assoc :directives (convert-parsed-directives schema directives)))
                                   map->InlineFragment)]
           (normalize-selections schema
@@ -1172,10 +1195,10 @@
   (let [defaults (default-node-map parsed-fragment)
         {:keys [fragment-name directives]} parsed-fragment]
     (with-exception-context (node-context defaults)
-      ;; TODO: Verify that fragment name exists?
       (-> defaults
           (merge {:selection-type :fragment-spread
                   :fragment-name fragment-name
+                  :nested-fragments #{fragment-name}
                   :directives (seq (convert-parsed-directives schema directives))})
           map->NamedFragment
           mark-node-for-prepare))))

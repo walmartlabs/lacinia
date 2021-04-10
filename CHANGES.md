@@ -8,6 +8,8 @@ Some additions and incompatible changes have been made to the protocols in the `
 these protocols are not meant to be implemented except by the library, and prior code (from 0.38) will be
 largely source compatible with the new names.  Further such changes are expected.
 
+Lacinia now detects [infinite cycles caused by fragments directly, or indirectly, referring to themselves](http://spec.graphql.org/June2018/#sec-Fragment-spreads-must-not-form-cycles).
+
 ## 0.38.0 -- 22 Jan 2021
 
 Optional request tracing is now designed to be compatible with Apollo GraphQL's implementation.
@@ -267,8 +269,7 @@ queries together when doing performance analysis.
 
 Query parsing logic has been rewritten entirely, for performance
 and maintenance reasons.
-As a side-effect, location information for query errors
-is more accurate.
+As a side effect, location information for query errors is more accurate.
 
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/14?closed=1)
 
