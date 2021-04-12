@@ -14,10 +14,10 @@
 
 (ns com.walmartlabs.lacinia.validator
   "Implements query validation (eg. typechecking of vars, fragment types, etc.),
-  but also a place where complexity analysis will occur."
+  but also a place where complexity analysis may someday occur."
   {:no-doc true}
   (:require [com.walmartlabs.lacinia.validation.scalar-leafs :refer [scalar-leafs]]
-            [com.walmartlabs.lacinia.validation.fragment-names :refer [known-fragment-names]]
+            [com.walmartlabs.lacinia.validation.fragments :refer [validate-fragments]]
             [com.walmartlabs.lacinia.validation.no-unused-fragments
              :refer [no-unused-fragments]]))
 
@@ -29,7 +29,7 @@
   [scalar-leafs
 
    ;; fragments
-   known-fragment-names
+   validate-fragments
    no-unused-fragments])
 
 ;; —————————————————————————————————————————————————————————————————————————————
@@ -41,7 +41,7 @@
 
   The 3-arity version is for compatibility (especially w.r.t. lacinia-pedestal).
 
-  Returns an sequence of error maps, which will be empty if there are no errors."
+  Returns a sequence of error maps, which will be empty if there are no errors."
   ([prepared-query]
    (mapcat #(% prepared-query) default-rules))
   ([_schema prepared-query _opts]

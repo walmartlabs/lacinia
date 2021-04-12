@@ -436,3 +436,12 @@
                            (fn [value]
                              (resolve/deliver! xformed (xf value))))
       xformed)))
+
+(defn seek
+  "Returns the first value of coll for which pred returns a truthy value."
+  [pred coll]
+  (reduce (fn [_ v]
+            (when (pred v)
+              (reduced v)))
+           nil
+          coll))
