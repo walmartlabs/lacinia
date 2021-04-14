@@ -460,7 +460,7 @@
     (assoc coll* k v)))
 
 (defn ^:private assemble
-  [kx terms]
+  [kx terms empty-map]
   (when (seq terms)
     (let [by-first (group-by #(nth % kx) terms)
           kx+1 (inc kx)
@@ -471,7 +471,7 @@
                              has-nested? (seq nested-terms)]
                          (cond-> coll*
                            leaf? (assoc* k (nth first-term kx+1))
-                           has-nested? (assoc* k (assemble kx+1 nested-terms)))))]
+                           has-nested? (assoc* k (assemble kx+1 nested-terms empty-map)))))]
       (reduce reducer-fn nil by-first))))
 
 (defn assemble-collection
@@ -489,6 +489,10 @@
                         [:root :user :empNo 876321]
                         [:root :lastUpdated \"2021-04-14\"]])
     "
-  [terms]
-  (assemble 0 terms))
+  ([terms]
+   (assemble-collection terms {}))
+  ([terms empty-map]
+   (assert (map? empty-map))
+   (assert (empty? empty-map))
+   (assemble 0 terms empty-map)))
 

@@ -671,4 +671,7 @@
 ;;    592µs +- 16µs
 ;; Appears that maps need to be larger to benefit from transient/persistent!
 
+;; Vector impl + empty map hook (needed to support ordered maps)
+;;    615µs +- 3µs
+
 
