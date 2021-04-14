@@ -665,5 +665,10 @@
 ;;    1.11ms  +- 31µs
 
 ;; Vector impl:
-;;    574µs +- 16µs
+;;    581µs +- 7µs
+
+;; Vector impl + transient/persistent!
+;;    592µs +- 16µs
+;; Appears that maps need to be larger to benefit from transient/persistent!
+
 
