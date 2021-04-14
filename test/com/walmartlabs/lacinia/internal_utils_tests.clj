@@ -608,11 +608,11 @@
           :foo 1
           :gnip [:g0
                  :g1]}
-         (assemble-collection [{:path [:foo] :value 1}
-                          {:path [:gnip 0] :value :g0}
-                          {:path [:gnip 1] :value :g1}
-                          {:path [:bar :biff] :value 2}
-                          {:path [:bar :bazz] :value 3}]))))
+         (assemble-collection [[:foo 1]
+                               [:gnip 0 :g0]
+                               [:gnip 1 :g1]
+                               [:bar :biff 2]
+                               [:bar :bazz 3]]))))
 
 (defn ^:private disassemble
   "Returns a seq of terms that can be passed to assemble-paths to reconstitute the initial collection."
@@ -623,20 +623,30 @@
                 (let [ks' (conj ks k)
                       associative? (associative? v)
                       empty? (and associative? (empty? v))]
-                  (cond
+                  (if (and associative? (not empty?))
                     ;; Without this, empty lists or maps in the input are not paths in the output,
                     ;; and will be missing in the assembled collection.
-                    empty?
-                    (conj result {:path ks' :value v})
-
-                    associative?
                     (into result (disassemble v ks'))
-
-                    :else
                     (conj result
-                          {:path ks' :value v}))))
+                          (conj ks' v)))))
               []
               coll)))
+
+(deftest dissasemble-test
+  (is (= [[:foo 1]
+          [:bar 0 :baz 2]
+          [:bar 0 :biff 3]
+          [:bar 1 :baz 4]
+          [:bar 1 :biff 5]
+          [:empty-list []]
+          [:empty-map {}]]
+         (disassemble {:foo 1
+                       :bar [{:baz 2
+                              :biff 3}
+                             {:baz 4
+                              :biff 5}]
+                       :empty-list []
+                       :empty-map {}}))))
 
 (deftest roundtrip
   (let [paths (disassemble example)
@@ -644,6 +654,7 @@
     (is (= example example'))))
 
 (comment
+
   (let [paths (disassemble example)]
     (criterium.core/quick-bench
       (= example (assemble-collection paths))))
@@ -651,6 +662,8 @@
   )
 
 ;; Initial impl: (:path + :value)
-;;    1.11 ms  +- 31µs
+;;    1.11ms  +- 31µs
 
+;; Vector impl:
+;;    574µs +- 16µs
 
