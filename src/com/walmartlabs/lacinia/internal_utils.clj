@@ -443,5 +443,41 @@
   (reduce (fn [_ v]
             (when (pred v)
               (reduced v)))
-           nil
+          nil
           coll))
+
+(defn ^:private assoc*
+  [coll k v]
+  (let [coll* (cond
+                (some? coll)
+                coll
+
+                (integer? k)
+                []
+
+                :else
+                {})]
+    (assoc coll* k v)))
+
+(defn assemble-collection
+  "Assembles a seq of key/value paths into a nested structure (maps and vectors).
+
+  TODO: Dealing with creating an ordered hash map.
+
+  Each term is a map of :path (a vector) and :value."
+  [terms]
+  (when (seq terms)
+    (let [by-first (group-by #(-> % :path first) terms)
+          reducer-fn (fn [coll* [k k-terms]]
+                       #_(prn :k k :k-terms k-terms)
+                       (let [first-term (first k-terms)
+                             leaf? (-> first-term :path count (= 1))
+                             nested-terms (mapv (fn [term]
+                                                  (update term :path subvec 1))
+                                            (cond-> k-terms leaf? next))
+                             has-nested? (seq nested-terms)]
+                         (cond-> coll*
+                           leaf? (assoc* k (:value first-term))
+                           has-nested? (assoc* k (assemble-collection nested-terms)))))]
+      (reduce reducer-fn nil by-first))))
+
