@@ -470,11 +470,14 @@
                 empty-map)]
     (assoc coll* k v)))
 
-(defn ^:private split-on [f coll]
-  (let [reducer-fn (fn [coll v]
-                     (let [x (if (f v) 0 1)]
-                       (update coll x conj v)))]
-    (reduce reducer-fn [[] []] coll)))
+(defn ^:private split-on
+  [f coll]
+  (let [*matches (volatile! nil)
+        *others (volatile! nil)]
+    (doseq [v coll]
+      (let [*x (if (f v) *matches *others)]
+        (vswap! *x #(conj (or %1 []) %2) v)))
+    [@*matches @*others]))
 
 (defn ^:private assemble
   [kx terms empty-map]

@@ -701,3 +701,5 @@
 ;; Above, plus allowing for multiple leaf children nodes, fix ordering bugs
 ;;    1.46ms +- 42µs
 
+;; Optimize split-on using volatiles
+;;    1.27ms +- 12µs
