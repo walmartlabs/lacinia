@@ -15,6 +15,7 @@
 (ns com.walmartlabs.lacinia.internal-utils-tests
   (:require
     [clojure.test :refer [deftest is]]
+    [flatland.ordered.map :refer [ordered-map]]
     [com.walmartlabs.lacinia.internal-utils
      :refer [assoc-in! update-in! assemble-collection]]
     [clojure.string :as str])
@@ -653,10 +654,31 @@
         example' (assemble-collection paths)]
     (is (= example example'))))
 
+(deftest redundancies
+  (is (= {:product {:labels ["widget"
+                             "frobnicator"]
+                    :name "Gizmo"}}
+         (assemble-collection [[:product :name "Gizmo"]
+                               [:product :labels 0 "widget"]
+                               [:product :labels 1 "frobnicator"]
+                               ;; A fragment may add this for an empty collection (to keep the
+                               ;; key from being nil or omitted).
+                               [:product :labels []]]))))
+
+(deftest maintains-order
+  (is (= "#ordered/map ([:product #ordered/map ([:name :gizmo] [:alt-id :alt] [:labels [:l0 :l1 :l2]])])"
+         (pr-str
+           (assemble-collection [[:product :name :gizmo]
+                                 [:product :alt-id :alt]
+                                 [:product :labels 0 :l0]
+                                 [:product :labels 1 :l1]
+                                 [:product :labels 2 :l2]]
+                                (ordered-map))))))
+
 (comment
 
   (let [paths (disassemble example)]
-    (criterium.core/quick-bench
+    (criterium.core/bench
       (= example (assemble-collection paths))))
 
   )
@@ -674,4 +696,8 @@
 ;; Vector impl + empty map hook (needed to support ordered maps)
 ;;    615µs +- 3µs
 
+;; Note: switch from quick-bench to bench
+
+;; Above, plus allowing for multiple leaf children nodes, fix ordering bugs
+;;    1.46ms +- 42µs
 

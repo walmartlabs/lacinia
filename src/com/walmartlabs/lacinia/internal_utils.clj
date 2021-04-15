@@ -17,6 +17,7 @@
   {:no-doc true}
   (:require
     [clojure.string :as str]
+    [flatland.ordered.map :refer [ordered-map]]
     [com.walmartlabs.lacinia.resolve :as resolve])
   (:import
     (clojure.lang Named)
@@ -446,8 +447,18 @@
           nil
           coll))
 
+(defn ^:private ordered-group-by
+  "Copy of clojure.core/ordered-by that uses an ordered map."
+  [f coll]
+  (reduce
+    (fn [ret x]
+      (let [k (f x)]
+        (assoc ret k (conj (get ret k []) x))))
+    (ordered-map)
+    coll))
+
 (defn ^:private assoc*
-  [coll k v]
+  [coll k v empty-map]
   (let [coll* (cond
                 (some? coll)
                 coll
@@ -456,22 +467,32 @@
                 []
 
                 :else
-                {})]
+                empty-map)]
     (assoc coll* k v)))
+
+(defn ^:private split-on [f coll]
+  (let [reducer-fn (fn [coll v]
+                     (let [x (if (f v) 0 1)]
+                       (update coll x conj v)))]
+    (reduce reducer-fn [[] []] coll)))
 
 (defn ^:private assemble
   [kx terms empty-map]
   (when (seq terms)
-    (let [by-first (group-by #(nth % kx) terms)
+    (let [by-first (ordered-group-by #(nth % kx) terms)
           kx+1 (inc kx)
+          kx+2 (inc kx+1)
           reducer-fn (fn [coll* [k k-terms]]
-                       (let [first-term (first k-terms)
-                             leaf? (= (count first-term) (+ 2 kx))
-                             nested-terms (cond-> k-terms leaf? next)
-                             has-nested? (seq nested-terms)]
-                         (cond-> coll*
-                           leaf? (assoc* k (nth first-term kx+1))
-                           has-nested? (assoc* k (assemble kx+1 nested-terms empty-map)))))]
+                       (let [[leaf-terms nested-terms] (split-on #(= (count %) kx+2) k-terms)
+                             ;; Apply the (usually, at most 1) leaf terms first:
+                             coll1 (if (seq leaf-terms)
+                                     (reduce (fn [coll term]
+                                               (assoc* coll k (nth term kx+1) empty-map))
+                                             coll*
+                                             leaf-terms)
+                                     coll*)]
+                         (cond-> coll1
+                           (seq nested-terms) (assoc* k (assemble kx+1 nested-terms empty-map) empty-map))))]
       (reduce reducer-fn nil by-first))))
 
 (defn assemble-collection
@@ -496,3 +517,14 @@
    (assert (empty? empty-map))
    (assemble 0 terms empty-map)))
 
+(comment
+  (assemble-collection [[:root :user :name "Howard"]
+                        [:root :user {}]
+                        [:root :user :last "Lewis Ship"]])
+  (assemble-collection [[:user :name "Howard"]
+                        [:user :friends 0 "Merlyn"]
+                        [:user :friends 1 "Ben"]
+                        [:user :friends []]
+                        [:user :name "Howie"]])
+  (split-on [1 2 9 11 22] even?)
+  )
