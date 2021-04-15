@@ -703,3 +703,6 @@
 
 ;; Optimize split-on using volatiles
 ;;    1.27ms +- 12µs
+
+;; Tiny optimization to leaf nodes
+;;    1.24ms +- 10µs

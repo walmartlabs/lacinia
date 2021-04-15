@@ -481,22 +481,21 @@
 
 (defn ^:private assemble
   [kx terms empty-map]
-  (when (seq terms)
-    (let [by-first (ordered-group-by #(nth % kx) terms)
-          kx+1 (inc kx)
-          kx+2 (inc kx+1)
-          reducer-fn (fn [coll* [k k-terms]]
-                       (let [[leaf-terms nested-terms] (split-on #(= (count %) kx+2) k-terms)
-                             ;; Apply the (usually, at most 1) leaf terms first:
-                             coll1 (if (seq leaf-terms)
-                                     (reduce (fn [coll term]
-                                               (assoc* coll k (nth term kx+1) empty-map))
-                                             coll*
-                                             leaf-terms)
-                                     coll*)]
-                         (cond-> coll1
-                           (seq nested-terms) (assoc* k (assemble kx+1 nested-terms empty-map) empty-map))))]
-      (reduce reducer-fn nil by-first))))
+  (let [by-first (ordered-group-by #(nth % kx) terms)
+        kx+1 (inc kx)
+        kx+2 (inc kx+1)
+        reducer-fn (fn [coll* [k k-terms]]
+                     (let [[leaf-terms nested-terms] (split-on #(= (count %) kx+2) k-terms)
+                           ;; Apply the (usually, at most 1) leaf terms first:
+                           coll1 (if (some? leaf-terms)
+                                   (reduce (fn [coll term]
+                                             (assoc* coll k (nth term kx+1) empty-map))
+                                           coll*
+                                           leaf-terms)
+                                   coll*)]
+                       (cond-> coll1
+                         (some? nested-terms) (assoc* k (assemble kx+1 nested-terms empty-map) empty-map))))]
+    (reduce reducer-fn nil by-first)))
 
 (defn assemble-collection
   "Assembles a seq of key/value paths into a nested structure (maps and vectors).
