@@ -40,6 +40,13 @@
                        :fields {:first_name {:type String}
                                 :last_name {:type (list String)}}}}})
 
+(def compatible-field-multiplicity
+  '{:interfaces {:named {:fields {:first_name {:type String}
+                                  :last_name {:type (list String)}}}}
+    :objects {:person {:implements [:named]
+                       :fields {:first_name {:type String}
+                                :last_name {:type (list (non-null String))}}}}})
+
 (def incompatible-field-nullability
   '{:interfaces {:named {:fields {:first_name {:type (non-null String)}
                                   :last_name {:type String}}}}
@@ -47,6 +54,12 @@
                        :fields {:first_name {:type String}
                                 :last_name {:type String}}}}})
 
+(def compatible-field-nullability
+  '{:interfaces {:named {:fields {:first_name {:type String}
+                                  :last_name {:type String}}}}
+    :objects {:person {:implements [:named]
+                       :fields {:first_name {:type (non-null String)}
+                                :last_name {:type String}}}}})
 
 ;; Basically checking error cases; success cases show up in other
 ;; tests.
@@ -71,12 +84,18 @@
       "Object field is not compatible with extended interface type."
       {:field-name :person/last_name
        :interface-name :named}
-      (compile incompatible-field-multiplicity)))
+      (compile incompatible-field-multiplicity))
+
+    (is (some? (compile compatible-field-multiplicity))
+        "Object fields are allowed to be a list of non-nulls, even if the interface field is a list of nullables."))
 
   (testing "field nullability"
     (expect-exception
       "Object field is not compatible with extended interface type."
       {:field-name :person/first_name
        :interface-name :named}
-      (compile incompatible-field-nullability))))
+      (compile incompatible-field-nullability))
+
+    (is (some? (compile compatible-field-nullability))
+        "Object fields are allowed to be non-null, even if the interface field is nullable.")))
 

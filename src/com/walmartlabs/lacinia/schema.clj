@@ -663,7 +663,7 @@
       ;; the object can be more specific than the interface.
       (and (= o-kind :non-null)
            (not= i-kind :non-null))
-      (recur schema i-kind o-type)
+      (recur schema interface-type o-type)
 
       ;; Otherwise :list must match :list, and :root must match :root,
       ;; and :non-null must match :non-null
