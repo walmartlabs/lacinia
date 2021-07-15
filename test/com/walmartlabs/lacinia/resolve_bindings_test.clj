@@ -53,7 +53,7 @@
                            (fn [_]
                              (add-state "on-deliver!")
                              (close! resolved)))
-      ;; Chose the go macro as it is known to properly convey bindings
+      ;; We use the go macro as it is known to properly convey bindings
       (go
         (add-state "in go block")
         (resolve/deliver! promise true)))
@@ -74,13 +74,12 @@
       (binding [*bound* :override
                 resolve/*callback-executor* executor]
         (add-state "during")
-        ;; bindings are capture at the time the promise is created
+        ;; bindings are captured at the time the promise is created
         (let [promise (resolve/resolve-promise)]
           (resolve/on-deliver! promise
                                (fn [_]
                                  (add-state "on-deliver!")
                                  (close! resolved)))
-          ;; Chose the go macro as it is known to properly convey bindings
           (go
             (add-state "in go block")
             (resolve/deliver! promise true)))
