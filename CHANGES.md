@@ -13,6 +13,8 @@ detects [infinite cycles caused by fragments directly, or indirectly, referring 
 
 A `deps.edn` for the project has been added.
 
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/27?closed=1)
+
 ## 0.38.0 -- 22 Jan 2021
 
 Optional request tracing is now designed to be compatible with Apollo GraphQL's implementation.

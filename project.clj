@@ -12,6 +12,7 @@
                  [org.clojure/data.json "2.4.0"]]
   :source-paths ["src"]
   :profiles {:dev {:dependencies [[criterium "0.4.6"]
+                                  [org.clojure/core.async "1.3.618"]
                                   [expound "0.8.9"]
                                   [joda-time "2.10.10"]
                                   [com.walmartlabs/test-reporting "1.1"]

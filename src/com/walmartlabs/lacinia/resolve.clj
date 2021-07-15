@@ -134,10 +134,14 @@
 (defn resolve-promise
   "Returns a [[ResolverResultPromise]].
 
+    At creation, the promise will capture per-thread bindings and ensure they are conveyed to the callback,
+    should the callback be invoked asynchronously (when `*callback-executor*` is bound to an Executor).
+
    A value must be resolved and ultimately provided via [[deliver!]]."
   []
   (let [*state (atom {})
-        promise-id (swap! *promise-id-allocator inc)]
+        promise-id (swap! *promise-id-allocator inc)
+        dynamic-bindings (get-thread-bindings)]
     (reify
       ResolverResult
 
@@ -173,7 +177,7 @@
                   (if (or (nil? executor)
                           *in-callback-thread*)
                     (callback resolved-value)
-                    (.execute executor #(binding [*in-callback-thread* true]
+                    (.execute executor #(with-bindings (assoc dynamic-bindings #'*in-callback-thread* true)
                                           (callback resolved-value))))))
               (recur))))
 
