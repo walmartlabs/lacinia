@@ -1,14 +1,19 @@
 ## 0.39 - UNRELEASED
 
-A new function, `com.walmartlabs.lacinia.schema/select-type`, allows a type within the
-compiled schema to be selected; this exposes the type, fields, arguments, and so forth,
-much like GraphQL introspection, but at the Clojure API level.
+A new function, `com.walmartlabs.lacinia.schema/select-type`, allows a type within the compiled schema to be selected;
+this exposes the type, fields, arguments, and so forth, much like GraphQL introspection, but at the Clojure API level.
 
-Some additions and incompatible changes have been made to the protocols in the `com.walmartlabs.lacinia.selection`;
-these protocols are not meant to be implemented except by the library, and prior code (from 0.38) will be
-largely source compatible with the new names.  Further such changes are expected.
+Some additions and incompatible changes have been made to the protocols in the `com.walmartlabs.lacinia.selection`
+namespace; these protocols are not meant to be implemented except by the library, and prior code (from 0.38) will be
+largely source compatible with the new names. Further such changes are expected.
 
-Lacinia now detects [infinite cycles caused by fragments directly, or indirectly, referring to themselves](http://spec.graphql.org/June2018/#sec-Fragment-spreads-must-not-form-cycles).
+Lacinia now
+detects [infinite cycles caused by fragments directly, or indirectly, referring to themselves](http://spec.graphql.org/June2018/#sec-Fragment-spreads-must-not-form-cycles)
+.
+
+A `deps.edn` for the project has been added.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/27?closed=1)
 
 ## 0.38.0 -- 22 Jan 2021
 
@@ -16,9 +21,8 @@ Optional request tracing is now designed to be compatible with Apollo GraphQL's 
 
 New support for [Apollo GraphQL Federation](https://www.apollographql.com/docs/apollo-server/federation/introduction/).
 
-The default objects names for storing operations are now `Query`, `Mutation`,
-and `Subscription`, and these must be objects (not unions), as
-per [the GraphQL specification](http://spec.graphql.org/June2018/#sec-Root-Operation-Types).
+The default objects names for storing operations are now `Query`, `Mutation`, and `Subscription`, and these must be
+objects (not unions), as per [the GraphQL specification](http://spec.graphql.org/June2018/#sec-Root-Operation-Types).
 
 Added function `com.walmartlabs.lacinia.executor/selection` which provides access to 
 the details about the selection, including directives and nested selections.
