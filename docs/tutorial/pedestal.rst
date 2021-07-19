@@ -120,7 +120,7 @@ The ``< Docs`` button on the right opens the documentation browser:
 The documentation browser is invaluable: it allows you to navigate around your schema, drilling down
 to queries, objects, and fields to see a summary of each
 declaration, as well as documentation - those
-``:documentation`` values we added way back
+``:description`` values we added way back
 :doc:`at the beginning <init-schema>`.
 
 Take some time to learn what GraphiQL can do for you.
