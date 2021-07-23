@@ -501,7 +501,7 @@
         (recur (:type type-def))))))
 
 (defrecord ^:private FieldDef [type type-string directives compiled-directives compiled-schema
-                               field-name qualified-name args null-collapser]
+                               field-name qualified-name args null-collapser direct-fn]
 
   selection/FieldDef
 
@@ -1215,19 +1215,21 @@
   wraps that function to handle field directives, and the wraps the result to
   ensure it returns a ResolverResult.
 
-  Inherits :documentation from matching inteface field as necessary.
+  Inherits :documentation from matching interface field as necessary.
 
   Adds a :selector function."
   [schema type-def field-def]
   (let [field-def' (apply-directive-arg-defaults schema field-def)
         {:keys [field-name description]} field-def'
         type-name (:type-name type-def)
-        selector (assemble-selector schema type-def field-def' (:type field-def'))]
+        selector (assemble-selector schema type-def field-def' (:type field-def'))
+        direct-fn (-> field-def :resolve ::direct-fn)]
     (-> field-def'
         (assoc :type-name type-name
                :description (or description
                                 (default-field-description schema type-def field-name))
-               :selector selector)
+               :selector selector
+               :direct-fn direct-fn)
         (provide-default-arg-descriptions schema type-def))))
 
 (defn ^:private prepare-field-resolver
@@ -1240,8 +1242,10 @@
                                (seq compiled-directives))
                     resolver
                     (or (apply-field-directives (assoc field-def :compiled-schema schema) (resolve/as-resolver-fn resolver))
-                        resolver))]
-    (assoc field-def :resolve (wrap-resolver-to-ensure-resolver-result resolver'))))
+                        resolver))
+        direct-fn  (-> resolver' meta ::direct-fn)]
+    (assoc field-def :resolve (wrap-resolver-to-ensure-resolver-result resolver')
+           :direct-fn direct-fn)))
 
 ;;-------------------------------------------------------------------------------
 ;; ## Compile schema
@@ -1816,9 +1820,9 @@
   "The default for the :default-field-resolver option, this uses the field name as the key into
   the resolved value."
   [field-name]
-  ^{:tag ResolverResult}
+  ^{:tag ResolverResult
+    ::direct-fn field-name}
   (fn default-resolver [_ _ v]
-
     (resolve-as (get v field-name))))
 
 (defn hyphenating-default-field-resolver
