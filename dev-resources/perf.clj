@@ -317,7 +317,8 @@
 
         (println "Updated" dataset-file))
       (finally
-        (.shutdownNow executor)))))
+        (.shutdownNow executor)
+        (shutdown-agents)))))
 
 (def ^:private cli-opts
   [["-p" "--print" "Print the table of benchmark data used to generate charts."]

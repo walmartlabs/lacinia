@@ -17,6 +17,10 @@
                 org.clojure/tools.cli {:mvn/version "1.0.206"}}
    :extra-paths ["dev-resources"]}
 
+  ;; clj -Mdev:perf
+  :perf
+  {:main-opts ["--main" "perf"]}
+
   ;; :test needs :dev, i.e. clj -Xdev:test
   :test
   {:extra-paths ["test"]
