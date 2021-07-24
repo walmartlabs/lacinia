@@ -32,22 +32,22 @@
 (def wrap-value ->WrappedValue)
 
 (defn apply-wrapped-value
-  "Modifies the selection context based on the behavior and data in the wrapped value."
-  [selection-context {:keys [behavior data]}]
+  "Modifies the execution context based on the behavior and data in the wrapped value."
+  [execution-context {:keys [behavior data]}]
   ;; data is different for each behavior
   (case behavior
     ;; data is an error map to add
-    :error (update selection-context :errors conj data)
+    :error (update execution-context :errors conj data)
 
     ;; data is a map of values to merge into the context, consumed by resolves further
     ;; down (closer to the leaves).
-    :context (update-in selection-context [:execution-context :context] merge data)
+    :context (update execution-context :context merge data)
 
     :extensions (let [[f args] data
-                      *extensions (get-in selection-context [:execution-context :*extensions])]
+                      *extensions (:*extensions execution-context)]
                   (apply swap! *extensions f args)
-                  selection-context)
+                  execution-context)
 
     ;; data is an error map to be added to the warnings
-    :warning (update selection-context :warnings conj data)))
+    :warning (update execution-context :warnings conj data)))
 
