@@ -457,22 +457,25 @@
                                 (map #(into prefix %)))
             dataset (into (read-dataset) new-benchmarks)]
 
-        (when (:print options)
-          (pprint/write dataset :right-margin 100)
-          println
+        (when-not (:no-print options)
+          (println "\nTest                 Parse (ms)  Exec (ms)")
+          (doseq [[_date _sha test-name parse-ms exec-ms] new-benchmarks]
+            (println (format "%-20s    %7.3f    %7.3f" test-name parse-ms exec-ms)))
           (flush))
 
-        (with-open [w (-> dataset-file io/file io/writer)]
-          (csv/write-csv w dataset))
+        (when-not (:no-store options)
+          (with-open [w (-> dataset-file io/file io/writer)]
+            (csv/write-csv w dataset))
 
-        (println "Updated" dataset-file))
+          (println "Updated" dataset-file)))
       (finally
         (.shutdownNow executor)
         (shutdown-agents)))))
 
 (def ^:private cli-opts
-  [["-p" "--print" "Print the table of benchmark data used to generate charts."]
-   ["-c" "--commit SHA" "Specify Git commit SHA; defaults to current commit (truncated to 8 chars)."]
+  [["-p" "--no-print" "Do not print the results of the test" :default false]
+   ["-c" "--commit SHA" "Specify Git commit SHA; defaults to current commit (truncated to 8 chars)"]
+   ["-s" "--no-store" "Do not save the results in perf/benchmarks.csv" :default false]
    ["-h" "--help" "This usage summary."]])
 
 (defn -main
