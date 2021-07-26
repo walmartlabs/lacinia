@@ -1,0 +1,156 @@
+# deep schema - extracted from http://hl7.org/fhir/us/core/downloads.html
+# Reads data from StructureDefinition-us-core-pulse-oximetry.json
+
+type Query {
+  getResource: Resource!
+}
+
+type Resource {
+  resourceType: String!
+  text: ResourceText!
+  url: String!
+  version: String!
+  name: String!
+  status: String!
+  experimental: Boolean!
+  date: String!
+  publisher: String!
+  contact: [Contact!]!
+  description: String!
+  jurisdiction: [Jurisdiction!]!
+  copyright: String!
+  fhirVersion: String!
+  mapping: [Mapping!]!
+  kind: String!
+  abstract: Boolean!
+  type: String!
+  baseDefinition: String!
+  derivation: String!
+  snapshot: Snapshot!
+  differential: Differential
+}
+
+type ResourceText {
+  status: String!
+  div: String!
+}
+
+type Contact {
+  name: String!
+  telecom: [Reference!]
+}
+
+type Reference {
+  system: String!
+  value: String
+  code: String
+}
+
+type Jurisdiction {
+  coding: [Reference!]!
+}
+
+type Mapping {
+  identity: String!
+  uri: String!
+  name: String!
+}
+
+type Snapshot {
+  element: [SnapshotElement!]!
+}
+
+type SnapshotElement {
+  id: String!
+  path: String!
+  short: String!
+  definition: String!
+  comment: String
+  alias: [String!]
+  min: Int!
+  max: String!
+  base: ElementBase!
+  constraint: [ElementConstraint!]
+  mustSupport: Boolean
+  isModifier: Boolean!
+  isModifierReason: String
+  isSummary: Boolean!
+  mapping: [ElementMapping!]
+  type: [ElementType]
+  binding: ElementBinding
+  slicing: ElementSlicing
+}
+
+type ElementType {
+  code: String!
+  targetProfile: [String!]
+}
+
+type ElementBase {
+  path: String!
+  min: Int!
+  max: String!
+}
+
+type ElementConstraint {
+  key: String!
+  severity: String!
+  human: String!
+  expression: String!
+  xpath: String!
+  source: String
+  extension: [Extension!]
+}
+
+type Extension {
+  url: String!
+  valueBoolean: Boolean
+  valueMarkdown: String
+  valueCanonical: String
+  valueString: String
+}
+
+type ElementMapping {
+  identity: String!
+  map: String!
+}
+
+type ElementBinding {
+  strength: String!
+  description: String
+  valueSet: String!
+  extension: [Extension!]
+}
+
+type ElementSlicing {
+  ordered: Boolean
+  rules: String!
+  description: String
+  discriminator: [SlicingDiscriminator!]
+}
+
+type SlicingDiscriminator {
+  type: String!
+  path: String!
+}
+
+type Differential {
+  element: [DifferentialElement!]!
+}
+
+type DifferentialElement {
+  id: String!
+  path: String!
+  short: String
+  min: Int
+  max: String
+  sliceName: String
+  type: [ElementType!]
+  patternCoding: Reference
+  definition: String
+  comment: String
+  mustSupport: Boolean!
+  slicing: ElementSlicing
+  fixedUri: String
+  fixedCode: String
+}

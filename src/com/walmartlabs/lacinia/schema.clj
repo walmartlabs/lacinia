@@ -501,7 +501,7 @@
         (recur (:type type-def))))))
 
 (defrecord ^:private FieldDef [type type-string directives compiled-directives compiled-schema
-                               field-name qualified-name args null-collapser]
+                               field-name qualified-name args null-collapser direct-fn]
 
   selection/FieldDef
 
@@ -934,9 +934,9 @@
     (callback selector-context)))
 
 (defn ^:private selector-error
-  [selector-context error]
-  (let [callback (:callback selector-context)]
-    (-> selector-context
+  [execution-context error]
+  (let [callback (:callback execution-context)]
+    (-> execution-context
         (assoc
           :resolved-value nil
           :resolved-type nil)
@@ -968,13 +968,13 @@
 
         selector (if (= :scalar category)
                    (let [serializer (:serialize field-type)]
-                     (fn select-coercion [selector-context]
+                     (fn select-coercion [execution-context]
                        (cond-let
 
-                         :let [{:keys [resolved-value]} selector-context]
+                         :let [{:keys [resolved-value]} execution-context]
 
                          (nil? resolved-value)
-                         (selector selector-context)
+                         (selector execution-context)
 
                          :let [serialized (try
                                             (serializer resolved-value)
@@ -982,7 +982,7 @@
                                               (coercion-failure (to-message t) (ex-data t))))]
 
                          (nil? serialized)
-                         (selector-error selector-context
+                         (selector-error execution-context
                                          (let [value-str (pr-str resolved-value)]
                                            {:message (format "Unable to serialize %s as type %s."
                                                              value-str
@@ -991,7 +991,7 @@
                                             :type-name field-type-name}))
 
                          (is-coercion-failure? serialized)
-                         (selector-error selector-context
+                         (selector-error execution-context
                                          (-> serialized
                                              (update :message
                                                      #(str "Coercion error serializing value: " %))
@@ -999,14 +999,14 @@
                                                     :value (pr-str resolved-value))))
 
                          :else
-                         (selector (assoc selector-context :resolved-value serialized)))))
+                         (selector (assoc execution-context :resolved-value serialized)))))
                    selector)
 
         selector (if (= :enum category)
                    (let [possible-values (-> field-type :values set)
                          serializer (:serialize field-type)]
                      (fn validate-enum [{:keys [resolved-value]
-                                         :as selector-context}]
+                                         :as execution-context}]
                        (cond-let
                          ;; The resolver function can return a value that makes sense from
                          ;; the application's model (for example, a namespaced keyword or even a string)
@@ -1014,18 +1014,18 @@
                          ;; validated to match a known value for the enum.
 
                          (nil? resolved-value)
-                         (selector selector-context)
+                         (selector execution-context)
 
                          :let [serialized (serializer resolved-value)]
 
                          (not (possible-values serialized))
-                         (selector-error selector-context (error "Field resolver returned an undefined enum value."
-                                                                 {:resolved-value resolved-value
-                                                                  :serialized-value serialized
-                                                                  :enum-values possible-values}))
+                         (selector-error execution-context (error "Field resolver returned an undefined enum value."
+                                                                  {:resolved-value resolved-value
+                                                                   :serialized-value serialized
+                                                                   :enum-values possible-values}))
 
                          :else
-                         (selector (assoc selector-context :resolved-value serialized)))))
+                         (selector (assoc execution-context :resolved-value serialized)))))
                    selector)
 
         union-or-interface? (#{:interface :union} category)
@@ -1033,21 +1033,21 @@
         selector (if union-or-interface?
                    (let [member-types (:members field-type)]
                      (fn select-allowed-types [{:keys [resolved-type resolved-value]
-                                                :as selector-context}]
+                                                :as execution-context}]
                        (cond
 
                          (or (nil? resolved-value)
                              (contains? member-types resolved-type))
-                         (selector selector-context)
+                         (selector execution-context)
 
                          (nil? resolved-type)
-                         (selector-error selector-context (error "Field resolver returned an instance not tagged with a schema type."))
+                         (selector-error execution-context (error "Field resolver returned an instance not tagged with a schema type."))
 
                          :else
-                         (selector-error selector-context (error "Value returned from resolver has incorrect type for field."
-                                                                 {:field-type field-type-name
-                                                                  :actual-type resolved-type
-                                                                  :allowed-types member-types})))))
+                         (selector-error execution-context (error "Value returned from resolver has incorrect type for field."
+                                                                  {:field-type field-type-name
+                                                                   :actual-type resolved-type
+                                                                   :allowed-types member-types})))))
                    selector)
 
 
@@ -1063,13 +1063,13 @@
                      (when (seq type-map)
                        type-map)))
 
-        selector (fn select-unwrap-tagged-type [selector-context]
+        selector (fn select-unwrap-tagged-type [execution-context]
                    (cond-let
                      ;; Use explicitly tagged value (this usually applies to Java objects
                      ;; that can't provide meta data).
-                     :let [resolved-value (:resolved-value selector-context)]
+                     :let [resolved-value (:resolved-value execution-context)]
                      (is-tagged-value? resolved-value)
-                     (selector (assoc selector-context
+                     (selector (assoc execution-context
                                       :resolved-value (extract-value resolved-value)
                                       :resolved-type (extract-type-tag resolved-value)))
 
@@ -1078,7 +1078,7 @@
                      :let [type-name (-> resolved-value meta ::type-name)]
 
                      (some? type-name)
-                     (selector (assoc selector-context :resolved-type type-name))
+                     (selector (assoc execution-context :resolved-type type-name))
 
                      ;; Use, if available, the mapping from tag to object that might be provided
                      ;; for some objects.
@@ -1088,26 +1088,26 @@
                                                 (get type-map)))]
 
                      (some? resolved-type)
-                     (selector (assoc selector-context :resolved-type resolved-type))
+                     (selector (assoc execution-context :resolved-type resolved-type))
 
                      ;; Let a later stage fail if it is a union or interface and there's no explicit
                      ;; type.
                      :else
-                     (selector selector-context)))
+                     (selector execution-context)))
 
 
         selector (if (#{:object :input-object} category)
-                   (fn select-apply-static-type [selector-context]
+                   (fn select-apply-static-type [execution-context]
                      ;; TODO: Maybe a check that if the resolved value is tagged, that the tag matches the expected tag?
-                     (selector (assoc selector-context :resolved-type field-type-name)))
+                     (selector (assoc execution-context :resolved-type field-type-name)))
                    selector)]
 
     (fn select-require-single-value [{:keys [resolved-value]
-                                      :as selector-context}]
+                                      :as execution-context}]
       (if (sequential-or-set? resolved-value)
-        (selector-error selector-context
+        (selector-error execution-context
                         (error "Field resolver returned a collection of values, expected only a single value."))
-        (selector selector-context)))))
+        (selector execution-context)))))
 
 (defn ^:private assemble-selector
   "Assembles a selector function for a field.
@@ -1115,7 +1115,7 @@
    A selector function is invoked by the executor; it represents a pipeline of operations
    that occur before sub-selections occur on the resolved value.
 
-   The selector is passed the resolved value and a callback.
+   The selector is passed the execution context, containing the resolved value and a callback.
 
    The resolved value is expected to be a seq (or nil) if the field type is list.
 
@@ -1131,42 +1131,41 @@
     :list
     (let [next-selector (assemble-selector schema object-type field (:type type))]
       (fn select-list [{:keys [resolved-value callback]
-                        :as selector-context}]
+                        :as execution-context}]
         (cond
           (nil? resolved-value)
-          (callback (assoc selector-context
-                           :resolved-value nil
-                           :resolved-type nil))
+          ;; Bypass the rest of the pipeline and jump to the callback
+          (callback execution-context)
 
           (not (sequential-or-set? resolved-value))
-          (selector-error selector-context
+          (selector-error execution-context
                           (error "Field resolver returned a single value, expected a collection of values."))
 
           ;; Optimization for empty seqs:
           (not (seq resolved-value))
-          (callback (assoc selector-context
+          (callback (assoc execution-context
                            :resolved-value []
                            :resolved-type nil))
 
           :else
           ;; So we have some privileged knowledge here: the callback returns a ResolverResult containing
           ;; the value. So we need to combine those together into a new ResolverResult.
-          (let [unwrapper (fn [{:keys [resolved-value] :as selector-context}]
+          (let [unwrapper (fn [{:keys [resolved-value] :as execution-context}]
                             (if-not (sc/is-wrapped-value? resolved-value)
-                              (next-selector selector-context)
+                              (next-selector execution-context)
                               (loop [v resolved-value
-                                     sc selector-context]
+                                     ec execution-context]
                                 (let [next-v (:value v)
-                                      next-sc (sc/apply-wrapped-value sc v)]
+                                      next-ec (sc/apply-wrapped-value ec v)]
                                   (if (sc/is-wrapped-value? next-v)
-                                    (recur next-v next-sc)
-                                    (next-selector (assoc next-sc :resolved-value next-v)))))))]
+                                    (recur next-v next-ec)
+                                    (next-selector (assoc next-ec :resolved-value next-v)))))))]
             (aggregate-results
               (map-indexed
                 (fn [i v]
-                  (unwrapper (-> selector-context
+                  (unwrapper (-> execution-context
                                  (assoc :resolved-value v)
-                                 (update-in [:execution-context :path] conj i))))
+                                 (update :path conj i))))
                 resolved-value))))))
 
     :non-null
@@ -1177,12 +1176,12 @@
                         {:field-name (:qualified-name field)
                          :type (-> field :type type->string)})))
       (fn select-non-null [{:keys [resolved-value]
-                            :as selector-context}]
+                            :as execution-context}]
         (if (some? resolved-value)
-          (next-selector selector-context)
-          (selector-error selector-context
+          (next-selector execution-context)
+          (selector-error execution-context
                           ;; If there's already errors (from the application's resolver function) then don't add more
-                          (when-not (-> selector-context :errors seq)
+                          (when-not (-> execution-context :errors seq)
                             (error "Non-nullable field was null."))))))
 
     :root                                                   ;;
@@ -1212,22 +1211,24 @@
 
 (defn ^:private prepare-field
   "Prepares a field for execution. Provides a default resolver if necessary, optionally
-  wraps that function to handle field directives, and the wraps the result to
+  wraps that function to handle field directives, and then wraps the result to
   ensure it returns a ResolverResult.
 
-  Inherits :documentation from matching inteface field as necessary.
+  Inherits :description from matching interface field as necessary.
 
   Adds a :selector function."
   [schema type-def field-def]
   (let [field-def' (apply-directive-arg-defaults schema field-def)
         {:keys [field-name description]} field-def'
         type-name (:type-name type-def)
-        selector (assemble-selector schema type-def field-def' (:type field-def'))]
+        selector (assemble-selector schema type-def field-def' (:type field-def'))
+        direct-fn (-> field-def :resolve ::direct-fn)]
     (-> field-def'
         (assoc :type-name type-name
                :description (or description
                                 (default-field-description schema type-def field-name))
-               :selector selector)
+               :selector selector
+               :direct-fn direct-fn)
         (provide-default-arg-descriptions schema type-def))))
 
 (defn ^:private prepare-field-resolver
@@ -1240,8 +1241,10 @@
                                (seq compiled-directives))
                     resolver
                     (or (apply-field-directives (assoc field-def :compiled-schema schema) (resolve/as-resolver-fn resolver))
-                        resolver))]
-    (assoc field-def :resolve (wrap-resolver-to-ensure-resolver-result resolver'))))
+                        resolver))
+        direct-fn  (-> resolver' meta ::direct-fn)]
+    (assoc field-def :resolve (wrap-resolver-to-ensure-resolver-result resolver')
+           :direct-fn direct-fn)))
 
 ;;-------------------------------------------------------------------------------
 ;; ## Compile schema
@@ -1816,9 +1819,9 @@
   "The default for the :default-field-resolver option, this uses the field name as the key into
   the resolved value."
   [field-name]
-  ^{:tag ResolverResult}
+  ^{:tag ResolverResult
+    ::direct-fn field-name}
   (fn default-resolver [_ _ v]
-
     (resolve-as (get v field-name))))
 
 (defn hyphenating-default-field-resolver

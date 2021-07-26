@@ -27,8 +27,15 @@ of multiple fields represent overlapping time periods, which is exactly what you
 Generally, resolver tracing maps are added to the list in order of completion, but the exact order is
 not guaranteed.
 
-Enabling tracing adds some overhead to query execution and will often vastly increase the size of the result (which,
-in turn, can cause much larger HTTP responses), so the tracing should be used judiciously.
+Enabling tracing adds a lot of overhead to execution and parsing, both for the essential overhead of collecting
+the tracing information, but also because certain optimizations are disabled when tracing is enabled;
+for example default field resolvers (where no explicit resolver is provided) are heavily optimized normally, to
+avoid unecessary function calls and object creation.
+
+.. warning::
+
+   Tracing should never be enabled in production. This can be accomplished by removing the ``com.walmartlabs.lacinia.pedestal2/enable-tracing-interceptor``
+   interceptor from the pipeline (when using lacinia-pedestal).
    
 
 

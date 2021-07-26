@@ -1,0 +1,3896 @@
+{:data
+ {:getResource
+  {:description
+   "Defines constraints on the Observation resource to represent inspired O2 by pulse oximetry and inspired oxygen concentration observations with a standard LOINC codes and UCUM units of measure. This profile is derived from the US Core Vital Signs Profile.",
+   :date "2020-11-18",
+   :derivation "constraint",
+   :publisher "HL7 International - US Realm Steering Committee",
+   :fhirVersion "4.0.1",
+   :jurisdiction
+   [{:coding
+     [{:system "urn:iso:std:iso:3166", :value nil, :code "US"}]}],
+   :name "USCorePulseOximetryProfile",
+   :mapping
+   [{:identity "workflow",
+     :uri "http://hl7.org/fhir/workflow",
+     :name "Workflow Pattern"}
+    {:identity "sct-concept",
+     :uri "http://snomed.info/conceptdomain",
+     :name "SNOMED CT Concept Domain Binding"}
+    {:identity "v2", :uri "http://hl7.org/v2", :name "HL7 v2 Mapping"}
+    {:identity "rim", :uri "http://hl7.org/v3", :name "RIM Mapping"}
+    {:identity "w5",
+     :uri "http://hl7.org/fhir/fivews",
+     :name "FiveWs Pattern Mapping"}
+    {:identity "sct-attr",
+     :uri "http://snomed.org/attributebinding",
+     :name "SNOMED CT Attribute Binding"}],
+   :abstract false,
+   :copyright
+   "Used by permission of HL7 International, all rights reserved Creative Commons License",
+   :type "Observation",
+   :experimental false,
+   :resourceType "StructureDefinition",
+   :snapshot
+   {:element
+    [{:constraint
+      [{:key "dom-2",
+        :severity "error",
+        :human
+        "If the resource is contained in another resource, it SHALL NOT contain nested Resources",
+        :expression "contained.contained.empty()",
+        :xpath "not(parent::f:contained and f:contained)",
+        :source
+        "http://hl7.org/fhir/StructureDefinition/DomainResource",
+        :extension nil}
+       {:key "dom-3",
+        :severity "error",
+        :human
+        "If the resource is contained in another resource, it SHALL be referred to from elsewhere in the resource or SHALL refer to the containing resource",
+        :expression
+        "contained.where((('#'+id in (%resource.descendants().reference | %resource.descendants().as(canonical) | %resource.descendants().as(uri) | %resource.descendants().as(url))) or descendants().where(reference = '#').exists() or descendants().where(as(canonical) = '#').exists() or descendants().where(as(canonical) = '#').exists()).not()).trace('unmatched', id).empty()",
+        :xpath
+        "not(exists(for $id in f:contained/*/f:id/@value return $contained[not(parent::*/descendant::f:reference/@value=concat('#', $contained/*/id/@value) or descendant::f:reference[@value='#'])]))",
+        :source
+        "http://hl7.org/fhir/StructureDefinition/DomainResource",
+        :extension nil}
+       {:key "dom-4",
+        :severity "error",
+        :human
+        "If a resource is contained in another resource, it SHALL NOT have a meta.versionId or a meta.lastUpdated",
+        :expression
+        "contained.meta.versionId.empty() and contained.meta.lastUpdated.empty()",
+        :xpath
+        "not(exists(f:contained/*/f:meta/f:versionId)) and not(exists(f:contained/*/f:meta/f:lastUpdated))",
+        :source
+        "http://hl7.org/fhir/StructureDefinition/DomainResource",
+        :extension nil}
+       {:key "dom-5",
+        :severity "error",
+        :human
+        "If a resource is contained in another resource, it SHALL NOT have a security label",
+        :expression "contained.meta.security.empty()",
+        :xpath "not(exists(f:contained/*/f:meta/f:security))",
+        :source
+        "http://hl7.org/fhir/StructureDefinition/DomainResource",
+        :extension nil}
+       {:key "dom-6",
+        :severity "warning",
+        :human
+        "A resource should have narrative for robust management",
+        :expression "text.`div`.exists()",
+        :xpath "exists(f:text/h:div)",
+        :source
+        "http://hl7.org/fhir/StructureDefinition/DomainResource",
+        :extension
+        [{:url
+          "http://hl7.org/fhir/StructureDefinition/elementdefinition-bestpractice",
+          :valueBoolean true,
+          :valueMarkdown nil,
+          :valueCanonical nil,
+          :valueString nil}
+         {:url
+          "http://hl7.org/fhir/StructureDefinition/elementdefinition-bestpractice-explanation",
+          :valueBoolean nil,
+          :valueMarkdown
+          "When a resource has no narrative, only systems that fully understand the data can display the resource to a human safely. Including a human readable representation in the resource makes for a much more robust eco-system and cheaper handling of resources by intermediary systems. Some ecosystems restrict distribution of resources to only those systems that do fully understand the resources, and as a consequence implementers may believe that the narrative is superfluous. However experience shows that such eco-systems often open up to new participants over time.",
+          :valueCanonical nil,
+          :valueString nil}]}
+       {:key "obs-6",
+        :severity "error",
+        :human
+        "dataAbsentReason SHALL only be present if Observation.value[x] is not present",
+        :expression "dataAbsentReason.empty() or value.empty()",
+        :xpath
+        "not(exists(f:dataAbsentReason)) or (not(exists(*[starts-with(local-name(.), 'value')])))",
+        :source "http://hl7.org/fhir/StructureDefinition/Observation",
+        :extension nil}
+       {:key "obs-7",
+        :severity "error",
+        :human
+        "If Observation.code is the same as an Observation.component.code then the value element associated with the code SHALL NOT be present",
+        :expression
+        "value.empty() or component.code.where(coding.intersect(%resource.code.coding).exists()).empty()",
+        :xpath
+        "not(f:*[starts-with(local-name(.), 'value')] and (for $coding in f:code/f:coding return f:component/f:code/f:coding[f:code/@value=$coding/f:code/@value] [f:system/@value=$coding/f:system/@value]))",
+        :source "http://hl7.org/fhir/StructureDefinition/Observation",
+        :extension nil}
+       {:key "vs-2",
+        :severity "error",
+        :human
+        "If there is no component or hasMember element then either a value[x] or a data absent reason must be present.",
+        :expression
+        "(component.empty() and hasMember.empty()) implies (dataAbsentReason.exists() or value.exists())",
+        :xpath
+        "f:component or f:memberOF or f:*[starts-with(local-name(.), 'value')] or f:dataAbsentReason",
+        :source "http://hl7.org/fhir/StructureDefinition/vitalsigns",
+        :extension nil}],
+      :path "Observation",
+      :min 0,
+      :definition
+      "Defines constraints on the Observation resource to represent inspired O2 by pulse oximetry and inspired oxygen concentration observations with a standard LOINC codes and UCUM units of measure. This profile is derived from the US Core Vital Signs Profile.",
+      :isModifier false,
+      :short "US Core Pulse Oximetry Profile",
+      :mapping
+      [{:identity "rim", :map "Entity. Role, or Act"}
+       {:identity "workflow", :map "Event"}
+       {:identity "sct-concept",
+        :map "< 363787002 |Observable entity|"}
+       {:identity "v2", :map "OBX"}
+       {:identity "rim",
+        :map "Observation[classCode=OBS, moodCode=EVN]"}],
+      :slicing nil,
+      :type nil,
+      :mustSupport false,
+      :binding nil,
+      :alias ["Vital Signs" "Measurement" "Results" "Tests"],
+      :max "*",
+      :id "Observation",
+      :comment
+      "Used for simple observations such as device measurements, laboratory atomic results, vital signs, height, weight, smoking status, comments, etc.  Other resources are used to provide context for observations such as laboratory reports, etc.",
+      :base {:path "Observation", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint nil,
+      :path "Observation.id",
+      :min 0,
+      :definition
+      "The logical id of the resource, as used in the URL for the resource. Once assigned, this value never changes.",
+      :isModifier false,
+      :short "Logical id of this artifact",
+      :mapping nil,
+      :slicing nil,
+      :type
+      [{:code "http://hl7.org/fhirpath/System.String",
+        :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.id",
+      :comment
+      "The only time that a resource does not have an id is when it is being submitted to the server using a create operation.",
+      :base {:path "Resource.id", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.meta",
+      :min 0,
+      :definition
+      "The metadata about the resource. This is content that is maintained by the infrastructure. Changes to the content might not always be associated with version changes to the resource.",
+      :isModifier false,
+      :short "Metadata about the resource",
+      :mapping nil,
+      :slicing nil,
+      :type [{:code "Meta", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.meta",
+      :comment nil,
+      :base {:path "Resource.meta", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.implicitRules",
+      :min 0,
+      :definition
+      "A reference to a set of rules that were followed when the resource was constructed, and which must be understood when processing the content. Often, this is a reference to an implementation guide that defines the special rules along with other profiles etc.",
+      :isModifier true,
+      :short "A set of rules under which this content was created",
+      :mapping nil,
+      :slicing nil,
+      :type [{:code "uri", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.implicitRules",
+      :comment
+      "Asserting this rule set restricts the content to be only understood by a limited set of trading partners. This inherently limits the usefulness of the data in the long term. However, the existing health eco-system is highly fractured, and not yet ready to define, collect, and exchange data in a generally computable sense. Wherever possible, implementers and/or specification writers should avoid using this element. Often, when used, the URL is a reference to an implementation guide that defines these special rules as part of it's narrative along with other profiles, value sets, etc.",
+      :base {:path "Resource.implicitRules", :min 0, :max "1"},
+      :isModifierReason
+      "This element is labeled as a modifier because the implicit rules may provide additional knowledge about the resource that modifies it's meaning or interpretation",
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.language",
+      :min 0,
+      :definition
+      "The base language in which the resource is written.",
+      :isModifier false,
+      :short "Language of the resource content",
+      :mapping nil,
+      :slicing nil,
+      :type [{:code "code", :targetProfile nil}],
+      :mustSupport nil,
+      :binding
+      {:strength "preferred",
+       :description "A human language.",
+       :valueSet "http://hl7.org/fhir/ValueSet/languages",
+       :extension
+       [{:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-maxValueSet",
+         :valueBoolean nil,
+         :valueMarkdown nil,
+         :valueCanonical "http://hl7.org/fhir/ValueSet/all-languages",
+         :valueString nil}
+        {:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-bindingName",
+         :valueBoolean nil,
+         :valueMarkdown nil,
+         :valueCanonical nil,
+         :valueString "Language"}
+        {:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-isCommonBinding",
+         :valueBoolean true,
+         :valueMarkdown nil,
+         :valueCanonical nil,
+         :valueString nil}]},
+      :alias nil,
+      :max "1",
+      :id "Observation.language",
+      :comment
+      "Language is provided to support indexing and accessibility (typically, services such as text to speech use the language tag). The html language tag in the narrative applies  to the narrative. The language tag on the resource may be used to specify the language of other presentations generated from the data in the resource. Not all the content has to be in the base language. The Resource.language should not be assumed to apply to the narrative automatically. If a language is specified, it should it also be specified on the div element in the html (see rules in HTML5 for information about the relationship between xml:lang and the html lang attribute).",
+      :base {:path "Resource.language", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.text",
+      :min 0,
+      :definition
+      "A human-readable narrative that contains a summary of the resource and can be used to represent the content of the resource to a human. The narrative need not encode all the structured data, but is required to contain sufficient detail to make it \"clinically safe\" for a human to just read the narrative. Resource definitions may define what content should be represented in the narrative to ensure clinical safety.",
+      :isModifier false,
+      :short "Text summary of the resource, for human interpretation",
+      :mapping [{:identity "rim", :map "Act.text?"}],
+      :slicing nil,
+      :type [{:code "Narrative", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias ["narrative" "html" "xhtml" "display"],
+      :max "1",
+      :id "Observation.text",
+      :comment
+      "Contained resources do not have narrative. Resources that are not contained SHOULD have a narrative. In some cases, a resource may only have text with little or no additional discrete data (as long as all minOccurs=1 elements are satisfied).  This may be necessary for data from legacy systems where information is captured as a \"text blob\" or where text is additionally entered raw or narrated and encoded information is added later.",
+      :base {:path "DomainResource.text", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint nil,
+      :path "Observation.contained",
+      :min 0,
+      :definition
+      "These resources do not have an independent existence apart from the resource that contains them - they cannot be identified independently, and nor can they have their own independent transaction scope.",
+      :isModifier false,
+      :short "Contained, inline Resources",
+      :mapping [{:identity "rim", :map "N/A"}],
+      :slicing nil,
+      :type [{:code "Resource", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias
+      ["inline resources" "anonymous resources" "contained resources"],
+      :max "*",
+      :id "Observation.contained",
+      :comment
+      "This should never be done when the content can be identified properly, as once identification is lost, it is extremely difficult (and context dependent) to restore it again. Contained resources may have profiles and tags In their meta elements, but SHALL NOT have security labels.",
+      :base {:path "DomainResource.contained", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "ext-1",
+        :severity "error",
+        :human "Must have either extensions or value[x], not both",
+        :expression "extension.exists() != value.exists()",
+        :xpath
+        "exists(f:extension)!=exists(f:*[starts-with(local-name(.), \"value\")])",
+        :source "http://hl7.org/fhir/StructureDefinition/Extension",
+        :extension nil}],
+      :path "Observation.extension",
+      :min 0,
+      :definition
+      "May be used to represent additional information that is not part of the basic definition of the resource. To make the use of extensions safe and manageable, there is a strict set of governance  applied to the definition and use of extensions. Though any implementer can define an extension, there is a set of requirements that SHALL be met as part of the definition of the extension.",
+      :isModifier false,
+      :short "Additional content defined by implementations",
+      :mapping [{:identity "rim", :map "N/A"}],
+      :slicing nil,
+      :type [{:code "Extension", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias ["extensions" "user content"],
+      :max "*",
+      :id "Observation.extension",
+      :comment
+      "There can be no stigma associated with the use of extensions by any application, project, or standard - regardless of the institution or jurisdiction that uses or defines the extensions.  The use of extensions is what allows the FHIR specification to retain a core level of simplicity for everyone.",
+      :base {:path "DomainResource.extension", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "ext-1",
+        :severity "error",
+        :human "Must have either extensions or value[x], not both",
+        :expression "extension.exists() != value.exists()",
+        :xpath
+        "exists(f:extension)!=exists(f:*[starts-with(local-name(.), \"value\")])",
+        :source "http://hl7.org/fhir/StructureDefinition/Extension",
+        :extension nil}],
+      :path "Observation.modifierExtension",
+      :min 0,
+      :definition
+      "May be used to represent additional information that is not part of the basic definition of the resource and that modifies the understanding of the element that contains it and/or the understanding of the containing element's descendants. Usually modifier elements provide negation or qualification. To make the use of extensions safe and manageable, there is a strict set of governance applied to the definition and use of extensions. Though any implementer is allowed to define an extension, there is a set of requirements that SHALL be met as part of the definition of the extension. Applications processing a resource are required to check for modifier extensions.\n\nModifier extensions SHALL NOT change the meaning of any elements on Resource or DomainResource (including cannot change the meaning of modifierExtension itself).",
+      :isModifier true,
+      :short "Extensions that cannot be ignored",
+      :mapping [{:identity "rim", :map "N/A"}],
+      :slicing nil,
+      :type [{:code "Extension", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias ["extensions" "user content"],
+      :max "*",
+      :id "Observation.modifierExtension",
+      :comment
+      "There can be no stigma associated with the use of extensions by any application, project, or standard - regardless of the institution or jurisdiction that uses or defines the extensions.  The use of extensions is what allows the FHIR specification to retain a core level of simplicity for everyone.",
+      :base
+      {:path "DomainResource.modifierExtension", :min 0, :max "*"},
+      :isModifierReason
+      "Modifier extensions are expected to modify the meaning or interpretation of the resource that contains them",
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.identifier",
+      :min 0,
+      :definition "A unique identifier assigned to this observation.",
+      :isModifier false,
+      :short "Business Identifier for observation",
+      :mapping
+      [{:identity "workflow", :map "Event.identifier"}
+       {:identity "w5", :map "FiveWs.identifier"}
+       {:identity "v2",
+        :map
+        "OBX.21  For OBX segments from systems without OBX-21 support a combination of ORC/OBR and OBX must be negotiated between trading partners to uniquely identify the OBX segment. Depending on how V2 has been implemented each of these may be an option: 1) OBR-3 + OBX-3 + OBX-4 or 2) OBR-3 + OBR-4 + OBX-3 + OBX-4 or 2) some other way to uniquely ID the OBR/ORC + OBX-3 + OBX-4."}
+       {:identity "rim", :map "id"}],
+      :slicing nil,
+      :type [{:code "Identifier", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "*",
+      :id "Observation.identifier",
+      :comment nil,
+      :base {:path "Observation.identifier", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.basedOn",
+      :min 0,
+      :definition
+      "A plan, proposal or order that is fulfilled in whole or in part by this event.  For example, a MedicationRequest may require a patient to have laboratory test performed before  it is dispensed.",
+      :isModifier false,
+      :short "Fulfills plan, proposal or order",
+      :mapping
+      [{:identity "workflow", :map "Event.basedOn"}
+       {:identity "v2", :map "ORC"}
+       {:identity "rim",
+        :map
+        ".inboundRelationship[typeCode=COMP].source[moodCode=EVN]"}],
+      :slicing nil,
+      :type
+      [{:code "Reference",
+        :targetProfile
+        ["http://hl7.org/fhir/StructureDefinition/CarePlan"
+         "http://hl7.org/fhir/StructureDefinition/DeviceRequest"
+         "http://hl7.org/fhir/StructureDefinition/ImmunizationRecommendation"
+         "http://hl7.org/fhir/StructureDefinition/MedicationRequest"
+         "http://hl7.org/fhir/StructureDefinition/NutritionOrder"
+         "http://hl7.org/fhir/StructureDefinition/ServiceRequest"]}],
+      :mustSupport nil,
+      :binding nil,
+      :alias ["Fulfills"],
+      :max "*",
+      :id "Observation.basedOn",
+      :comment nil,
+      :base {:path "Observation.basedOn", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.partOf",
+      :min 0,
+      :definition
+      "A larger event of which this particular Observation is a component or step.  For example,  an observation as part of a procedure.",
+      :isModifier false,
+      :short "Part of referenced event",
+      :mapping
+      [{:identity "workflow", :map "Event.partOf"}
+       {:identity "v2", :map "Varies by domain"}
+       {:identity "rim",
+        :map ".outboundRelationship[typeCode=FLFS].target"}],
+      :slicing nil,
+      :type
+      [{:code "Reference",
+        :targetProfile
+        ["http://hl7.org/fhir/StructureDefinition/MedicationAdministration"
+         "http://hl7.org/fhir/StructureDefinition/MedicationDispense"
+         "http://hl7.org/fhir/StructureDefinition/MedicationStatement"
+         "http://hl7.org/fhir/StructureDefinition/Procedure"
+         "http://hl7.org/fhir/StructureDefinition/Immunization"
+         "http://hl7.org/fhir/StructureDefinition/ImagingStudy"]}],
+      :mustSupport nil,
+      :binding nil,
+      :alias ["Container"],
+      :max "*",
+      :id "Observation.partOf",
+      :comment
+      "To link an Observation to an Encounter use `encounter`.  See the  [Notes](http://hl7.org/fhir/observation.html#obsgrouping) below for guidance on referencing another Observation.",
+      :base {:path "Observation.partOf", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.status",
+      :min 1,
+      :definition "The status of the result value.",
+      :isModifier true,
+      :short "registered | preliminary | final | amended +",
+      :mapping
+      [{:identity "workflow", :map "Event.status"}
+       {:identity "w5", :map "FiveWs.status"}
+       {:identity "sct-concept",
+        :map "< 445584004 |Report by finality status|"}
+       {:identity "v2", :map "OBX-11"}
+       {:identity "rim",
+        :map
+        "status  Amended & Final are differentiated by whether it is the subject of a ControlAct event with a type of \"revise\""}],
+      :slicing nil,
+      :type [{:code "code", :targetProfile nil}],
+      :mustSupport true,
+      :binding
+      {:strength "required",
+       :description nil,
+       :valueSet
+       "http://hl7.org/fhir/ValueSet/observation-status|4.0.1",
+       :extension
+       [{:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-bindingName",
+         :valueBoolean nil,
+         :valueMarkdown nil,
+         :valueCanonical nil,
+         :valueString "Status"}]},
+      :alias nil,
+      :max "1",
+      :id "Observation.status",
+      :comment
+      "This element is labeled as a modifier because the status contains codes that mark the resource as not currently valid.",
+      :base {:path "Observation.status", :min 1, :max "1"},
+      :isModifierReason
+      "This element is labeled as a modifier because it is a status element that contains status entered-in-error which means that the resource should not be treated as valid",
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.category",
+      :min 1,
+      :definition
+      "A code that classifies the general type of observation being made.",
+      :isModifier false,
+      :short "Classification of  type of observation",
+      :mapping
+      [{:identity "w5", :map "FiveWs.class"}
+       {:identity "rim",
+        :map
+        ".outboundRelationship[typeCode=\"COMP].target[classCode=\"LIST\", moodCode=\"EVN\"].code"}],
+      :slicing
+      {:ordered false,
+       :rules "open",
+       :description nil,
+       :discriminator
+       [{:type "value", :path "coding.code"}
+        {:type "value", :path "coding.system"}]},
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport true,
+      :binding
+      {:strength "preferred",
+       :description "Codes for high level observation categories.",
+       :valueSet "http://hl7.org/fhir/ValueSet/observation-category",
+       :extension
+       [{:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-bindingName",
+         :valueBoolean nil,
+         :valueMarkdown nil,
+         :valueCanonical nil,
+         :valueString "ObservationCategory"}]},
+      :alias nil,
+      :max "*",
+      :id "Observation.category",
+      :comment
+      "In addition to the required category valueset, this element allows various categorization schemes based on the owner’s definition of the category and effectively multiple categories can be used at once.  The level of granularity is defined by the category concepts in the value set.",
+      :base {:path "Observation.category", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.category",
+      :min 1,
+      :definition
+      "A code that classifies the general type of observation being made.",
+      :isModifier false,
+      :short "Classification of  type of observation",
+      :mapping
+      [{:identity "w5", :map "FiveWs.class"}
+       {:identity "rim",
+        :map
+        ".outboundRelationship[typeCode=\"COMP].target[classCode=\"LIST\", moodCode=\"EVN\"].code"}],
+      :slicing nil,
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport true,
+      :binding
+      {:strength "preferred",
+       :description "Codes for high level observation categories.",
+       :valueSet "http://hl7.org/fhir/ValueSet/observation-category",
+       :extension
+       [{:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-bindingName",
+         :valueBoolean nil,
+         :valueMarkdown nil,
+         :valueCanonical nil,
+         :valueString "ObservationCategory"}]},
+      :alias nil,
+      :max "1",
+      :id "Observation.category:VSCat",
+      :comment
+      "In addition to the required category valueset, this element allows various categorization schemes based on the owner’s definition of the category and effectively multiple categories can be used at once.  The level of granularity is defined by the category concepts in the value set.",
+      :base {:path "Observation.category", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint nil,
+      :path "Observation.category.id",
+      :min 0,
+      :definition
+      "Unique id for the element within a resource (for internal references). This may be any string value that does not contain spaces.",
+      :isModifier false,
+      :short "Unique id for inter-element referencing",
+      :mapping [{:identity "rim", :map "n/a"}],
+      :slicing nil,
+      :type
+      [{:code "http://hl7.org/fhirpath/System.String",
+        :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.category:VSCat.id",
+      :comment nil,
+      :base {:path "Element.id", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "ext-1",
+        :severity "error",
+        :human "Must have either extensions or value[x], not both",
+        :expression "extension.exists() != value.exists()",
+        :xpath
+        "exists(f:extension)!=exists(f:*[starts-with(local-name(.), \"value\")])",
+        :source "http://hl7.org/fhir/StructureDefinition/Extension",
+        :extension nil}],
+      :path "Observation.category.extension",
+      :min 0,
+      :definition
+      "May be used to represent additional information that is not part of the basic definition of the element. To make the use of extensions safe and manageable, there is a strict set of governance  applied to the definition and use of extensions. Though any implementer can define an extension, there is a set of requirements that SHALL be met as part of the definition of the extension.",
+      :isModifier false,
+      :short "Additional content defined by implementations",
+      :mapping [{:identity "rim", :map "n/a"}],
+      :slicing
+      {:ordered nil,
+       :rules "open",
+       :description "Extensions are always sliced by (at least) url",
+       :discriminator [{:type "value", :path "url"}]},
+      :type [{:code "Extension", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias ["extensions" "user content"],
+      :max "*",
+      :id "Observation.category:VSCat.extension",
+      :comment
+      "There can be no stigma associated with the use of extensions by any application, project, or standard - regardless of the institution or jurisdiction that uses or defines the extensions.  The use of extensions is what allows the FHIR specification to retain a core level of simplicity for everyone.",
+      :base {:path "Element.extension", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.category.coding",
+      :min 1,
+      :definition
+      "A reference to a code defined by a terminology system.",
+      :isModifier false,
+      :short "Code defined by a terminology system",
+      :mapping
+      [{:identity "v2", :map "C*E.1-8, C*E.10-22"}
+       {:identity "rim", :map "union(., ./translation)"}
+       {:identity "orim",
+        :map
+        "fhir:CodeableConcept.coding rdfs:subPropertyOf dt:CD.coding"}],
+      :slicing nil,
+      :type [{:code "Coding", :targetProfile nil}],
+      :mustSupport true,
+      :binding nil,
+      :alias nil,
+      :max "*",
+      :id "Observation.category:VSCat.coding",
+      :comment
+      "Codes may be defined very casually in enumerations, or code lists, up to very formal definitions such as SNOMED CT - see the HL7 v3 Core Principles for more information.  Ordering of codings is undefined and SHALL NOT be used to infer meaning. Generally, at most only one of the coding values will be labeled as UserSelected = true.",
+      :base {:path "CodeableConcept.coding", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint nil,
+      :path "Observation.category.coding.id",
+      :min 0,
+      :definition
+      "Unique id for the element within a resource (for internal references). This may be any string value that does not contain spaces.",
+      :isModifier false,
+      :short "Unique id for inter-element referencing",
+      :mapping [{:identity "rim", :map "n/a"}],
+      :slicing nil,
+      :type
+      [{:code "http://hl7.org/fhirpath/System.String",
+        :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.category:VSCat.coding.id",
+      :comment nil,
+      :base {:path "Element.id", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "ext-1",
+        :severity "error",
+        :human "Must have either extensions or value[x], not both",
+        :expression "extension.exists() != value.exists()",
+        :xpath
+        "exists(f:extension)!=exists(f:*[starts-with(local-name(.), \"value\")])",
+        :source "http://hl7.org/fhir/StructureDefinition/Extension",
+        :extension nil}],
+      :path "Observation.category.coding.extension",
+      :min 0,
+      :definition
+      "May be used to represent additional information that is not part of the basic definition of the element. To make the use of extensions safe and manageable, there is a strict set of governance  applied to the definition and use of extensions. Though any implementer can define an extension, there is a set of requirements that SHALL be met as part of the definition of the extension.",
+      :isModifier false,
+      :short "Additional content defined by implementations",
+      :mapping [{:identity "rim", :map "n/a"}],
+      :slicing
+      {:ordered nil,
+       :rules "open",
+       :description "Extensions are always sliced by (at least) url",
+       :discriminator [{:type "value", :path "url"}]},
+      :type [{:code "Extension", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias ["extensions" "user content"],
+      :max "*",
+      :id "Observation.category:VSCat.coding.extension",
+      :comment
+      "There can be no stigma associated with the use of extensions by any application, project, or standard - regardless of the institution or jurisdiction that uses or defines the extensions.  The use of extensions is what allows the FHIR specification to retain a core level of simplicity for everyone.",
+      :base {:path "Element.extension", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.category.coding.system",
+      :min 1,
+      :definition
+      "The identification of the code system that defines the meaning of the symbol in the code.",
+      :isModifier false,
+      :short "Identity of the terminology system",
+      :mapping
+      [{:identity "v2", :map "C*E.3"}
+       {:identity "rim", :map "./codeSystem"}
+       {:identity "orim",
+        :map
+        "fhir:Coding.system rdfs:subPropertyOf dt:CDCoding.codeSystem"}],
+      :slicing nil,
+      :type [{:code "uri", :targetProfile nil}],
+      :mustSupport true,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.category:VSCat.coding.system",
+      :comment
+      "The URI may be an OID (urn:oid:...) or a UUID (urn:uuid:...).  OIDs and UUIDs SHALL be references to the HL7 OID registry. Otherwise, the URI should come from HL7's list of FHIR defined special URIs or it should reference to some definition that establishes the system clearly and unambiguously.",
+      :base {:path "Coding.system", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.category.coding.version",
+      :min 0,
+      :definition
+      "The version of the code system which was used when choosing this code. Note that a well-maintained code system does not need the version reported, because the meaning of codes is consistent across versions. However this cannot consistently be assured, and when the meaning is not guaranteed to be consistent, the version SHOULD be exchanged.",
+      :isModifier false,
+      :short "Version of the system - if relevant",
+      :mapping
+      [{:identity "v2", :map "C*E.7"}
+       {:identity "rim", :map "./codeSystemVersion"}
+       {:identity "orim",
+        :map
+        "fhir:Coding.version rdfs:subPropertyOf dt:CDCoding.codeSystemVersion"}],
+      :slicing nil,
+      :type [{:code "string", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.category:VSCat.coding.version",
+      :comment
+      "Where the terminology does not clearly define what string should be used to identify code system versions, the recommendation is to use the date (expressed in FHIR date format) on which that version was officially published as the version date.",
+      :base {:path "Coding.version", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.category.coding.code",
+      :min 1,
+      :definition
+      "A symbol in syntax defined by the system. The symbol may be a predefined code or an expression in a syntax defined by the coding system (e.g. post-coordination).",
+      :isModifier false,
+      :short "Symbol in syntax defined by the system",
+      :mapping
+      [{:identity "v2", :map "C*E.1"}
+       {:identity "rim", :map "./code"}
+       {:identity "orim",
+        :map "fhir:Coding.code rdfs:subPropertyOf dt:CDCoding.code"}],
+      :slicing nil,
+      :type [{:code "code", :targetProfile nil}],
+      :mustSupport true,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.category:VSCat.coding.code",
+      :comment nil,
+      :base {:path "Coding.code", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.category.coding.display",
+      :min 0,
+      :definition
+      "A representation of the meaning of the code in the system, following the rules of the system.",
+      :isModifier false,
+      :short "Representation defined by the system",
+      :mapping
+      [{:identity "v2",
+        :map "C*E.2 - but note this is not well followed"}
+       {:identity "rim", :map "CV.displayName"}
+       {:identity "orim",
+        :map
+        "fhir:Coding.display rdfs:subPropertyOf dt:CDCoding.displayName"}],
+      :slicing nil,
+      :type [{:code "string", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.category:VSCat.coding.display",
+      :comment nil,
+      :base {:path "Coding.display", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.category.coding.userSelected",
+      :min 0,
+      :definition
+      "Indicates that this coding was chosen by a user directly - e.g. off a pick list of available items (codes or displays).",
+      :isModifier false,
+      :short "If this coding was chosen directly by the user",
+      :mapping
+      [{:identity "v2", :map "Sometimes implied by being first"}
+       {:identity "rim", :map "CD.codingRationale"}
+       {:identity "orim",
+        :map
+        "fhir:Coding.userSelected fhir:mapsTo dt:CDCoding.codingRationale. fhir:Coding.userSelected fhir:hasMap fhir:Coding.userSelected.map. fhir:Coding.userSelected.map a fhir:Map;   fhir:target dt:CDCoding.codingRationale. fhir:Coding.userSelected\\#true a [     fhir:source \"true\";     fhir:target dt:CDCoding.codingRationale\\#O   ]"}],
+      :slicing nil,
+      :type [{:code "boolean", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.category:VSCat.coding.userSelected",
+      :comment
+      "Amongst a set of alternatives, a directly chosen code is the most appropriate starting point for new translations. There is some ambiguity about what exactly 'directly chosen' implies, and trading partner agreement may be needed to clarify the use of this element and its consequences more completely.",
+      :base {:path "Coding.userSelected", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.category.text",
+      :min 0,
+      :definition
+      "A human language representation of the concept as seen/selected/uttered by the user who entered the data and/or which represents the intended meaning of the user.",
+      :isModifier false,
+      :short "Plain text representation of the concept",
+      :mapping
+      [{:identity "v2",
+        :map "C*E.9. But note many systems use C*E.2 for this"}
+       {:identity "rim",
+        :map "./originalText[mediaType/code=\"text/plain\"]/data"}
+       {:identity "orim",
+        :map
+        "fhir:CodeableConcept.text rdfs:subPropertyOf dt:CD.originalText"}],
+      :slicing nil,
+      :type [{:code "string", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.category:VSCat.text",
+      :comment
+      "Very often the text is the same as a displayName of one of the codings.",
+      :base {:path "CodeableConcept.text", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.code",
+      :min 1,
+      :definition "Coded Responses from C-CDA Vital Sign Results.",
+      :isModifier false,
+      :short "Oxygen Saturation by Pulse Oximetry",
+      :mapping
+      [{:identity "workflow", :map "Event.code"}
+       {:identity "w5", :map "FiveWs.what[x]"}
+       {:identity "sct-concept",
+        :map
+        "< 363787002 |Observable entity| OR < 386053000 |Evaluation procedure|"}
+       {:identity "v2", :map "OBX-3"}
+       {:identity "rim", :map "code"}
+       {:identity "sct-attr", :map "116680003 |Is a|"}],
+      :slicing nil,
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport true,
+      :binding
+      {:strength "extensible",
+       :description
+       "The vital sign codes from the base FHIR and US Core Vital Signs.",
+       :valueSet
+       "http://hl7.org/fhir/us/core/ValueSet/us-core-vital-signs",
+       :extension nil},
+      :alias ["Name"],
+      :max "1",
+      :id "Observation.code",
+      :comment
+      "The code (59408-5 Oxygen saturation in Arterial blood by Pulse oximetry) is included as an additional observation code to FHIR Core vital Oxygen Saturation code (2708-6 Oxygen saturation in Arterial blood).",
+      :base {:path "Observation.code", :min 1, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint nil,
+      :path "Observation.code.id",
+      :min 0,
+      :definition
+      "Unique id for the element within a resource (for internal references). This may be any string value that does not contain spaces.",
+      :isModifier false,
+      :short "Unique id for inter-element referencing",
+      :mapping [{:identity "rim", :map "n/a"}],
+      :slicing nil,
+      :type
+      [{:code "http://hl7.org/fhirpath/System.String",
+        :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.code.id",
+      :comment nil,
+      :base {:path "Element.id", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "ext-1",
+        :severity "error",
+        :human "Must have either extensions or value[x], not both",
+        :expression "extension.exists() != value.exists()",
+        :xpath
+        "exists(f:extension)!=exists(f:*[starts-with(local-name(.), \"value\")])",
+        :source "http://hl7.org/fhir/StructureDefinition/Extension",
+        :extension nil}],
+      :path "Observation.code.extension",
+      :min 0,
+      :definition
+      "May be used to represent additional information that is not part of the basic definition of the element. To make the use of extensions safe and manageable, there is a strict set of governance  applied to the definition and use of extensions. Though any implementer can define an extension, there is a set of requirements that SHALL be met as part of the definition of the extension.",
+      :isModifier false,
+      :short "Additional content defined by implementations",
+      :mapping [{:identity "rim", :map "n/a"}],
+      :slicing
+      {:ordered nil,
+       :rules "open",
+       :description "Extensions are always sliced by (at least) url",
+       :discriminator [{:type "value", :path "url"}]},
+      :type [{:code "Extension", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias ["extensions" "user content"],
+      :max "*",
+      :id "Observation.code.extension",
+      :comment
+      "There can be no stigma associated with the use of extensions by any application, project, or standard - regardless of the institution or jurisdiction that uses or defines the extensions.  The use of extensions is what allows the FHIR specification to retain a core level of simplicity for everyone.",
+      :base {:path "Element.extension", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.code.coding",
+      :min 0,
+      :definition
+      "A reference to a code defined by a terminology system.",
+      :isModifier false,
+      :short "Code defined by a terminology system",
+      :mapping
+      [{:identity "v2", :map "C*E.1-8, C*E.10-22"}
+       {:identity "rim", :map "union(., ./translation)"}
+       {:identity "orim",
+        :map
+        "fhir:CodeableConcept.coding rdfs:subPropertyOf dt:CD.coding"}],
+      :slicing
+      {:ordered nil,
+       :rules "open",
+       :description nil,
+       :discriminator [{:type "pattern", :path "$this"}]},
+      :type [{:code "Coding", :targetProfile nil}],
+      :mustSupport true,
+      :binding nil,
+      :alias nil,
+      :max "*",
+      :id "Observation.code.coding",
+      :comment
+      "Codes may be defined very casually in enumerations, or code lists, up to very formal definitions such as SNOMED CT - see the HL7 v3 Core Principles for more information.  Ordering of codings is undefined and SHALL NOT be used to infer meaning. Generally, at most only one of the coding values will be labeled as UserSelected = true.",
+      :base {:path "CodeableConcept.coding", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.code.coding",
+      :min 1,
+      :definition
+      "A reference to a code defined by a terminology system.",
+      :isModifier false,
+      :short "Code defined by a terminology system",
+      :mapping
+      [{:identity "v2", :map "C*E.1-8, C*E.10-22"}
+       {:identity "rim", :map "union(., ./translation)"}
+       {:identity "orim",
+        :map
+        "fhir:CodeableConcept.coding rdfs:subPropertyOf dt:CD.coding"}],
+      :slicing nil,
+      :type [{:code "Coding", :targetProfile nil}],
+      :mustSupport true,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.code.coding:PulseOx",
+      :comment
+      "Codes may be defined very casually in enumerations, or code lists, up to very formal definitions such as SNOMED CT - see the HL7 v3 Core Principles for more information.  Ordering of codings is undefined and SHALL NOT be used to infer meaning. Generally, at most only one of the coding values will be labeled as UserSelected = true.",
+      :base {:path "CodeableConcept.coding", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.code.coding",
+      :min 1,
+      :definition
+      "A reference to a code defined by a terminology system.",
+      :isModifier false,
+      :short "Code defined by a terminology system",
+      :mapping
+      [{:identity "v2", :map "C*E.1-8, C*E.10-22"}
+       {:identity "rim", :map "union(., ./translation)"}
+       {:identity "orim",
+        :map
+        "fhir:CodeableConcept.coding rdfs:subPropertyOf dt:CD.coding"}],
+      :slicing nil,
+      :type [{:code "Coding", :targetProfile nil}],
+      :mustSupport true,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.code.coding:O2Sat",
+      :comment
+      "Codes may be defined very casually in enumerations, or code lists, up to very formal definitions such as SNOMED CT - see the HL7 v3 Core Principles for more information.  Ordering of codings is undefined and SHALL NOT be used to infer meaning. Generally, at most only one of the coding values will be labeled as UserSelected = true.",
+      :base {:path "CodeableConcept.coding", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.code.text",
+      :min 0,
+      :definition
+      "A human language representation of the concept as seen/selected/uttered by the user who entered the data and/or which represents the intended meaning of the user.",
+      :isModifier false,
+      :short "Plain text representation of the concept",
+      :mapping
+      [{:identity "v2",
+        :map "C*E.9. But note many systems use C*E.2 for this"}
+       {:identity "rim",
+        :map "./originalText[mediaType/code=\"text/plain\"]/data"}
+       {:identity "orim",
+        :map
+        "fhir:CodeableConcept.text rdfs:subPropertyOf dt:CD.originalText"}],
+      :slicing nil,
+      :type [{:code "string", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.code.text",
+      :comment
+      "Very often the text is the same as a displayName of one of the codings.",
+      :base {:path "CodeableConcept.text", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.subject",
+      :min 1,
+      :definition
+      "The patient, or group of patients, location, or device this observation is about and into whose record the observation is placed. If the actual focus of the observation is different from the subject (or a sample of, part, or region of the subject), the `focus` element or the `code` itself specifies the actual focus of the observation.",
+      :isModifier false,
+      :short "Who and/or what the observation is about",
+      :mapping
+      [{:identity "workflow", :map "Event.subject"}
+       {:identity "w5", :map "FiveWs.subject[x]"}
+       {:identity "v2", :map "PID-3"}
+       {:identity "rim", :map "participation[typeCode=RTGT]"}
+       {:identity "w5", :map "FiveWs.subject"}],
+      :slicing nil,
+      :type
+      [{:code "Reference",
+        :targetProfile
+        ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"]}],
+      :mustSupport true,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.subject",
+      :comment
+      "One would expect this element to be a cardinality of 1..1. The only circumstance in which the subject can be missing is when the observation is made by a device that does not know the patient. In this case, the observation SHALL be matched to a patient through some context/channel matching technique, and at this point, the observation should be updated.",
+      :base {:path "Observation.subject", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.focus",
+      :min 0,
+      :definition
+      "The actual focus of an observation when it is not the patient of record representing something or someone associated with the patient such as a spouse, parent, fetus, or donor. For example, fetus observations in a mother's record.  The focus of an observation could also be an existing condition,  an intervention, the subject's diet,  another observation of the subject,  or a body structure such as tumor or implanted device.   An example use case would be using the Observation resource to capture whether the mother is trained to change her child's tracheostomy tube. In this example, the child is the patient of record and the mother is the focus.",
+      :isModifier false,
+      :short
+      "What the observation is about, when it is not about the subject of record",
+      :mapping
+      [{:identity "w5", :map "FiveWs.subject[x]"}
+       {:identity "v2", :map "OBX-3"}
+       {:identity "rim", :map "participation[typeCode=SBJ]"}
+       {:identity "w5", :map "FiveWs.subject"}],
+      :slicing nil,
+      :type
+      [{:code "Reference",
+        :targetProfile
+        ["http://hl7.org/fhir/StructureDefinition/Resource"]}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "*",
+      :id "Observation.focus",
+      :comment
+      "Typically, an observation is made about the subject - a patient, or group of patients, location, or device - and the distinction between the subject and what is directly measured for an observation is specified in the observation code itself ( e.g., \"Blood Glucose\") and does not need to be represented separately using this element.  Use `specimen` if a reference to a specimen is required.  If a code is required instead of a resource use either  `bodysite` for bodysites or the standard extension [focusCode](http://hl7.org/fhir/extension-observation-focuscode.html).",
+      :base {:path "Observation.focus", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.encounter",
+      :min 0,
+      :definition
+      "The healthcare event  (e.g. a patient and healthcare provider interaction) during which this observation is made.",
+      :isModifier false,
+      :short "Healthcare event during which this observation is made",
+      :mapping
+      [{:identity "workflow", :map "Event.context"}
+       {:identity "w5", :map "FiveWs.context"}
+       {:identity "v2", :map "PV1"}
+       {:identity "rim",
+        :map
+        "inboundRelationship[typeCode=COMP].source[classCode=ENC, moodCode=EVN]"}],
+      :slicing nil,
+      :type
+      [{:code "Reference",
+        :targetProfile
+        ["http://hl7.org/fhir/StructureDefinition/Encounter"]}],
+      :mustSupport nil,
+      :binding nil,
+      :alias ["Context"],
+      :max "1",
+      :id "Observation.encounter",
+      :comment
+      "This will typically be the encounter the event occurred within, but some events may be initiated prior to or after the official completion of an encounter but still be tied to the context of the encounter (e.g. pre-admission laboratory tests).",
+      :base {:path "Observation.encounter", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "vs-1",
+        :severity "error",
+        :human
+        "if Observation.effective[x] is dateTime and has a value then that value shall be precise to the day",
+        :expression "($this as dateTime).toString().length() >= 8",
+        :xpath
+        "f:effectiveDateTime[matches(@value, '^\\d{4}-\\d{2}-\\d{2}')]",
+        :source "http://hl7.org/fhir/StructureDefinition/vitalsigns",
+        :extension nil}],
+      :path "Observation.effective[x]",
+      :min 1,
+      :definition "Often just a dateTime for Vital Signs.",
+      :isModifier false,
+      :short "Often just a dateTime for Vital Signs",
+      :mapping
+      [{:identity "workflow", :map "Event.occurrence[x]"}
+       {:identity "w5", :map "FiveWs.done[x]"}
+       {:identity "v2",
+        :map
+        "OBX-14, and/or OBX-19 after v2.4  (depends on who observation made)"}
+       {:identity "rim", :map "effectiveTime"}],
+      :slicing nil,
+      :type
+      [{:code "dateTime", :targetProfile nil}
+       {:code "Period", :targetProfile nil}],
+      :mustSupport true,
+      :binding nil,
+      :alias ["Occurrence"],
+      :max "1",
+      :id "Observation.effective[x]",
+      :comment
+      "At least a date should be present unless this observation is a historical report.  For recording imprecise or \"fuzzy\" times (For example, a blood glucose measurement taken \"after breakfast\") use the [Timing](http://hl7.org/fhir/datatypes.html#timing) datatype which allow the measurement to be tied to regular life events.",
+      :base {:path "Observation.effective[x]", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.issued",
+      :min 0,
+      :definition
+      "The date and time this version of the observation was made available to providers, typically after the results have been reviewed and verified.",
+      :isModifier false,
+      :short "Date/Time this version was made available",
+      :mapping
+      [{:identity "w5", :map "FiveWs.recorded"}
+       {:identity "v2",
+        :map
+        "OBR.22 (or MSH.7), or perhaps OBX-19 (depends on who observation made)"}
+       {:identity "rim", :map "participation[typeCode=AUT].time"}],
+      :slicing nil,
+      :type [{:code "instant", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.issued",
+      :comment
+      "For Observations that don’t require review and verification, it may be the same as the [`lastUpdated` ](http://hl7.org/fhir/resource-definitions.html#Meta.lastUpdated) time of the resource itself.  For Observations that do require review and verification for certain updates, it might not be the same as the `lastUpdated` time of the resource itself due to a non-clinically significant update that doesn’t require the new version to be reviewed and verified again.",
+      :base {:path "Observation.issued", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.performer",
+      :min 0,
+      :definition
+      "Who was responsible for asserting the observed value as \"true\".",
+      :isModifier false,
+      :short "Who is responsible for the observation",
+      :mapping
+      [{:identity "workflow", :map "Event.performer.actor"}
+       {:identity "w5", :map "FiveWs.actor"}
+       {:identity "v2",
+        :map
+        "OBX.15 / (Practitioner)  OBX-16,  PRT-5:PRT-4='RO' /  (Device)  OBX-18 , PRT-10:PRT-4='EQUIP' / (Organization)  OBX-23,  PRT-8:PRT-4='PO'"}
+       {:identity "rim", :map "participation[typeCode=PRF]"}],
+      :slicing nil,
+      :type
+      [{:code "Reference",
+        :targetProfile
+        ["http://hl7.org/fhir/StructureDefinition/Practitioner"
+         "http://hl7.org/fhir/StructureDefinition/PractitionerRole"
+         "http://hl7.org/fhir/StructureDefinition/Organization"
+         "http://hl7.org/fhir/StructureDefinition/CareTeam"
+         "http://hl7.org/fhir/StructureDefinition/Patient"
+         "http://hl7.org/fhir/StructureDefinition/RelatedPerson"]}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "*",
+      :id "Observation.performer",
+      :comment nil,
+      :base {:path "Observation.performer", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.value[x]",
+      :min 0,
+      :definition
+      "Vital Signs value are typically recorded using the Quantity data type.",
+      :isModifier false,
+      :short "Vital Signs Value",
+      :mapping
+      [{:identity "sct-concept",
+        :map "< 441742003 |Evaluation finding|"}
+       {:identity "v2", :map "OBX.2, OBX.5, OBX.6"}
+       {:identity "rim", :map "value"}
+       {:identity "sct-attr", :map "363714003 |Interprets|"}],
+      :slicing nil,
+      :type
+      [{:code "Quantity", :targetProfile nil}
+       {:code "CodeableConcept", :targetProfile nil}
+       {:code "string", :targetProfile nil}
+       {:code "boolean", :targetProfile nil}
+       {:code "integer", :targetProfile nil}
+       {:code "Range", :targetProfile nil}
+       {:code "Ratio", :targetProfile nil}
+       {:code "SampledData", :targetProfile nil}
+       {:code "time", :targetProfile nil}
+       {:code "dateTime", :targetProfile nil}
+       {:code "Period", :targetProfile nil}],
+      :mustSupport true,
+      :binding
+      {:strength "extensible",
+       :description "Common UCUM units for recording Vital Signs.",
+       :valueSet
+       "http://hl7.org/fhir/ValueSet/ucum-vitals-common|4.0.1",
+       :extension nil},
+      :alias nil,
+      :max "1",
+      :id "Observation.value[x]",
+      :comment
+      "An observation may have; 1)  a single value here, 2)  both a value and a set of related or component values,  or 3)  only a set of related or component values. If a value is present, the datatype for this element should be determined by Observation.code.  A CodeableConcept with just a text would be used instead of a string if the field was usually coded, or if the type associated with the Observation.code defines a coded value.  For additional guidance, see the [Notes section](http://hl7.org/fhir/observation.html#notes) below.",
+      :base {:path "Observation.value[x]", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.dataAbsentReason",
+      :min 0,
+      :definition
+      "Provides a reason why the expected value in the element Observation.value[x] is missing.",
+      :isModifier false,
+      :short "Why the result is missing",
+      :mapping
+      [{:identity "v2", :map "N/A"}
+       {:identity "rim", :map "value.nullFlavor"}],
+      :slicing nil,
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport true,
+      :binding
+      {:strength "extensible",
+       :description
+       "Codes specifying why the result (`Observation.value[x]`) is missing.",
+       :valueSet "http://hl7.org/fhir/ValueSet/data-absent-reason",
+       :extension
+       [{:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-bindingName",
+         :valueBoolean nil,
+         :valueMarkdown nil,
+         :valueCanonical nil,
+         :valueString "ObservationValueAbsentReason"}]},
+      :alias nil,
+      :max "1",
+      :id "Observation.dataAbsentReason",
+      :comment
+      "Null or exceptional values can be represented two ways in FHIR Observations.  One way is to simply include them in the value set and represent the exceptions in the value.  For example, measurement values for a serology test could be  \"detected\", \"not detected\", \"inconclusive\", or  \"specimen unsatisfactory\".   \n\nThe alternate way is to use the value element for actual observations and use the explicit dataAbsentReason element to record exceptional values.  For example, the dataAbsentReason code \"error\" could be used when the measurement was not completed. Note that an observation may only be reported if there are values to report. For example differential cell counts values may be reported only when > 0.  Because of these options, use-case agreements are required to interpret general observations for null or exceptional values.",
+      :base {:path "Observation.dataAbsentReason", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.interpretation",
+      :min 0,
+      :definition
+      "A categorical assessment of an observation value.  For example, high, low, normal.",
+      :isModifier false,
+      :short "High, low, normal, etc.",
+      :mapping
+      [{:identity "sct-concept", :map "< 260245000 |Findings values|"}
+       {:identity "v2", :map "OBX-8"}
+       {:identity "rim", :map "interpretationCode"}
+       {:identity "sct-attr", :map "363713009 |Has interpretation|"}],
+      :slicing nil,
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport nil,
+      :binding
+      {:strength "extensible",
+       :description
+       "Codes identifying interpretations of observations.",
+       :valueSet
+       "http://hl7.org/fhir/ValueSet/observation-interpretation",
+       :extension
+       [{:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-bindingName",
+         :valueBoolean nil,
+         :valueMarkdown nil,
+         :valueCanonical nil,
+         :valueString "ObservationInterpretation"}]},
+      :alias ["Abnormal Flag"],
+      :max "*",
+      :id "Observation.interpretation",
+      :comment
+      "Historically used for laboratory results (known as 'abnormal flag' ),  its use extends to other use cases where coded interpretations  are relevant.  Often reported as one or more simple compact codes this element is often placed adjacent to the result value in reports and flow sheets to signal the meaning/normalcy status of the result.",
+      :base {:path "Observation.interpretation", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.note",
+      :min 0,
+      :definition "Comments about the observation or the results.",
+      :isModifier false,
+      :short "Comments about the observation",
+      :mapping
+      [{:identity "v2",
+        :map
+        "NTE.3 (partner NTE to OBX, or sometimes another (child?) OBX)"}
+       {:identity "rim",
+        :map "subjectOf.observationEvent[code=\"annotation\"].value"}],
+      :slicing nil,
+      :type [{:code "Annotation", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "*",
+      :id "Observation.note",
+      :comment
+      "May include general statements about the observation, or statements about significant, unexpected or unreliable results values, or information about its source when relevant to its interpretation.",
+      :base {:path "Observation.note", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.bodySite",
+      :min 0,
+      :definition
+      "Indicates the site on the subject's body where the observation was made (i.e. the target site).",
+      :isModifier false,
+      :short "Observed body part",
+      :mapping
+      [{:identity "sct-concept", :map "< 123037004 |Body structure|"}
+       {:identity "v2", :map "OBX-20"}
+       {:identity "rim", :map "targetSiteCode"}
+       {:identity "sct-attr", :map "718497002 |Inherent location|"}],
+      :slicing nil,
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport nil,
+      :binding
+      {:strength "example",
+       :description
+       "Codes describing anatomical locations. May include laterality.",
+       :valueSet "http://hl7.org/fhir/ValueSet/body-site",
+       :extension
+       [{:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-bindingName",
+         :valueBoolean nil,
+         :valueMarkdown nil,
+         :valueCanonical nil,
+         :valueString "BodySite"}]},
+      :alias nil,
+      :max "1",
+      :id "Observation.bodySite",
+      :comment
+      "Only used if not implicit in code found in Observation.code.  In many systems, this may be represented as a related observation instead of an inline component.   \n\nIf the use case requires BodySite to be handled as a separate resource (e.g. to identify and track separately) then use the standard extension[ bodySite](http://hl7.org/fhir/extension-bodysite.html).",
+      :base {:path "Observation.bodySite", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.method",
+      :min 0,
+      :definition
+      "Indicates the mechanism used to perform the observation.",
+      :isModifier false,
+      :short "How it was done",
+      :mapping
+      [{:identity "v2", :map "OBX-17"}
+       {:identity "rim", :map "methodCode"}],
+      :slicing nil,
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport nil,
+      :binding
+      {:strength "example",
+       :description "Methods for simple observations.",
+       :valueSet "http://hl7.org/fhir/ValueSet/observation-methods",
+       :extension
+       [{:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-bindingName",
+         :valueBoolean nil,
+         :valueMarkdown nil,
+         :valueCanonical nil,
+         :valueString "ObservationMethod"}]},
+      :alias nil,
+      :max "1",
+      :id "Observation.method",
+      :comment
+      "Only used if not implicit in code for Observation.code.",
+      :base {:path "Observation.method", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.specimen",
+      :min 0,
+      :definition
+      "The specimen that was used when this observation was made.",
+      :isModifier false,
+      :short "Specimen used for this observation",
+      :mapping
+      [{:identity "sct-concept", :map "< 123038009 |Specimen|"}
+       {:identity "v2", :map "SPM segment"}
+       {:identity "rim", :map "participation[typeCode=SPC].specimen"}
+       {:identity "sct-attr", :map "704319004 |Inherent in|"}],
+      :slicing nil,
+      :type
+      [{:code "Reference",
+        :targetProfile
+        ["http://hl7.org/fhir/StructureDefinition/Specimen"]}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.specimen",
+      :comment
+      "Should only be used if not implicit in code found in `Observation.code`.  Observations are not made on specimens themselves; they are made on a subject, but in many cases by the means of a specimen. Note that although specimens are often involved, they are not always tracked and reported explicitly. Also note that observation resources may be used in contexts that track the specimen explicitly (e.g. Diagnostic Report).",
+      :base {:path "Observation.specimen", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.device",
+      :min 0,
+      :definition "The device used to generate the observation data.",
+      :isModifier false,
+      :short "(Measurement) Device",
+      :mapping
+      [{:identity "sct-concept", :map "< 49062001 |Device|"}
+       {:identity "v2", :map "OBX-17 / PRT -10"}
+       {:identity "rim", :map "participation[typeCode=DEV]"}
+       {:identity "sct-attr", :map "424226004 |Using device|"}],
+      :slicing nil,
+      :type
+      [{:code "Reference",
+        :targetProfile
+        ["http://hl7.org/fhir/StructureDefinition/Device"
+         "http://hl7.org/fhir/StructureDefinition/DeviceMetric"]}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.device",
+      :comment
+      "Note that this is not meant to represent a device involved in the transmission of the result, e.g., a gateway.  Such devices may be documented using the Provenance resource where relevant.",
+      :base {:path "Observation.device", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "obs-3",
+        :severity "error",
+        :human "Must have at least a low or a high or text",
+        :expression "low.exists() or high.exists() or text.exists()",
+        :xpath "(exists(f:low) or exists(f:high)or exists(f:text))",
+        :source nil,
+        :extension nil}],
+      :path "Observation.referenceRange",
+      :min 0,
+      :definition
+      "Guidance on how to interpret the value by comparison to a normal or recommended range.  Multiple reference ranges are interpreted as an \"OR\".   In other words, to represent two distinct target populations, two `referenceRange` elements would be used.",
+      :isModifier false,
+      :short "Provides guide for interpretation",
+      :mapping
+      [{:identity "v2", :map "OBX.7"}
+       {:identity "rim",
+        :map
+        "outboundRelationship[typeCode=REFV]/target[classCode=OBS, moodCode=EVN]"}],
+      :slicing nil,
+      :type [{:code "BackboneElement", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "*",
+      :id "Observation.referenceRange",
+      :comment
+      "Most observations only have one generic reference range. Systems MAY choose to restrict to only supplying the relevant reference range based on knowledge about the patient (e.g., specific to the patient's age, gender, weight and other factors), but this might not be possible or appropriate. Whenever more than one reference range is supplied, the differences between them SHOULD be provided in the reference range and/or age properties.",
+      :base {:path "Observation.referenceRange", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint nil,
+      :path "Observation.referenceRange.id",
+      :min 0,
+      :definition
+      "Unique id for the element within a resource (for internal references). This may be any string value that does not contain spaces.",
+      :isModifier false,
+      :short "Unique id for inter-element referencing",
+      :mapping [{:identity "rim", :map "n/a"}],
+      :slicing nil,
+      :type
+      [{:code "http://hl7.org/fhirpath/System.String",
+        :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.referenceRange.id",
+      :comment nil,
+      :base {:path "Element.id", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "ext-1",
+        :severity "error",
+        :human "Must have either extensions or value[x], not both",
+        :expression "extension.exists() != value.exists()",
+        :xpath
+        "exists(f:extension)!=exists(f:*[starts-with(local-name(.), \"value\")])",
+        :source "http://hl7.org/fhir/StructureDefinition/Extension",
+        :extension nil}],
+      :path "Observation.referenceRange.extension",
+      :min 0,
+      :definition
+      "May be used to represent additional information that is not part of the basic definition of the element. To make the use of extensions safe and manageable, there is a strict set of governance  applied to the definition and use of extensions. Though any implementer can define an extension, there is a set of requirements that SHALL be met as part of the definition of the extension.",
+      :isModifier false,
+      :short "Additional content defined by implementations",
+      :mapping [{:identity "rim", :map "n/a"}],
+      :slicing nil,
+      :type [{:code "Extension", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias ["extensions" "user content"],
+      :max "*",
+      :id "Observation.referenceRange.extension",
+      :comment
+      "There can be no stigma associated with the use of extensions by any application, project, or standard - regardless of the institution or jurisdiction that uses or defines the extensions.  The use of extensions is what allows the FHIR specification to retain a core level of simplicity for everyone.",
+      :base {:path "Element.extension", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "ext-1",
+        :severity "error",
+        :human "Must have either extensions or value[x], not both",
+        :expression "extension.exists() != value.exists()",
+        :xpath
+        "exists(f:extension)!=exists(f:*[starts-with(local-name(.), \"value\")])",
+        :source "http://hl7.org/fhir/StructureDefinition/Extension",
+        :extension nil}],
+      :path "Observation.referenceRange.modifierExtension",
+      :min 0,
+      :definition
+      "May be used to represent additional information that is not part of the basic definition of the element and that modifies the understanding of the element in which it is contained and/or the understanding of the containing element's descendants. Usually modifier elements provide negation or qualification. To make the use of extensions safe and manageable, there is a strict set of governance applied to the definition and use of extensions. Though any implementer can define an extension, there is a set of requirements that SHALL be met as part of the definition of the extension. Applications processing a resource are required to check for modifier extensions.\n\nModifier extensions SHALL NOT change the meaning of any elements on Resource or DomainResource (including cannot change the meaning of modifierExtension itself).",
+      :isModifier true,
+      :short "Extensions that cannot be ignored even if unrecognized",
+      :mapping [{:identity "rim", :map "N/A"}],
+      :slicing nil,
+      :type [{:code "Extension", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias ["extensions" "user content" "modifiers"],
+      :max "*",
+      :id "Observation.referenceRange.modifierExtension",
+      :comment
+      "There can be no stigma associated with the use of extensions by any application, project, or standard - regardless of the institution or jurisdiction that uses or defines the extensions.  The use of extensions is what allows the FHIR specification to retain a core level of simplicity for everyone.",
+      :base
+      {:path "BackboneElement.modifierExtension", :min 0, :max "*"},
+      :isModifierReason
+      "Modifier extensions are expected to modify the meaning or interpretation of the element that contains them",
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.referenceRange.low",
+      :min 0,
+      :definition
+      "The value of the low bound of the reference range.  The low bound of the reference range endpoint is inclusive of the value (e.g.  reference range is >=5 - <=9). If the low bound is omitted,  it is assumed to be meaningless (e.g. reference range is <=2.3).",
+      :isModifier false,
+      :short "Low Range, if relevant",
+      :mapping
+      [{:identity "v2", :map "OBX-7"}
+       {:identity "rim", :map "value:IVL_PQ.low"}],
+      :slicing nil,
+      :type [{:code "Quantity", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.referenceRange.low",
+      :comment nil,
+      :base {:path "Observation.referenceRange.low", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.referenceRange.high",
+      :min 0,
+      :definition
+      "The value of the high bound of the reference range.  The high bound of the reference range endpoint is inclusive of the value (e.g.  reference range is >=5 - <=9). If the high bound is omitted,  it is assumed to be meaningless (e.g. reference range is >= 2.3).",
+      :isModifier false,
+      :short "High Range, if relevant",
+      :mapping
+      [{:identity "v2", :map "OBX-7"}
+       {:identity "rim", :map "value:IVL_PQ.high"}],
+      :slicing nil,
+      :type [{:code "Quantity", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.referenceRange.high",
+      :comment nil,
+      :base
+      {:path "Observation.referenceRange.high", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.referenceRange.type",
+      :min 0,
+      :definition
+      "Codes to indicate the what part of the targeted reference population it applies to. For example, the normal or therapeutic range.",
+      :isModifier false,
+      :short "Reference range qualifier",
+      :mapping
+      [{:identity "sct-concept",
+        :map
+        "< 260245000 |Findings values| OR  \r< 365860008 |General clinical state finding| \rOR \r< 250171008 |Clinical history or observation findings| OR  \r< 415229000 |Racial group| OR \r< 365400002 |Finding of puberty stage| OR\r< 443938003 |Procedure carried out on subject|"}
+       {:identity "v2", :map "OBX-10"}
+       {:identity "rim", :map "interpretationCode"}],
+      :slicing nil,
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport nil,
+      :binding
+      {:strength "preferred",
+       :description "Code for the meaning of a reference range.",
+       :valueSet "http://hl7.org/fhir/ValueSet/referencerange-meaning",
+       :extension
+       [{:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-bindingName",
+         :valueBoolean nil,
+         :valueMarkdown nil,
+         :valueCanonical nil,
+         :valueString "ObservationRangeMeaning"}]},
+      :alias nil,
+      :max "1",
+      :id "Observation.referenceRange.type",
+      :comment
+      "This SHOULD be populated if there is more than one range.  If this element is not present then the normal range is assumed.",
+      :base
+      {:path "Observation.referenceRange.type", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.referenceRange.appliesTo",
+      :min 0,
+      :definition
+      "Codes to indicate the target population this reference range applies to.  For example, a reference range may be based on the normal population or a particular sex or race.  Multiple `appliesTo`  are interpreted as an \"AND\" of the target populations.  For example, to represent a target population of African American females, both a code of female and a code for African American would be used.",
+      :isModifier false,
+      :short "Reference range population",
+      :mapping
+      [{:identity "sct-concept",
+        :map
+        "< 260245000 |Findings values| OR  \r< 365860008 |General clinical state finding| \rOR \r< 250171008 |Clinical history or observation findings| OR  \r< 415229000 |Racial group| OR \r< 365400002 |Finding of puberty stage| OR\r< 443938003 |Procedure carried out on subject|"}
+       {:identity "v2", :map "OBX-10"}
+       {:identity "rim", :map "interpretationCode"}],
+      :slicing nil,
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport nil,
+      :binding
+      {:strength "example",
+       :description
+       "Codes identifying the population the reference range applies to.",
+       :valueSet
+       "http://hl7.org/fhir/ValueSet/referencerange-appliesto",
+       :extension
+       [{:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-bindingName",
+         :valueBoolean nil,
+         :valueMarkdown nil,
+         :valueCanonical nil,
+         :valueString "ObservationRangeType"}]},
+      :alias nil,
+      :max "*",
+      :id "Observation.referenceRange.appliesTo",
+      :comment
+      "This SHOULD be populated if there is more than one range.  If this element is not present then the normal population is assumed.",
+      :base
+      {:path "Observation.referenceRange.appliesTo", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.referenceRange.age",
+      :min 0,
+      :definition
+      "The age at which this reference range is applicable. This is a neonatal age (e.g. number of weeks at term) if the meaning says so.",
+      :isModifier false,
+      :short "Applicable age range, if relevant",
+      :mapping
+      [{:identity "rim",
+        :map
+        "outboundRelationship[typeCode=PRCN].targetObservationCriterion[code=\"age\"].value"}],
+      :slicing nil,
+      :type [{:code "Range", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.referenceRange.age",
+      :comment nil,
+      :base {:path "Observation.referenceRange.age", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.referenceRange.text",
+      :min 0,
+      :definition
+      "Text based reference range in an observation which may be used when a quantitative range is not appropriate for an observation.  An example would be a reference value of \"Negative\" or a list or table of \"normals\".",
+      :isModifier false,
+      :short "Text based reference range in an observation",
+      :mapping
+      [{:identity "v2", :map "OBX-7"}
+       {:identity "rim", :map "value:ST"}],
+      :slicing nil,
+      :type [{:code "string", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.referenceRange.text",
+      :comment nil,
+      :base
+      {:path "Observation.referenceRange.text", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.hasMember",
+      :min 0,
+      :definition "Used when reporting vital signs panel components.",
+      :isModifier false,
+      :short "Used when reporting vital signs panel components",
+      :mapping
+      [{:identity "v2",
+        :map "Relationships established by OBX-4 usage"}
+       {:identity "rim", :map "outBoundRelationship"}],
+      :slicing nil,
+      :type
+      [{:code "Reference",
+        :targetProfile
+        ["http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse"
+         "http://hl7.org/fhir/StructureDefinition/MolecularSequence"
+         "http://hl7.org/fhir/StructureDefinition/vitalsigns"]}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "*",
+      :id "Observation.hasMember",
+      :comment
+      "When using this element, an observation will typically have either a value or a set of related resources, although both may be present in some cases.  For a discussion on the ways Observations can assembled in groups together, see [Notes](http://hl7.org/fhir/observation.html#obsgrouping) below.  Note that a system may calculate results from [QuestionnaireResponse](http://hl7.org/fhir/questionnaireresponse.html)  into a final score and represent the score as an Observation.",
+      :base {:path "Observation.hasMember", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.derivedFrom",
+      :min 0,
+      :definition
+      "The target resource that represents a measurement from which this observation value is derived. For example, a calculated anion gap or a fetal measurement based on an ultrasound image.",
+      :isModifier false,
+      :short "Related measurements the observation is made from",
+      :mapping
+      [{:identity "v2",
+        :map "Relationships established by OBX-4 usage"}
+       {:identity "rim", :map ".targetObservation"}],
+      :slicing nil,
+      :type
+      [{:code "Reference",
+        :targetProfile
+        ["http://hl7.org/fhir/StructureDefinition/DocumentReference"
+         "http://hl7.org/fhir/StructureDefinition/ImagingStudy"
+         "http://hl7.org/fhir/StructureDefinition/Media"
+         "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse"
+         "http://hl7.org/fhir/StructureDefinition/MolecularSequence"
+         "http://hl7.org/fhir/StructureDefinition/vitalsigns"]}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "*",
+      :id "Observation.derivedFrom",
+      :comment
+      "All the reference choices that are listed in this element can represent clinical observations and other measurements that may be the source for a derived value.  The most common reference will be another Observation.  For a discussion on the ways Observations can assembled in groups together, see [Notes](http://hl7.org/fhir/observation.html#obsgrouping) below.",
+      :base {:path "Observation.derivedFrom", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "vs-3",
+        :severity "error",
+        :human
+        "If there is no a value a data absent reason must be present",
+        :expression "value.exists() or dataAbsentReason.exists()",
+        :xpath
+        "f:*[starts-with(local-name(.), 'value')] or f:dataAbsentReason",
+        :source "http://hl7.org/fhir/StructureDefinition/vitalsigns",
+        :extension nil}],
+      :path "Observation.component",
+      :min 0,
+      :definition
+      "Used when reporting flow rates or oxygen concentration.",
+      :isModifier false,
+      :short "Used when reporting flow rates or oxygen concentration.",
+      :mapping
+      [{:identity "v2", :map "containment by OBX-4?"}
+       {:identity "rim", :map "outBoundRelationship[typeCode=COMP]"}],
+      :slicing
+      {:ordered nil,
+       :rules "open",
+       :description nil,
+       :discriminator [{:type "pattern", :path "code"}]},
+      :type [{:code "BackboneElement", :targetProfile nil}],
+      :mustSupport true,
+      :binding nil,
+      :alias nil,
+      :max "*",
+      :id "Observation.component",
+      :comment
+      "For a discussion on the ways Observations can be assembled in groups together see [Notes](http://hl7.org/fhir/observation.html#notes) below.",
+      :base {:path "Observation.component", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint nil,
+      :path "Observation.component.id",
+      :min 0,
+      :definition
+      "Unique id for the element within a resource (for internal references). This may be any string value that does not contain spaces.",
+      :isModifier false,
+      :short "Unique id for inter-element referencing",
+      :mapping [{:identity "rim", :map "n/a"}],
+      :slicing nil,
+      :type
+      [{:code "http://hl7.org/fhirpath/System.String",
+        :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.component.id",
+      :comment nil,
+      :base {:path "Element.id", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "ext-1",
+        :severity "error",
+        :human "Must have either extensions or value[x], not both",
+        :expression "extension.exists() != value.exists()",
+        :xpath
+        "exists(f:extension)!=exists(f:*[starts-with(local-name(.), \"value\")])",
+        :source "http://hl7.org/fhir/StructureDefinition/Extension",
+        :extension nil}],
+      :path "Observation.component.extension",
+      :min 0,
+      :definition
+      "May be used to represent additional information that is not part of the basic definition of the element. To make the use of extensions safe and manageable, there is a strict set of governance  applied to the definition and use of extensions. Though any implementer can define an extension, there is a set of requirements that SHALL be met as part of the definition of the extension.",
+      :isModifier false,
+      :short "Additional content defined by implementations",
+      :mapping [{:identity "rim", :map "n/a"}],
+      :slicing nil,
+      :type [{:code "Extension", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias ["extensions" "user content"],
+      :max "*",
+      :id "Observation.component.extension",
+      :comment
+      "There can be no stigma associated with the use of extensions by any application, project, or standard - regardless of the institution or jurisdiction that uses or defines the extensions.  The use of extensions is what allows the FHIR specification to retain a core level of simplicity for everyone.",
+      :base {:path "Element.extension", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "ext-1",
+        :severity "error",
+        :human "Must have either extensions or value[x], not both",
+        :expression "extension.exists() != value.exists()",
+        :xpath
+        "exists(f:extension)!=exists(f:*[starts-with(local-name(.), \"value\")])",
+        :source "http://hl7.org/fhir/StructureDefinition/Extension",
+        :extension nil}],
+      :path "Observation.component.modifierExtension",
+      :min 0,
+      :definition
+      "May be used to represent additional information that is not part of the basic definition of the element and that modifies the understanding of the element in which it is contained and/or the understanding of the containing element's descendants. Usually modifier elements provide negation or qualification. To make the use of extensions safe and manageable, there is a strict set of governance applied to the definition and use of extensions. Though any implementer can define an extension, there is a set of requirements that SHALL be met as part of the definition of the extension. Applications processing a resource are required to check for modifier extensions.\n\nModifier extensions SHALL NOT change the meaning of any elements on Resource or DomainResource (including cannot change the meaning of modifierExtension itself).",
+      :isModifier true,
+      :short "Extensions that cannot be ignored even if unrecognized",
+      :mapping [{:identity "rim", :map "N/A"}],
+      :slicing nil,
+      :type [{:code "Extension", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias ["extensions" "user content" "modifiers"],
+      :max "*",
+      :id "Observation.component.modifierExtension",
+      :comment
+      "There can be no stigma associated with the use of extensions by any application, project, or standard - regardless of the institution or jurisdiction that uses or defines the extensions.  The use of extensions is what allows the FHIR specification to retain a core level of simplicity for everyone.",
+      :base
+      {:path "BackboneElement.modifierExtension", :min 0, :max "*"},
+      :isModifierReason
+      "Modifier extensions are expected to modify the meaning or interpretation of the element that contains them",
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.code",
+      :min 1,
+      :definition
+      "Describes what was observed. Sometimes this is called the observation \"code\".",
+      :isModifier false,
+      :short "Type of component observation (code / type)",
+      :mapping
+      [{:identity "w5", :map "FiveWs.what[x]"}
+       {:identity "sct-concept",
+        :map
+        "< 363787002 |Observable entity| OR \r< 386053000 |Evaluation procedure|"}
+       {:identity "v2", :map "OBX-3"}
+       {:identity "rim", :map "code"}],
+      :slicing nil,
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport true,
+      :binding
+      {:strength "extensible",
+       :description
+       "The vital sign codes from the base FHIR and US Core Vital Signs.",
+       :valueSet
+       "http://hl7.org/fhir/us/core/ValueSet/us-core-vital-signs",
+       :extension nil},
+      :alias nil,
+      :max "1",
+      :id "Observation.component.code",
+      :comment
+      "*All* code-value and  component.code-component.value pairs need to be taken into account to correctly understand the meaning of the observation.",
+      :base {:path "Observation.component.code", :min 1, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.value[x]",
+      :min 0,
+      :definition
+      "Vital Signs value are typically recorded using the Quantity data type. For supporting observations such as cuff size could use other datatypes such as CodeableConcept.",
+      :isModifier false,
+      :short "Vital Sign Component Value",
+      :mapping
+      [{:identity "sct-concept",
+        :map "363714003 |Interprets| < 441742003 |Evaluation finding|"}
+       {:identity "v2", :map "OBX.2, OBX.5, OBX.6"}
+       {:identity "rim", :map "value"}
+       {:identity "sct-attr", :map "363714003 |Interprets|"}],
+      :slicing nil,
+      :type
+      [{:code "Quantity", :targetProfile nil}
+       {:code "CodeableConcept", :targetProfile nil}
+       {:code "string", :targetProfile nil}
+       {:code "boolean", :targetProfile nil}
+       {:code "integer", :targetProfile nil}
+       {:code "Range", :targetProfile nil}
+       {:code "Ratio", :targetProfile nil}
+       {:code "SampledData", :targetProfile nil}
+       {:code "time", :targetProfile nil}
+       {:code "dateTime", :targetProfile nil}
+       {:code "Period", :targetProfile nil}],
+      :mustSupport true,
+      :binding
+      {:strength "extensible",
+       :description "Common UCUM units for recording Vital Signs.",
+       :valueSet
+       "http://hl7.org/fhir/ValueSet/ucum-vitals-common|4.0.1",
+       :extension nil},
+      :alias nil,
+      :max "1",
+      :id "Observation.component.value[x]",
+      :comment
+      "Used when observation has a set of component observations. An observation may have both a value (e.g. an  Apgar score)  and component observations (the observations from which the Apgar score was derived). If a value is present, the datatype for this element should be determined by Observation.code. A CodeableConcept with just a text would be used instead of a string if the field was usually coded, or if the type associated with the Observation.code defines a coded value.  For additional guidance, see the [Notes section](http://hl7.org/fhir/observation.html#notes) below.",
+      :base {:path "Observation.component.value[x]", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.dataAbsentReason",
+      :min 0,
+      :definition
+      "Provides a reason why the expected value in the element Observation.component.value[x] is missing.",
+      :isModifier false,
+      :short "Why the component result is missing",
+      :mapping
+      [{:identity "v2", :map "N/A"}
+       {:identity "rim", :map "value.nullFlavor"}],
+      :slicing nil,
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport true,
+      :binding
+      {:strength "extensible",
+       :description
+       "Codes specifying why the result (`Observation.value[x]`) is missing.",
+       :valueSet "http://hl7.org/fhir/ValueSet/data-absent-reason",
+       :extension
+       [{:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-bindingName",
+         :valueBoolean nil,
+         :valueMarkdown nil,
+         :valueCanonical nil,
+         :valueString "ObservationValueAbsentReason"}]},
+      :alias nil,
+      :max "1",
+      :id "Observation.component.dataAbsentReason",
+      :comment
+      "\"Null\" or exceptional values can be represented two ways in FHIR Observations.  One way is to simply include them in the value set and represent the exceptions in the value.  For example, measurement values for a serology test could be  \"detected\", \"not detected\", \"inconclusive\", or  \"test not done\". \n\nThe alternate way is to use the value element for actual observations and use the explicit dataAbsentReason element to record exceptional values.  For example, the dataAbsentReason code \"error\" could be used when the measurement was not completed.  Because of these options, use-case agreements are required to interpret general observations for exceptional values.",
+      :base
+      {:path "Observation.component.dataAbsentReason",
+       :min 0,
+       :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.interpretation",
+      :min 0,
+      :definition
+      "A categorical assessment of an observation value.  For example, high, low, normal.",
+      :isModifier false,
+      :short "High, low, normal, etc.",
+      :mapping
+      [{:identity "sct-concept", :map "< 260245000 |Findings values|"}
+       {:identity "v2", :map "OBX-8"}
+       {:identity "rim", :map "interpretationCode"}
+       {:identity "sct-attr", :map "363713009 |Has interpretation|"}],
+      :slicing nil,
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport nil,
+      :binding
+      {:strength "extensible",
+       :description
+       "Codes identifying interpretations of observations.",
+       :valueSet
+       "http://hl7.org/fhir/ValueSet/observation-interpretation",
+       :extension
+       [{:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-bindingName",
+         :valueBoolean nil,
+         :valueMarkdown nil,
+         :valueCanonical nil,
+         :valueString "ObservationInterpretation"}]},
+      :alias ["Abnormal Flag"],
+      :max "*",
+      :id "Observation.component.interpretation",
+      :comment
+      "Historically used for laboratory results (known as 'abnormal flag' ),  its use extends to other use cases where coded interpretations  are relevant.  Often reported as one or more simple compact codes this element is often placed adjacent to the result value in reports and flow sheets to signal the meaning/normalcy status of the result.",
+      :base
+      {:path "Observation.component.interpretation", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.referenceRange",
+      :min 0,
+      :definition
+      "Guidance on how to interpret the value by comparison to a normal or recommended range.",
+      :isModifier false,
+      :short "Provides guide for interpretation of component result",
+      :mapping
+      [{:identity "v2", :map "OBX.7"}
+       {:identity "rim",
+        :map
+        "outboundRelationship[typeCode=REFV]/target[classCode=OBS, moodCode=EVN]"}],
+      :slicing nil,
+      :type nil,
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "*",
+      :id "Observation.component.referenceRange",
+      :comment
+      "Most observations only have one generic reference range. Systems MAY choose to restrict to only supplying the relevant reference range based on knowledge about the patient (e.g., specific to the patient's age, gender, weight and other factors), but this might not be possible or appropriate. Whenever more than one reference range is supplied, the differences between them SHOULD be provided in the reference range and/or age properties.",
+      :base
+      {:path "Observation.component.referenceRange", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "vs-3",
+        :severity "error",
+        :human
+        "If there is no a value a data absent reason must be present",
+        :expression "value.exists() or dataAbsentReason.exists()",
+        :xpath
+        "f:*[starts-with(local-name(.), 'value')] or f:dataAbsentReason",
+        :source "http://hl7.org/fhir/StructureDefinition/vitalsigns",
+        :extension nil}],
+      :path "Observation.component",
+      :min 0,
+      :definition
+      "Used when reporting component observation such as systolic and diastolic blood pressure.",
+      :isModifier false,
+      :short "Inhaled oxygen flow rate",
+      :mapping
+      [{:identity "v2", :map "containment by OBX-4?"}
+       {:identity "rim", :map "outBoundRelationship[typeCode=COMP]"}],
+      :slicing nil,
+      :type [{:code "BackboneElement", :targetProfile nil}],
+      :mustSupport true,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.component:FlowRate",
+      :comment
+      "For a discussion on the ways Observations can be assembled in groups together see [Notes](http://hl7.org/fhir/observation.html#notes) below.",
+      :base {:path "Observation.component", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint nil,
+      :path "Observation.component.id",
+      :min 0,
+      :definition
+      "Unique id for the element within a resource (for internal references). This may be any string value that does not contain spaces.",
+      :isModifier false,
+      :short "Unique id for inter-element referencing",
+      :mapping [{:identity "rim", :map "n/a"}],
+      :slicing nil,
+      :type
+      [{:code "http://hl7.org/fhirpath/System.String",
+        :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.component:FlowRate.id",
+      :comment nil,
+      :base {:path "Element.id", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "ext-1",
+        :severity "error",
+        :human "Must have either extensions or value[x], not both",
+        :expression "extension.exists() != value.exists()",
+        :xpath
+        "exists(f:extension)!=exists(f:*[starts-with(local-name(.), \"value\")])",
+        :source "http://hl7.org/fhir/StructureDefinition/Extension",
+        :extension nil}],
+      :path "Observation.component.extension",
+      :min 0,
+      :definition
+      "May be used to represent additional information that is not part of the basic definition of the element. To make the use of extensions safe and manageable, there is a strict set of governance  applied to the definition and use of extensions. Though any implementer can define an extension, there is a set of requirements that SHALL be met as part of the definition of the extension.",
+      :isModifier false,
+      :short "Additional content defined by implementations",
+      :mapping [{:identity "rim", :map "n/a"}],
+      :slicing nil,
+      :type [{:code "Extension", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias ["extensions" "user content"],
+      :max "*",
+      :id "Observation.component:FlowRate.extension",
+      :comment
+      "There can be no stigma associated with the use of extensions by any application, project, or standard - regardless of the institution or jurisdiction that uses or defines the extensions.  The use of extensions is what allows the FHIR specification to retain a core level of simplicity for everyone.",
+      :base {:path "Element.extension", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "ext-1",
+        :severity "error",
+        :human "Must have either extensions or value[x], not both",
+        :expression "extension.exists() != value.exists()",
+        :xpath
+        "exists(f:extension)!=exists(f:*[starts-with(local-name(.), \"value\")])",
+        :source "http://hl7.org/fhir/StructureDefinition/Extension",
+        :extension nil}],
+      :path "Observation.component.modifierExtension",
+      :min 0,
+      :definition
+      "May be used to represent additional information that is not part of the basic definition of the element and that modifies the understanding of the element in which it is contained and/or the understanding of the containing element's descendants. Usually modifier elements provide negation or qualification. To make the use of extensions safe and manageable, there is a strict set of governance applied to the definition and use of extensions. Though any implementer can define an extension, there is a set of requirements that SHALL be met as part of the definition of the extension. Applications processing a resource are required to check for modifier extensions.\n\nModifier extensions SHALL NOT change the meaning of any elements on Resource or DomainResource (including cannot change the meaning of modifierExtension itself).",
+      :isModifier true,
+      :short "Extensions that cannot be ignored even if unrecognized",
+      :mapping [{:identity "rim", :map "N/A"}],
+      :slicing nil,
+      :type [{:code "Extension", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias ["extensions" "user content" "modifiers"],
+      :max "*",
+      :id "Observation.component:FlowRate.modifierExtension",
+      :comment
+      "There can be no stigma associated with the use of extensions by any application, project, or standard - regardless of the institution or jurisdiction that uses or defines the extensions.  The use of extensions is what allows the FHIR specification to retain a core level of simplicity for everyone.",
+      :base
+      {:path "BackboneElement.modifierExtension", :min 0, :max "*"},
+      :isModifierReason
+      "Modifier extensions are expected to modify the meaning or interpretation of the element that contains them",
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.code",
+      :min 1,
+      :definition
+      "Describes what was observed. Sometimes this is called the observation \"code\".",
+      :isModifier false,
+      :short "Type of component observation (code / type)",
+      :mapping
+      [{:identity "w5", :map "FiveWs.what[x]"}
+       {:identity "sct-concept",
+        :map
+        "< 363787002 |Observable entity| OR \r< 386053000 |Evaluation procedure|"}
+       {:identity "v2", :map "OBX-3"}
+       {:identity "rim", :map "code"}],
+      :slicing nil,
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport true,
+      :binding
+      {:strength "extensible",
+       :description
+       "The vital sign codes from the base FHIR and US Core Vital Signs.",
+       :valueSet
+       "http://hl7.org/fhir/us/core/ValueSet/us-core-vital-signs",
+       :extension nil},
+      :alias nil,
+      :max "1",
+      :id "Observation.component:FlowRate.code",
+      :comment
+      "*All* code-value and  component.code-component.value pairs need to be taken into account to correctly understand the meaning of the observation.",
+      :base {:path "Observation.component.code", :min 1, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.value[x]",
+      :min 0,
+      :definition
+      "Vital Signs value are typically recorded using the Quantity data type. For supporting observations such as cuff size could use other datatypes such as CodeableConcept.",
+      :isModifier false,
+      :short "Vital Sign Component Value",
+      :mapping
+      [{:identity "sct-concept",
+        :map "363714003 |Interprets| < 441742003 |Evaluation finding|"}
+       {:identity "v2", :map "OBX.2, OBX.5, OBX.6"}
+       {:identity "rim", :map "value"}
+       {:identity "sct-attr", :map "363714003 |Interprets|"}],
+      :slicing nil,
+      :type [{:code "Quantity", :targetProfile nil}],
+      :mustSupport true,
+      :binding
+      {:strength "extensible",
+       :description "Common UCUM units for recording Vital Signs.",
+       :valueSet
+       "http://hl7.org/fhir/ValueSet/ucum-vitals-common|4.0.1",
+       :extension nil},
+      :alias nil,
+      :max "1",
+      :id "Observation.component:FlowRate.value[x]",
+      :comment
+      "Used when observation has a set of component observations. An observation may have both a value (e.g. an  Apgar score)  and component observations (the observations from which the Apgar score was derived). If a value is present, the datatype for this element should be determined by Observation.code. A CodeableConcept with just a text would be used instead of a string if the field was usually coded, or if the type associated with the Observation.code defines a coded value.  For additional guidance, see the [Notes section](http://hl7.org/fhir/observation.html#notes) below.",
+      :base {:path "Observation.component.value[x]", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint nil,
+      :path "Observation.component.value[x].id",
+      :min 0,
+      :definition
+      "Unique id for the element within a resource (for internal references). This may be any string value that does not contain spaces.",
+      :isModifier false,
+      :short "Unique id for inter-element referencing",
+      :mapping [{:identity "rim", :map "n/a"}],
+      :slicing nil,
+      :type
+      [{:code "http://hl7.org/fhirpath/System.String",
+        :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.component:FlowRate.value[x].id",
+      :comment nil,
+      :base {:path "Element.id", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "ext-1",
+        :severity "error",
+        :human "Must have either extensions or value[x], not both",
+        :expression "extension.exists() != value.exists()",
+        :xpath
+        "exists(f:extension)!=exists(f:*[starts-with(local-name(.), \"value\")])",
+        :source "http://hl7.org/fhir/StructureDefinition/Extension",
+        :extension nil}],
+      :path "Observation.component.value[x].extension",
+      :min 0,
+      :definition
+      "May be used to represent additional information that is not part of the basic definition of the element. To make the use of extensions safe and manageable, there is a strict set of governance  applied to the definition and use of extensions. Though any implementer can define an extension, there is a set of requirements that SHALL be met as part of the definition of the extension.",
+      :isModifier false,
+      :short "Additional content defined by implementations",
+      :mapping [{:identity "rim", :map "n/a"}],
+      :slicing
+      {:ordered nil,
+       :rules "open",
+       :description "Extensions are always sliced by (at least) url",
+       :discriminator [{:type "value", :path "url"}]},
+      :type [{:code "Extension", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias ["extensions" "user content"],
+      :max "*",
+      :id "Observation.component:FlowRate.value[x].extension",
+      :comment
+      "There can be no stigma associated with the use of extensions by any application, project, or standard - regardless of the institution or jurisdiction that uses or defines the extensions.  The use of extensions is what allows the FHIR specification to retain a core level of simplicity for everyone.",
+      :base {:path "Element.extension", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.value[x].value",
+      :min 1,
+      :definition
+      "The value of the measured amount. The value includes an implicit precision in the presentation of the value.",
+      :isModifier false,
+      :short "Numerical value (with implicit precision)",
+      :mapping
+      [{:identity "v2", :map "SN.2  / CQ - N/A"}
+       {:identity "rim",
+        :map
+        "PQ.value, CO.value, MO.value, IVL.high or IVL.low depending on the value"}],
+      :slicing nil,
+      :type [{:code "decimal", :targetProfile nil}],
+      :mustSupport true,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.component:FlowRate.value[x].value",
+      :comment
+      "The implicit precision in the value should always be honored. Monetary values have their own rules for handling precision (refer to standard accounting text books).",
+      :base {:path "Quantity.value", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.value[x].comparator",
+      :min 0,
+      :definition
+      "How the value should be understood and represented - whether the actual value is greater or less than the stated value due to measurement issues; e.g. if the comparator is \"<\" , then the real value is < stated value.",
+      :isModifier true,
+      :short "< | <= | >= | > - how to understand the value",
+      :mapping
+      [{:identity "v2", :map "SN.1  / CQ.1"}
+       {:identity "rim", :map "IVL properties"}],
+      :slicing nil,
+      :type [{:code "code", :targetProfile nil}],
+      :mustSupport nil,
+      :binding
+      {:strength "required",
+       :description
+       "How the Quantity should be understood and represented.",
+       :valueSet
+       "http://hl7.org/fhir/ValueSet/quantity-comparator|4.0.1",
+       :extension
+       [{:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-bindingName",
+         :valueBoolean nil,
+         :valueMarkdown nil,
+         :valueCanonical nil,
+         :valueString "QuantityComparator"}]},
+      :alias nil,
+      :max "1",
+      :id "Observation.component:FlowRate.value[x].comparator",
+      :comment nil,
+      :base {:path "Quantity.comparator", :min 0, :max "1"},
+      :isModifierReason
+      "This is labeled as \"Is Modifier\" because the comparator modifies the interpretation of the value significantly. If there is no comparator, then there is no modification of the value",
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.value[x].unit",
+      :min 1,
+      :definition "A human-readable form of the unit.",
+      :isModifier false,
+      :short "Unit representation",
+      :mapping
+      [{:identity "v2", :map "(see OBX.6 etc.) / CQ.2"}
+       {:identity "rim", :map "PQ.unit"}],
+      :slicing nil,
+      :type [{:code "string", :targetProfile nil}],
+      :mustSupport true,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.component:FlowRate.value[x].unit",
+      :comment nil,
+      :base {:path "Quantity.unit", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.value[x].system",
+      :min 1,
+      :definition
+      "The identification of the system that provides the coded form of the unit.",
+      :isModifier false,
+      :short "System that defines coded unit form",
+      :mapping
+      [{:identity "v2", :map "(see OBX.6 etc.) / CQ.2"}
+       {:identity "rim",
+        :map "CO.codeSystem, PQ.translation.codeSystem"}],
+      :slicing nil,
+      :type [{:code "uri", :targetProfile nil}],
+      :mustSupport true,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.component:FlowRate.value[x].system",
+      :comment nil,
+      :base {:path "Quantity.system", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.value[x].code",
+      :min 1,
+      :definition
+      "A computer processable form of the unit in some unit representation system.",
+      :isModifier false,
+      :short "Coded form of the unit",
+      :mapping
+      [{:identity "v2", :map "(see OBX.6 etc.) / CQ.2"}
+       {:identity "rim",
+        :map "PQ.code, MO.currency, PQ.translation.code"}],
+      :slicing nil,
+      :type [{:code "code", :targetProfile nil}],
+      :mustSupport true,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.component:FlowRate.value[x].code",
+      :comment
+      "The preferred system is UCUM, but SNOMED CT can also be used (for customary units) or ISO 4217 for currency.  The context of use may additionally require a code from a particular system.",
+      :base {:path "Quantity.code", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.dataAbsentReason",
+      :min 0,
+      :definition
+      "Provides a reason why the expected value in the element Observation.component.value[x] is missing.",
+      :isModifier false,
+      :short "Why the component result is missing",
+      :mapping
+      [{:identity "v2", :map "N/A"}
+       {:identity "rim", :map "value.nullFlavor"}],
+      :slicing nil,
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport true,
+      :binding
+      {:strength "extensible",
+       :description
+       "Codes specifying why the result (`Observation.value[x]`) is missing.",
+       :valueSet "http://hl7.org/fhir/ValueSet/data-absent-reason",
+       :extension
+       [{:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-bindingName",
+         :valueBoolean nil,
+         :valueMarkdown nil,
+         :valueCanonical nil,
+         :valueString "ObservationValueAbsentReason"}]},
+      :alias nil,
+      :max "1",
+      :id "Observation.component:FlowRate.dataAbsentReason",
+      :comment
+      "\"Null\" or exceptional values can be represented two ways in FHIR Observations.  One way is to simply include them in the value set and represent the exceptions in the value.  For example, measurement values for a serology test could be  \"detected\", \"not detected\", \"inconclusive\", or  \"test not done\". \n\nThe alternate way is to use the value element for actual observations and use the explicit dataAbsentReason element to record exceptional values.  For example, the dataAbsentReason code \"error\" could be used when the measurement was not completed.  Because of these options, use-case agreements are required to interpret general observations for exceptional values.",
+      :base
+      {:path "Observation.component.dataAbsentReason",
+       :min 0,
+       :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.interpretation",
+      :min 0,
+      :definition
+      "A categorical assessment of an observation value.  For example, high, low, normal.",
+      :isModifier false,
+      :short "High, low, normal, etc.",
+      :mapping
+      [{:identity "sct-concept", :map "< 260245000 |Findings values|"}
+       {:identity "v2", :map "OBX-8"}
+       {:identity "rim", :map "interpretationCode"}
+       {:identity "sct-attr", :map "363713009 |Has interpretation|"}],
+      :slicing nil,
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport nil,
+      :binding
+      {:strength "extensible",
+       :description
+       "Codes identifying interpretations of observations.",
+       :valueSet
+       "http://hl7.org/fhir/ValueSet/observation-interpretation",
+       :extension
+       [{:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-bindingName",
+         :valueBoolean nil,
+         :valueMarkdown nil,
+         :valueCanonical nil,
+         :valueString "ObservationInterpretation"}]},
+      :alias ["Abnormal Flag"],
+      :max "*",
+      :id "Observation.component:FlowRate.interpretation",
+      :comment
+      "Historically used for laboratory results (known as 'abnormal flag' ),  its use extends to other use cases where coded interpretations  are relevant.  Often reported as one or more simple compact codes this element is often placed adjacent to the result value in reports and flow sheets to signal the meaning/normalcy status of the result.",
+      :base
+      {:path "Observation.component.interpretation", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.referenceRange",
+      :min 0,
+      :definition
+      "Guidance on how to interpret the value by comparison to a normal or recommended range.",
+      :isModifier false,
+      :short "Provides guide for interpretation of component result",
+      :mapping
+      [{:identity "v2", :map "OBX.7"}
+       {:identity "rim",
+        :map
+        "outboundRelationship[typeCode=REFV]/target[classCode=OBS, moodCode=EVN]"}],
+      :slicing nil,
+      :type nil,
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "*",
+      :id "Observation.component:FlowRate.referenceRange",
+      :comment
+      "Most observations only have one generic reference range. Systems MAY choose to restrict to only supplying the relevant reference range based on knowledge about the patient (e.g., specific to the patient's age, gender, weight and other factors), but this might not be possible or appropriate. Whenever more than one reference range is supplied, the differences between them SHOULD be provided in the reference range and/or age properties.",
+      :base
+      {:path "Observation.component.referenceRange", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "vs-3",
+        :severity "error",
+        :human
+        "If there is no a value a data absent reason must be present",
+        :expression "value.exists() or dataAbsentReason.exists()",
+        :xpath
+        "f:*[starts-with(local-name(.), 'value')] or f:dataAbsentReason",
+        :source "http://hl7.org/fhir/StructureDefinition/vitalsigns",
+        :extension nil}],
+      :path "Observation.component",
+      :min 0,
+      :definition
+      "Used when reporting component observation such as systolic and diastolic blood pressure.",
+      :isModifier false,
+      :short "Inhaled oxygen concentration",
+      :mapping
+      [{:identity "v2", :map "containment by OBX-4?"}
+       {:identity "rim", :map "outBoundRelationship[typeCode=COMP]"}],
+      :slicing nil,
+      :type [{:code "BackboneElement", :targetProfile nil}],
+      :mustSupport true,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.component:Concentration",
+      :comment
+      "For a discussion on the ways Observations can be assembled in groups together see [Notes](http://hl7.org/fhir/observation.html#notes) below.",
+      :base {:path "Observation.component", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint nil,
+      :path "Observation.component.id",
+      :min 0,
+      :definition
+      "Unique id for the element within a resource (for internal references). This may be any string value that does not contain spaces.",
+      :isModifier false,
+      :short "Unique id for inter-element referencing",
+      :mapping [{:identity "rim", :map "n/a"}],
+      :slicing nil,
+      :type
+      [{:code "http://hl7.org/fhirpath/System.String",
+        :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.component:Concentration.id",
+      :comment nil,
+      :base {:path "Element.id", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "ext-1",
+        :severity "error",
+        :human "Must have either extensions or value[x], not both",
+        :expression "extension.exists() != value.exists()",
+        :xpath
+        "exists(f:extension)!=exists(f:*[starts-with(local-name(.), \"value\")])",
+        :source "http://hl7.org/fhir/StructureDefinition/Extension",
+        :extension nil}],
+      :path "Observation.component.extension",
+      :min 0,
+      :definition
+      "May be used to represent additional information that is not part of the basic definition of the element. To make the use of extensions safe and manageable, there is a strict set of governance  applied to the definition and use of extensions. Though any implementer can define an extension, there is a set of requirements that SHALL be met as part of the definition of the extension.",
+      :isModifier false,
+      :short "Additional content defined by implementations",
+      :mapping [{:identity "rim", :map "n/a"}],
+      :slicing nil,
+      :type [{:code "Extension", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias ["extensions" "user content"],
+      :max "*",
+      :id "Observation.component:Concentration.extension",
+      :comment
+      "There can be no stigma associated with the use of extensions by any application, project, or standard - regardless of the institution or jurisdiction that uses or defines the extensions.  The use of extensions is what allows the FHIR specification to retain a core level of simplicity for everyone.",
+      :base {:path "Element.extension", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "ext-1",
+        :severity "error",
+        :human "Must have either extensions or value[x], not both",
+        :expression "extension.exists() != value.exists()",
+        :xpath
+        "exists(f:extension)!=exists(f:*[starts-with(local-name(.), \"value\")])",
+        :source "http://hl7.org/fhir/StructureDefinition/Extension",
+        :extension nil}],
+      :path "Observation.component.modifierExtension",
+      :min 0,
+      :definition
+      "May be used to represent additional information that is not part of the basic definition of the element and that modifies the understanding of the element in which it is contained and/or the understanding of the containing element's descendants. Usually modifier elements provide negation or qualification. To make the use of extensions safe and manageable, there is a strict set of governance applied to the definition and use of extensions. Though any implementer can define an extension, there is a set of requirements that SHALL be met as part of the definition of the extension. Applications processing a resource are required to check for modifier extensions.\n\nModifier extensions SHALL NOT change the meaning of any elements on Resource or DomainResource (including cannot change the meaning of modifierExtension itself).",
+      :isModifier true,
+      :short "Extensions that cannot be ignored even if unrecognized",
+      :mapping [{:identity "rim", :map "N/A"}],
+      :slicing nil,
+      :type [{:code "Extension", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias ["extensions" "user content" "modifiers"],
+      :max "*",
+      :id "Observation.component:Concentration.modifierExtension",
+      :comment
+      "There can be no stigma associated with the use of extensions by any application, project, or standard - regardless of the institution or jurisdiction that uses or defines the extensions.  The use of extensions is what allows the FHIR specification to retain a core level of simplicity for everyone.",
+      :base
+      {:path "BackboneElement.modifierExtension", :min 0, :max "*"},
+      :isModifierReason
+      "Modifier extensions are expected to modify the meaning or interpretation of the element that contains them",
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.code",
+      :min 1,
+      :definition
+      "Describes what was observed. Sometimes this is called the observation \"code\".",
+      :isModifier false,
+      :short "Type of component observation (code / type)",
+      :mapping
+      [{:identity "w5", :map "FiveWs.what[x]"}
+       {:identity "sct-concept",
+        :map
+        "< 363787002 |Observable entity| OR \r< 386053000 |Evaluation procedure|"}
+       {:identity "v2", :map "OBX-3"}
+       {:identity "rim", :map "code"}],
+      :slicing nil,
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport true,
+      :binding
+      {:strength "extensible",
+       :description
+       "The vital sign codes from the base FHIR and US Core Vital Signs.",
+       :valueSet
+       "http://hl7.org/fhir/us/core/ValueSet/us-core-vital-signs",
+       :extension nil},
+      :alias nil,
+      :max "1",
+      :id "Observation.component:Concentration.code",
+      :comment
+      "*All* code-value and  component.code-component.value pairs need to be taken into account to correctly understand the meaning of the observation.",
+      :base {:path "Observation.component.code", :min 1, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.value[x]",
+      :min 0,
+      :definition
+      "Vital Signs value are typically recorded using the Quantity data type. For supporting observations such as cuff size could use other datatypes such as CodeableConcept.",
+      :isModifier false,
+      :short "Vital Sign Component Value",
+      :mapping
+      [{:identity "sct-concept",
+        :map "363714003 |Interprets| < 441742003 |Evaluation finding|"}
+       {:identity "v2", :map "OBX.2, OBX.5, OBX.6"}
+       {:identity "rim", :map "value"}
+       {:identity "sct-attr", :map "363714003 |Interprets|"}],
+      :slicing nil,
+      :type [{:code "Quantity", :targetProfile nil}],
+      :mustSupport true,
+      :binding
+      {:strength "extensible",
+       :description "Common UCUM units for recording Vital Signs.",
+       :valueSet
+       "http://hl7.org/fhir/ValueSet/ucum-vitals-common|4.0.1",
+       :extension nil},
+      :alias nil,
+      :max "1",
+      :id "Observation.component:Concentration.value[x]",
+      :comment
+      "Used when observation has a set of component observations. An observation may have both a value (e.g. an  Apgar score)  and component observations (the observations from which the Apgar score was derived). If a value is present, the datatype for this element should be determined by Observation.code. A CodeableConcept with just a text would be used instead of a string if the field was usually coded, or if the type associated with the Observation.code defines a coded value.  For additional guidance, see the [Notes section](http://hl7.org/fhir/observation.html#notes) below.",
+      :base {:path "Observation.component.value[x]", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint nil,
+      :path "Observation.component.value[x].id",
+      :min 0,
+      :definition
+      "Unique id for the element within a resource (for internal references). This may be any string value that does not contain spaces.",
+      :isModifier false,
+      :short "Unique id for inter-element referencing",
+      :mapping [{:identity "rim", :map "n/a"}],
+      :slicing nil,
+      :type
+      [{:code "http://hl7.org/fhirpath/System.String",
+        :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.component:Concentration.value[x].id",
+      :comment nil,
+      :base {:path "Element.id", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}
+       {:key "ext-1",
+        :severity "error",
+        :human "Must have either extensions or value[x], not both",
+        :expression "extension.exists() != value.exists()",
+        :xpath
+        "exists(f:extension)!=exists(f:*[starts-with(local-name(.), \"value\")])",
+        :source "http://hl7.org/fhir/StructureDefinition/Extension",
+        :extension nil}],
+      :path "Observation.component.value[x].extension",
+      :min 0,
+      :definition
+      "May be used to represent additional information that is not part of the basic definition of the element. To make the use of extensions safe and manageable, there is a strict set of governance  applied to the definition and use of extensions. Though any implementer can define an extension, there is a set of requirements that SHALL be met as part of the definition of the extension.",
+      :isModifier false,
+      :short "Additional content defined by implementations",
+      :mapping [{:identity "rim", :map "n/a"}],
+      :slicing
+      {:ordered nil,
+       :rules "open",
+       :description "Extensions are always sliced by (at least) url",
+       :discriminator [{:type "value", :path "url"}]},
+      :type [{:code "Extension", :targetProfile nil}],
+      :mustSupport nil,
+      :binding nil,
+      :alias ["extensions" "user content"],
+      :max "*",
+      :id "Observation.component:Concentration.value[x].extension",
+      :comment
+      "There can be no stigma associated with the use of extensions by any application, project, or standard - regardless of the institution or jurisdiction that uses or defines the extensions.  The use of extensions is what allows the FHIR specification to retain a core level of simplicity for everyone.",
+      :base {:path "Element.extension", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.value[x].value",
+      :min 1,
+      :definition
+      "The value of the measured amount. The value includes an implicit precision in the presentation of the value.",
+      :isModifier false,
+      :short "Numerical value (with implicit precision)",
+      :mapping
+      [{:identity "v2", :map "SN.2  / CQ - N/A"}
+       {:identity "rim",
+        :map
+        "PQ.value, CO.value, MO.value, IVL.high or IVL.low depending on the value"}],
+      :slicing nil,
+      :type [{:code "decimal", :targetProfile nil}],
+      :mustSupport true,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.component:Concentration.value[x].value",
+      :comment
+      "The implicit precision in the value should always be honored. Monetary values have their own rules for handling precision (refer to standard accounting text books).",
+      :base {:path "Quantity.value", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.value[x].comparator",
+      :min 0,
+      :definition
+      "How the value should be understood and represented - whether the actual value is greater or less than the stated value due to measurement issues; e.g. if the comparator is \"<\" , then the real value is < stated value.",
+      :isModifier true,
+      :short "< | <= | >= | > - how to understand the value",
+      :mapping
+      [{:identity "v2", :map "SN.1  / CQ.1"}
+       {:identity "rim", :map "IVL properties"}],
+      :slicing nil,
+      :type [{:code "code", :targetProfile nil}],
+      :mustSupport nil,
+      :binding
+      {:strength "required",
+       :description
+       "How the Quantity should be understood and represented.",
+       :valueSet
+       "http://hl7.org/fhir/ValueSet/quantity-comparator|4.0.1",
+       :extension
+       [{:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-bindingName",
+         :valueBoolean nil,
+         :valueMarkdown nil,
+         :valueCanonical nil,
+         :valueString "QuantityComparator"}]},
+      :alias nil,
+      :max "1",
+      :id "Observation.component:Concentration.value[x].comparator",
+      :comment nil,
+      :base {:path "Quantity.comparator", :min 0, :max "1"},
+      :isModifierReason
+      "This is labeled as \"Is Modifier\" because the comparator modifies the interpretation of the value significantly. If there is no comparator, then there is no modification of the value",
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.value[x].unit",
+      :min 1,
+      :definition "A human-readable form of the unit.",
+      :isModifier false,
+      :short "Unit representation",
+      :mapping
+      [{:identity "v2", :map "(see OBX.6 etc.) / CQ.2"}
+       {:identity "rim", :map "PQ.unit"}],
+      :slicing nil,
+      :type [{:code "string", :targetProfile nil}],
+      :mustSupport true,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.component:Concentration.value[x].unit",
+      :comment nil,
+      :base {:path "Quantity.unit", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.value[x].system",
+      :min 1,
+      :definition
+      "The identification of the system that provides the coded form of the unit.",
+      :isModifier false,
+      :short "System that defines coded unit form",
+      :mapping
+      [{:identity "v2", :map "(see OBX.6 etc.) / CQ.2"}
+       {:identity "rim",
+        :map "CO.codeSystem, PQ.translation.codeSystem"}],
+      :slicing nil,
+      :type [{:code "uri", :targetProfile nil}],
+      :mustSupport true,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.component:Concentration.value[x].system",
+      :comment nil,
+      :base {:path "Quantity.system", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.value[x].code",
+      :min 1,
+      :definition
+      "A computer processable form of the unit in some unit representation system.",
+      :isModifier false,
+      :short "Coded form of the unit",
+      :mapping
+      [{:identity "v2", :map "(see OBX.6 etc.) / CQ.2"}
+       {:identity "rim",
+        :map "PQ.code, MO.currency, PQ.translation.code"}],
+      :slicing nil,
+      :type [{:code "code", :targetProfile nil}],
+      :mustSupport true,
+      :binding nil,
+      :alias nil,
+      :max "1",
+      :id "Observation.component:Concentration.value[x].code",
+      :comment
+      "The preferred system is UCUM, but SNOMED CT can also be used (for customary units) or ISO 4217 for currency.  The context of use may additionally require a code from a particular system.",
+      :base {:path "Quantity.code", :min 0, :max "1"},
+      :isModifierReason nil,
+      :isSummary true}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.dataAbsentReason",
+      :min 0,
+      :definition
+      "Provides a reason why the expected value in the element Observation.component.value[x] is missing.",
+      :isModifier false,
+      :short "Why the component result is missing",
+      :mapping
+      [{:identity "v2", :map "N/A"}
+       {:identity "rim", :map "value.nullFlavor"}],
+      :slicing nil,
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport true,
+      :binding
+      {:strength "extensible",
+       :description
+       "Codes specifying why the result (`Observation.value[x]`) is missing.",
+       :valueSet "http://hl7.org/fhir/ValueSet/data-absent-reason",
+       :extension
+       [{:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-bindingName",
+         :valueBoolean nil,
+         :valueMarkdown nil,
+         :valueCanonical nil,
+         :valueString "ObservationValueAbsentReason"}]},
+      :alias nil,
+      :max "1",
+      :id "Observation.component:Concentration.dataAbsentReason",
+      :comment
+      "\"Null\" or exceptional values can be represented two ways in FHIR Observations.  One way is to simply include them in the value set and represent the exceptions in the value.  For example, measurement values for a serology test could be  \"detected\", \"not detected\", \"inconclusive\", or  \"test not done\". \n\nThe alternate way is to use the value element for actual observations and use the explicit dataAbsentReason element to record exceptional values.  For example, the dataAbsentReason code \"error\" could be used when the measurement was not completed.  Because of these options, use-case agreements are required to interpret general observations for exceptional values.",
+      :base
+      {:path "Observation.component.dataAbsentReason",
+       :min 0,
+       :max "1"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.interpretation",
+      :min 0,
+      :definition
+      "A categorical assessment of an observation value.  For example, high, low, normal.",
+      :isModifier false,
+      :short "High, low, normal, etc.",
+      :mapping
+      [{:identity "sct-concept", :map "< 260245000 |Findings values|"}
+       {:identity "v2", :map "OBX-8"}
+       {:identity "rim", :map "interpretationCode"}
+       {:identity "sct-attr", :map "363713009 |Has interpretation|"}],
+      :slicing nil,
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport nil,
+      :binding
+      {:strength "extensible",
+       :description
+       "Codes identifying interpretations of observations.",
+       :valueSet
+       "http://hl7.org/fhir/ValueSet/observation-interpretation",
+       :extension
+       [{:url
+         "http://hl7.org/fhir/StructureDefinition/elementdefinition-bindingName",
+         :valueBoolean nil,
+         :valueMarkdown nil,
+         :valueCanonical nil,
+         :valueString "ObservationInterpretation"}]},
+      :alias ["Abnormal Flag"],
+      :max "*",
+      :id "Observation.component:Concentration.interpretation",
+      :comment
+      "Historically used for laboratory results (known as 'abnormal flag' ),  its use extends to other use cases where coded interpretations  are relevant.  Often reported as one or more simple compact codes this element is often placed adjacent to the result value in reports and flow sheets to signal the meaning/normalcy status of the result.",
+      :base
+      {:path "Observation.component.interpretation", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}
+     {:constraint
+      [{:key "ele-1",
+        :severity "error",
+        :human "All FHIR elements must have a @value or children",
+        :expression "hasValue() or (children().count() > id.count())",
+        :xpath "@value|f:*|h:div",
+        :source "http://hl7.org/fhir/StructureDefinition/Element",
+        :extension nil}],
+      :path "Observation.component.referenceRange",
+      :min 0,
+      :definition
+      "Guidance on how to interpret the value by comparison to a normal or recommended range.",
+      :isModifier false,
+      :short "Provides guide for interpretation of component result",
+      :mapping
+      [{:identity "v2", :map "OBX.7"}
+       {:identity "rim",
+        :map
+        "outboundRelationship[typeCode=REFV]/target[classCode=OBS, moodCode=EVN]"}],
+      :slicing nil,
+      :type nil,
+      :mustSupport nil,
+      :binding nil,
+      :alias nil,
+      :max "*",
+      :id "Observation.component:Concentration.referenceRange",
+      :comment
+      "Most observations only have one generic reference range. Systems MAY choose to restrict to only supplying the relevant reference range based on knowledge about the patient (e.g., specific to the patient's age, gender, weight and other factors), but this might not be possible or appropriate. Whenever more than one reference range is supplied, the differences between them SHOULD be provided in the reference range and/or age properties.",
+      :base
+      {:path "Observation.component.referenceRange", :min 0, :max "*"},
+      :isModifierReason nil,
+      :isSummary false}]},
+   :status "active",
+   :kind "resource",
+   :url
+   "http://hl7.org/fhir/us/core/StructureDefinition/us-core-pulse-oximetry",
+   :version "4.0.0",
+   :differential
+   {:element
+    [{:path "Observation",
+      :fixedCode nil,
+      :min nil,
+      :definition
+      "Defines constraints on the Observation resource to represent inspired O2 by pulse oximetry and inspired oxygen concentration observations with a standard LOINC codes and UCUM units of measure. This profile is derived from the US Core Vital Signs Profile.",
+      :short "US Core Pulse Oximetry Profile",
+      :fixedUri nil,
+      :slicing nil,
+      :type nil,
+      :mustSupport false,
+      :sliceName nil,
+      :max nil,
+      :id "Observation",
+      :comment nil,
+      :patternCoding nil}
+     {:path "Observation.code",
+      :fixedCode nil,
+      :min nil,
+      :definition nil,
+      :short "Oxygen Saturation by Pulse Oximetry",
+      :fixedUri nil,
+      :slicing nil,
+      :type nil,
+      :mustSupport true,
+      :sliceName nil,
+      :max nil,
+      :id "Observation.code",
+      :comment
+      "The code (59408-5 Oxygen saturation in Arterial blood by Pulse oximetry) is included as an additional observation code to FHIR Core vital Oxygen Saturation code (2708-6 Oxygen saturation in Arterial blood).",
+      :patternCoding nil}
+     {:path "Observation.code.coding",
+      :fixedCode nil,
+      :min nil,
+      :definition nil,
+      :short nil,
+      :fixedUri nil,
+      :slicing
+      {:ordered nil,
+       :rules "open",
+       :description nil,
+       :discriminator [{:type "pattern", :path "$this"}]},
+      :type nil,
+      :mustSupport true,
+      :sliceName nil,
+      :max nil,
+      :id "Observation.code.coding",
+      :comment nil,
+      :patternCoding nil}
+     {:path "Observation.code.coding",
+      :fixedCode nil,
+      :min 1,
+      :definition nil,
+      :short nil,
+      :fixedUri nil,
+      :slicing nil,
+      :type [{:code "Coding", :targetProfile nil}],
+      :mustSupport true,
+      :sliceName "PulseOx",
+      :max "1",
+      :id "Observation.code.coding:PulseOx",
+      :comment nil,
+      :patternCoding
+      {:system "http://loinc.org", :value nil, :code "59408-5"}}
+     {:path "Observation.code.coding",
+      :fixedCode nil,
+      :min 1,
+      :definition nil,
+      :short nil,
+      :fixedUri nil,
+      :slicing nil,
+      :type [{:code "Coding", :targetProfile nil}],
+      :mustSupport true,
+      :sliceName "O2Sat",
+      :max "1",
+      :id "Observation.code.coding:O2Sat",
+      :comment nil,
+      :patternCoding
+      {:system "http://loinc.org", :value nil, :code "2708-6"}}
+     {:path "Observation.component",
+      :fixedCode nil,
+      :min nil,
+      :definition
+      "Used when reporting flow rates or oxygen concentration.",
+      :short "Used when reporting flow rates or oxygen concentration.",
+      :fixedUri nil,
+      :slicing
+      {:ordered nil,
+       :rules "open",
+       :description nil,
+       :discriminator [{:type "pattern", :path "code"}]},
+      :type nil,
+      :mustSupport true,
+      :sliceName nil,
+      :max nil,
+      :id "Observation.component",
+      :comment nil,
+      :patternCoding nil}
+     {:path "Observation.component",
+      :fixedCode nil,
+      :min 0,
+      :definition nil,
+      :short "Inhaled oxygen flow rate",
+      :fixedUri nil,
+      :slicing nil,
+      :type nil,
+      :mustSupport true,
+      :sliceName "FlowRate",
+      :max "1",
+      :id "Observation.component:FlowRate",
+      :comment nil,
+      :patternCoding nil}
+     {:path "Observation.component.code",
+      :fixedCode nil,
+      :min nil,
+      :definition nil,
+      :short nil,
+      :fixedUri nil,
+      :slicing nil,
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport true,
+      :sliceName nil,
+      :max nil,
+      :id "Observation.component:FlowRate.code",
+      :comment nil,
+      :patternCoding nil}
+     {:path "Observation.component.valueQuantity",
+      :fixedCode nil,
+      :min nil,
+      :definition nil,
+      :short nil,
+      :fixedUri nil,
+      :slicing nil,
+      :type nil,
+      :mustSupport true,
+      :sliceName nil,
+      :max nil,
+      :id "Observation.component:FlowRate.valueQuantity",
+      :comment nil,
+      :patternCoding nil}
+     {:path "Observation.component.valueQuantity.value",
+      :fixedCode nil,
+      :min 1,
+      :definition nil,
+      :short nil,
+      :fixedUri nil,
+      :slicing nil,
+      :type nil,
+      :mustSupport true,
+      :sliceName nil,
+      :max "1",
+      :id "Observation.component:FlowRate.valueQuantity.value",
+      :comment nil,
+      :patternCoding nil}
+     {:path "Observation.component.valueQuantity.unit",
+      :fixedCode nil,
+      :min 1,
+      :definition nil,
+      :short nil,
+      :fixedUri nil,
+      :slicing nil,
+      :type nil,
+      :mustSupport true,
+      :sliceName nil,
+      :max "1",
+      :id "Observation.component:FlowRate.valueQuantity.unit",
+      :comment nil,
+      :patternCoding nil}
+     {:path "Observation.component.valueQuantity.system",
+      :fixedCode nil,
+      :min 1,
+      :definition nil,
+      :short nil,
+      :fixedUri "http://unitsofmeasure.org",
+      :slicing nil,
+      :type [{:code "uri", :targetProfile nil}],
+      :mustSupport true,
+      :sliceName nil,
+      :max "1",
+      :id "Observation.component:FlowRate.valueQuantity.system",
+      :comment nil,
+      :patternCoding nil}
+     {:path "Observation.component.valueQuantity.code",
+      :fixedCode "L/min",
+      :min 1,
+      :definition nil,
+      :short nil,
+      :fixedUri nil,
+      :slicing nil,
+      :type [{:code "code", :targetProfile nil}],
+      :mustSupport true,
+      :sliceName nil,
+      :max "1",
+      :id "Observation.component:FlowRate.valueQuantity.code",
+      :comment nil,
+      :patternCoding nil}
+     {:path "Observation.component",
+      :fixedCode nil,
+      :min 0,
+      :definition nil,
+      :short "Inhaled oxygen concentration",
+      :fixedUri nil,
+      :slicing nil,
+      :type nil,
+      :mustSupport true,
+      :sliceName "Concentration",
+      :max "1",
+      :id "Observation.component:Concentration",
+      :comment nil,
+      :patternCoding nil}
+     {:path "Observation.component.code",
+      :fixedCode nil,
+      :min nil,
+      :definition nil,
+      :short nil,
+      :fixedUri nil,
+      :slicing nil,
+      :type [{:code "CodeableConcept", :targetProfile nil}],
+      :mustSupport true,
+      :sliceName nil,
+      :max nil,
+      :id "Observation.component:Concentration.code",
+      :comment nil,
+      :patternCoding nil}
+     {:path "Observation.component.valueQuantity",
+      :fixedCode nil,
+      :min nil,
+      :definition nil,
+      :short nil,
+      :fixedUri nil,
+      :slicing nil,
+      :type nil,
+      :mustSupport true,
+      :sliceName nil,
+      :max nil,
+      :id "Observation.component:Concentration.valueQuantity",
+      :comment nil,
+      :patternCoding nil}
+     {:path "Observation.component.valueQuantity.value",
+      :fixedCode nil,
+      :min 1,
+      :definition nil,
+      :short nil,
+      :fixedUri nil,
+      :slicing nil,
+      :type nil,
+      :mustSupport true,
+      :sliceName nil,
+      :max "1",
+      :id "Observation.component:Concentration.valueQuantity.value",
+      :comment nil,
+      :patternCoding nil}
+     {:path "Observation.component.valueQuantity.unit",
+      :fixedCode nil,
+      :min 1,
+      :definition nil,
+      :short nil,
+      :fixedUri nil,
+      :slicing nil,
+      :type nil,
+      :mustSupport true,
+      :sliceName nil,
+      :max "1",
+      :id "Observation.component:Concentration.valueQuantity.unit",
+      :comment nil,
+      :patternCoding nil}
+     {:path "Observation.component.valueQuantity.system",
+      :fixedCode nil,
+      :min 1,
+      :definition nil,
+      :short nil,
+      :fixedUri "http://unitsofmeasure.org",
+      :slicing nil,
+      :type [{:code "uri", :targetProfile nil}],
+      :mustSupport true,
+      :sliceName nil,
+      :max "1",
+      :id "Observation.component:Concentration.valueQuantity.system",
+      :comment nil,
+      :patternCoding nil}
+     {:path "Observation.component.valueQuantity.code",
+      :fixedCode "%",
+      :min 1,
+      :definition nil,
+      :short nil,
+      :fixedUri nil,
+      :slicing nil,
+      :type [{:code "code", :targetProfile nil}],
+      :mustSupport true,
+      :sliceName nil,
+      :max "1",
+      :id "Observation.component:Concentration.valueQuantity.code",
+      :comment nil,
+      :patternCoding nil}]},
+   :contact
+   [{:name "HL7 International - US Realm Steering Committee",
+     :telecom
+     [{:system "url",
+       :value
+       "http://www.hl7.org/Special/committees/usrealm/index.cfm",
+       :code nil}]}],
+   :text {:status "extensions"},
+   :baseDefinition
+   "http://hl7.org/fhir/us/core/StructureDefinition/us-core-vital-signs"}}}

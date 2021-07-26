@@ -4,10 +4,12 @@
     [org.example.schema :refer [star-wars-schema]]
     [criterium.core :as c]
     [com.walmartlabs.lacinia :refer [execute execute-parsed-query]]
+    [com.walmartlabs.lacinia.parser.schema :refer [parse-schema]]
     [com.walmartlabs.lacinia.parser :as parser]
     [clojure.java.shell :refer [sh]]
     [clojure.string :as str]
     [clojure.tools.cli :as cli]
+    [clojure.data.json :as json]
     [clojure.data.csv :as csv]
     [com.walmartlabs.lacinia.util :as util]
     [com.walmartlabs.lacinia.schema :as schema]
@@ -16,19 +18,43 @@
     [clojure.java.io :as io]
     [clojure.pprint :as pprint]
     [com.walmartlabs.test-utils :refer [simplify]]
+    [clj-async-profiler.core :as prof]
     [clojure.edn :as edn])
   (:import
     (java.util Date)
     (java.util.concurrent ThreadPoolExecutor TimeUnit SynchronousQueue)))
 
-;; Be aware that any change to this schema will invalidate any gathered
-;; performance data.
-
 (defn -defeat-linter
   []
   executor/selections-seq)
 
-(def compiled-schema (star-wars-schema))
+;; Be aware that any change to this schema will invalidate any gathered
+;; performance data.
+
+(def compiled-star-wars-schema (star-wars-schema))
+
+(defn ^:private read-edn
+  [file]
+  (or (some-> (io/resource file)
+              slurp
+              edn/read-string)
+      (throw (ex-info "File not found" {:file file}))))
+
+(defn ^:private read-json
+  [file]
+  (or (some-> file
+              io/resource
+              slurp
+              (json/read-str :key-fn keyword))))
+
+(def compiled-deep-schema
+  (-> "deep.sdl"
+       io/resource
+       slurp
+       parse-schema
+        (util/inject-resolvers {:Query/getResource (constantly
+                                                    (read-json "StructureDefinition-us-core-pulse-oximetry.json"))})
+       schema/compile))
 
 ;; A schema to measure the performance of errors
 (def planets-schema
@@ -169,16 +195,141 @@
             }
           }")
 
-(defn ^:private read-edn
-  [file]
-  (-> (io/resource file)
-      slurp
-      edn/read-string))
 
 (def ^:private benchmark-queries
   {:introspection
    {:query introspection-query-raw
     :expected (read-edn "introspection.edn")}
+
+   ;; :deep uses a single resolver that delivers the entire
+   ;; deeply nested map; it uses lots of fragments and the
+   ;; schema is both broad and deep; this hopefully resembles
+   ;; the runtime behavior for our bigger Walmart queries.
+   :deep
+   {:schema compiled-deep-schema
+    :query "
+   query {
+      getResource {
+        resourceType
+        text { status }
+        url
+        version
+        name
+        status
+        experimental
+        date
+        publisher
+        contact {
+          name
+          telecom {
+             ...reference
+          }
+        }
+        description
+        jurisdiction {
+          coding {
+             ...reference
+          }
+        }
+        copyright
+        fhirVersion
+        mapping { identity uri name }
+        kind
+        abstract
+        type
+        baseDefinition
+        derivation
+        snapshot {
+          element {
+            id
+            path
+            short
+            definition
+            comment
+            alias
+            min
+            max
+            base { path min max }
+            constraint {
+              key
+              severity
+              human
+              expression
+              xpath
+              source
+              extension {
+                 ...extension
+              }
+            }
+            mustSupport
+            isModifier
+            isModifierReason
+            isSummary
+            mapping {
+              identity
+              map
+            }
+            type {
+              code
+              targetProfile
+            }
+            binding {
+              strength
+              description
+              valueSet
+              extension {
+                ...extension
+              }
+            }
+            slicing {
+              ...slicing
+            }
+        }
+      }
+      differential {
+        element {
+          id
+          path
+          short
+          min
+          max
+          sliceName
+          type { code targetProfile }
+          patternCoding { ...reference }
+          definition
+          comment
+          mustSupport
+          slicing { ...slicing }
+          fixedUri
+          fixedCode
+        }
+       }
+     }
+   }
+
+   fragment reference on Reference {
+     system
+     value
+     code
+   }
+
+   fragment extension on Extension {
+     url
+     valueBoolean
+     valueMarkdown
+     valueCanonical
+     valueString
+   }
+
+   fragment slicing on ElementSlicing {
+     ordered
+     rules
+     description
+     discriminator { type path }
+   }
+
+   "
+    :expected (read-edn "deep-response.edn")}
 
    :basic
    {:query "
@@ -241,7 +392,7 @@
   (let [{query-string :query
          variables :vars
          :keys [schema expected]
-         :or {schema compiled-schema}} (get benchmark-queries benchmark-name)
+         :or {schema compiled-star-wars-schema}} (get benchmark-queries benchmark-name)
         parse-time (benchmark (parser/parse-query schema query-string))
         parsed-query (parser/parse-query schema query-string)
         actual-result (simplify (execute-parsed-query parsed-query variables nil))
@@ -259,7 +410,7 @@
   (let [{query-string :query
          variables :vars
          :keys [schema expected]
-         :or {schema compiled-schema}} (get benchmark-queries benchmark-name)
+         :or {schema compiled-star-wars-schema}} (get benchmark-queries benchmark-name)
         actual-result (simplify (execute schema query-string variables nil))]
     (when-not (= actual-result expected)
       (println "Benchmark returned unexpected result:\n\n")
@@ -307,21 +458,25 @@
                                 (map #(into prefix %)))
             dataset (into (read-dataset) new-benchmarks)]
 
-        (when (:print options)
-          (pprint/write dataset :right-margin 100)
-          println
+        (when-not (:no-print options)
+          (println "\nTest                 Parse (ms)  Exec (ms)")
+          (doseq [[_date _sha test-name parse-ms exec-ms] new-benchmarks]
+            (println (format "%-20s    %7.3f    %7.3f" test-name parse-ms exec-ms)))
           (flush))
 
-        (with-open [w (-> dataset-file io/file io/writer)]
-          (csv/write-csv w dataset))
+        (when-not (:no-store options)
+          (with-open [w (-> dataset-file io/file io/writer)]
+            (csv/write-csv w dataset))
 
-        (println "Updated" dataset-file))
+          (println "Updated" dataset-file)))
       (finally
-        (.shutdownNow executor)))))
+        (.shutdownNow executor)
+        (shutdown-agents)))))
 
 (def ^:private cli-opts
-  [["-p" "--print" "Print the table of benchmark data used to generate charts."]
-   ["-c" "--commit SHA" "Specify Git commit SHA; defaults to current commit (truncated to 8 chars)."]
+  [["-p" "--no-print" "Do not print the results of the test" :default false]
+   ["-c" "--commit SHA" "Specify Git commit SHA; defaults to current commit (truncated to 8 chars)"]
+   ["-s" "--no-store" "Do not save the results in perf/benchmarks.csv" :default false]
    ["-h" "--help" "This usage summary."]])
 
 (defn -main
@@ -362,6 +517,7 @@
 
   (test-benchmarks)
 
+  (test-benchmark :deep)
   ;; Some shims used when investigating the performance of the preview API:
 
   (let [parsed-query (parser/parse-query planets-schema introspection-query-raw)
@@ -372,6 +528,10 @@
           doall))
 
     nil)
+
+  (prof/profile (test-benchmark :deep))
+
+  (prof/serve-files 8080)
 
   )
 

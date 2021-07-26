@@ -135,14 +135,14 @@
         wrapped (r/wrap-resolver-result resolver-fn inc-wrapper)
         *result (as-promise (wrapped nil nil nil))
         *extensions (atom {})
-        [sc final-value] (apply-wrapped-values {:execution-context {:*extensions *extensions}} @*result)]
+        [sc final-value] (apply-wrapped-values {:*extensions *extensions} @*result)]
     (is (= 301 final-value))
     (is (= {:fie {:fie {:foe :fum}}}
            @*extensions))
     (is (= {:errors [:fail-1 :fail-2]                       ; check order of application
             :warnings [:warning-1 :warning-2]
-            :execution-context {:context {:gnip :gnop}
-                                :*extensions *extensions}}
+            :context {:gnip :gnop}
+            :*extensions *extensions}
            sc))))
 
 (deftest wrapped-value-may-itself-be-resolver-result

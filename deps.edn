@@ -17,6 +17,11 @@
                 org.clojure/tools.cli {:mvn/version "1.0.206"}}
    :extra-paths ["dev-resources"]}
 
+  ;; clj -Mdev:perf
+  :perf
+  {:main-opts ["--main" "perf"]
+   :extra-deps {com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.5.0"}}}
+
   ;; :test needs :dev, i.e. clj -Xdev:test
   :test
   {:extra-paths ["test"]

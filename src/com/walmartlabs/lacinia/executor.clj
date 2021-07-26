@@ -182,7 +182,11 @@
   ;; *extensions is an atom containing a map, if non-empty, it is added to the result map as :extensions
   ;; path is used when reporting errors
   ;; schema is the compiled schema (obtained from the parsed query)
-  [context resolved-value resolved-type *errors *warnings *extensions *resolver-tracing path schema])
+  [context resolved-value resolved-type *errors *warnings *extensions *resolver-tracing path schema
+   ;; These are used during selection; callback is the callback passed down
+   ;; the selector pipeline that is provided with the final resolved value and
+   ;; context.
+   errors callback warnings])
 
 (defrecord ^:private ResultTuple [alias value])
 
@@ -307,12 +311,12 @@
         ;; seqs before (repeatedly) invoking the callback, at which point, it is possible to
         ;; perform a recursive selection on the nested fields of the origin field.
         selector-callback
-        (fn selector-callback [{:keys [resolved-value resolved-type execution-context] :as selection-context}]
+        (fn selector-callback [{:keys [resolved-value resolved-type] :as execution-context}]
           (reset! *pass-through-exceptions true)
           ;; Any errors from the resolver (via with-errors) or anywhere along the
           ;; selection pipeline are enhanced and added to the execution context.
-          (apply-errors selection-context :errors :*errors)
-          (apply-errors selection-context :warnings :*warnings)
+          (apply-errors execution-context :errors :*errors)
+          (apply-errors execution-context :warnings :*warnings)
 
           (if (and (or (some? resolved-value)
                        (= [] (:path execution-context)))    ;; This covers the root operation
@@ -320,8 +324,8 @@
                    (seq sub-selections))
             (execute-nested-selections
               (assoc execution-context
-                     :resolved-value resolved-value
-                     :resolved-type resolved-type)
+                     :errors nil
+                     :warnings nil)
               sub-selections)
             (resolve-as resolved-value)))
         ;; In a concrete type, we know the selector from the field definition
@@ -346,16 +350,21 @@
         process-resolved-value (fn [resolved-value]
                                  (try
                                    (loop [resolved-value resolved-value
-                                          selector-context (sc/new-context  execution-context' selector-callback)]
+                                          ;; At this point, we only know the new resolved value, it's type
+                                          ;; will be established by the selector pipeline.
+                                          new-execution-context execution-context']
                                      (if (sc/is-wrapped-value? resolved-value)
                                        (recur (:value resolved-value)
-                                              (sc/apply-wrapped-value selector-context resolved-value))
+                                              (sc/apply-wrapped-value new-execution-context resolved-value))
                                        ;; Finally to a real value, not a wrapper.  The commands may have
                                        ;; modified the :errors or :execution-context keys, and the pipeline
                                        ;; will do the rest. Errors will be dealt with in the callback.
-                                       (-> selector-context
+                                       (-> new-execution-context
                                            (assoc :callback selector-callback
-                                                  :resolved-value resolved-value)
+                                                  :resolved-value resolved-value
+                                                  ;; Don't actually know the type yet, that will come
+                                                  ;; inside the selector pipeline.
+                                                  :resolved-type nil)
                                            selector)))
                                    (catch Throwable t
                                      (if @*pass-through-exceptions
@@ -371,6 +380,11 @@
                                                           :field-name qualified-name
                                                           :arguments arguments
                                                           :location location} t)))))))
+
+        ;; When tracing is enabled, defeat the optimization so that the (trivial) resolver can be
+        ;; invoke and its execution time tracked.
+        direct-fn (when-not (:*resolver-tracing execution-context)
+                    (-> selection :field-definition :direct-fn))
 
         ;; Given a ResolverResult from a field resolver, unwrap the field's RR and pass it through process-resolved-value.
         ;; process-resolved-value also returns an RR and chain that RR's delivered value to the RR returned from this function.
@@ -393,10 +407,22 @@
     (cond
 
       is-fragment?
-      (selector (sc/new-context execution-context'
-                                selector-callback
-                                (:resolved-value execution-context')
-                                resolved-type))
+      (selector (assoc execution-context' :callback selector-callback))
+
+      ;; Optimization: for simple fields there may be direct function.
+      ;; This is a function that synchronously provides the value from the container resolved value.
+      ;; This is almost always a default resolver.  The extracted value is passed though to
+      ;; the selector, which returns a ResolverResult. Thus we've peeled back at least one layer
+      ;; of ResolveResultPromise.
+      direct-fn
+      (let [resolved-value (-> execution-context'
+                               :resolved-value
+                               direct-fn)]
+        ;; Normally, resolved-value is a raw value, ready to be immediately processed; but in rare cases
+        ;; it may be a ResolverResult that needs to be unwrapped before processing.
+        (if (resolve/is-resolver-result? resolved-value)
+          (unwrap-resolver-result resolved-value)
+          (process-resolved-value resolved-value)))
 
       ;; Here's where it comes together.  The field's selector
       ;; does the validations, and for list types, does the mapping.
