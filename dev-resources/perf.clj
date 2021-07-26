@@ -18,6 +18,7 @@
     [clojure.java.io :as io]
     [clojure.pprint :as pprint]
     [com.walmartlabs.test-utils :refer [simplify]]
+    [clj-async-profiler.core :as prof]
     [clojure.edn :as edn])
   (:import
     (java.util Date)
@@ -527,6 +528,10 @@
           doall))
 
     nil)
+
+  (prof/profile (test-benchmark :deep))
+
+  (prof/serve-files 8080)
 
   )
 
