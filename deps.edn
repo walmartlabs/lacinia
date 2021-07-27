@@ -15,12 +15,14 @@
                 org.clojure/test.check {:mvn/version "1.1.0"}
                 org.clojure/data.csv {:mvn/version "1.0.0"}
                 org.clojure/tools.cli {:mvn/version "1.0.206"}}
+   :jvm-opts ["-Xmx1g" "-Xms1g" "-XX:NewSize=200m" "-XX:MaxNewSize=500m"
+              "-XX:-OmitStackTraceInFastThrow" "-XX:+UnlockDiagnosticVMOptions"
+              "-XX:+DebugNonSafepoints" "-Dapple.awt.UIElement=true"]
    :extra-paths ["dev-resources"]}
 
   ;; clj -Mdev:perf
   :perf
-  {:main-opts ["--main" "perf"]
-   :extra-deps {com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.5.0"}}}
+  {:main-opts ["--main" "perf"]}
 
   ;; :test needs :dev, i.e. clj -Xdev:test
   :test
