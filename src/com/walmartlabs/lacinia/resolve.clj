@@ -131,6 +131,63 @@
 
 (def ^:private *promise-id-allocator (atom 0))
 
+(defrecord ^:private ResolverResultPromiseImpl [*state promise-id dynamic-bindings]
+
+  ResolverResult
+  (on-deliver! [this callback]
+    (loop []
+      (let [state @*state]
+        (cond
+          (contains? state :resolved-value)
+          (callback (:resolved-value state))
+
+          (contains? state :callback)
+          (throw (IllegalStateException. "ResolverResultPromise callback may only be set once."))
+
+          (compare-and-set! *state state (assoc state :callback callback))
+          nil
+
+          :else
+          (recur))))
+
+    this)
+
+  ResolverResultPromise
+
+  (deliver! [this resolved-value]
+    (loop []
+      (let [state @*state]
+        (when (contains? state :resolved-value)
+          (throw (IllegalStateException. "May only realize a ResolverResultPromise once.")))
+
+        (if (compare-and-set! *state state (assoc state :resolved-value resolved-value))
+          (when-let [callback (:callback state)]
+            (let [^Executor executor *callback-executor*]
+              (if (or (nil? executor)
+                      *in-callback-thread*)
+                (callback resolved-value)
+                (.execute executor #(with-bindings (assoc dynamic-bindings #'*in-callback-thread* true)
+                                      (callback resolved-value))))))
+          (recur))))
+
+    this)
+
+  (deliver! [this resolved-value error]
+    (deliver! this (with-error resolved-value error)))
+
+  Object
+
+  (toString [_]
+    (str "ResolverResultPromise[" promise-id
+
+         (when (contains? @*state :callback)
+           ", callback")
+
+         (when (contains? @*state :resolved-value)
+           ", resolved")
+
+         "]")))
+
 (defn resolve-promise
   "Returns a [[ResolverResultPromise]].
 
@@ -142,62 +199,7 @@
   (let [*state (atom {})
         promise-id (swap! *promise-id-allocator inc)
         dynamic-bindings (get-thread-bindings)]
-    (reify
-      ResolverResult
-
-      (on-deliver! [this callback]
-        (loop []
-          (let [state @*state]
-            (cond
-              (contains? state :resolved-value)
-              (callback (:resolved-value state))
-
-              (contains? state :callback)
-              (throw (IllegalStateException. "ResolverResultPromise callback may only be set once."))
-
-              (compare-and-set! *state state (assoc state :callback callback))
-              nil
-
-              :else
-              (recur))))
-
-        this)
-
-      ResolverResultPromise
-
-      (deliver! [this resolved-value]
-        (loop []
-          (let [state @*state]
-            (when (contains? state :resolved-value)
-              (throw (IllegalStateException. "May only realize a ResolverResultPromise once.")))
-
-            (if (compare-and-set! *state state (assoc state :resolved-value resolved-value))
-              (when-let [callback (:callback state)]
-                (let [^Executor executor *callback-executor*]
-                  (if (or (nil? executor)
-                          *in-callback-thread*)
-                    (callback resolved-value)
-                    (.execute executor #(with-bindings (assoc dynamic-bindings #'*in-callback-thread* true)
-                                          (callback resolved-value))))))
-              (recur))))
-
-        this)
-
-      (deliver! [this resolved-value error]
-        (deliver! this (with-error resolved-value error)))
-
-      Object
-
-      (toString [_]
-        (str "ResolverResultPromise[" promise-id
-
-             (when (contains? @*state :callback)
-               ", callback")
-
-             (when (contains? @*state :resolved-value)
-               ", resolved")
-
-             "]")))))
+    (->ResolverResultPromiseImpl *state promise-id dynamic-bindings)))
 
 (defn is-resolver-result?
   "Is the provided value actually a [[ResolverResult]]?"
@@ -207,6 +209,7 @@
     ;; This is a little bit of optimization; satisfies? can
     ;; be a bit expensive.
     (or (instance? ResolverResultImpl value)
+        (instance? ResolverResultPromiseImpl value)
         (satisfies? ResolverResult value))))
 
 (defn as-resolver-fn
