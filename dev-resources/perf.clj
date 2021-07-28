@@ -18,14 +18,25 @@
     [clojure.java.io :as io]
     [clojure.pprint :as pprint]
     [com.walmartlabs.test-utils :refer [simplify]]
-    [clojure.edn :as edn])
+    [clojure.edn :as edn]
+    [com.walmartlabs.lacinia.resolve :as resolve])
   (:import
     (java.util Date)
-    (java.util.concurrent ThreadPoolExecutor TimeUnit SynchronousQueue)))
+    (java.util.concurrent ThreadPoolExecutor TimeUnit LinkedBlockingQueue)))
 
 (defn -defeat-linter
   []
   executor/selections-seq)
+
+(defmacro with-executor
+  [& body]
+  ;; Thread pool size of 10, but allow virtually infinite number of queued executions
+  `(let [executor# (ThreadPoolExecutor. 0 10 5 TimeUnit/SECONDS (LinkedBlockingQueue.))]
+     (try
+       (binding [resolve/*callback-executor* executor#]
+         ~@body)
+       (finally
+         (.shutdown executor#)))))
 
 ;; Be aware that any change to this schema will invalidate any gathered
 ;; performance data.
@@ -417,9 +428,10 @@
 
 (defn ^:private test-benchmarks
   []
-  (doseq [benchmark-name (keys benchmark-queries)]
-    (println "Testing" benchmark-name)
-    (test-benchmark benchmark-name)))
+  (with-executor
+    (doseq [benchmark-name (keys benchmark-queries)]
+      (println "Testing" benchmark-name)
+      (test-benchmark benchmark-name))))
 
 (defn ^:private git-commit
   []
@@ -448,29 +460,25 @@
 
 (defn ^:private run-benchmarks
   [options]
-  (let [executor (ThreadPoolExecutor. 0 10 5 TimeUnit/SECONDS (SynchronousQueue.))]
-    (try
-      (test-benchmarks)
-      (let [prefix [(format "%tY%<tm%<td" (Date.))
-                    (or (:commit options) (git-commit))]
-            new-benchmarks (->> (map run-benchmark (keys benchmark-queries))
-                                (map #(into prefix %)))
-            dataset (into (read-dataset) new-benchmarks)]
+  (with-executor
+    (test-benchmarks)
+    (let [prefix [(format "%tY%<tm%<td" (Date.))
+                  (or (:commit options) (git-commit))]
+          new-benchmarks (->> (map run-benchmark (keys benchmark-queries))
+                              (map #(into prefix %)))
+          dataset (into (read-dataset) new-benchmarks)]
 
-        (when-not (:no-print options)
-          (println "\nTest                 Parse (ms)  Exec (ms)")
-          (doseq [[_date _sha test-name parse-ms exec-ms] new-benchmarks]
-            (println (format "%-20s    %7.3f    %7.3f" test-name parse-ms exec-ms)))
-          (flush))
+      (when-not (:no-print options)
+        (println "\nTest                 Parse (ms)  Exec (ms)")
+        (doseq [[_date _sha test-name parse-ms exec-ms] new-benchmarks]
+          (println (format "%-20s    %7.3f    %7.3f" test-name parse-ms exec-ms)))
+        (flush))
 
-        (when-not (:no-store options)
-          (with-open [w (-> dataset-file io/file io/writer)]
-            (csv/write-csv w dataset))
+      (when-not (:no-store options)
+        (with-open [w (-> dataset-file io/file io/writer)]
+          (csv/write-csv w dataset))
 
-          (println "Updated" dataset-file)))
-      (finally
-        (.shutdownNow executor)
-        (shutdown-agents)))))
+        (println "Updated" dataset-file)))))
 
 (def ^:private cli-opts
   [["-p" "--no-print" "Do not print the results of the test" :default false]
@@ -494,7 +502,9 @@
       (usage errors)
 
       :else
-      (run-benchmarks options))))
+      (do
+        (run-benchmarks options)
+        (shutdown-agents)))))
 
 
 (defn ^:private selection-tree->field-tuples
@@ -512,6 +522,17 @@
           tree))
 
 
+(defn deep-parallel
+  ([]
+   (deep-parallel 100))
+  ([n]
+   (with-executor
+     (doall
+       (pmap (fn [x]
+               (test-benchmark :deep))
+             (range n)))
+     nil)))
+
 (comment
 
   (test-benchmarks)
@@ -528,6 +549,9 @@
 
     nil)
 
+  (deep-parallel 1000)
+
+  (run-benchmarks {:no-store true})
 
   )
 

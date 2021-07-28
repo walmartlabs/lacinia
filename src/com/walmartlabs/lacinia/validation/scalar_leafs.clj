@@ -15,8 +15,8 @@
 (ns com.walmartlabs.lacinia.validation.scalar-leafs
   {:no-doc true}
   (:require
-    [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.lacinia.internal-utils :refer [q]]))
+    [com.walmartlabs.lacinia.internal-utils :refer [q cond-let]]
+    [com.walmartlabs.lacinia.selection :as selection]))
 
 (defn ^:private validate-selection
   "Recursively checks if all specified fields are scalar or enum types.
@@ -28,17 +28,19 @@
   `[{:message \"Field `friends' (of type `character')must have at least one selection.\"
      :locations [{:line 1 :column 7}]}]`"
   [selection]
-  (cond
+  (cond-let
     ;; Fragment spreads do not ever have sub-selections, and are validated
     ;; elsewhere.
-    (= :fragment-spread (:selection-type selection))
-    []
+    (= :named-fragment (selection/selection-kind selection))
+    nil
 
     (:leaf? selection)
-    []
+    nil
 
-    (seq (:selections selection))
-    (mapcat validate-selection (:selections selection))
+    :let [sub-selections (:selections selection)]
+
+    (seq sub-selections)
+    (mapcat validate-selection sub-selections)
 
     :else
     [{:message (format "Field %s must have at least one selection."

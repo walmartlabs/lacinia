@@ -17,7 +17,9 @@
                 org.clojure/tools.cli {:mvn/version "1.0.206"}}
    :jvm-opts ["-Xmx1g" "-Xms1g" "-XX:NewSize=200m" "-XX:MaxNewSize=500m"
               "-XX:-OmitStackTraceInFastThrow" "-XX:+UnlockDiagnosticVMOptions"
-              "-XX:+DebugNonSafepoints" "-Dapple.awt.UIElement=true"]
+              "-XX:+DebugNonSafepoints"
+              "-XX:FlightRecorderOptions=stackdepth=128"
+              "-Dapple.awt.UIElement=true"]
    :extra-paths ["dev-resources"]}
 
   ;; clj -Mdev:perf
