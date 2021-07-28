@@ -492,8 +492,6 @@
                                                              errors (assoc :errors (distinct errors))
                                                              warnings (assoc-in [:extensions :warnings] (distinct warnings))))))))
               (catch Throwable t
-                (prn `execute-query t)
-                (flush)
                 (resolve/deliver! result-promise t))))]
 
     (if executor
