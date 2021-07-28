@@ -19,6 +19,7 @@
     [clojure.pprint :as pprint]
     [com.walmartlabs.test-utils :refer [simplify]]
     [clojure.edn :as edn]
+    [clj-async-profiler.core :as prof]
     [com.walmartlabs.lacinia.resolve :as resolve])
   (:import
     (java.util Date)
@@ -522,14 +523,14 @@
           tree))
 
 
-(defn deep-parallel
-  ([]
-   (deep-parallel 100))
-  ([n]
+(defn test-parallel
+  ([benchmark-name]
+   (test-parallel benchmark-name 100))
+  ([benchmark-name n]
    (with-executor
      (doall
        (pmap (fn [x]
-               (test-benchmark :deep))
+               (test-benchmark benchmark-name))
              (range n)))
      nil)))
 
@@ -549,9 +550,15 @@
 
     nil)
 
-  (deep-parallel 1000)
+  (test-parallel :deep 10)
 
   (run-benchmarks {:no-store true})
 
+
+  (prof/profile
+    (test-parallel :deep))
+
+  (prof/serve-files 8080)
+  ;; Open http://localhost:8080
   )
 
