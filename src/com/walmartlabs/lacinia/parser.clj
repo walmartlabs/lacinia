@@ -1395,7 +1395,7 @@
     :inline-fragment
     (mapcat #(summarize-selection parsed-query %) (:selections selection))
 
-    :fragment-spread
+    :named-fragment
     (let [{:keys [fragment-name]} selection
           fragment-selections (get-in parsed-query [:fragments fragment-name :selections])]
       (mapcat #(summarize-selection parsed-query %) fragment-selections))

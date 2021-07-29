@@ -673,6 +673,15 @@
         selection (get context constants/selection-key)]
     (build-selections-map parsed-query (:selections selection))))
 
+(defrecord ^:private RootSelections [field-definition selections]
+
+  selection/SelectionSet
+
+  ;; Effectively, this is a selection set on the root field (Query, Mutation, or Subscription).
+  (selection-kind [_] :field)
+
+  (selections [_] selections))
+
 (defn parsed-query->context
   "Converts a parsed query, prior to execution, into a context compatible with preview API:
 
@@ -690,7 +699,6 @@
   [parsed-query]
   (let [{:keys [root selections]} parsed-query]
     {constants/parsed-query-key parsed-query
-     constants/selection-key {:field-definition root
-                              :selections selections}}))
+     constants/selection-key (->RootSelections root selections)}))
 
 
