@@ -17,7 +17,7 @@
                 org.clojure/tools.cli {:mvn/version "1.0.206"}
                 com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.5.0"}}
    :jvm-opts ["-Xmx1g"
-              ;"-Xms1g"
+              "-Xms1g"
               "-XX:NewSize=200m"
               "-XX:MaxNewSize=500m"
               "-XX:-OmitStackTraceInFastThrow"
