@@ -276,4 +276,4 @@
              (on-deliver! [_ _]))
         record (->NonStandardRR)]
     (is (r/is-resolver-result? reified))
-    (is (r/is-resolver-result? record))))
+    (is (r/is-resolver-result? record)))
