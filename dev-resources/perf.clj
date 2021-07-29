@@ -558,6 +558,12 @@
   (prof/profile
     (test-parallel :deep))
 
+  (prof/profile
+    (test-benchmark :deep))
+
+  (with-executor
+    (run-benchmark :deep))
+
   (prof/serve-files 8080)
   ;; Open http://localhost:8080
   )
