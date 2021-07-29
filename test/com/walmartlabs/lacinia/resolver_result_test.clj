@@ -263,3 +263,17 @@
     (resolve/on-deliver! agg *final)
     (is (= {}
            (deref *final 100 ::timeout)))))
+
+(defrecord ^:private NonStandardRR []
+
+  r/ResolverResult
+  (on-deliver! [_ _]))
+
+(def recogonizes-resolver-result
+  ;; Test the very optimized version of is-resolver-result?
+  (let [reified (reify
+             r/ResolverResult
+             (on-deliver! [_ _]))
+        record (->NonStandardRR)]
+    (is (r/is-resolver-result? reified))
+    (is (r/is-resolver-result? record))))

@@ -33,7 +33,8 @@
   (:require
     [com.walmartlabs.lacinia.selector-context :refer [is-wrapped-value? wrap-value]])
   (:import
-    (java.util.concurrent Executor)))
+    (java.util.concurrent Executor)
+    (clojure.lang IPersistentMap IPersistentVector IPersistentCollection APersistentMap APersistentVector LazySeq APersistentSet)))
 
 (def ^{:dynamic true
        :added "0.20.0"} ^Executor *callback-executor*
@@ -205,12 +206,24 @@
   "Is the provided value actually a [[ResolverResult]]?"
   {:added "0.23.0"}
   [value]
-  (when value
-    ;; This is a little bit of optimization; satisfies? can
-    ;; be a bit expensive.
-    (or (instance? ResolverResultImpl value)
-        (instance? ResolverResultPromiseImpl value)
-        (satisfies? ResolverResult value))))
+  ;; The call to satisifies? can be very expensive, so avoid it if at all possible.
+  ;; Ignore nil, common scalar types, and normal maps and vectors
+  (and (some? value)
+       (not (or (keyword? value)
+                (string? value)
+                (boolean? value)
+                (number? value)
+                ;; These are the most common return values that we know aren't
+                ;; actually ResolverResults (a defrecord will implement IPersistentMap, but not
+                ;; extend APersistentMap, for example).
+                (instance? APersistentMap value)
+                (instance? APersistentVector value)
+                (instance? APersistentSet value)
+                (instance? LazySeq value)))
+       (or (instance? ResolverResultImpl value)
+           (instance? ResolverResultPromiseImpl value)
+           ;; And here's the rareist case (and the expensive one):
+           (satisfies? ResolverResult value))))
 
 (defn as-resolver-fn
   "Wraps a [[FieldResolver]] instance as a field resolver function.
