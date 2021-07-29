@@ -981,6 +981,11 @@
                                             (catch Throwable t
                                               (coercion-failure (to-message t) (ex-data t))))]
 
+                         ;; Often, the serializer is a pass-thru and the original value
+                         ;; is fine, so avoid further checks and modifications to execution-context.
+                         (= resolved-value serialized)
+                         (selector execution-context)
+
                          (nil? serialized)
                          (selector-error execution-context
                                          (let [value-str (pr-str resolved-value)]
@@ -1023,6 +1028,11 @@
                                                                   {:resolved-value resolved-value
                                                                    :serialized-value serialized
                                                                    :enum-values possible-values}))
+
+                         ;; Most often, it's a keyword before and after so a cheap check here
+                         ;; avoids modifying the execution-context
+                         (= resolved-value serialized)
+                         (selector execution-context)
 
                          :else
                          (selector (assoc execution-context :resolved-value serialized)))))

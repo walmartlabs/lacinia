@@ -145,9 +145,11 @@
   [arg-map]
   (map-vals extract-reportable-argument-value arg-map))
 
-(defn ^:private scalar?
+(defn ^:private leaf?
+  "Leaf types are scalars and enums; other types have fields and require
+  further selections too reach the leaves."
   [type]
-  (-> type :category #{:scalar :enum} boolean))
+  (-> type selection/type-category #{:scalar :enum} boolean))
 
 (defmulti ^:private is-dynamic?
   "Given an argument tuple, returns true if the argument is dynamic
@@ -802,7 +804,7 @@
 
      :selector schema/floor-selector}))
 
-(defrecord ^:private FieldSelection [selection-type field-definition leaf? concrete-type? reportable-arguments
+(defrecord ^:private FieldSelection [field-definition leaf? concrete-type? reportable-arguments
                                      alias field-name qualified-name selections directives arguments
                                      location locations root-value-type
                                      compiled-schema]
@@ -835,7 +837,7 @@
   (directives [_]
     (nil-map (group-by :directive-name directives))))
 
-(defrecord ^:private InlineFragment [selection-type selections directives on-type-name
+(defrecord ^:private InlineFragment [selections directives on-type-name
                                      location locations concrete-types]
 
   Describe
@@ -853,7 +855,7 @@
 
   (selections [_] selections))
 
-(defrecord ^:private NamedFragment [selection-type directives selections fragment-name
+(defrecord ^:private NamedFragment [directives selections fragment-name
                                     location locations concrete-types]
 
   Describe
@@ -876,7 +878,6 @@
   (let [{:keys [alias field-name selections directives args]} parsed-field
         arguments (build-map-from-parsed-arguments args)]
     (map->FieldSelection (assoc defaults
-                                :selection-type :field
                                 :field-name field-name
                                 :alias (or alias field-name)
                                 :selections selections
@@ -927,7 +928,7 @@
   a node may be a field with arguments, a node may be a field or inline fragment
   with nested selections."
   [node]
-  (let [directives? (-> node :directives some?)
+  (let [directives? (-> node :directives seq)
         dynamic-arguments? (-> node :arguments-extractor some?)
         selections-need-prepare? (->> node
                                       :selections
@@ -994,7 +995,7 @@
   "The selection key only applies to fields (not fragments) and
   consists of the field name or alias, and the arguments."
   [selection]
-  (case (:selection-type selection)
+  (case (selection/selection-kind selection)
     :field
     (:alias selection)
 
@@ -1076,13 +1077,22 @@
     (throw-exception (format "Fragment cannot condition on non-composite type %s."
                              (-> condition-type :type-name q)))))
 
+(defrecord ^:private FragmentDefinition [concrete-types selections directives type]
+
+  selection/SelectionSet
+
+  (selection-kind [_] :fragment-definition)
+
+  (selections [_] selections))
+
 (defn ^:private finalize-fragment-def
   [schema def]
   (let [fragment-type (get schema (:type def))
         concrete-types (expand-fragment-type-to-concrete-types fragment-type)]
     (-> def
         (dissoc :fragment-name)
-        (assoc :concrete-types concrete-types))))
+        (assoc :concrete-types concrete-types)
+        map->FragmentDefinition)))
 
 (defn ^:private normalize-fragment-definitions
   "Given a collection of fragment definitions, transform them into a map of the
@@ -1098,9 +1108,7 @@
                         (cond-> directives
                                 (assoc :directives (convert-parsed-directives schema directives))))
                   fragment-type (get schema on-type)]
-              (normalize-selections schema
-                                    m
-                                    fragment-type)))]
+              (normalize-selections schema m fragment-type)))]
     (into {} (comp (map f)
                    (map (juxt :fragment-name
                               #(finalize-fragment-def schema %))))
@@ -1131,7 +1139,7 @@
                    qualified-field-name (assoc :field-name qualified-field-name))
         selection (with-exception-context context'
                     (when (nil? nested-type)
-                      (if (scalar? type)
+                      (if (leaf? type)
                         (throw-exception "Path de-references through a scalar type." {})
                         (let [type-name (:type-name type)]
                           (throw-exception (format "Cannot query field %s on type %s."
@@ -1157,7 +1165,7 @@
                              :qualified-name qualified-field-name
                              :root-value-type nested-type
                              :directives (convert-parsed-directives schema directives)
-                             :leaf? (scalar? nested-type)
+                             :leaf? (leaf? nested-type)
                              :concrete-type? (or is-typename-metafield?
                                                  (-> type :category #{:object :input-object} some?))
                              :arguments literal-arguments
@@ -1181,8 +1189,7 @@
 
         (let [concrete-types (expand-fragment-type-to-concrete-types fragment-type)
               inline-fragment (-> selection
-                                  (assoc :selection-type :inline-fragment
-                                         :concrete-types concrete-types
+                                  (assoc :concrete-types concrete-types
                                          :on-type-name type-name)
                                   (cond-> directives (assoc :directives (convert-parsed-directives schema directives)))
                                   map->InlineFragment)]
@@ -1196,8 +1203,7 @@
         {:keys [fragment-name directives]} parsed-fragment]
     (with-exception-context (node-context defaults)
       (-> defaults
-          (merge {:selection-type :fragment-spread
-                  :fragment-name fragment-name
+          (merge {:fragment-name fragment-name
                   :nested-fragments #{fragment-name}
                   :directives (seq (convert-parsed-directives schema directives))})
           map->NamedFragment
@@ -1378,7 +1384,7 @@
 
 (defn ^:private summarize-selection
   [parsed-query selection]
-  (case (:selection-type selection)
+  (case (selection/selection-kind selection)
 
     :field
     (let [field-name (-> selection :field-definition :field-name name)]

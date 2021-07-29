@@ -47,7 +47,7 @@
                                     {f-name location})
                                   fragments))
         f-definitions (set (keys fragments))
-        f-names-used (all-fragments-used fragments [{:selections selections}])]
+        f-names-used (all-fragments-used fragments selections)]
     (for [unused-f-definition (set/difference f-definitions f-names-used)]
       {:message (format "Fragment %s is never used."
                         (q unused-f-definition))

@@ -211,25 +211,28 @@
                         inline-fragment-selection
                         (:concrete-types inline-fragment-selection)))
 
-(defn ^:private apply-fragment-spread
-  [execution-context fragment-spread-selection]
-  (let [{:keys [fragment-name]} fragment-spread-selection
+(defn ^:private apply-named-fragment
+  [execution-context named-fragment-selection]
+  (let [{:keys [fragment-name]} named-fragment-selection
         fragment-def (get-in execution-context [:context constants/parsed-query-key :fragments fragment-name])]
     (maybe-apply-fragment execution-context
                           ;; A bit of a hack:
-                          (assoc fragment-spread-selection
+                          (assoc named-fragment-selection
                                  :selections (:selections fragment-def))
                           (:concrete-types fragment-def))))
 
 (defn ^:private apply-selection
+  "Applies a selection to the current :resolved-value in the context.
+
+  Returns a ResolverResult that delivers a selected value (usually, a ResultTuple), or may return nil."
   [execution-context selection]
   (when-not (:disabled? selection)
-    (case (:selection-type selection)
+    (case (selection/selection-kind selection)
       :field (apply-field-selection execution-context selection)
 
       :inline-fragment (apply-inline-fragment execution-context selection)
 
-      :fragment-spread (apply-fragment-spread execution-context selection))))
+      :named-fragment (apply-named-fragment execution-context selection))))
 
 (defn ^:private merge-selected-values
   "Merges the left and right values, with a special case for when the right value
@@ -242,7 +245,7 @@
 (defn ^:private execute-nested-selections
   "Executes nested sub-selections once a value is resolved.
 
-  Returns a ResolverResult whose value is a map of keys and selected values."
+  Returns a ResolverResult delivering an ordered map of keys and selected values."
   [execution-context sub-selections]
   ;; First step is easy: convert the selections into ResolverResults.
   ;; Then once all the individual results are ready, combine them in the correct order.
@@ -294,7 +297,8 @@
         execution-context' (if is-fragment?
                              execution-context
                              (update execution-context :path conj (selection/alias-name selection)))
-        sub-selections (selection/selections selection)
+        ;; Get the raw selections (not attached to the schema) which is faster
+        sub-selections (:selections selection)
 
         apply-errors (fn [selection-context sc-key ec-atom-key]
                        (when-let [errors (get selection-context sc-key)]
@@ -322,11 +326,14 @@
                        (= [] (:path execution-context)))    ;; This covers the root operation
                    resolved-type
                    (seq sub-selections))
+            ;; Case #1: The field is an object type that needs further sub-selections to reach
+            ;; scalar (or enum) leafs.
             (execute-nested-selections
               (assoc execution-context
                      :errors nil
                      :warnings nil)
               sub-selections)
+            ;; Case #2: A scalar (or leaf) type, no further sub-selections necessary.
             (resolve-as resolved-value)))
         ;; In a concrete type, we know the selector from the field definition
         ;; (a field definition on a concrete object type).  Otherwise, we need
@@ -513,11 +520,11 @@
 
 (defn ^:private node-selections
   [parsed-query node]
-  (case (:selection-type node)
+  (case (selection/selection-kind node)
 
     (:field :inline-fragment) (remove :disabled? (:selections node))
 
-    :fragment-spread
+    :named-fragment
     (let [{:keys [fragment-name]} node]
       (get-in parsed-query [:fragments fragment-name :selections]))))
 
@@ -539,7 +546,7 @@
                                      (node-selections parsed-query node)))))))
         ;; Filter and transform the node
         f (fn [node]
-            (when (and (= :field (:selection-type node))
+            (when (and (= :field (selection/selection-kind node))
                        ;; Skip the __typename psuedo-field
                        (some? (to-field-name node))
                        ;; Nodes are disabled by the @Skip and @Include directives, but
@@ -618,7 +625,7 @@
   (reduce (fn [m selection]
             (if (:disabled? selection)
               m
-              (case (:selection-type selection)
+              (case (selection/selection-kind selection)
 
                 :field
                 ;; to-field-name returns nil for pseudo-fields, which are skipped
@@ -637,7 +644,7 @@
                 :inline-fragment
                 (merge-with intov m (build-selections-map parsed-query (:selections selection)))
 
-                :fragment-spread
+                :named-fragment
                 (let [{:keys [fragment-name]} selection
                       fragment-selections (get-in parsed-query [:fragments fragment-name :selections])]
                   (merge-with intov m (build-selections-map parsed-query fragment-selections))))))
@@ -683,8 +690,7 @@
   [parsed-query]
   (let [{:keys [root selections]} parsed-query]
     {constants/parsed-query-key parsed-query
-     constants/selection-key {:selection-type :field
-                              :field-definition root
+     constants/selection-key {:field-definition root
                               :selections selections}}))
 
 

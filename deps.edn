@@ -14,18 +14,27 @@
                 io.pedestal/pedestal.log {:mvn/version "0.5.8"}
                 org.clojure/test.check {:mvn/version "1.1.0"}
                 org.clojure/data.csv {:mvn/version "1.0.0"}
-                org.clojure/tools.cli {:mvn/version "1.0.206"}}
-   :extra-paths ["dev-resources"]}
+                org.clojure/tools.cli {:mvn/version "1.0.206"}
+                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.5.0"}}
+   :jvm-opts ["-Xmx1g"
+              "-Xms1g"
+              "-XX:NewSize=200m"
+              "-XX:MaxNewSize=500m"
+              "-XX:-OmitStackTraceInFastThrow"
+              "-XX:+UnlockDiagnosticVMOptions"
+              "-XX:+DebugNonSafepoints"
+              "-XX:FlightRecorderOptions=stackdepth=256"
+              "-Djdk.attach.allowAttachSelf"
+              "-Dapple.awt.UIElement=true"]
+   :extra-paths ["test" "dev-resources"]}
 
   ;; clj -Mdev:perf
   :perf
-  {:main-opts ["--main" "perf"]
-   :extra-deps {com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.5.0"}}}
+  {:main-opts ["--main" "perf"]}
 
   ;; :test needs :dev, i.e. clj -Xdev:test
   :test
-  {:extra-paths ["test"]
-   :extra-deps {io.github.cognitect-labs/test-runner
+  {:extra-deps {io.github.cognitect-labs/test-runner
                 {:git/url "https://github.com/cognitect-labs/test-runner.git"
                  :sha "705ad25bbf0228b1c38d0244a36001c2987d7337"}}
    :exec-fn cognitect.test-runner.api/test}

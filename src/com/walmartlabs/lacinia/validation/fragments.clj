@@ -16,16 +16,15 @@
   {:no-doc true}
   (:require
     [com.walmartlabs.lacinia.describe :refer [description-for]]
-    [com.walmartlabs.lacinia.internal-utils :refer [q seek]]))
+    [com.walmartlabs.lacinia.internal-utils :refer [q seek cond-let]]
+    [com.walmartlabs.lacinia.selection :as selection]))
 
-(defn ^:private fragment-defined?
-  "Returns empty sequence if a fragment spread is defined
+(defn ^:private validate-fragment-spread
+  "Returns nil if a fragment spread is defined
   in fragment definitions.
   Otherwise returns a vector with an error."
   [fragment-defs fragment-spread]
-  (if (contains? fragment-defs
-                 (:fragment-name fragment-spread))
-    []
+  (when-not (contains? fragment-defs (:fragment-name fragment-spread))
     [{:message (format "Unknown fragment %s. Fragment definition is missing."
                        (-> fragment-spread :fragment-name q))
       :locations [(:location fragment-spread)]}]))
@@ -39,17 +38,25 @@
   ;; Fragment spreads define a fragment name but no nested selections
   ;; (those are inside the fragment definition).  Fields and
   ;; inline fragments do have nested selections.
-  (if (:fragment-name sel)
-    (fragment-defined? fragment-defs sel)
-    (mapcat #(validate-fragments-in-selection fragment-defs %) (:selections sel))))
+  (cond-let
+    (:fragment-name sel)
+    (validate-fragment-spread fragment-defs sel)
+
+    :let [sub-selections (:selections sel)]
+
+    (seq sub-selections)
+    (mapcat #(validate-fragments-in-selection fragment-defs %) sub-selections)
+
+    :else
+    nil))
 
 (defn ^:private references-fragment?
   [fragment-defs fragment-name selection]
-  (case (:selection-type selection)
+  (case (selection/selection-kind selection)
     :field
     (contains? (:nested-fragments selection) fragment-name)
 
-    :fragment-spread
+    :named-fragment
     (let [spread-name (:fragment-name selection)
           referred-fragment (get fragment-defs spread-name)]
       (or

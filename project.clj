@@ -3,8 +3,7 @@
   :url "https://github.com/walmartlabs/lacinia"
   :license {:name "Apache, Version 2.0"
             :url "http://www.apache.org/licenses/LICENSE-2.0"}
-  :plugins [[lein-codox "0.10.7"]
-            [lein-cloverage "1.2.2"]
+  :plugins [[lein-cloverage "1.2.2"]
             [test2junit "1.2.5"]]
   :dependencies [[org.clojure/clojure "1.10.3"]
                  [clj-antlr "0.2.9"]
@@ -21,8 +20,7 @@
                                   [org.clojure/test.check "1.1.0"]
                                   [org.clojure/data.csv "1.0.0"]
                                   [org.clojure/tools.cli "1.0.206"]]}}
-  :aliases {"benchmarks" ["run" "-m" "perf"]}
+  ;; Benchmarks and codox are now done via clj rather than lein; see deps.edn
   :jvm-opts ["-Xmx1g" "-XX:-OmitStackTraceInFastThrow"]
-  :test2junit-output-dir ~(or (System/getenv "CIRCLE_TEST_REPORTS") "target/test2junit")
-  :codox {:source-uri "https://github.com/walmartlabs/lacinia/blob/master/{filepath}#L{line}"
-          :metadata   {:doc/format :markdown}})
+  :test2junit-output-dir ~(or (System/getenv "CIRCLE_TEST_REPORTS") "target/test2junit"))
+

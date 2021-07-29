@@ -33,7 +33,8 @@
   (:require
     [com.walmartlabs.lacinia.selector-context :refer [is-wrapped-value? wrap-value]])
   (:import
-    (java.util.concurrent Executor)))
+    (java.util.concurrent Executor)
+    (clojure.lang IPersistentMap IPersistentVector IPersistentCollection APersistentMap APersistentVector LazySeq APersistentSet)))
 
 (def ^{:dynamic true
        :added "0.20.0"} ^Executor *callback-executor*
@@ -131,6 +132,63 @@
 
 (def ^:private *promise-id-allocator (atom 0))
 
+(defrecord ^:private ResolverResultPromiseImpl [*state promise-id dynamic-bindings]
+
+  ResolverResult
+  (on-deliver! [this callback]
+    (loop []
+      (let [state @*state]
+        (cond
+          (contains? state :resolved-value)
+          (callback (:resolved-value state))
+
+          (contains? state :callback)
+          (throw (IllegalStateException. "ResolverResultPromise callback may only be set once."))
+
+          (compare-and-set! *state state (assoc state :callback callback))
+          nil
+
+          :else
+          (recur))))
+
+    this)
+
+  ResolverResultPromise
+
+  (deliver! [this resolved-value]
+    (loop []
+      (let [state @*state]
+        (when (contains? state :resolved-value)
+          (throw (IllegalStateException. "May only realize a ResolverResultPromise once.")))
+
+        (if (compare-and-set! *state state (assoc state :resolved-value resolved-value))
+          (when-let [callback (:callback state)]
+            (let [^Executor executor *callback-executor*]
+              (if (or (nil? executor)
+                      *in-callback-thread*)
+                (callback resolved-value)
+                (.execute executor #(with-bindings (assoc dynamic-bindings #'*in-callback-thread* true)
+                                      (callback resolved-value))))))
+          (recur))))
+
+    this)
+
+  (deliver! [this resolved-value error]
+    (deliver! this (with-error resolved-value error)))
+
+  Object
+
+  (toString [_]
+    (str "ResolverResultPromise[" promise-id
+
+         (when (contains? @*state :callback)
+           ", callback")
+
+         (when (contains? @*state :resolved-value)
+           ", resolved")
+
+         "]")))
+
 (defn resolve-promise
   "Returns a [[ResolverResultPromise]].
 
@@ -142,72 +200,30 @@
   (let [*state (atom {})
         promise-id (swap! *promise-id-allocator inc)
         dynamic-bindings (get-thread-bindings)]
-    (reify
-      ResolverResult
-
-      (on-deliver! [this callback]
-        (loop []
-          (let [state @*state]
-            (cond
-              (contains? state :resolved-value)
-              (callback (:resolved-value state))
-
-              (contains? state :callback)
-              (throw (IllegalStateException. "ResolverResultPromise callback may only be set once."))
-
-              (compare-and-set! *state state (assoc state :callback callback))
-              nil
-
-              :else
-              (recur))))
-
-        this)
-
-      ResolverResultPromise
-
-      (deliver! [this resolved-value]
-        (loop []
-          (let [state @*state]
-            (when (contains? state :resolved-value)
-              (throw (IllegalStateException. "May only realize a ResolverResultPromise once.")))
-
-            (if (compare-and-set! *state state (assoc state :resolved-value resolved-value))
-              (when-let [callback (:callback state)]
-                (let [^Executor executor *callback-executor*]
-                  (if (or (nil? executor)
-                          *in-callback-thread*)
-                    (callback resolved-value)
-                    (.execute executor #(with-bindings (assoc dynamic-bindings #'*in-callback-thread* true)
-                                          (callback resolved-value))))))
-              (recur))))
-
-        this)
-
-      (deliver! [this resolved-value error]
-        (deliver! this (with-error resolved-value error)))
-
-      Object
-
-      (toString [_]
-        (str "ResolverResultPromise[" promise-id
-
-             (when (contains? @*state :callback)
-               ", callback")
-
-             (when (contains? @*state :resolved-value)
-               ", resolved")
-
-             "]")))))
+    (->ResolverResultPromiseImpl *state promise-id dynamic-bindings)))
 
 (defn is-resolver-result?
   "Is the provided value actually a [[ResolverResult]]?"
   {:added "0.23.0"}
   [value]
-  (when value
-    ;; This is a little bit of optimization; satisfies? can
-    ;; be a bit expensive.
-    (or (instance? ResolverResultImpl value)
-        (satisfies? ResolverResult value))))
+  ;; The call to satisifies? can be very expensive, so avoid it if at all possible.
+  ;; Ignore nil, common scalar types, and normal maps and vectors
+  (and (some? value)
+       (not (or (keyword? value)
+                (string? value)
+                (boolean? value)
+                (number? value)
+                ;; These are the most common return values that we know aren't
+                ;; actually ResolverResults (a defrecord will implement IPersistentMap, but not
+                ;; extend APersistentMap, for example).
+                (instance? APersistentMap value)
+                (instance? APersistentVector value)
+                (instance? APersistentSet value)
+                (instance? LazySeq value)))
+       (or (instance? ResolverResultImpl value)
+           (instance? ResolverResultPromiseImpl value)
+           ;; And here's the rareist case (and the expensive one):
+           (satisfies? ResolverResult value))))
 
 (defn as-resolver-fn
   "Wraps a [[FieldResolver]] instance as a field resolver function.
