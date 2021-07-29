@@ -554,6 +554,7 @@
 
   (run-benchmarks {:no-store true})
 
+  (test-benchmark :basic)
 
   (prof/profile
     (test-parallel :deep))

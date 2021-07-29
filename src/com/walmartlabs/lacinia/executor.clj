@@ -325,11 +325,14 @@
                        (= [] (:path execution-context)))    ;; This covers the root operation
                    resolved-type
                    (seq sub-selections))
+            ;; Case #1: The field is an object type that needs further sub-selections to reach
+            ;; scalar (or enum) leafs.
             (execute-nested-selections
               (assoc execution-context
                      :errors nil
                      :warnings nil)
               sub-selections)
+            ;; Case #2: A scalar (or leaf) type, no further sub-selections necessary.
             (resolve-as resolved-value)))
         ;; In a concrete type, we know the selector from the field definition
         ;; (a field definition on a concrete object type).  Otherwise, we need
