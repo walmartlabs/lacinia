@@ -557,7 +557,7 @@
   (test-benchmark :basic)
 
   (prof/profile
-    (test-parallel :deep))
+    (test-parallel :deep 1000))
 
   (prof/profile
     (test-benchmark :deep))

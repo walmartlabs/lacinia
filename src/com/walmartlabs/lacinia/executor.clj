@@ -297,7 +297,8 @@
         execution-context' (if is-fragment?
                              execution-context
                              (update execution-context :path conj (selection/alias-name selection)))
-        sub-selections (selection/selections selection)
+        ;; Get the raw selections (not attached to the schema) which is faster
+        sub-selections (:selections selection)
 
         apply-errors (fn [selection-context sc-key ec-atom-key]
                        (when-let [errors (get selection-context sc-key)]
