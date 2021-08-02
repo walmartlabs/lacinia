@@ -44,6 +44,10 @@
     (is (= {:data {:hero {:id "2001" :name "R2-D2"}}}
            (execute default-schema q {} nil))))
   ;; We can omit the `query' piece if it's the only selection
+  (let [q "{ hero { name appears_in id }}"]
+    (is (= (json/write-str (lacinia/execute default-schema q {} nil))
+           "{\"data\":{\"hero\":{\"name\":\"R2-D2\",\"appears_in\":[\"NEWHOPE\",\"EMPIRE\",\"JEDI\"],\"id\":\"2001\"}}}")))
+  ;; Reordering fields should change ordering in the :data map
   (let [q "{ hero { id name appears_in } }"]
     (is (= {:data {:hero {:id "2001"
                           :name "R2-D2"
@@ -51,10 +55,6 @@
            (execute default-schema q {} nil)))
     (is (= (json/write-str (lacinia/execute default-schema q {} nil))
            "{\"data\":{\"hero\":{\"id\":\"2001\",\"name\":\"R2-D2\",\"appears_in\":[\"NEWHOPE\",\"EMPIRE\",\"JEDI\"]}}}")))
-  ;; Reordering fields should change ordering in the :data map
-  (let [q "{ hero { name appears_in id }}"]
-    (is (= (json/write-str (lacinia/execute default-schema q {} nil))
-           "{\"data\":{\"hero\":{\"name\":\"R2-D2\",\"appears_in\":[\"NEWHOPE\",\"EMPIRE\",\"JEDI\"],\"id\":\"2001\"}}}")))
   (let [q "{ hero { appears_in name id }}"]
     (is (= (json/write-str (lacinia/execute default-schema q {} nil))
            "{\"data\":{\"hero\":{\"appears_in\":[\"NEWHOPE\",\"EMPIRE\",\"JEDI\"],\"name\":\"R2-D2\",\"id\":\"2001\"}}}"))))

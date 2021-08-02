@@ -186,7 +186,8 @@
    ;; These are used during selection; callback is the callback passed down
    ;; the selector pipeline that is provided with the final resolved value and
    ;; context.
-   errors callback warnings])
+   ;; value-xform is used to convert the selected value
+   errors callback warnings value-xform])
 
 (defrecord ^:private ResultTuple [alias value])
 
@@ -194,10 +195,9 @@
   [execution-context field-selection]
   (let [{:keys [alias]} field-selection
         null-collapser (get-in field-selection [:field-definition :null-collapser])
-        resolver-result (resolve-and-select execution-context field-selection)]
-    (transform-result resolver-result
-                      (fn [resolved-field-value]
-                        (->ResultTuple alias (null-collapser resolved-field-value))))))
+        xform (fn [resolved-field-value]
+                (->ResultTuple alias (null-collapser resolved-field-value)))]
+    (resolve-and-select (assoc execution-context :value-xform xform) field-selection)))
 
 (defn ^:private maybe-apply-fragment
   [execution-context fragment-selection concrete-types]
@@ -238,6 +238,7 @@
   "Merges the left and right values, with a special case for when the right value
   is an ResultTuple."
   [left-value right-value]
+  #_(prn :left left-value :right right-value)
   (if (instance? ResultTuple right-value)
     (assoc left-value (:alias right-value) (:value right-value))
     (merge left-value right-value)))
@@ -249,10 +250,13 @@
   [execution-context sub-selections]
   ;; First step is easy: convert the selections into ResolverResults.
   ;; Then once all the individual results are ready, combine them in the correct order.
-  (let [selection-results (keep #(apply-selection execution-context %) sub-selections)]
+  (let [{:keys [value-xform]} execution-context
+        execution-context' (assoc execution-context :value-xform nil)
+        selection-results (keep #(apply-selection execution-context' %) sub-selections)]
     (aggregate-results selection-results
                        (fn [values]
-                         (reduce merge-selected-values (ordered-map) values)))))
+                         (cond-> (reduce merge-selected-values (ordered-map) values)
+                           value-xform value-xform)))))
 
 (defn ^:private combine-selection-results-sync
   [execution-context previous-resolved-result sub-selection]
@@ -315,7 +319,7 @@
         ;; seqs before (repeatedly) invoking the callback, at which point, it is possible to
         ;; perform a recursive selection on the nested fields of the origin field.
         selector-callback
-        (fn selector-callback [{:keys [resolved-value resolved-type] :as execution-context}]
+        (fn selector-callback [{:keys [resolved-value resolved-type value-xform] :as execution-context}]
           (reset! *pass-through-exceptions true)
           ;; Any errors from the resolver (via with-errors) or anywhere along the
           ;; selection pipeline are enhanced and added to the execution context.
@@ -334,7 +338,8 @@
                      :warnings nil)
               sub-selections)
             ;; Case #2: A scalar (or leaf) type, no further sub-selections necessary.
-            (resolve-as resolved-value)))
+            (resolve-as (cond-> resolved-value
+                          value-xform value-xform))))
         ;; In a concrete type, we know the selector from the field definition
         ;; (a field definition on a concrete object type).  Otherwise, we need
         ;; to use the type of the parent node's resolved value, just

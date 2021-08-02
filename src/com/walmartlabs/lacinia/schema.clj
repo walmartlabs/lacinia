@@ -1160,7 +1160,9 @@
           :else
           ;; So we have some privileged knowledge here: the callback returns a ResolverResult containing
           ;; the value. So we need to combine those together into a new ResolverResult.
-          (let [unwrapper (fn [{:keys [resolved-value] :as execution-context}]
+          (let [execution-context' (assoc execution-context :value-xform nil)
+                {:keys [value-xform]} execution-context
+                unwrapper (fn [{:keys [resolved-value] :as execution-context}]
                             (if-not (sc/is-wrapped-value? resolved-value)
                               (next-selector execution-context)
                               (loop [v resolved-value
@@ -1173,10 +1175,11 @@
             (aggregate-results
               (map-indexed
                 (fn [i v]
-                  (unwrapper (-> execution-context
+                  (unwrapper (-> execution-context'
                                  (assoc :resolved-value v)
                                  (update :path conj i))))
-                resolved-value))))))
+                resolved-value)
+              (or value-xform identity))))))
 
     :non-null
     (let [next-selector (assemble-selector schema object-type field (:type type))]
