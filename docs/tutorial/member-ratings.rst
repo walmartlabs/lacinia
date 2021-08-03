@@ -41,7 +41,7 @@ Our schema changes introduced a few new field resolvers, which we must implement
 
 .. literalinclude:: /_examples/tutorial/schema-4.clj
   :caption: src/clojure_game_geek/schema.clj
-  :emphasize-lines: 10-13,34-58,69,71,72,74
+  :emphasize-lines: 10-13,34-58,66,69,71,72,74
 
 We've generalized ``resolve-game-by-id`` into ``resolve-element-by-id``.
 
