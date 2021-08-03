@@ -71,7 +71,7 @@ system namespace
 
 .. literalinclude:: /_examples/tutorial/system-2.clj
    :caption: src/clojure_game_geek/system.clj
-   :emphasize-lines: 13
+   :emphasize-lines: 6,13
 
 The ``:db`` component doesn't effectively exist until it is part of the system map.
 This change adds it in.
