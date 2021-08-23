@@ -136,11 +136,13 @@
 
 (deftest int-serialize-out-of-range
   (doseq [v [-2147483649 -2147483649.0 2147483648 2147483648.0
-             (biginteger -2147483649) (biginteger 2147483648)]]
+             (biginteger -2147483649) (biginteger 2147483648)
+             (bigint -2147483649) (bigint 2147483648)
+             (bigdec -2147483649) (bigdec 2147483648)]]
     (binding [*data* {:int v}]
       (is (= {:data {:scalars {:int nil}}
               :errors [{:extensions {:type-name :Int
-                                     :value (str v)}
+                                     :value (pr-str v)}
                         :locations [{:column 13
                                      :line 1}]
                         :message "Coercion error serializing value: Int value outside of allowed 32 bit integer range."
@@ -149,28 +151,17 @@
              (utils/execute output-schema "{ scalars { int }}"))))))
 
 (deftest int-serialize-non-whole-number
-  (binding [*data* {:int 98.6}]
-    (is (= {:data {:scalars {:int nil}}
-            :errors [{:extensions {:type-name :Int
-                                   :value "98.6"}
-                      :locations [{:column 13
-                                   :line 1}]
-                      :message "Unable to serialize 98.6 as type `Int'."
-                      :path [:scalars
-                             :int]}]}
-           (utils/execute output-schema "{ scalars { int }}")))))
-
-(deftest int-serialize-non-whole-number-bigdec
-  (binding [*data* {:int (bigdec 98.6)}]
-    (is (= {:data {:scalars {:int nil}}
-            :errors [{:extensions {:type-name :Int
-                                   :value "98.6M"}
-                      :locations [{:column 13
-                                   :line 1}]
-                      :message "Unable to serialize 98.6M as type `Int'."
-                      :path [:scalars
-                             :int]}]}
-           (utils/execute output-schema "{ scalars { int }}")))))
+  (doseq [v [98.6 98.6M]]
+    (binding [*data* {:int v}]
+      (is (= {:data {:scalars {:int nil}}
+              :errors [{:extensions {:type-name :Int
+                                     :value (pr-str v)}
+                        :locations [{:column 13
+                                     :line 1}]
+                        :message (str "Unable to serialize " (pr-str v) " as type `Int'.")
+                        :path [:scalars
+                               :int]}]}
+             (utils/execute output-schema "{ scalars { int }}"))))))
 
 (deftest int-serialize-bigdec-ok
   (doseq [v (map bigdec [Integer/MIN_VALUE Integer/MAX_VALUE 0
