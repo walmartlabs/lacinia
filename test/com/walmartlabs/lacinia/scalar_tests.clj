@@ -135,7 +135,8 @@
            (utils/execute output-schema "{ scalars { int }}")))))
 
 (deftest int-serialize-out-of-range
-  (doseq [v [-2147483649 -2147483649.0 2147483648 2147483648.0]]
+  (doseq [v [-2147483649 -2147483649.0 2147483648 2147483648.0
+             (biginteger -2147483649) (biginteger 2147483648)]]
     (binding [*data* {:int v}]
       (is (= {:data {:scalars {:int nil}}
               :errors [{:extensions {:type-name :Int
@@ -159,8 +160,47 @@
                              :int]}]}
            (utils/execute output-schema "{ scalars { int }}")))))
 
+(deftest int-serialize-non-whole-number-bigdec
+  (binding [*data* {:int (bigdec 98.6)}]
+    (is (= {:data {:scalars {:int nil}}
+            :errors [{:extensions {:type-name :Int
+                                   :value "98.6M"}
+                      :locations [{:column 13
+                                   :line 1}]
+                      :message "Unable to serialize 98.6M as type `Int'."
+                      :path [:scalars
+                             :int]}]}
+           (utils/execute output-schema "{ scalars { int }}")))))
+
+(deftest int-serialize-bigdec-ok
+  (doseq [v (map bigdec [Integer/MIN_VALUE Integer/MAX_VALUE 0
+                         (double Integer/MIN_VALUE) (double Integer/MAX_VALUE) 0.0
+                         "1234.0000"])]
+    (binding [*data* {:int v}]
+      (is (= {:data {:scalars {:int (long v)}}}
+             (utils/execute output-schema "{ scalars { int } }"))))))
+
+(deftest int-serialize-biginteger-ok
+  (doseq [v (map biginteger [Integer/MIN_VALUE Integer/MAX_VALUE 0
+                         (double Integer/MIN_VALUE) (double Integer/MAX_VALUE) 0.0])]
+    (binding [*data* {:int v}]
+      (is (= {:data {:scalars {:int (long v)}}}
+             (utils/execute output-schema "{ scalars { int } }"))))))
+
+(deftest int-serialize-bigint-ok
+  (doseq [v (map bigint [Integer/MIN_VALUE Integer/MAX_VALUE 0
+                         (double Integer/MIN_VALUE) (double Integer/MAX_VALUE) 0.0])]
+    (binding [*data* {:int v}]
+      (is (= {:data {:scalars {:int (long v)}}}
+             (utils/execute output-schema "{ scalars { int } }"))))))
+
 (deftest float-serialize
   (binding [*data* {:float 98.6}]
+    (is (= {:data {:scalars {:float 98.6}}}
+           (utils/execute output-schema "{ scalars { float }}")))))
+
+(deftest float-serialize-bigdec
+  (binding [*data* {:float 98.6M}]
     (is (= {:data {:scalars {:float 98.6}}}
            (utils/execute output-schema "{ scalars { float }}")))))
 
