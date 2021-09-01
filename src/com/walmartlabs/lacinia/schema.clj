@@ -175,7 +175,9 @@
 (defn ^:private serialize-int
   [v]
   (cond
-    (integer? v)
+    (or (integer? v)
+        (instance? clojure.lang.BigInt v)
+        (instance? java.math.BigInteger v))
     (if (<= Integer/MIN_VALUE v Integer/MAX_VALUE)
       (int v)
       (coercion-failure "Int value outside of allowed 32 bit integer range." {:value (pr-str v)}))
@@ -184,6 +186,13 @@
     (float? v)
     (when (= v (Math/floor (double v)))
       (let [long-v (long v)]
+        (if (<= Integer/MIN_VALUE long-v Integer/MAX_VALUE)
+          (int long-v)
+          (coercion-failure "Int value outside of allowed 32 bit integer range." {:value (pr-str v)}))))
+
+    (instance? java.math.BigDecimal v)
+    (when (>= 0 (.. v stripTrailingZeros scale))
+      (let [long-v (.longValueExact v)]
         (if (<= Integer/MIN_VALUE long-v Integer/MAX_VALUE)
           (int long-v)
           (coercion-failure "Int value outside of allowed 32 bit integer range." {:value (pr-str v)}))))))
