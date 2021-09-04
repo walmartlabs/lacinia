@@ -46,7 +46,7 @@ We've made liberal use of the ``:description`` property in the schema.
 These descriptions are intended for developers who will make use of your
 GraphQL interface.
 Descriptions are the equivalent of doc-strings on Clojure functions, and we'll see them
-show up later when we :doc:`discuss GraphiQL <pedestal>`.
+show up later when we :doc:`discuss GraphQL <pedestal>`.
 It's an excellent habit to add descriptions early, rather than try and go back
 and add them in later.
 
