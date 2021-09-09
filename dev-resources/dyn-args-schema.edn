@@ -1,0 +1,18 @@
+{:queries
+ {:cars {:type :CarCollection
+         :args {:filter {:type :CarCollectionFilter}}}}
+
+ :input-objects
+ {:CarCollectionFilter
+  {:fields {:or {:type (list :CarCollectionFilter)}
+            :color {:type :StringFilter}}}
+
+  :StringFilter
+  {:fields {:equals {:type String}}}}
+
+ :objects
+ {:Car
+  {:fields {:color {:type String}}}
+
+  :CarCollection
+  {:fields {:nodes {:type (list :Car)}}}}}

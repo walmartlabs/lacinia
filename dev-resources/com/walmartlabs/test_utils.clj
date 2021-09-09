@@ -71,6 +71,7 @@
        (util/attach-resolvers resolvers)
        (schema/compile options))))
 
+
 (defn compile-sdl-schema
   "Reads a schema SDL file, injects resolvers, and compiles the schema."
   ([resource-path resolvers]
@@ -79,6 +80,17 @@
    (-> (io/resource resource-path)
        slurp
        parse-schema
+       (util/inject-resolvers resolvers)
+       (schema/compile options))))
+
+(defn compile-schema-injected
+  "Reads a schema EDN file, injects resolvers, and compiles the schema."
+  ([resource-path resolvers]
+   (compile-schema-injected resource-path resolvers {}))
+  ([resource-path resolvers options]
+   (-> (io/resource resource-path)
+       slurp
+       edn/read-string
        (util/inject-resolvers resolvers)
        (schema/compile options))))
 
