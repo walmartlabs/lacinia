@@ -48,4 +48,5 @@
    :exec-args {:metadata {:doc/format :markdown}
                :name "com.walmartlabs/lacinia"
                :version "0.39-alpha-10"
-               :description "Clojure-native implementation of GraphQL"}}}}
+               :description "Clojure-native implementation of GraphQL"}
+   :jvm-opts ["--illegal-access=permit"]}}}
