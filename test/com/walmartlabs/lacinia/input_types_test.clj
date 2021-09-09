@@ -17,8 +17,13 @@
             [com.walmartlabs.test-utils :refer [execute compile-schema-injected]]))
 
 (deftest mix-of-literals-and-dynamics
-  (let [schema (compile-schema-injected "dyn-args-schema.edn"
-                                        {:queries/cars (constantly {:nodes [{:color "blue"}]})})
+  (let [resolver (fn [_ args _]
+                   (is (= {:filter {:or [{:color {:equals "blue"}}
+                                         {:color {:equals "red"}}]}}
+                          args))
+                   {:nodes [{:color "blue"}]})
+        schema (compile-schema-injected "dyn-args-schema.edn"
+                                        {:queries/cars resolver})
         query "query($color: String) {
                cars(filter: {or: [{color: {equals: \"blue\"}},
                                   {color: {equals: $color}}]}) {
