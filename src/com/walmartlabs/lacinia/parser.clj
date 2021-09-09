@@ -662,7 +662,8 @@
 
 (defn ^:private construct-dynamic-arguments-extractor
   [schema argument-definitions arguments]
-  (when-not (empty? arguments)
+  (if (empty? arguments)
+    (fn [_variables] nil)
     (let [process-arg (fn [arg-name arg-value]
                         (let [arg-def (get argument-definitions arg-name)
                               arg-type-name (schema/root-type-name arg-def)

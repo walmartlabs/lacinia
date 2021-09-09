@@ -18,7 +18,7 @@
 
 (deftest mix-of-literals-and-dynamics
   (let [schema (compile-schema-injected "dyn-args-schema.edn"
-                                        {:queries/cars (constantly {:nodes []})})
+                                        {:queries/cars (constantly {:nodes [{:color "blue"}]})})
         query "query($color: String) {
                cars(filter: {or: [{color: {equals: \"blue\"}},
                                   {color: {equals: $color}}]}) {
@@ -28,8 +28,9 @@
                }
              }"
         args {:color "red"}]
-    ;; TODO: Should work, not fail!
-    (is (= {:errors [{:message "Cannot invoke \"clojure.lang.IFn.invoke(Object)\" because \"this.dynamic_extractor\" is null"}]}
+    (is (= {:data
+            {:cars
+             {:nodes [{:color "blue"}]}}}
            (execute schema query args nil)))))
 
 
