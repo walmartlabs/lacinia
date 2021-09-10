@@ -29,14 +29,14 @@
   (arguments [element]
     "Returns a map of keyword name to argument value.  May return nil if no arguments.
 
-     The value may reflect query variables or argument defaults."))
+     The value may reflect evaluated query variables or argument defaults."))
 
 (defprotocol ArgumentDefs
 
   "Definition of arguments to a [[Field]]."
 
   (argument-defs [element]
-    "Returns a map of keyword name to [[Argument]], or nil."))
+    "Returns a map of keyword name to [[ArgumentDef]], or nil."))
 
 (defprotocol ArgumentDef
   "An argument definition, implements [[Type]] and [[QualifiedName]].")
@@ -111,7 +111,7 @@
 
 (defprotocol Type
 
-  "For a typed element, such as a [[Field]] or an [[ArgumentDef]], details the
+  "For a typed element, such as a [[FieldDef]] or an [[ArgumentDef]], details the
   schema type."
 
   (kind [element]
