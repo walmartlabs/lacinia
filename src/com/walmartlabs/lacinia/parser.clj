@@ -1089,10 +1089,7 @@
 (defn ^:private finalize-fragment-def
   [schema fragment-def]
   (let [trigger-type (:type fragment-def)
-        schema-type (or (get schema trigger-type)
-                          #_ (throw (ex-info (format "Fragment references unknown type %s." (q trigger-type))
-                                          {:fragment-name (:fragment-name fragment-def)
-                                           :unknown-type trigger-type})))
+        schema-type (get schema trigger-type)
         concrete-types (expand-fragment-type-to-concrete-types schema-type)]
     (-> fragment-def
         (dissoc :fragment-name)
