@@ -200,3 +200,18 @@
                ... commonFragment # line 15
              }
              "))))
+
+(deftest fragment-on-undefined-type
+  (is (= {:errors [{:message "Fragment `MovieCharacter' references unknown type `NotDefined'."
+                    :extensions {:line 8 :column 19}}]}
+         (q "
+         query {
+            characters {
+              ... MovieCharacter
+            }
+         }
+
+         fragment MovieCharacter on NotDefined {
+            name
+         }
+         "))))
