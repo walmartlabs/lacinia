@@ -1087,10 +1087,11 @@
   (selections [_] selections))
 
 (defn ^:private finalize-fragment-def
-  [schema def]
-  (let [fragment-type (get schema (:type def))
-        concrete-types (expand-fragment-type-to-concrete-types fragment-type)]
-    (-> def
+  [schema fragment-def]
+  (let [trigger-type (:type fragment-def)
+        schema-type (get schema trigger-type)
+        concrete-types (expand-fragment-type-to-concrete-types schema-type)]
+    (-> fragment-def
         (dissoc :fragment-name)
         (assoc :concrete-types concrete-types)
         map->FragmentDefinition)))
@@ -1099,9 +1100,9 @@
   "Given a collection of fragment definitions, transform them into a map of the
   form {:<definition-name> {...}}."
   [schema fragment-definitions]
-  (let [f (fn [def]
-            (let [defaults (default-node-map def)
-                  {:keys [on-type fragment-name selections directives]} def
+  (let [f (fn [fragment-def]
+            (let [defaults (default-node-map fragment-def)
+                  {:keys [on-type fragment-name selections directives]} fragment-def
                   m (-> defaults
                         (assoc :fragment-name fragment-name
                                :type on-type
@@ -1109,6 +1110,11 @@
                         (cond-> directives
                                 (assoc :directives (convert-parsed-directives schema directives))))
                   fragment-type (get schema on-type)]
+              (when (nil? fragment-type)
+                (throw (ex-info (format "Fragment %s references unknown type %s."
+                                        (q fragment-name)
+                                        (q on-type))
+                                (meta fragment-def))))
               (normalize-selections schema m fragment-type)))]
     (into {} (comp (map f)
                    (map (juxt :fragment-name
