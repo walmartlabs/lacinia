@@ -18,6 +18,7 @@
   (:require
     [clojure.string :as str]
     [com.walmartlabs.lacinia.resolve :as resolve]
+    [flatland.ordered.map :refer [ordered-map]]
     [clojure.pprint :refer [pprint]])
   (:import
     (clojure.lang Named)
@@ -473,3 +474,76 @@
                    :ns (-> *ns* ns-name)
                    ~@(when line [:line line])
                    ~@kvs))))))
+
+(defn ^:private ordered-group-by
+  "Copy of clojure.core/ordered-by that uses an ordered map."
+  [f coll]
+  (reduce
+    (fn [ret x]
+      (let [k (f x)]
+        (assoc ret k (conj (get ret k []) x))))
+    (ordered-map)
+    coll))
+
+(defn ^:private assoc*
+  [coll k v empty-map]
+  (let [coll* (cond
+                (some? coll)
+                coll
+
+                (integer? k)
+                []
+
+                :else
+                empty-map)]
+    (assoc coll* k v)))
+
+(defn ^:private split-on
+  [f coll]
+  (let [*matches (volatile! nil)
+        *others (volatile! nil)]
+    (doseq [v coll]
+      (let [*x (if (f v) *matches *others)]
+        (vswap! *x #(conj (or %1 []) %2) v)))
+    [@*matches @*others]))
+
+(defn ^:private assemble
+  [kx terms empty-map]
+  (let [by-first (ordered-group-by #(nth % kx) terms)
+        kx+1 (inc kx)
+        kx+2 (inc kx+1)
+        reducer-fn (fn [coll* [k k-terms]]
+                     (let [[leaf-terms nested-terms] (split-on #(= (count %) kx+2) k-terms)
+                           ;; Apply the (usually, at most 1) leaf terms first:
+                           coll1 (if (some? leaf-terms)
+                                   (reduce (fn [coll term]
+                                             (assoc* coll k (nth term kx+1) empty-map))
+                                           coll*
+                                           leaf-terms)
+                                   coll*)]
+                       (cond-> coll1
+                         (some? nested-terms) (assoc* k (assemble kx+1 nested-terms empty-map) empty-map))))]
+    (reduce reducer-fn nil by-first)))
+
+(defn assemble-collection
+  "Assembles a seq of key/value paths into a nested structure (maps and vectors).
+
+  Each term is a vector; the initial values form the key path, the final value is the value at that keypath.
+
+  Numeric keys imply a vector rather than a map.
+
+  The two arity version provides a default empty map (it must be a map, and empty); this allows
+  for using alternative map implementations; specifically the flatland OrderedMap.
+
+  Usage:
+
+  (assemble-collection [[:root :user :firstName \"Howard\"]
+                        [:root :user :empNo 876321]
+                        [:root :lastUpdated \"2021-04-14\"]])
+    "
+  ([terms]
+   (assemble-collection terms {}))
+  ([terms empty-map]
+   (assert (map? empty-map))
+   (assert (empty? empty-map))
+   (assemble 0 terms empty-map)))
