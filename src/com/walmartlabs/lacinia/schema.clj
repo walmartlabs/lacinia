@@ -35,21 +35,17 @@
     [clojure.set :refer [difference]]
     [clojure.pprint :as pprint]
     [com.walmartlabs.lacinia.selection :as selection]
-    [com.walmartlabs.lacinia.selector-context :as sc])
+    [com.walmartlabs.lacinia.selector-context :as sc]
+    [com.walmartlabs.lacinia.internal-types :refer [map->CompiledSchema]])
   (:import
     (clojure.lang IObj)
-    (java.io Writer)))
+    (java.io Writer)
+    (com.walmartlabs.lacinia.internal_types CompiledSchema)))
 
 ;; When using Clojure 1.8, the dependency on clojure-future-spec must be included,
 ;; and this code will trigger
 (when (-> *clojure-version* :minor (< 9))
   (require '[clojure.future :refer [any? simple-keyword? simple-symbol?]]))
-
-(defrecord CompiledSchema [])
-
-(defn ^:no-doc compiled-schema?
-  [m]
-  (instance? CompiledSchema m))
 
 ;;-------------------------------------------------------------------------------
 ;; ## Helpers

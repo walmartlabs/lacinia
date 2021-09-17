@@ -21,7 +21,8 @@
     [com.walmartlabs.lacinia.internal-utils
      :refer [cond-let update? q map-vals filter-vals remove-vals
              with-exception-context throw-exception to-message
-             keepv as-keyword *exception-context*]]
+             keepv as-keyword *exception-context* trace]]
+    [com.walmartlabs.lacinia.internal-types :refer [compiled-schema?]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.resolve :as resolve]
@@ -1347,7 +1348,7 @@
   ([schema query-document operation-name]
    (parse-query schema query-document operation-name nil))
   ([schema query-document operation-name timing-start]
-   (when-not (schema/compiled-schema? schema)
+   (when-not (compiled-schema? schema)
      (throw (IllegalStateException. "The provided schema has not been compiled.")))
    ;; Ideally, the timing-start should be provided very early in the request processing pipeline, handed down
    ;; in the request or context (under Pedestal); however, in many other cases, it is not provided at all
