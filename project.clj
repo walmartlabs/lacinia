@@ -6,20 +6,22 @@
   :plugins [[lein-cloverage "1.2.2"]
             [test2junit "1.2.5"]]
   :dependencies [[org.clojure/clojure "1.10.3"]
-                 [clj-antlr "0.2.9"]
+                 [clj-antlr "0.2.10"]
                  [org.flatland/ordered "1.5.9"]
                  [org.clojure/data.json "2.4.0"]]
   :source-paths ["src"]
   :profiles {:dev {:dependencies [[criterium "0.4.6"]
-                                  [org.clojure/core.async "1.3.618"]
-                                  [expound "0.8.9"]
+                                  [org.clojure/core.async "1.3.622"]
+                                  [expound "0.8.10"]
                                   [joda-time "2.10.10"]
                                   [com.walmartlabs/test-reporting "1.1"]
                                   [io.aviso/logging "1.0"]
                                   [io.pedestal/pedestal.log "0.5.8"]
                                   [org.clojure/test.check "1.1.0"]
                                   [org.clojure/data.csv "1.0.0"]
-                                  [org.clojure/tools.cli "1.0.206"]]}}
+                                  [org.clojure/tools.cli "1.0.206"]
+                                  [com.clojure-goes-fast/clj-async-profiler "0.5.1"]
+                                  [com.clojure-goes-fast/clj-java-decompiler "0.3.0"]]}}
   ;; Benchmarks and codox are now done via clj rather than lein; see deps.edn
   :jvm-opts ["-Xmx1g" "-XX:-OmitStackTraceInFastThrow"]
   :test2junit-output-dir ~(or (System/getenv "CIRCLE_TEST_REPORTS") "target/test2junit"))
