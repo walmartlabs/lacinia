@@ -21,7 +21,7 @@
     [com.walmartlabs.lacinia.internal-utils
      :refer [cond-let update? q map-vals filter-vals remove-vals
              with-exception-context throw-exception to-message
-             keepv as-keyword *exception-context* trace]]
+             keepv as-keyword *exception-context* trace seek]]
     [com.walmartlabs.lacinia.internal-types :refer [compiled-schema?]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.constants :as constants]
@@ -34,11 +34,6 @@
   (:import
     (clojure.lang ExceptionInfo)))
 
-(defn ^:private first-match
-  [pred coll]
-  (->> coll
-       (filter pred)
-       first))
 
 (defn ^:private nil-map
   [m]
@@ -908,7 +903,7 @@
     single-op?
     first-op
 
-    :let [operation (first-match #(= operation-key (:name %)) operations)]
+    :let [operation (seek #(= operation-key (:name %)) operations)]
 
     (nil? operation)
     (throw-exception "Multiple operations provided but no matching name found."
