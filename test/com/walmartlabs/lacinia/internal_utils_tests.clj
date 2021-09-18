@@ -682,4 +682,8 @@
     (criterium.core/bench
       (= example (assemble-collection paths))))
 
+  ;; Base 1.70 ms
+
+  ;; 1.62 ms -- transients
+
   )

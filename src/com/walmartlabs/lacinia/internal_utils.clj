@@ -489,15 +489,20 @@
 (defn ^:private assoc*
   [coll k v empty-map]
   (let [coll* (cond
+                ;; Because inside a reducer function, it's likely coll has already been
+                ;; created.
                 (some? coll)
                 coll
 
+                ;; Otherwise, need to create a transient collection based on the kind of
+                ;; key (integer implies a vector, otherwise an empty map).
+
                 (integer? k)
-                []
+                (transient [])
 
                 :else
-                empty-map)]
-    (assoc coll* k v)))
+                (transient empty-map))]
+    (assoc! coll* k v)))
 
 (defn ^:private split-on
   [f coll]
@@ -521,10 +526,11 @@
                                              (assoc* coll k (nth term kx+1) empty-map))
                                            coll*
                                            leaf-terms)
-                                   coll*)]
-                       (cond-> coll1
-                         (some? nested-terms) (assoc* k (assemble kx+1 nested-terms empty-map) empty-map))))]
-    (reduce reducer-fn nil by-first)))
+                                   coll*)
+                           coll2 (cond-> coll1
+                                   (some? nested-terms) (assoc* k (assemble kx+1 nested-terms empty-map) empty-map))]
+                       coll2))]
+    (persistent! (reduce reducer-fn nil by-first))))
 
 (defn assemble-collection
   "Assembles a seq of key/value paths into a nested structure (maps and vectors).
