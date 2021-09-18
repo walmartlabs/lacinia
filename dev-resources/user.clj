@@ -21,5 +21,9 @@
     (set-compile-trace! true)
     (set-enable-trace! true))
 
+  (do
+    (set-compile-trace! false)
+    )
+
   )
 
