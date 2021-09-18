@@ -120,8 +120,7 @@
   Returns a ResolverResult.
 
   Optionally updates the timings inside the execution-context with start/finish/elapsed time
-  (in milliseconds). Timing checks only occur when enabled (timings is non-nil)
-  and not for default resolvers."
+  (in milliseconds). Timing checks only occur when enabled (*resolver-tracing is non-nil)."
   [execution-context field-selection]
   (try
     (let [*resolver-tracing (:*resolver-tracing execution-context)
@@ -188,6 +187,9 @@
    ;; context.
    errors callback warnings])
 
+;; ResultTuple represents a selected field name (or alias) and the value;
+;; the tuples for a non-leaf object are assembled (in query document order) to
+;; form the selected object in the result map.
 (defrecord ^:private ResultTuple [alias value])
 
 (defn ^:private apply-field-selection
