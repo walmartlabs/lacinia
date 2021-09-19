@@ -17,7 +17,7 @@
     [clojure.test :refer [deftest is]]
     [flatland.ordered.map :refer [ordered-map]]
     [com.walmartlabs.lacinia.internal-utils
-     :refer [assoc-in! update-in! assemble-collection]]
+     :refer [assoc-in! update-in! assemble-collection  non-nullable]]
     [clojure.string :as str])
   (:import
     (clojure.lang ExceptionInfo)))
@@ -676,6 +676,41 @@
                                  [:product :labels 2 :l2]]
                                 (ordered-map))))))
 
+(deftest null-progation
+  (is (= {:address {:city "Portland"}
+          :customer {:name "Alfred"}
+          :product nil}
+         (assemble-collection [[:customer :name "Alfred"]
+                               [:product :name "Gizmo"]
+                               [:product :labels non-nullable]
+                               [:product :labels nil]
+                               [:address :city "Portland"]])))
+
+  (is (= {:product {:address nil
+                    :name "Frisbee"
+                    :thumbnail {:full-size "big.jgp"}}}
+         (assemble-collection [[:product :name "Frisbee"]
+                               [:product :thumbnail :full-size "big.jgp"]
+                               ;; However, since :address is nullable, it becomes null
+                               ;; and :city is discarded
+                               [:product :address :city "Portland"]
+                               ;; e.g. (non-null (list (non-null String))
+                               [:product :address :lines non-nullable]
+                               [:product :address :lines 0 non-nullable]
+                               [:product :address :lines 0 nil]])))
+
+  ;; Sometimes you get nothing back at all:
+
+  (is (= nil
+         (assemble-collection [[:product non-nullable]
+                               [:product :name non-nullable]
+                               [:product :name nil]
+                               ;; This should get discarded:
+                               [:product :thumbnail "foo.jpg"]
+                               [:customer :name "Alfred"]])))
+
+  )
+
 (comment
 
   (let [paths (extract-paths example)]
@@ -685,5 +720,7 @@
   ;; Base 1.70 ms
 
   ;; 1.62 ms -- transients
+
+  ;; 1.76 ms -- w/ null collapsing logic added
 
   )

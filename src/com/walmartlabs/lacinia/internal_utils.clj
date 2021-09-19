@@ -460,22 +460,39 @@
     coll))
 
 (defn ^:private assoc*
-  [coll k v empty-map]
-  (let [coll* (cond
-                ;; Because inside a reducer function, it's likely coll has already been
-                ;; created.
-                (some? coll)
-                coll
+  [coll k v *non-nullable? empty-map]
+  (let [is-null? (= ::null v)]
+    (cond
+      (and (or (nil? v) is-null?)
+           @*non-nullable?)
+      (reduced ::null)
 
-                ;; Otherwise, need to create a transient collection based on the kind of
-                ;; key (integer implies a vector, otherwise an empty map).
+      (= ::non-nullable v)
+      (do
+        (vreset! *non-nullable? true)
+        coll)
 
-                (integer? k)
-                (transient [])
+      (= ::null coll)
+      ::null
 
-                :else
-                (transient empty-map))]
-    (assoc! coll* k v)))
+      :else
+      (let [coll* (cond
+                    ;; Because inside a reducer function, it's likely coll has already been
+                    ;; created.
+                    (some? coll)
+                    coll
+
+                    ;; Otherwise, need to create a transient collection based on the kind of
+                    ;; key (integer implies a vector, otherwise an empty map).
+
+                    (integer? k)
+                    (transient [])
+
+                    :else
+                    (transient empty-map))]
+        (assoc! coll* k (if is-null? nil v))))))
+
+(require '[clj-java-decompiler.core :refer [decompile]])
 
 (defn ^:private split-on
   [f coll]
@@ -486,24 +503,49 @@
         (vswap! *x #(conj (or %1 []) %2) v)))
     [@*matches @*others]))
 
+(def ^:const non-nullable
+  "Special value that marks a key path as not allowing nulls."
+  ::non-nullable)
+
 (defn ^:private assemble
   [kx terms empty-map]
+  (trace :in 'assemble
+         :kx kx
+         :terms terms)
   (let [by-first (ordered-group-by #(nth % kx) terms)
         kx+1 (inc kx)
         kx+2 (inc kx+1)
+        *non-nullable? (volatile! false)
         reducer-fn (fn [coll* [k k-terms]]
+                     (trace :in 'assemble.reducer-fn
+                            :k k
+                            :k-terms k-terms)
                      (let [[leaf-terms nested-terms] (split-on #(= (count %) kx+2) k-terms)
                            ;; Apply the (usually, at most 1) leaf terms first:
                            coll1 (if (some? leaf-terms)
                                    (reduce (fn [coll term]
-                                             (assoc* coll k (nth term kx+1) empty-map))
+                                             (trace :in 'assemble.leaf
+                                                    :k k
+                                                    :term term
+                                                    :coll coll)
+                                             (assoc* coll k (nth term kx+1) *non-nullable? empty-map))
                                            coll*
                                            leaf-terms)
-                                   coll*)
-                           coll2 (cond-> coll1
-                                   (some? nested-terms) (assoc* k (assemble kx+1 nested-terms empty-map) empty-map))]
-                       coll2))]
-    (persistent! (reduce reducer-fn nil by-first))))
+                                   coll*)]
+                       (cond
+                         (nil? nested-terms)
+                         coll1
+
+                         (= ::null coll1)
+                         (reduced ::null)
+
+                         :else
+                         (let [value-for-k (assemble kx+1 nested-terms empty-map)]
+                           (assoc* coll1 k value-for-k *non-nullable? empty-map)))))
+        reduced-value (reduce reducer-fn nil by-first)]
+    (if (= ::null reduced-value)
+      (if @*non-nullable? ::null nil)
+      (persistent! reduced-value))))
 
 (defn assemble-collection
   "Assembles a seq of key/value paths into a nested structure (maps and vectors).
@@ -526,4 +568,5 @@
   ([terms empty-map]
    (assert (map? empty-map))
    (assert (empty? empty-map))
-   (assemble 0 terms empty-map)))
+   (let [result (assemble 0 terms empty-map)]
+     (if (= ::null result) nil result))))
