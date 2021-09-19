@@ -21,7 +21,8 @@
     [com.walmartlabs.lacinia.internal-utils
      :refer [cond-let update? q map-vals filter-vals remove-vals
              with-exception-context throw-exception to-message
-             keepv as-keyword *exception-context* trace seek]]
+             keepv as-keyword *exception-context* seek]]
+    [com.walmartlabs.lacinia.trace :refer [trace]]
     [com.walmartlabs.lacinia.internal-types :refer [compiled-schema?]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.constants :as constants]

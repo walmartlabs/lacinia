@@ -7,7 +7,7 @@
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia :as l]
     [clojure.spec.alpha :as s]
-    [com.walmartlabs.lacinia.internal-utils :refer [trace set-compile-trace! set-enable-trace!]]
+    [com.walmartlabs.lacinia.trace :refer [trace set-compile-trace! set-enable-trace!]]
     [expound.alpha :as expound]))
 
 (require 'com.walmartlabs.lacinia.expound)
@@ -21,9 +21,8 @@
     (set-compile-trace! true)
     (set-enable-trace! true))
 
-  (do
-    (set-compile-trace! false)
-    )
+  (set-compile-trace! false)
+  (set-enable-trace! false)
 
   )
 
