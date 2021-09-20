@@ -280,7 +280,7 @@
                       (::default-value input-value)))
 
 (defn introspection-schema
-  "Builds an returns the introspection schema, which can be merged into the user schema."
+  "Builds and returns the introspection schema, which can be merged into the user schema."
   []
   (-> "com/walmartlabs/lacinia/introspection.edn"
       io/resource
