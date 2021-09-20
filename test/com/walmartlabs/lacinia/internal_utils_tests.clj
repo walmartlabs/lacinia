@@ -714,7 +714,7 @@
 (deftest no-terms
   (is (= nil (assemble-collection []))))
 
-(deftest null-progation-stops-at-nullable
+(deftest null-propagation-stops-at-nullable
   (is (= {:user {:id "1"
                  :employer nil}}
          (assemble-collection [[:user non-nullable]
