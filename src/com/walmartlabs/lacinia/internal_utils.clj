@@ -452,12 +452,13 @@
 (defn ^:private ordered-group-by
   "Copy of clojure.core/ordered-by that uses an ordered map."
   [f coll]
-  (reduce
-    (fn [ret x]
-      (let [k (f x)]
-        (assoc ret k (conj (get ret k []) x))))
-    (ordered-map)
-    coll))
+  (persistent!
+    (reduce
+      (fn [ret x]
+        (let [k (f x)]
+          (assoc! ret k (conj (get ret k []) x))))
+      (transient (ordered-map))
+      coll)))
 
 (defn ^:private assoc*
   [coll k v *non-nullable? empty-map]
@@ -521,7 +522,8 @@
                             :k k
                             :k-terms k-terms)
                      (let [[leaf-terms nested-terms] (split-on #(= (count %) kx+2) k-terms)
-                           ;; Apply the (usually, at most 1) leaf terms first:
+                           ;; Apply the leaf terms first.  Typically, there are either 0,
+                           ;; 1 non-nullable, or 2 (non-nullable followed by nil).
                            coll1 (if (some? leaf-terms)
                                    (reduce (fn [coll term]
                                              (trace :in 'assemble.leaf

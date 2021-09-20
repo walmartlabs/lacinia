@@ -725,4 +725,5 @@
 
   ;; 1.68 ms -- eliminated minor dead code
 
+  ;; 1.59 ms -- use transients in ordered-group-by
   )
