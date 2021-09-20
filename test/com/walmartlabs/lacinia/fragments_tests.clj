@@ -24,9 +24,15 @@
   [(schema/tag-with-type {:name "R2-D2" :power "AC"} :droid)
    (schema/tag-with-type {:name "Luke" :home_world "Tatooine"} :human)])
 
+(defn ^:private resolve-friends
+  [_ _ _]
+  [(schema/tag-with-type {:name "C3P0" :power "DC"} :droid)
+   (schema/tag-with-type {:name "Obi-Wan" :home_world "Unknown"} :human)])
+
 (def ^:private schema
   (utils/compile-schema "fragments-schema.edn"
-                        {:resolve-characters resolve-characters}))
+                        {:resolve-characters resolve-characters
+                         :resolve-friends resolve-friends}))
 
 (defn ^:private q [query]
   (utils/simplify (execute schema query nil nil)))
@@ -56,6 +62,39 @@
            }
            }
            }"))))
+
+(deftest later-fragment-do-not-override-earlier
+  (is (= {:data {:characters
+                 ;; For droids, we should get friends/name normally, and
+                 ;; friends/home_world (via fragment)
+                 ;; TODO: This test currently fails.
+                 [{:name "R2-D2"
+                   :power "AC"
+                   :friends [{:name "C3P0"}
+                             {:name "Obi-Wan" :home_world "Unknown"}]}
+                  {:name "Luke"
+                   ;; Luke is a human, only gets friends/name (the fragment
+                   ;; doesn't trigger).
+                   :friends [{:name "C3P0"}
+                             {:name "Obi-Wan"}]}]}}
+         (q "
+         {
+           characters {
+              name
+              friends { name }
+              ... on droid {
+                   power
+                   friends {
+                      ... on human {
+                      # This should be merged in with friends / name above, but instead
+                      # replaces it.
+                        home_world
+                      }
+                   }
+                }
+              }
+           }
+         }"))))
 
 (deftest named-fragments
   (is (= {:data {:characters [{:name "R2-D2"
