@@ -65,9 +65,8 @@
 
 (deftest later-fragment-do-not-override-earlier
   (is (= {:data {:characters
-                 ;; For droids, we should get friends/name normally, and
+                 ;; For droids, we get friends/name normally, and
                  ;; friends/home_world (via fragment)
-                 ;; TODO: This test currently fails.
                  [{:name "R2-D2"
                    :power "AC"
                    :friends [{:name "C3P0"}

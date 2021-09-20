@@ -179,6 +179,29 @@
              (execute compiled-schema q {:include false} nil))
           "should return name only")))
 
+(comment
+  (let [q "query ($include: Boolean!) {
+               human(id: \"1000\") {
+                 name
+                 friends {
+                   id @include(if: $include)
+                 }
+               }
+             }"]
+    #_ (is (= {:data {:human {:name "Luke Skywalker"
+                           :friends [{:id "1002"} {:id "1003"} {:id "2000"} {:id "2001"}]}}}
+           (execute compiled-schema q {:include true} nil))
+        "should return both fields")
+
+    {:data {:human {:name "Luke Skywalker"
+                    :friends [{} {} {} {}]}}}
+
+    (execute compiled-schema q {:include false} nil)
+
+    )
+
+  )
+
 
   (testing "when @skip is set for the only field requested"
     (let [q "query ($skip: Boolean!) {

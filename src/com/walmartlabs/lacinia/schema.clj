@@ -23,12 +23,13 @@
   (:refer-clojure :exclude [compile])
   (:require
     [clojure.spec.alpha :as s]
+    [com.walmartlabs.lacinia.trace :refer [trace]]
     [com.walmartlabs.lacinia.introspection :as introspection]
     [com.walmartlabs.lacinia.internal-utils
-     :refer [map-vals map-kvs filter-vals deep-merge q
+     :refer [map-vals map-kvs filter-vals deep-merge q transform-result
              is-internal-type-name? sequential-or-set? as-keyword
              cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag
-             to-message qualified-name aggregate-results]]
+             to-message qualified-name aggregate-results non-nullable]]
     [com.walmartlabs.lacinia.resolve :as resolve
      :refer [ResolverResult resolve-as is-resolver-result?]]
     [clojure.string :as str]
@@ -506,7 +507,7 @@
         (recur (:type type-def))))))
 
 (defrecord ^:private FieldDef [type type-string directives compiled-directives compiled-schema
-                               field-name qualified-name args null-collapser direct-fn]
+                               field-name qualified-name args direct-fn]
 
   selection/FieldDef
 
@@ -812,99 +813,21 @@
            :has-default-value? has-default-value?
            :is-required? is-required?)))
 
-(defn ^:private is-null?
-  [v]
-  (= v ::null))
-
-(defn ^:private null-to-nil
-  [v]
-  (if (is-null? v) nil v))
-
-(defn ^:private collapse-nulls-in-object
-  [forgive-null? map-type? value]
-  (cond
-    (nil? value)
-    value
-
-    (is-null? value)
-    (if forgive-null?
-      nil
-      ::null)
-
-    (not map-type?)
-    value
-
-    (some is-null? (vals value))
-    (if forgive-null? nil ::null)
-
-    :else
-    (map-vals null-to-nil value)))
-
-(defn ^:no-doc collapse-nulls-in-map
-  [m]
-  (collapse-nulls-in-object true true m))
-
-(defn ^:private build-null-collapser
-  "Builds a null-collapser for a field definition; the null collapser transforms a resolved value
-  for the field, potentially to the value ::null if it is nil but non-nullable OR if any sub-selection
-  collapses to ::null.
-
-  A nullable field that contains a value of ::null collapses to nil.
-
-  For lists, a list that contains a ::null collapses down to either nil or ::null."
-  [schema forgive-null? type]
-  (let [{:keys [kind]
-         nested-type :type} type]
-    (case kind
-      :root
-      (let [element-def (get schema nested-type)
-            {:keys [category]} element-def
-            map-type? (contains? #{:union :object :interface} category)]
-        (fn [value]
-          (collapse-nulls-in-object forgive-null? map-type? value)))
-
-      :non-null
-      (let [nested-collapser (build-null-collapser schema false nested-type)]
-        (fn [value]
-          (let [value' (nested-collapser value)]
-            (if (nil? value')
-              ::null
-              value'))))
-
-      :list
-      (let [nested-collapser (build-null-collapser schema true nested-type)
-            promote-nils-to-empty-list (get-in schema [::options :promote-nils-to-empty-list?])
-            empty-list (if promote-nils-to-empty-list [] nil)]
-        (fn [values]
-          (let [values' (when values
-                          (map nested-collapser values))]
-            (cond
-              (nil? values')
-              empty-list
-
-              (some is-null? values')
-              (if forgive-null? empty-list ::null)
-
-              :else
-              values')))))))
-
 (defn ^:private compile-field
   "Rewrites the type of the field, and the type of any arguments."
-  [schema type-def field-name field-def]
-  (let [{:keys [type-name]} type-def
-        field-def' (-> field-def
-                       map->FieldDef
-                       rewrite-type
-                       add-type-string
-                       compile-directives
-                       (assoc :field-name field-name
-                              :qualified-name (qualified-name type-name field-name))
-                       (update :args #(map-kvs (fn [arg-name arg-def]
-                                                 [arg-name (assoc (compile-arg arg-name arg-def)
-                                                                  :qualified-name (qualified-name type-name field-name arg-name))])
-                                               %)))
-        collapser (build-null-collapser schema true (:type field-def'))]
-    (assoc field-def' :null-collapser collapser)))
+  [type-def field-name field-def]
+  (let [{:keys [type-name]} type-def]
+    (-> field-def
+        map->FieldDef
+        rewrite-type
+        add-type-string
+        compile-directives
+        (assoc :field-name field-name
+               :qualified-name (qualified-name type-name field-name))
+        (update :args #(map-kvs (fn [arg-name arg-def]
+                                  [arg-name (assoc (compile-arg arg-name arg-def)
+                                                   :qualified-name (qualified-name type-name field-name arg-name))])
+                                %)))))
 
 (defn ^:private wrap-resolver-to-ensure-resolver-result
   [resolver]
@@ -1144,13 +1067,16 @@
   (case (:kind type)
 
     :list
-    (let [next-selector (assemble-selector schema object-type field (:type type))]
+    (let [next-selector (assemble-selector schema object-type field (:type type))
+          promote-nils-to-empty-list? (get-in schema [::options :promote-nils-to-empty-list?])]
       (fn select-list [{:keys [resolved-value callback]
                         :as execution-context}]
         (cond
           (nil? resolved-value)
           ;; Bypass the rest of the pipeline and jump to the callback
-          (callback execution-context)
+          (if promote-nils-to-empty-list?
+            (callback (assoc execution-context :resolved-value []))
+            (callback execution-context))
 
           (not (sequential-or-set? resolved-value))
           (selector-error execution-context
@@ -1164,8 +1090,10 @@
 
           :else
           ;; So we have some privileged knowledge here: the callback returns a ResolverResult containing
-          ;; the value. So we need to combine those together into a new ResolverResult.
+          ;; a seq of terms, so we need to combine those together into a new ResolverResult.
           (let [unwrapper (fn [{:keys [resolved-value] :as execution-context}]
+                            (trace :in 'assemble-selector.list.unwrapper
+                                   :resolved-value resolved-value)
                             (if-not (sc/is-wrapped-value? resolved-value)
                               (next-selector execution-context)
                               (loop [v resolved-value
@@ -1175,13 +1103,22 @@
                                   (if (sc/is-wrapped-value? next-v)
                                     (recur next-v next-ec)
                                     (next-selector (assoc next-ec :resolved-value next-v)))))))]
+            (trace :in 'assemble-selector.list
+                   :resolved-value resolved-value)
             (aggregate-results
+              ;; Convert each value in resolve-value into a ResolverResult that delivers
+              ;; a seq of terms.
               (map-indexed
                 (fn [i v]
                   (unwrapper (-> execution-context
                                  (assoc :resolved-value v)
                                  (update :path conj i))))
-                resolved-value))))))
+                resolved-value)
+              (fn [all-results]
+                (trace :in 'assemble-selector.list.aggregate
+                       :results all-results)
+                ;; Aggegrate all those seq of terms into a single seq
+                (reduce concat all-results)))))))
 
     :non-null
     (let [next-selector (assemble-selector schema object-type field (:type type))]
@@ -1190,14 +1127,20 @@
                                 (-> field :qualified-name q))
                         {:field-name (:qualified-name field)
                          :type (-> field :type type->string)})))
-      (fn select-non-null [{:keys [resolved-value]
+      ;; TODO: Write non-nullable into terms
+      (fn select-non-null [{:keys [resolved-value path]
                             :as execution-context}]
-        (if (some? resolved-value)
-          (next-selector execution-context)
-          (selector-error execution-context
-                          ;; If there's already errors (from the application's resolver function) then don't add more
-                          (when-not (-> execution-context :errors seq)
-                            (error "Non-nullable field was null."))))))
+        (let [normal-result
+              (if (some? resolved-value)
+                (next-selector execution-context)
+                (selector-error execution-context
+                                ;; If there's already errors (from the application's resolver function) then don't add more
+                                (when-not (-> execution-context :errors seq)
+                                  (error "Non-nullable field was null."))))
+              nonullable-term (conj path non-nullable)]
+          (transform-result
+            normal-result
+            #(concat [nonullable-term] %)))))
 
     :root                                                   ;;
     (create-root-selector schema field (:type type))))
@@ -1294,9 +1237,9 @@
        (filter #(= category (:category %)))))
 
 (defn ^:private compile-fields
-  [schema type-def]
+  [ type-def]
   (update type-def :fields #(map-kvs (fn [field-name field-def]
-                                       [field-name (compile-field schema type-def field-name field-def)])
+                                       [field-name (compile-field  type-def field-name field-def)])
                                      %)))
 
 (defmulti ^:private compile-type
@@ -1309,11 +1252,11 @@
   (fn [type schema] (:category type)))
 
 (defmethod compile-type :default
-  [type schema]
+  [type _schema]
   type)
 
 (defmethod compile-type :scalar
-  [type schema]
+  [type _schema]
   (-> type
       map->Scalar
       compile-directives))
@@ -1370,7 +1313,7 @@
     {:enum-value (as-keyword value-def)}))
 
 (defmethod compile-type :enum
-  [enum-def _]
+  [enum-def _schema]
   (let [value-defs (->> enum-def
                         :values
                         (map normalize-enum-value-def)
@@ -1436,11 +1379,11 @@
                       (assoc :implements implements
                              :tag tag-class)
                       compile-directives)]
-      (compile-fields schema object'))))
+      (compile-fields  object'))))
 
 (defmethod compile-type :input-object
   [input-object schema]
-  (let [input-object' (compile-fields schema input-object)]
+  (let [input-object' (compile-fields  input-object)]
     (doseq [field-def (-> input-object' :fields vals)
             :let [field-type-name (root-type-name field-def)
                   qualified-field-name (:qualified-name field-def)
@@ -1455,11 +1398,11 @@
     input-object'))
 
 (defmethod compile-type :interface
-  [interface schema]
+  [interface _schema]
   (->> interface
        map->Interface
        compile-directives
-       (compile-fields schema)))
+       compile-fields))
 
 (defn ^:private extract-type-name
   "Navigates a type map down to the root kind and returns the type name."

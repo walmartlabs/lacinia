@@ -59,8 +59,6 @@
     (is (= (json/write-str (lacinia/execute default-schema q {} nil))
            "{\"data\":{\"hero\":{\"appears_in\":[\"NEWHOPE\",\"EMPIRE\",\"JEDI\"],\"name\":\"R2-D2\",\"id\":\"2001\"}}}"))))
 
-
-
 (deftest mutation-query
   (let [q "mutation ($from : String, $to: String) { changeHeroName(from: $from, to: $to) { name } }"]
     (is (= {:data {:changeHeroName {:name "Solo"}}}

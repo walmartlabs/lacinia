@@ -16,11 +16,12 @@
   "Mechanisms for executing parsed queries against compiled schemas."
   (:require
     [com.walmartlabs.lacinia.internal-utils
-     :refer [cond-let map-vals remove-vals q aggregate-results transform-result to-message]]
-    [flatland.ordered.map :refer [ordered-map]]
+     :refer [cond-let map-vals remove-vals q aggregate-results transform-result
+             assemble-collection to-message]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :as resolve
      :refer [resolve-as resolve-promise]]
+    [com.walmartlabs.lacinia.trace :refer [trace]]
     [com.walmartlabs.lacinia.selector-context :as sc]
     [com.walmartlabs.lacinia.tracing :as tracing]
     [com.walmartlabs.lacinia.constants :as constants]
@@ -187,20 +188,6 @@
    ;; context.
    errors callback warnings])
 
-;; ResultTuple represents a selected field name (or alias) and the value;
-;; the tuples for a non-leaf object are assembled (in query document order) to
-;; form the selected object in the result map.
-(defrecord ^:private ResultTuple [alias value])
-
-(defn ^:private apply-field-selection
-  [execution-context field-selection]
-  (let [{:keys [alias]} field-selection
-        null-collapser (get-in field-selection [:field-definition :null-collapser])
-        resolver-result (resolve-and-select execution-context field-selection)]
-    (transform-result resolver-result
-                      (fn [resolved-field-value]
-                        (->ResultTuple alias (null-collapser resolved-field-value))))))
-
 (defn ^:private maybe-apply-fragment
   [execution-context fragment-selection concrete-types]
   (let [actual-type (:resolved-type execution-context)]
@@ -230,31 +217,23 @@
   [execution-context selection]
   (when-not (:disabled? selection)
     (case (selection/selection-kind selection)
-      :field (apply-field-selection execution-context selection)
+      :field (resolve-and-select execution-context selection)
 
       :inline-fragment (apply-inline-fragment execution-context selection)
 
       :named-fragment (apply-named-fragment execution-context selection))))
 
-(defn ^:private merge-selected-values
-  "Merges the left and right values, with a special case for when the right value
-  is an ResultTuple."
-  [left-value right-value]
-  (if (instance? ResultTuple right-value)
-    (assoc left-value (:alias right-value) (:value right-value))
-    (merge left-value right-value)))
-
 (defn ^:private execute-nested-selections
   "Executes nested sub-selections once a value is resolved.
 
-  Returns a ResolverResult delivering an ordered map of keys and selected values."
+  Returns a ResolverResult delivering an seq of terms."
   [execution-context sub-selections]
   ;; First step is easy: convert the selections into ResolverResults.
   ;; Then once all the individual results are ready, combine them in the correct order.
   (let [selection-results (keep #(apply-selection execution-context %) sub-selections)]
     (aggregate-results selection-results
                        (fn [values]
-                         (reduce merge-selected-values (ordered-map) values)))))
+                         (reduce concat values)))))
 
 (defn ^:private combine-selection-results-sync
   [execution-context previous-resolved-result sub-selection]
@@ -269,7 +248,7 @@
                              (resolve/on-deliver! sub-resolved-result
                                                   (fn [right-value]
                                                     (resolve/deliver! next-result
-                                                                      (merge-selected-values left-value right-value)))))))
+                                                                      (concat left-value right-value)))))))
     ;; This will deliver after the sub-selection delivers, which is only after the previous resolved result
     ;; delivers.
     next-result))
@@ -284,13 +263,15 @@
   [execution-context sub-selections]
   ;; This could be optimized for the very common case of a single sub-selection.
   (reduce #(combine-selection-results-sync execution-context %1 %2)
-          (resolve-as (ordered-map))
+          (resolve-as [])
           sub-selections))
 
 (defn ^:private resolve-and-select
   "Recursive resolution of a field within a containing field's resolved value.
 
-  Returns a ResolverResult of the selected value.
+  Returns a ResolverResult of a seq of terms for the selected value (this may include
+  terms for sub-selections when the field is not a leaf value, or when the field is
+  a list).
 
   Accumulates errors in the execution context as a side-effect."
   [execution-context selection]
@@ -317,7 +298,7 @@
         ;; seqs before (repeatedly) invoking the callback, at which point, it is possible to
         ;; perform a recursive selection on the nested fields of the origin field.
         selector-callback
-        (fn selector-callback [{:keys [resolved-value resolved-type] :as execution-context}]
+        (fn selector-callback [{:keys [resolved-value resolved-type path] :as execution-context}]
           (reset! *pass-through-exceptions true)
           ;; Any errors from the resolver (via with-errors) or anywhere along the
           ;; selection pipeline are enhanced and added to the execution context.
@@ -325,7 +306,7 @@
           (apply-errors execution-context :warnings :*warnings)
 
           (if (and (or (some? resolved-value)
-                       (= [] (:path execution-context)))    ;; This covers the root operation
+                       (= [] path))    ;; This covers the root operation
                    resolved-type
                    (seq sub-selections))
             ;; Case #1: The field is an object type that needs further sub-selections to reach
@@ -336,7 +317,8 @@
                      :warnings nil)
               sub-selections)
             ;; Case #2: A scalar (or leaf) type, no further sub-selections necessary.
-            (resolve-as resolved-value)))
+            ;; TODO: How to inject in not-nullable or default values?
+            (resolve-as [(conj path resolved-value)])))
         ;; In a concrete type, we know the selector from the field definition
         ;; (a field definition on a concrete object type).  Otherwise, we need
         ;; to use the type of the parent node's resolved value, just
@@ -484,11 +466,14 @@
                                        (execute-nested-selections execution-context enabled-selections))]
                 (resolve/on-deliver! operation-result
                                      (fn [selected-data]
+                                       #_(trace :in 'execute-query.on-deliver!
+                                              :selected-data selected-data)
                                        (let [errors (seq @*errors)
                                              warnings (seq @*warnings)
-                                             extensions @*extensions]
+                                             extensions @*extensions
+                                             data (assemble-collection selected-data)]
                                          (resolve/deliver! result-promise
-                                                           (cond-> {:data (schema/collapse-nulls-in-map selected-data)}
+                                                           (cond-> {:data data}
                                                              (seq extensions) (assoc :extensions extensions)
                                                              *resolver-tracing
                                                              (tracing/inject-tracing timing-start
