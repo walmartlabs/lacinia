@@ -42,6 +42,11 @@
    :exec-args
    {:patterns [".*-tests?$"]}}
 
+  ;; clj -Mdev:coverage
+  :coverage
+  {:extra-deps {cloverage/cloverage {:mvn/version "1.2.1"}}
+   :main-opts ["-m" "cloverage.coverage" "-p" "src" "-s" "test" "--codecov"]}
+
   ;; clj -Xdev:codox
   :codox
   {:extra-deps {codox/codox {:mvn/version "0.10.7"}}

@@ -723,4 +723,6 @@
 
   ;; 1.76 ms -- w/ null collapsing logic added
 
+  ;; 1.68 ms -- eliminated minor dead code
+
   )

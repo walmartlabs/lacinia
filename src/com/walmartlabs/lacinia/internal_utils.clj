@@ -532,19 +532,13 @@
                                            coll*
                                            leaf-terms)
                                    coll*)]
-                       (cond
-                         (nil? nested-terms)
+                       (if (nil? nested-terms)
                          coll1
-
-                         (= ::null coll1)
-                         (reduced ::null)
-
-                         :else
                          (let [value-for-k (assemble kx+1 nested-terms empty-map)]
                            (assoc* coll1 k value-for-k *non-nullable? empty-map)))))
         reduced-value (reduce reducer-fn nil by-first)]
     (if (= ::null reduced-value)
-      (if @*non-nullable? ::null nil)
+      ::null
       (persistent! reduced-value))))
 
 (defn assemble-collection
