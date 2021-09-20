@@ -709,9 +709,7 @@
                                [:product :thumbnail "foo.jpg"]
                                ;; Because product is nulled, then the implicit root
                                ;; goes to nil, and this customer path is lost.
-                               [:customer :name "Alfred"]])))
-
-  )
+                               [:customer :name "Alfred"]]))))
 
 (comment
 
