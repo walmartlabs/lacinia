@@ -510,26 +510,16 @@
 
 (defn ^:private assemble
   [kx terms empty-map]
-  (trace :in 'assemble
-         :kx kx
-         :terms terms)
   (let [by-first (ordered-group-by #(nth % kx) terms)
         kx+1 (inc kx)
         kx+2 (inc kx+1)
-        *non-nullable? (volatile! false)
         reducer-fn (fn [coll* [k k-terms]]
-                     (trace :in 'assemble.reducer-fn
-                            :k k
-                            :k-terms k-terms)
-                     (let [[leaf-terms nested-terms] (split-on #(= (count %) kx+2) k-terms)
+                     (let [*non-nullable? (volatile! false)
+                           [leaf-terms nested-terms] (split-on #(= (count %) kx+2) k-terms)
                            ;; Apply the leaf terms first.  Typically, there are either 0,
                            ;; 1 non-nullable, or 2 (non-nullable followed by nil).
                            coll1 (if (some? leaf-terms)
                                    (reduce (fn [coll term]
-                                             (trace :in 'assemble.leaf
-                                                    :k k
-                                                    :term term
-                                                    :coll coll)
                                              (assoc* coll k (nth term kx+1) *non-nullable? empty-map))
                                            coll*
                                            leaf-terms)
@@ -539,9 +529,15 @@
                          (let [value-for-k (assemble kx+1 nested-terms empty-map)]
                            (assoc* coll1 k value-for-k *non-nullable? empty-map)))))
         reduced-value (reduce reducer-fn nil by-first)]
-    (if (= ::null reduced-value)
-      ::null
-      (persistent! reduced-value))))
+    (let [result
+          (if (or (nil? reduced-value) (= ::null reduced-value))
+            reduced-value
+            (persistent! reduced-value))]
+      (trace :in 'assemble.out
+             :kx kx
+             :terms terms
+             :result result)
+      result)))
 
 (defn assemble-collection
   "Assembles a seq of key/value paths into a nested structure (maps and vectors).
@@ -564,5 +560,7 @@
   ([terms empty-map]
    (assert (map? empty-map))
    (assert (empty? empty-map))
+   (trace :in 'assemble-collection
+          :terms terms)
    (let [result (assemble 0 terms empty-map)]
      (if (= ::null result) nil result))))

@@ -711,6 +711,20 @@
                                ;; goes to nil, and this customer path is lost.
                                [:customer :name "Alfred"]]))))
 
+(deftest no-terms
+  (is (= nil (assemble-collection []))))
+
+(deftest null-progation-stops-at-nullable
+  (is (= {:user {:id "1"
+                 :employer nil}}
+         (assemble-collection [[:user non-nullable]
+                               [:user :id non-nullable]
+                               [:user :id "1"]
+                               [:user :employer :id non-nullable]
+                               [:user :employer :id "10"]
+                               [:user :employer :name non-nullable]
+                               [:user :employer :name nil]]))))
+
 (comment
 
   (let [paths (extract-paths example)]
@@ -726,4 +740,6 @@
   ;; 1.68 ms -- eliminated minor dead code
 
   ;; 1.59 ms -- use transients in ordered-group-by
+
+  ;; 1.60 ms -- correct bug *non-nullable? should be per key
   )
