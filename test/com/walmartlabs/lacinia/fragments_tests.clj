@@ -24,9 +24,15 @@
   [(schema/tag-with-type {:name "R2-D2" :power "AC"} :droid)
    (schema/tag-with-type {:name "Luke" :home_world "Tatooine"} :human)])
 
+(defn ^:private resolve-friends
+  [_ _ _]
+  [(schema/tag-with-type {:name "C3P0" :power "DC"} :droid)
+   (schema/tag-with-type {:name "Obi-Wan" :home_world "Stewjon"} :human)])
+
 (def ^:private schema
   (utils/compile-schema "fragments-schema.edn"
-                        {:resolve-characters resolve-characters}))
+                        {:resolve-characters resolve-characters
+                         :resolve-friends resolve-friends}))
 
 (defn ^:private q [query]
   (utils/simplify (execute schema query nil nil)))
@@ -64,7 +70,7 @@
                  [{:name "R2-D2"
                    :power "AC"
                    :friends [{:name "C3P0"}
-                             {:name "Obi-Wan" :home_world "Unknown"}]}
+                             {:name "Obi-Wan" :home_world "Stewjon"}]}
                   {:name "Luke"
                    ;; Luke is a human, only gets friends/name (the fragment
                    ;; doesn't trigger).
