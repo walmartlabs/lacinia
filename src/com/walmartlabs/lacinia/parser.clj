@@ -20,7 +20,7 @@
     [clojure.string :as str]
     [com.walmartlabs.lacinia.internal-utils
      :refer [cond-let update? q map-vals filter-vals remove-vals
-             with-exception-context throw-exception to-message
+             with-exception-context throw-exception to-message seek
              keepv as-keyword *exception-context*]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.constants :as constants]
@@ -32,17 +32,6 @@
     [flatland.ordered.map :refer [ordered-map]])
   (:import
     (clojure.lang ExceptionInfo)))
-
-(defn ^:private first-match
-  [pred coll]
-  (->> coll
-       (filter pred)
-       first))
-
-(defn ^:private nil-map
-  [m]
-  (when (seq m)
-    m))
 
 (declare ^:private selection)
 
@@ -836,7 +825,7 @@
   selection/Directives
 
   (directives [_]
-    (nil-map (group-by :directive-name directives))))
+    (not-empty (group-by :directive-name directives))))
 
 (defrecord ^:private InlineFragment [selections directives on-type-name
                                      location locations concrete-types]
@@ -883,8 +872,8 @@
                                 :alias (or alias field-name)
                                 :selections selections
                                 :directives (seq directives)
-                                :arguments (nil-map arguments)
-                                :reportable-arguments (nil-map (extract-reportable-arguments arguments))))))
+                                :arguments (not-empty arguments)
+                                :reportable-arguments (not-empty (extract-reportable-arguments arguments))))))
 
 (defn ^:private select-operation
   "Given a collection of parsed operation definitions and an operation name (which
@@ -907,7 +896,7 @@
     single-op?
     first-op
 
-    :let [operation (first-match #(= operation-key (:name %)) operations)]
+    :let [operation (seek #(= operation-key (:name %)) operations)]
 
     (nil? operation)
     (throw-exception "Multiple operations provided but no matching name found."
