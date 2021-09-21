@@ -25,7 +25,7 @@
     [clojure.spec.alpha :as s]
     [com.walmartlabs.lacinia.introspection :as introspection]
     [com.walmartlabs.lacinia.internal-utils
-     :refer [map-vals map-kvs filter-vals deep-merge q
+     :refer [map-vals map-kvs filter-vals deep-map-merge q
              is-internal-type-name? sequential-or-set? as-keyword
              cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag
              to-message qualified-name aggregate-results]]
@@ -1915,7 +1915,7 @@
          introspection-schema (when enable-introspection?
                                 (introspection/introspection-schema))]
      (-> schema
-         (deep-merge introspection-schema)
+         (deep-map-merge introspection-schema)
          (construct-compiled-schema options')))))
 
 ;; The compiled schema tends to be huge and unreadable. It clutters exception output.

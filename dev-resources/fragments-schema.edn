@@ -9,12 +9,14 @@
   {:implements [:character]
    :fields {:name {:type String}
             :power {:type String}
-            :friends {:type (list :character)}}}
+            :friends {:type (list :character)
+                      :resolve :resolve-friends }}}
 
   :human
   {:implements [:character]
    :fields {:name {:type String}
-            :friends {:type (list :character) }
+            :friends {:type (list :character)
+                      :resolve :resolve-friends}
             :home_world {:type String}}}}
 
  :queries
