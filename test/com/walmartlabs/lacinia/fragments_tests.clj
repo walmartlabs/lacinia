@@ -63,7 +63,7 @@
            }
            }"))))
 
-(deftest later-fragment-do-not-override-earlier
+(deftest later-fragments-do-not-override-earlier
   (is (= {:data {:characters
                  ;; For droids, we get friends/name normally, and
                  ;; friends/home_world (via fragment)
