@@ -18,7 +18,8 @@
             [com.walmartlabs.lacinia :as lacinia]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.test-schema :refer [test-schema]]
-            [com.walmartlabs.test-utils :refer [simplify expect-exception]]))
+            [com.walmartlabs.test-utils :refer [simplify expect-exception]]
+            [clojure.string :as str]))
 
 (def default-schema
   (schema/compile test-schema {:default-field-resolver schema/hyphenating-default-field-resolver}))
@@ -391,7 +392,7 @@
     (is (empty? data))
     (is (= 1 (count errors)))
     (let [err (-> errors first :message)]
-      (is (.contains err "Failed to parse GraphQL query")))))
+      (is (str/includes? err "Failed to parse GraphQL query")))))
 
 (deftest resolve-callback-failures
   (let [q "{ droid(id: \"2001\") { accessories }}"
