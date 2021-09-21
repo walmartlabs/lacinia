@@ -15,14 +15,17 @@
 (ns com.walmartlabs.lacinia.executor
   "Mechanisms for executing parsed queries against compiled schemas."
   (:require
+    [com.walmartlabs.lacinia.trace :refer [trace]]
     [com.walmartlabs.lacinia.internal-utils
-     :refer [cond-let map-vals remove-vals q aggregate-results transform-result to-message]]
+     :refer [cond-let map-vals remove-vals q aggregate-results transform-result to-message
+             deep-merge deep-merge-value]]
     [flatland.ordered.map :refer [ordered-map]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :as resolve
      :refer [resolve-as resolve-promise]]
     [com.walmartlabs.lacinia.selector-context :as sc]
     [com.walmartlabs.lacinia.tracing :as tracing]
+    [com.walmartlabs.lacinia.describe :refer [description-for]]
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.selection :as selection])
   (:import
@@ -226,7 +229,8 @@
 
   Returns a ResolverResult that delivers a selected value (usually, a ResultTuple), or may return nil."
   [execution-context selection]
-  (when-not (:disabled? selection)
+  (when-not
+    (:disabled? selection)
     (case (selection/selection-kind selection)
       :field (apply-field-selection execution-context selection)
 
@@ -239,8 +243,11 @@
   is an ResultTuple."
   [left-value right-value]
   (if (instance? ResultTuple right-value)
-    (assoc left-value (:alias right-value) (:value right-value))
-    (merge left-value right-value)))
+    (let [{:keys [alias value]} right-value]
+      (if (contains? left-value alias)
+        (update left-value alias deep-merge-value value)
+        (assoc left-value alias value)))
+    (deep-merge left-value right-value)))
 
 (defn ^:private execute-nested-selections
   "Executes nested sub-selections once a value is resolved.

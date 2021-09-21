@@ -109,11 +109,11 @@
   [pred m]
   (filter-keys (complement pred) m))
 
-(defn deep-merge
+(defn deep-map-merge
   "Like merge, but merges maps recursively."
   [& maps]
   (if (every? (some-fn nil? map?) maps)
-    (apply merge-with deep-merge maps)
+    (apply merge-with deep-map-merge maps)
     (last maps)))
 
 (defn update?
@@ -445,3 +445,28 @@
               (reduced v)))
            nil
           coll))
+
+(declare deep-merge)
+
+(defn deep-merge-value
+  [left right]
+  (cond
+    (and (map? left) (map? right))
+    (deep-merge left right)
+
+    (and (sequential? left) (sequential? right))
+    (mapv deep-merge left right)
+
+  (or (map? right) (sequential? right))
+    (throw (ex-info "unable to deep merge"
+                    {:left left
+                     :right right}))
+
+    :else
+    right))
+
+(defn deep-merge
+  "Merges two maps together.  Later map override earlier.
+  If a key is sequential, then each element in the list is merged."
+  [left-value right-value]
+  (merge-with deep-merge-value left-value right-value))

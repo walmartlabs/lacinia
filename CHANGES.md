@@ -11,6 +11,10 @@ Lacinia now
 detects [infinite cycles caused by fragments directly, or indirectly, referring to themselves](http://spec.graphql.org/June2018/#sec-Fragment-spreads-must-not-form-cycles)
 .
 
+Previously, when multiple fragments selected the same field within a single object, the later fragments
+would overwrite the earlier fragments; this has now been addressed and fragments merge together 
+as expected.
+
 A `deps.edn` for the project has been added.
 
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/27?closed=1)

@@ -85,8 +85,6 @@
                    power
                    friends {
                       ... on human {
-                      # This should be merged in with friends / name above, but instead
-                      # replaces it.
                         home_world
                       }
                    }
