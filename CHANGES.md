@@ -1,4 +1,4 @@
-## 0.39 - UNRELEASED
+## 1.0 -- 9 Oct 2021
 
 A new function, `com.walmartlabs.lacinia.schema/select-type`, allows a type within the compiled schema to be selected;
 this exposes the type, fields, arguments, and so forth, much like GraphQL introspection, but at the Clojure API level.

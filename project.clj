@@ -1,4 +1,4 @@
-(defproject com.walmartlabs/lacinia "0.39-alpha-11"
+(defproject com.walmartlabs/lacinia "1.0"
   :description "A GraphQL server implementation in Clojure"
   :url "https://github.com/walmartlabs/lacinia"
   :license {:name "Apache, Version 2.0"
