@@ -624,9 +624,11 @@
   [schema argument-definition arg]
   (let [object-fields (->> argument-definition schema/root-type-name (get schema) :fields)
         [literal-values dynamic-extractor] (process-arguments schema object-fields (second arg))]
-    (fn [arguments]
-      (merge literal-values
-             (dynamic-extractor arguments)))))
+    (if (some? dynamic-extractor)
+      (fn [arguments]
+        (merge literal-values
+               (dynamic-extractor arguments)))
+      (fn [_arguments] literal-values))))
 
 (defmethod process-dynamic-argument :array
   [schema argument-definition arg]
@@ -652,7 +654,7 @@
 (defn ^:private construct-dynamic-arguments-extractor
   [schema argument-definitions arguments]
   (if (empty? arguments)
-    (fn [_variables] nil)
+    nil
     (let [process-arg (fn [arg-name arg-value]
                         (let [arg-def (get argument-definitions arg-name)
                               arg-type-name (schema/root-type-name arg-def)
@@ -1302,26 +1304,38 @@
 
         ;; Explicitly defeat some lazy evaluation, to ensure that validation exceptions are thrown
         ;; from within this function call.
-        selections (coalesce-selections (mapv #(selection schema' % root) selections))]
+        selections (coalesce-selections (mapv #(selection schema' % root) selections))
+        fragments (normalize-fragment-definitions schema' fragment-definition)]
 
     (when (and (= :subscription operation-type)
                (not= 1 (count selections)))
       (throw (IllegalStateException. "Subscriptions only allow exactly one selection for the operation.")))
 
     ;; Build the result describing the fragments and selections (for the selected operation).
-    {:fragments (normalize-fragment-definitions schema' fragment-definition)
-     :selections selections
-     :operation-type operation-type
-     :root root
-     constants/schema-key schema}))
+    (cond-> {:selections selections
+             :operation-type operation-type
+             :root root
+             constants/schema-key schema}
+      (seq fragments) (assoc :fragments fragments))))
+
+(defn ^{:added "1.1"} invariant?
+  "Analyzes the parsed query and returns true if it contains no query variables or
+  query directives; an invariant query will be identical before and after
+  invoking [[prepare-with-query-variables]]."
+  [parsed-query]
+  (not
+    (or (some ::needs-prepare? (:selections parsed-query))
+        (some ::needs-prepare? (-> parsed-query :fragments vals)))))
 
 (defn prepare-with-query-variables
   "Given a parsed query data structure and a map of variables,
   update the query, calculating field arguments and applying @skip and @include directives."
   [parsed-query variables]
-  (let [prepare #(prepare-node % variables)]
-    (-> (prepare-nested-selections parsed-query variables)
-        (update :fragments #(map-vals prepare %)))))
+  (if (invariant? parsed-query)
+    parsed-query
+    (let [prepare #(prepare-node % variables)]
+      (-> (prepare-nested-selections parsed-query variables)
+          (update :fragments #(map-vals prepare %))))))
 
 (defn parse-query
   "Given a compiled schema and a query document, parses the query to an executable form
