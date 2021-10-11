@@ -1,3 +1,10 @@
+## 1.1 -- UNRELEASED
+
+Fixed a tiny performance bug.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/28?closed=1)
+
+
 ## 1.0 -- 9 Oct 2021
 
 A new function, `com.walmartlabs.lacinia.schema/select-type`, allows a type within the compiled schema to be selected;
