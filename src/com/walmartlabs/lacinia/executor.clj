@@ -15,19 +15,20 @@
 (ns com.walmartlabs.lacinia.executor
   "Mechanisms for executing parsed queries against compiled schemas."
   (:require
-    [com.walmartlabs.lacinia.trace :refer [trace]]
-    [com.walmartlabs.lacinia.internal-utils
-     :refer [cond-let map-vals remove-vals q aggregate-results transform-result to-message
-             deep-merge deep-merge-value]]
-    [flatland.ordered.map :refer [ordered-map]]
-    [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.lacinia.resolve :as resolve
-     :refer [resolve-as resolve-promise]]
-    [com.walmartlabs.lacinia.selector-context :as sc]
-    [com.walmartlabs.lacinia.tracing :as tracing]
-    [com.walmartlabs.lacinia.describe :refer [description-for]]
-    [com.walmartlabs.lacinia.constants :as constants]
-    [com.walmartlabs.lacinia.selection :as selection])
+   [com.walmartlabs.lacinia.trace :refer [trace]]
+   [com.walmartlabs.lacinia.internal-utils
+    :refer [cond-let map-vals remove-vals q aggregate-results transform-result to-message
+            deep-merge deep-merge-value keepv get-nested]]
+   [flatland.ordered.map :refer [ordered-map]]
+   [com.walmartlabs.lacinia.schema :as schema]
+   [com.walmartlabs.lacinia.resolve :as resolve
+    :refer [resolve-as resolve-promise]]
+   [com.walmartlabs.lacinia.selector-context :as sc]
+   [com.walmartlabs.lacinia.tracing :as tracing]
+   [com.walmartlabs.lacinia.describe :refer [description-for]]
+   [com.walmartlabs.lacinia.constants :as constants]
+   [com.walmartlabs.lacinia.selection :as selection]
+   [com.walmartlabs.lacinia.selection :as sel])
   (:import
     (clojure.lang PersistentQueue)))
 
@@ -112,7 +113,7 @@
                      :value value}))
 
     :else
-    (or (get-in type [:fields field-name :resolve])
+    (or (get-nested type [:fields field-name :resolve])
         (throw (ex-info "Sanity check: field not present."
                         {:type resolved-type
                          :value value})))))
@@ -159,7 +160,7 @@
                                         :duration duration}))
                               resolved-value)))))
     (catch Throwable t
-      (let [field-name (get-in field-selection [:field-definition :qualified-name])
+      (let [field-name (get-nested field-selection [:field-definition :qualified-name])
             {:keys [location]} field-selection
             arguments (selection/arguments field-selection)]
         (throw (ex-info (str "Exception in resolver for "
@@ -195,8 +196,8 @@
 
 (defn ^:private apply-field-selection
   [execution-context field-selection]
-  (let [{:keys [alias]} field-selection
-        null-collapser (get-in field-selection [:field-definition :null-collapser])
+  (let [alias (sel/alias-name field-selection)
+        null-collapser (get-nested field-selection [:field-definition :null-collapser])
         resolver-result (resolve-and-select execution-context field-selection)]
     (transform-result resolver-result
                       (fn [resolved-field-value]
@@ -217,7 +218,7 @@
 (defn ^:private apply-named-fragment
   [execution-context named-fragment-selection]
   (let [{:keys [fragment-name]} named-fragment-selection
-        fragment-def (get-in execution-context [:context constants/parsed-query-key :fragments fragment-name])]
+        fragment-def (get-nested execution-context [:context constants/parsed-query-key :fragments fragment-name])]
     (maybe-apply-fragment execution-context
                           ;; A bit of a hack:
                           (assoc named-fragment-selection
@@ -256,7 +257,7 @@
   [execution-context sub-selections]
   ;; First step is easy: convert the selections into ResolverResults.
   ;; Then once all the individual results are ready, combine them in the correct order.
-  (let [selection-results (keep #(apply-selection execution-context %) sub-selections)]
+  (let [selection-results (keepv #(apply-selection execution-context %) sub-selections)]
     (aggregate-results selection-results
                        (fn [values]
                          (reduce merge-selected-values (ordered-map) values)))))
@@ -478,7 +479,7 @@
                                                   :timing-start timing-start
                                                   :*extensions *extensions
                                                   :path []
-                                                  :resolved-type (get-in parsed-query [:root :type-name])
+                                                  :resolved-type (get-nested parsed-query [:root :type-name])
                                                   :resolved-value (::resolved-value context)})
         result-promise (resolve-promise)
         executor resolve/*callback-executor*
@@ -522,7 +523,7 @@
         selection (do
                     (assert (= :subscription operation-type))
                     (first selections))
-        streamer (get-in selection [:field-definition :stream])]
+        streamer (get-nested selection [:field-definition :stream])]
     (streamer context (:arguments selection) source-stream)))
 
 (defn ^:private node-selections
@@ -533,13 +534,13 @@
 
     :named-fragment
     (let [{:keys [fragment-name]} node]
-      (get-in parsed-query [:fragments fragment-name :selections]))))
+      (get-nested parsed-query [:fragments fragment-name :selections]))))
 
 (defn ^:private to-field-name
   "Identifies the qualified field name for a selection node.  May return nil
   for meta-fields such as __typename."
   [node]
-  (get-in node [:field-definition :qualified-name]))
+  (get-nested node [:field-definition :qualified-name]))
 
 (defn ^:private walk-selections
   [context node-xform]
@@ -565,7 +566,7 @@
          ;; remove the first node (the selection); just interested
          ;; in what's beneath the selection
          next
-         (keep f))))
+         (keepv f))))
 
 (defn selection
   "Returns the field selection, an object that implements the
@@ -653,7 +654,7 @@
 
                 :named-fragment
                 (let [{:keys [fragment-name]} selection
-                      fragment-selections (get-in parsed-query [:fragments fragment-name :selections])]
+                      fragment-selections (get-nested parsed-query [:fragments fragment-name :selections])]
                   (merge-with intov m (build-selections-map parsed-query fragment-selections))))))
           {}
           selections))

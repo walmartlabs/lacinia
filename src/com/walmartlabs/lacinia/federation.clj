@@ -15,7 +15,7 @@
 (ns com.walmartlabs.lacinia.federation
   (:require
     [com.walmartlabs.lacinia.resolve :as resolve :refer [with-error]]
-    [com.walmartlabs.lacinia.internal-utils :as utils]
+    [com.walmartlabs.lacinia.internal-utils :as utils :refer [get-nested]]
     [com.walmartlabs.lacinia.schema :as schema]
     [clojure.spec.alpha :as s]))
 
@@ -124,7 +124,7 @@
   [schema sdl entity-resolvers]
   (let [entity-names (find-entity-names schema)
         entities-resolver (entities-resolver-factory entity-names entity-resolvers)
-        query-root (get-in schema [:roots :query] :Query)]
+        query-root (get-nested schema [:roots :query] :Query)]
     (prevent-collision schema [:unions :_Entity])
     (prevent-collision schema [:objects query-root :fields :_service])
     (prevent-collision schema [:objects query-root :fields :_entities])

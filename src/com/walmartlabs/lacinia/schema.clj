@@ -25,10 +25,10 @@
     [clojure.spec.alpha :as s]
     [com.walmartlabs.lacinia.introspection :as introspection]
     [com.walmartlabs.lacinia.internal-utils
-     :refer [map-vals map-kvs filter-vals deep-map-merge q
+     :refer [map-vals map-kvs filter-vals deep-map-merge q get-nested
              is-internal-type-name? sequential-or-set? as-keyword
              cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag
-             to-message qualified-name aggregate-results]]
+             to-message qualified-name aggregate-results fast-map-indexed]]
     [com.walmartlabs.lacinia.resolve :as resolve
      :refer [ResolverResult resolve-as is-resolver-result?]]
     [clojure.string :as str]
@@ -617,7 +617,7 @@
               (let [{:keys [directive-type arguments]} compiled-directive
                     directive-def (get directive-defs directive-type)
                     apply-defaults (fn [m k]
-                        (let [default-value (get-in directive-def [:args k :default-value])]
+                        (let [default-value (get-nested directive-def [:args k :default-value])]
                           (if (and (some? default-value)
                                    (nil? (get m k)))
                             (assoc m k default-value)
@@ -807,7 +807,7 @@
   [arg-name arg-def]
   (let [arg-def' (-> (rewrite-type arg-def) map->ArgumentDef)
         has-default-value? (contains? arg-def :default-value)
-        is-required? (and (= :non-null (get-in arg-def' [:type :kind]))
+        is-required? (and (= :non-null (get-nested arg-def' [:type :kind]))
                           (not has-default-value?))]
     (assoc arg-def'
            :arg-name arg-name
@@ -877,20 +877,20 @@
 
       :list
       (let [nested-collapser (build-null-collapser schema true nested-type)
-            promote-nils-to-empty-list (get-in schema [::options :promote-nils-to-empty-list?])
+            promote-nils-to-empty-list (get-nested schema [::options :promote-nils-to-empty-list?])
             empty-list (if promote-nils-to-empty-list [] nil)]
         (fn [values]
-          (let [values' (when values
-                          (map nested-collapser values))]
-            (cond
-              (nil? values')
-              empty-list
+          (cond-let
+            (nil? values)
+            empty-list
 
-              (some is-null? values')
-              (if forgive-null? empty-list ::null)
+            :let [values' (mapv nested-collapser values)]
 
-              :else
-              values')))))))
+            (some is-null? values')
+            (if forgive-null? empty-list ::null)
+
+            :else
+            values'))))))
 
 (defn ^:private compile-field
   "Rewrites the type of the field, and the type of any arguments."
@@ -1180,7 +1180,7 @@
                                     (recur next-v next-ec)
                                     (next-selector (assoc next-ec :resolved-value next-v)))))))]
             (aggregate-results
-              (map-indexed
+              (fast-map-indexed
                 (fn [i v]
                   (unwrapper (-> execution-context
                                  (assoc :resolved-value v)
@@ -1211,7 +1211,7 @@
   (->> type-def
        :implements
        (map schema)
-       (keep #(get-in % [:fields field-name :description]))
+       (keep #(get-nested % [:fields field-name :description]))
        first))
 
 (defn ^:private provide-default-arg-descriptions
@@ -1224,7 +1224,7 @@
                            arg-def
                            (assoc arg-def :description
                                   (->> interface-defs
-                                       (keep #(get-in % [:fields field-name :args arg-name :description]))
+                                       (keep #(get-nested % [:fields field-name :args arg-name :description]))
                                        first)))))]
     (update field-def :args #(reduce-kv reducer {} %))))
 
@@ -1279,7 +1279,7 @@
                  (throw (ex-info (format "Name collision compiling schema. %s %s conflicts with existing %s."
                                          category
                                          (q k)
-                                         (name (get-in s [k :category])))
+                                         (name (get-nested s [k :category])))
                                  {:type-name k
                                   :category category
                                   :type v})))
@@ -1359,7 +1359,7 @@
                               :directives
                               (filter #(-> % :directive-type (= :deprecated)))
                               first)]
-    (assoc element-def :deprecated (get-in directive [:directive-args :reason] true))
+    (assoc element-def :deprecated (get-nested directive [:directive-args :reason] true))
     element-def))
 
 (defn ^:private normalize-enum-value-def
@@ -1500,7 +1500,7 @@
 (defn ^:private validate-directives-in-def
   [schema object-def location]
   (doseq [{:keys [directive-type]} (:directives object-def)
-          :let [directive-def (get-in schema [::directive-defs directive-type])]]
+          :let [directive-def (get-nested schema [::directive-defs directive-type])]]
     (when-not directive-def
       (unknown-directive location object-def directive-type))
 
@@ -1625,7 +1625,7 @@
             :let [interface (get schema interface-name)
                   type-name (:type-name object-def)]
             [field-name interface-field] (:fields interface)
-            :let [object-field (get-in object-def [:fields field-name])
+            :let [object-field (get-nested object-def [:fields field-name])
                   interface-field-args (:args interface-field)
                   object-field-args (:args object-field)]]
 
@@ -1658,7 +1658,7 @@
       (when-let [additional-args (seq (difference (into #{} (keys object-field-args))
                                                   (into #{} (keys interface-field-args))))]
         (doseq [additional-arg-name additional-args
-                :let [arg-kind (get-in object-field-args [additional-arg-name :type :kind])]]
+                :let [arg-kind (get-nested object-field-args [additional-arg-name :type :kind])]]
           (when (= arg-kind :non-null)
             (throw (ex-info "Additional arguments on an object field that are not defined in extended interface cannot be required."
                             {:interface-name interface-name
@@ -1764,7 +1764,7 @@
   [schema]
   (doseq [enum-def (types-with-category schema :enum)]
     (doseq [{:keys [directive-type]} (:directives enum-def)
-            :let [directive-def (get-in schema [::directive-defs directive-type])]]
+            :let [directive-def (get-nested schema [::directive-defs directive-type])]]
       (when-not directive-def
         (unknown-directive :enum enum-def directive-type))
 
@@ -1774,7 +1774,7 @@
     (doseq [{:keys [enum-value directives]} (-> enum-def :values-detail vals)
             :let [value-name (keyword (-> enum-def :type-name name) (name enum-value))]
             {:keys [directive-type]} directives
-            :let [{:keys [locations] :as directive-def} (get-in schema [::directive-defs directive-type])]]
+            :let [{:keys [locations] :as directive-def} (get-nested schema [::directive-defs directive-type])]]
       (when-not directive-def
         (throw (ex-info (format "Enum value %s referenced unknown directive @%s."
                                 (q value-name)

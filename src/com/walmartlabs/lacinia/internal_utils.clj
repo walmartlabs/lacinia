@@ -19,8 +19,9 @@
     [clojure.string :as str]
     [com.walmartlabs.lacinia.resolve :as resolve])
   (:import
-    (clojure.lang Named)
-    (com.walmartlabs.lacinia.resolve ResolverResultImpl)))
+   (clojure.lang Named)
+   (com.walmartlabs.lacinia.resolve ResolverResultImpl)
+   (java.util.concurrent.atomic AtomicInteger AtomicLong)))
 
 (when (-> *clojure-version* :minor (< 9))
   (require '[clojure.future :refer [simple-keyword? boolean?]]))
@@ -40,8 +41,15 @@
            (cond-let ~@more-forms))))))
 
 (defn keepv
+  "Non-lazy version of clojure.core/keep that returns a vector."
   [f coll]
-  (into [] (keep f) coll))
+  (persistent!
+    (reduce (fn [coll* v]
+              (if-some [v' (f v)]
+                (conj! coll* v')
+                coll*))
+      (transient [])
+      coll)))
 
 (defn to-message
   "Converts an exception to a message. Normally, this is the message property of the exception, but if
@@ -108,6 +116,13 @@
 (defn remove-keys
   [pred m]
   (filter-keys (complement pred) m))
+
+(defn fast-map-indexed
+  [f coll]
+  (let [ix (AtomicLong. 0)]
+    (mapv (fn [v]
+            (f (.getAndIncrement ix) v))
+      coll)))
 
 (defn deep-map-merge
   "Like merge, but merges maps recursively."
@@ -291,6 +306,24 @@
   ;; Could be optimized when no args
   (update-in!* m ks #(apply f % args)))
 
+(defmacro get-nested
+  "Equivalent to clojure.core/get-in but converts into nested calls to clojure.core/get, for a tradeoff of more code
+  for less runtime cost."
+  ([m ks]
+   (reduce (fn [exp k]
+             `(get ~exp ~k))
+     m
+     ks))
+  ([m ks default-value]
+   (let [k (first ks)
+         more-ks (next ks)]
+     (if-not more-ks
+       `(get ~m ~k ~default-value)
+       `(let [v# (get ~m ~k ::not-found)]
+          (if (identical? v# ::not-found)
+            ~default-value
+            (get-nested v# ~more-ks ~default-value)))))))
+
 (defn apply-description
   "Adds a description to an element of the schema.
 
@@ -339,7 +372,7 @@
                       {:type-name type-name}))
       ;; The field-name is actually the enum value, in this context
       (if-let [ix (index-of (enum-matcher field-name)
-                            (get-in schema [root type-name :values]))]
+                            (get-nested schema [root type-name :values]))]
         (update-in! schema [root type-name :values ix] apply-enum-description description)
         (throw (ex-info "Error attaching documentation: enum value not found"
                         {:type-name type-name
@@ -377,7 +410,9 @@
    (aggregate-results resolver-results identity))
   ([resolver-results xf]
    (cond-let
-     :let [results (vec resolver-results)
+     :let [results (if (vector? resolver-results)
+                     resolver-results
+                     (vec resolver-results))
            n (count results)]
 
      (= 0 n)
@@ -411,13 +446,13 @@
                                             (fn [value]
                                               (aset buffer i value)
                                               (when (zero? (swap! *wait-count dec))
-                                                (resolve/deliver! aggregate (-> buffer vec xf))))))))
+                                                (resolve/deliver! aggregate (xf (vec buffer)))))))))
                  (recur (inc i))))]
 
      ;; Started count at 1, if it dec's to 0 now, that means all the
      ;; ResolverResults were immediate (not promises)
      (zero? (swap! *wait-count dec))
-     (resolve/resolve-as (-> buffer vec xf))
+     (resolve/resolve-as (xf (vec buffer)))
 
      :else
      aggregate)))
@@ -470,3 +505,5 @@
   If a key is sequential, then each element in the list is merged."
   [left-value right-value]
   (merge-with deep-merge-value left-value right-value))
+
+

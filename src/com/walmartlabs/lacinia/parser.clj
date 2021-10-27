@@ -21,7 +21,7 @@
     [com.walmartlabs.lacinia.internal-utils
      :refer [cond-let update? q map-vals filter-vals remove-vals
              with-exception-context throw-exception to-message seek
-             keepv as-keyword *exception-context*]]
+             keepv as-keyword *exception-context* get-nested]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.resolve :as resolve]
@@ -514,7 +514,7 @@
     (map? nested-type)
     (recur schema result nested-type arg-value)
 
-    :let [category (get-in schema [nested-type :category])]
+    :let [category (get-nested schema [nested-type :category])]
 
     (= category :scalar)
     [:scalar result]
@@ -526,7 +526,7 @@
     [:enum (as-keyword result)]
 
     (= category :input-object)
-    [:object (let [object-fields (get-in schema [nested-type :fields])]
+    [:object (let [object-fields (get-nested schema [nested-type :fields])]
                (reduce (fn [acc k]
                          (let [v (get result k)
                                field-type (get object-fields k)]
@@ -553,7 +553,7 @@
   (let [[_ arg-value] arg
         captured-context *exception-context*
         ;; ::variables is stashed into schema by xform-query
-        variable-def (get-in schema [::variables arg-value])]
+        variable-def (get-nested schema [::variables arg-value])]
     (when (nil? variable-def)
       (throw-exception (format "Argument references undeclared variable %s."
                                (q arg-value))
@@ -1041,7 +1041,7 @@
       (let [selections' (->> sub-selections
                              (mapv #(selection schema % type))
                              coalesce-selections)
-            all-nested-fragments (keep :nested-fragments selections')
+            all-nested-fragments (keepv :nested-fragments selections')
             nested-fragments' (when (seq all-nested-fragments)
                                 (reduce into
                                         (or (:nested-fragments m) #{})
@@ -1129,7 +1129,7 @@
         is-typename-metafield? (= field-name :__typename)
         field-definition (if is-typename-metafield?
                            typename-field-definition
-                           (get-in type [:fields field-name]))
+                           (get-nested type [:fields field-name]))
         field-type (schema/root-type-name field-definition)
         nested-type (get schema field-type)
         qualified-field-name (:qualified-name field-definition field-name)
@@ -1266,7 +1266,7 @@
 
 (defn ^:private operation-type->root
   [schema operation-type]
-  (let [type-name (get-in schema [::schema/roots operation-type])]
+  (let [type-name (get-nested schema [::schema/roots operation-type])]
     (get schema type-name)))
 
 (defn ^:private categorize-root
@@ -1378,7 +1378,7 @@
   (let [{:keys [operation-type selections]} parsed-query]
     {:type operation-type
      :operations (->> selections
-                      (map #(get-in % [:field-definition :field-name]))
+                      (map #(get-nested % [:field-definition :field-name]))
                       set)}))
 
 (declare ^:private summarize-selection)
@@ -1407,7 +1407,7 @@
 
     :named-fragment
     (let [{:keys [fragment-name]} selection
-          fragment-selections (get-in parsed-query [:fragments fragment-name :selections])]
+          fragment-selections (get-nested parsed-query [:fragments fragment-name :selections])]
       (mapcat #(summarize-selection parsed-query %) fragment-selections))
 
     (throw (ex-info "Sanity check" {:selection selection}))))
