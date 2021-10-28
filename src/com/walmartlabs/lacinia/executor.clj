@@ -15,11 +15,10 @@
 (ns com.walmartlabs.lacinia.executor
   "Mechanisms for executing parsed queries against compiled schemas."
   (:require
-   [com.walmartlabs.lacinia.trace :refer [trace]]
    [com.walmartlabs.lacinia.internal-utils
     :refer [cond-let map-vals remove-vals q aggregate-results transform-result to-message
             deep-merge deep-merge-value keepv get-nested
-             ->ResultTuple]]
+            ->ResultTuple]]
    [flatland.ordered.map :refer [ordered-map]]
    [com.walmartlabs.lacinia.schema :as schema]
    [com.walmartlabs.lacinia.resolve :as resolve
@@ -53,8 +52,8 @@
     nil
 
     (and (sequential? error-map-or-maps)
-         (every? (comp string? :message)
-                 error-map-or-maps))
+      (every? (comp string? :message)
+        error-map-or-maps))
     error-map-or-maps
 
     (string? (:message error-map-or-maps))
@@ -62,8 +61,8 @@
 
     :else
     (throw (ex-info (str "Errors must be nil, a map, or a sequence of maps "
-                         "each containing, at minimum, a :message key and a string value.")
-                    {:error error-map-or-maps}))))
+                      "each containing, at minimum, a :message key and a string value.")
+             {:error error-map-or-maps}))))
 
 (defn ^:private structured-error-map
   "Converts an error map and extra data about location, path, etc. into the
@@ -73,8 +72,8 @@
   (let [{:keys [message extensions]} error-map
         {:keys [locations path]} extra-data
         extensions' (merge (dissoc error-map :message :extensions)
-                           (dissoc extra-data :locations :path)
-                           extensions)]
+                      (dissoc extra-data :locations :path)
+                      extensions)]
     (cond-> {:message message
              :locations locations
              :path path}
@@ -98,29 +97,29 @@
   When the field selection is on an abstract type (an interface or union),
   then the concrete type is extracted from the value instead, and the corresponding
   field of the concrete type is used as the source for the field resolver."
-  [schema field-selection resolved-type value]
+  [schema field-selection container-type container-value]
   (cond-let
     (:concrete-type? field-selection)
     (-> field-selection :field-definition :resolve)
 
     :let [field-name (get-nested field-selection [:field-definition :field-name])]
 
-    (nil? resolved-type)
+    (nil? container-type)
     (throw (ex-info "Sanity check: value type tag is nil on abstract type."
-                    {:value value}))
+             {:value container-value}))
 
-    :let [type (get schema resolved-type)]
+    :let [type (get schema container-type)]
 
     (nil? type)
     (throw (ex-info "Sanity check: invalid type tag on value."
-                    {:type-name resolved-type
-                     :value value}))
+             {:type-name container-type
+              :value container-value}))
 
     :else
     (or (get-nested type [:fields field-name :resolve])
-        (throw (ex-info "Sanity check: field not present."
-                        {:type resolved-type
-                         :value value})))))
+      (throw (ex-info "Sanity check: field not present."
+               {:type container-type
+                :value container-value})))))
 
 (defn ^:private invoke-resolver-for-field
   "Resolves the value for a field selection node.
@@ -130,17 +129,15 @@
   Optionally updates the timings inside the execution-context with start/finish/elapsed time
   (in milliseconds). Timing checks only occur when enabled (timings is non-nil)
   and not for default resolvers."
-  [execution-context field-selection]
+  [execution-context field-selection container-type container-value]
   (try
     (let [*resolver-tracing (:*resolver-tracing execution-context)
           arguments (selection/arguments field-selection)
-          container-value (:resolved-value execution-context)
           {:keys [context schema]} execution-context
-          resolved-type (:resolved-type execution-context)
           resolve-context (assoc context
-                                 :com.walmartlabs.lacinia/container-type-name resolved-type
-                                 constants/selection-key field-selection)
-          field-resolver (field-selection-resolver schema field-selection resolved-type container-value)]
+                            :com.walmartlabs.lacinia/container-type-name container-type
+                            constants/selection-key field-selection)
+          field-resolver (field-selection-resolver schema field-selection container-type container-value)]
       (if-not (some? *resolver-tracing)
         (field-resolver resolve-context arguments container-value)
         (let [start-offset (tracing/offset-from-start (:timing-start execution-context))
@@ -156,26 +153,26 @@
                                     {:keys [field-definition]} field-selection
                                     {:keys [field-name type-string]} field-definition]
                                 (swap! *resolver-tracing conj
-                                       {:path (:path execution-context)
-                                        :parentType resolved-type
-                                        :fieldName field-name
-                                        :returnType type-string
-                                        :startOffset start-offset
-                                        :duration duration}))
+                                  {:path (:path execution-context)
+                                   :parentType container-type
+                                   :fieldName field-name
+                                   :returnType type-string
+                                   :startOffset start-offset
+                                   :duration duration}))
                               resolved-value)))))
     (catch Throwable t
       (let [field-name (get-nested field-selection [:field-definition :qualified-name])
             {:keys [location]} field-selection
             arguments (selection/arguments field-selection)]
         (throw (ex-info (str "Exception in resolver for "
-                             (q field-name)
-                             ": "
-                             (to-message t))
-                        {:field-name field-name
-                         :arguments arguments
-                         :location location
-                         :path (:path execution-context)}
-                        t))))))
+                          (q field-name)
+                          ": "
+                          (to-message t))
+                 {:field-name field-name
+                  :arguments arguments
+                  :location location
+                  :path (:path execution-context)}
+                 t))))))
 
 (declare ^:private resolve-and-select)
 
@@ -190,14 +187,14 @@
   ;; *extensions is an Atom containing a map; if non-empty, it is added to the result map as :extensions
   ;; path is used when reporting errors
   ;; schema is the compiled schema (obtained from the parsed query)
-  [context resolved-value resolved-type *errors *warnings *extensions *resolver-tracing path schema
+  [context *errors *warnings *extensions *resolver-tracing path schema
    ;; These are used during selection; callback is the callback passed down
    ;; the selector pipeline that is provided with the final resolved value and
    ;; context.
-   errors callback warnings])
+   errors warnings])
 
 (defn ^:private apply-field-selection
-  [execution-context field-selection]
+  [execution-context field-selection container-type container-value]
   (let [alias (sel/alias-name field-selection)
         {:keys [null-collapser selector]} (:field-definition field-selection)
         xf (fn [resolved-field-value]
@@ -206,44 +203,45 @@
         ;; The selector will be null if the field's (root) type is a object, rather than
         ;; an interface or union; in those cases, we need to know the actual result type
         ;; in order to find the selector.
-        resolver-result (resolve-and-select execution-context' field-selection false selector)]
+        resolver-result (resolve-and-select execution-context' field-selection false selector container-type container-value)]
     (transform-result resolver-result xf)))
 
 (defn ^:private maybe-apply-fragment
-  [execution-context fragment-selection concrete-types]
-  (let [actual-type (:resolved-type execution-context)]
-    (when (contains? concrete-types actual-type)
-      (resolve-and-select execution-context fragment-selection true schema/floor-selector))))
+  [execution-context fragment-selection concrete-types container-type container-value]
+  (when (contains? concrete-types container-type)
+    (resolve-and-select execution-context fragment-selection true schema/floor-selector container-type container-value)))
 
 (defn ^:private apply-inline-fragment
-  [execution-context inline-fragment-selection]
+  [execution-context inline-fragment-selection container-type container-value]
   (maybe-apply-fragment execution-context
-                        inline-fragment-selection
-                        (:concrete-types inline-fragment-selection)))
+    inline-fragment-selection
+    (:concrete-types inline-fragment-selection)
+    container-type container-value))
 
 (defn ^:private apply-named-fragment
-  [execution-context named-fragment-selection]
+  [execution-context named-fragment-selection container-type container-value]
   (let [{:keys [fragment-name]} named-fragment-selection
         fragment-def (get-nested execution-context [:context constants/parsed-query-key :fragments fragment-name])]
-    (maybe-apply-fragment execution-context
-                          ;; A bit of a hack:
-                          (assoc named-fragment-selection
-                                 :selections (:selections fragment-def))
-                          (:concrete-types fragment-def))))
+    (maybe-apply-fragment
+      execution-context
+      ;; A bit of a hack:
+      (assoc named-fragment-selection :selections (:selections fragment-def))
+      (:concrete-types fragment-def)
+      container-type container-value)))
 
 (defn ^:private apply-selection
-  "Applies a selection to the current :resolved-value in the context.
+  "Applies a selection to the current container-value.
 
   Returns a ResolverResult that delivers a selected value (usually, a ResultTuple), or may return nil."
-  [execution-context selection]
+  [execution-context selection container-type container-value]
   (when-not
-    (:disabled? selection)
+   (:disabled? selection)
     (case (selection/selection-kind selection)
-      :field (apply-field-selection execution-context selection)
+      :field (apply-field-selection execution-context selection container-type container-value)
 
-      :inline-fragment (apply-inline-fragment execution-context selection)
+      :inline-fragment (apply-inline-fragment execution-context selection container-type container-value)
 
-      :named-fragment (apply-named-fragment execution-context selection))))
+      :named-fragment (apply-named-fragment execution-context selection container-type container-value))))
 
 (defn ^:private merge-selected-values
   "Merges the left and right values, with a special case for when the right value
@@ -260,28 +258,28 @@
   "Executes nested sub-selections once a value is resolved.
 
   Returns a ResolverResult delivering an ordered map of keys and selected values."
-  [execution-context sub-selections]
+  [execution-context sub-selections container-type container-value]
   ;; First step is easy: convert the selections into ResolverResults.
   ;; Then once all the individual results are ready, combine them in the correct order.
-  (let [selection-results (keepv #(apply-selection execution-context %) sub-selections)]
+  (let [selection-results (keepv #(apply-selection execution-context % container-type container-value) sub-selections)]
     (aggregate-results selection-results
-                       (fn [values]
-                         (reduce merge-selected-values empty-ordered-map values)))))
+      (fn [values]
+        (reduce merge-selected-values empty-ordered-map values)))))
 
 (defn ^:private combine-selection-results-sync
-  [execution-context previous-resolved-result sub-selection]
+  [execution-context previous-resolved-result sub-selection container-type container-value]
   ;; Let's just call the previous result "left" and the sub-selection's result "right".
   ;; However, sometimes a selection is disabled and returns nil instead of a ResolverResult.
   (let [next-result (resolve-promise)]
     (resolve/on-deliver! previous-resolved-result
-                         (fn [left-value]
-                           ;; This is what makes it sync: we don't kick off the evaluation of the selection
-                           ;; until the previous selection, left, has completed.
-                           (let [sub-resolved-result (apply-selection execution-context sub-selection)]
-                             (resolve/on-deliver! sub-resolved-result
-                                                  (fn [right-value]
-                                                    (resolve/deliver! next-result
-                                                                      (merge-selected-values left-value right-value)))))))
+      (fn [left-value]
+        ;; This is what makes it sync: we don't kick off the evaluation of the selection
+        ;; until the previous selection, left, has completed.
+        (let [sub-resolved-result (apply-selection execution-context sub-selection container-type container-value)]
+          (resolve/on-deliver! sub-resolved-result
+            (fn [right-value]
+              (resolve/deliver! next-result
+                (merge-selected-values left-value right-value)))))))
     ;; This will deliver after the sub-selection delivers, which is only after the previous resolved result
     ;; delivers.
     next-result))
@@ -293,11 +291,11 @@
   removed.
 
   Returns ResolverResult whose value is a map of keys and selected values."
-  [execution-context sub-selections]
+  [execution-context sub-selections container-type container-value]
   ;; This could be optimized for the very common case of a single sub-selection.
-  (reduce #(combine-selection-results-sync execution-context %1 %2)
-          (resolve-as empty-ordered-map)
-          sub-selections))
+  (reduce #(combine-selection-results-sync execution-context %1 %2 container-type container-value)
+    (resolve-as empty-ordered-map)
+    sub-selections))
 
 (defn ^:private resolve-and-select
   "Recursive resolution of a field within a containing field's resolved value.
@@ -305,15 +303,15 @@
   Returns a ResolverResult of the selected value.
 
   Accumulates errors in the execution context as a side-effect."
-  [execution-context selection is-fragment? static-selector]
+  [execution-context selection is-fragment? static-selector container-type container-value]
   (let [;; Get the raw selections (not attached to the schema) which is faster
         sub-selections (:selections selection)
 
         apply-errors (fn [selection-context sc-key ec-atom-key]
                        (when-let [errors (get selection-context sc-key)]
                          (->> errors
-                              (mapcat #(enhance-errors selection execution-context %))
-                              (swap! (get execution-context ec-atom-key) into))))
+                           (mapcat #(enhance-errors selection execution-context %))
+                           (swap! (get execution-context ec-atom-key) into))))
 
         ;; When an exception occurs at a nested field, we don't want to have the same exception wrapped
         ;; at every containing field, but because (synchronous) selection is highly recursive, that's the danger.
@@ -324,7 +322,7 @@
         ;; seqs before (repeatedly) invoking the callback, at which point, it is possible to
         ;; perform a recursive selection on the nested fields of the origin field.
         selector-callback
-        (fn selector-callback [{:keys [resolved-value resolved-type] :as execution-context}]
+        (fn selector-callback [execution-context resolved-type resolved-value]
           (reset! *pass-through-exceptions true)
           ;; Any errors from the resolver (via with-errors) or anywhere along the
           ;; selection pipeline are enhanced and added to the execution context.
@@ -332,16 +330,14 @@
           (apply-errors execution-context :warnings :*warnings)
 
           (if (and (or (some? resolved-value)
-                       (= [] (:path execution-context)))    ;; This covers the root operation
-                   resolved-type
-                   (seq sub-selections))
+                     (= [] (:path execution-context))) ;; This covers the root operation
+                resolved-type
+                (seq sub-selections))
             ;; Case #1: The field is an object type that needs further sub-selections to reach
             ;; scalar (or enum) leafs.
             (execute-nested-selections
-              (assoc execution-context
-                     :errors nil
-                     :warnings nil)
-              sub-selections)
+              (assoc execution-context :errors nil :warnings nil)
+              sub-selections resolved-type resolved-value)
             ;; Case #2: A scalar (or leaf) type, no further sub-selections necessary.
             (resolve-as resolved-value)))
         ;; In a concrete type, we know the selector from the field definition
@@ -350,16 +346,15 @@
         ;; to use the type of the parent node's resolved value, just
         ;; as we do to get a resolver.
         selector (or static-selector
-                   (let [field-name (:field-name selection)
-                         resolved-type (:resolved-type execution-context)]
+                   (let [field-name (:field-name selection)]
                      (-> execution-context
                          :schema
-                         (get resolved-type)
+                         (get container-type)
                          :fields
                          (get field-name)
                          :selector
                          (or (throw (ex-info "Sanity check: no selector."
-                                      {:type-name resolved-type
+                                      {:type-name container-type
                                        :selection selection}))))))
 
         process-resolved-value (fn [resolved-value]
@@ -370,31 +365,25 @@
                                           new-execution-context execution-context]
                                      (if (sc/is-wrapped-value? resolved-value)
                                        (recur (:value resolved-value)
-                                              (sc/apply-wrapped-value new-execution-context resolved-value))
+                                         (sc/apply-wrapped-value new-execution-context resolved-value))
                                        ;; Finally to a real value, not a wrapper.  The commands may have
                                        ;; modified the :errors or :execution-context keys, and the pipeline
                                        ;; will do the rest. Errors will be dealt with in the callback.
-                                       (-> new-execution-context
-                                           (assoc :callback selector-callback
-                                                  :resolved-value resolved-value
-                                                  ;; Don't actually know the type yet, that will come
-                                                  ;; inside the selector pipeline.
-                                                  :resolved-type nil)
-                                           selector)))
+                                       (selector new-execution-context selector-callback nil resolved-value)))
                                    (catch Throwable t
                                      (if @*pass-through-exceptions
                                        (throw t)
                                        (let [{:keys [location]} selection
                                              arguments (selection/arguments selection)
-                                             qualified-name  (:qualified-name selection)]
+                                             qualified-name (:qualified-name selection)]
                                          (throw (ex-info (str "Exception processing resolved value for "
-                                                              (q qualified-name)
-                                                              ": "
-                                                              (to-message t))
-                                                         {:path (:path execution-context)
-                                                          :field-name qualified-name
-                                                          :arguments arguments
-                                                          :location location} t)))))))
+                                                           (q qualified-name)
+                                                           ": "
+                                                           (to-message t))
+                                                  {:path (:path execution-context)
+                                                   :field-name qualified-name
+                                                   :arguments arguments
+                                                   :location location} t)))))))
 
         ;; When tracing is enabled, defeat the optimization so that the (trivial) resolver can be
         ;; invoked and its execution time tracked.
@@ -406,15 +395,15 @@
         unwrap-resolver-result (fn [field-resolver-result]
                                  (let [final-result (resolve-promise)]
                                    (resolve/on-deliver! field-resolver-result
-                                                        (fn receive-resolved-value-from-field [resolved-value]
-                                                          ;; This is for a specific case, where a parent resolver returns a map whose value
-                                                          ;; is also a ResolverResult; in that case, unwrap one layer further before calling
-                                                          ;; process-resolved-value.
-                                                          (if (resolve/is-resolver-result? resolved-value)
-                                                            (resolve/on-deliver! resolved-value receive-resolved-value-from-field)
-                                                            (resolve/on-deliver! (process-resolved-value resolved-value)
-                                                                                 (fn deliver-selection-for-field [resolved-value]
-                                                                                   (resolve/deliver! final-result resolved-value))))))
+                                     (fn receive-resolved-value-from-field [resolved-value]
+                                       ;; This is for a specific case, where a parent resolver returns a map whose value
+                                       ;; is also a ResolverResult; in that case, unwrap one layer further before calling
+                                       ;; process-resolved-value.
+                                       (if (resolve/is-resolver-result? resolved-value)
+                                         (resolve/on-deliver! resolved-value receive-resolved-value-from-field)
+                                         (resolve/on-deliver! (process-resolved-value resolved-value)
+                                           (fn deliver-selection-for-field [resolved-value]
+                                             (resolve/deliver! final-result resolved-value))))))
                                    final-result))]
 
     ;; For fragments, we start with a single value and it passes right through to
@@ -423,7 +412,7 @@
     (cond
 
       is-fragment?
-      (selector (assoc execution-context :callback selector-callback))
+      (selector execution-context selector-callback container-type container-value)
 
       ;; Optimization: for simple fields there may be direct function.
       ;; This is a function that synchronously provides the value from the container resolved value.
@@ -431,9 +420,7 @@
       ;; the selector, which returns a ResolverResult. Thus we've peeled back at least one layer
       ;; of ResolveResultPromise.
       direct-fn
-      (let [resolved-value (-> execution-context
-                               :resolved-value
-                               direct-fn)]
+      (let [resolved-value (direct-fn container-value)]
         ;; Normally, resolved-value is a raw value, ready to be immediately processed; but in rare cases
         ;; it may be a ResolverResult that needs to be unwrapped before processing.
         (if (resolve/is-resolver-result? resolved-value)
@@ -448,7 +435,7 @@
       ;; The result is a scalar value, a map, or a list of maps or scalar values.
 
       :else
-      (unwrap-resolver-result (invoke-resolver-for-field execution-context selection)))))
+      (unwrap-resolver-result (invoke-resolver-for-field execution-context selection container-type container-value)))))
 
 (defn execute-query
   "Entrypoint for execution of a query.
@@ -467,43 +454,42 @@
         *extensions (atom {})
         *resolver-tracing (when (::tracing/enabled? context)
                             (atom []))
-        context' (assoc context constants/schema-key
-                        (get parsed-query constants/schema-key))
-        ;; Outside of subscriptions, the ::resolved-value is nil.
-        ;; For subscriptions, the :resolved-value will be set to a non-nil value before
+        schema (get parsed-query constants/schema-key)
+        context' (assoc context constants/schema-key schema)
+        ;; Outside of subscriptions, the ::root-value is nil.
+        ;; For subscriptions, the :root-value will be set to a non-nil value before
         ;; executing the query.
+        root-type (get-nested parsed-query [:root :type-name])
+        root-value (::resolved-value context)
         execution-context (map->ExecutionContext {:context context'
-                                                  :schema (get parsed-query constants/schema-key)
+                                                  :schema schema
                                                   :*errors *errors
                                                   :*warnings *warnings
                                                   :*resolver-tracing *resolver-tracing
                                                   :timing-start timing-start
                                                   :*extensions *extensions
-                                                  :path []
-                                                  :resolved-type (get-nested parsed-query [:root :type-name])
-                                                  :resolved-value (::resolved-value context)})
+                                                  :path []})
         result-promise (resolve-promise)
         executor resolve/*callback-executor*
         f (bound-fn []
             (try
-              (let [operation-result (if (= :mutation operation-type)
-                                       (execute-nested-selections-sync execution-context enabled-selections)
-                                       (execute-nested-selections execution-context enabled-selections))]
+              (let [execute-fn (if (= :mutation operation-type) execute-nested-selections-sync execute-nested-selections)
+                    operation-result (execute-fn execution-context enabled-selections root-type root-value)]
                 (resolve/on-deliver! operation-result
-                                     (fn [selected-data]
-                                       (let [errors (seq @*errors)
-                                             warnings (seq @*warnings)
-                                             extensions @*extensions]
-                                         (resolve/deliver! result-promise
-                                                           (cond-> {:data (schema/collapse-nulls-in-map selected-data)}
-                                                             (seq extensions) (assoc :extensions extensions)
-                                                             *resolver-tracing
-                                                             (tracing/inject-tracing timing-start
-                                                                                     (::tracing/parsing parsed-query)
-                                                                                     (::tracing/validation context)
-                                                                                     @*resolver-tracing)
-                                                             errors (assoc :errors (distinct errors))
-                                                             warnings (assoc-in [:extensions :warnings] (distinct warnings))))))))
+                  (fn [selected-data]
+                    (let [errors (seq @*errors)
+                          warnings (seq @*warnings)
+                          extensions @*extensions]
+                      (resolve/deliver! result-promise
+                        (cond-> {:data (schema/collapse-nulls-in-map selected-data)}
+                          (seq extensions) (assoc :extensions extensions)
+                          *resolver-tracing
+                          (tracing/inject-tracing timing-start
+                            (::tracing/parsing parsed-query)
+                            (::tracing/validation context)
+                            @*resolver-tracing)
+                          errors (assoc :errors (distinct errors))
+                          warnings (assoc-in [:extensions :warnings] (distinct warnings))))))))
               (catch Throwable t
                 (resolve/deliver! result-promise t))))]
 
@@ -551,23 +537,23 @@
                (when (seq queue)
                  (let [node (peek queue)]
                    (cons node
-                         (step (into (pop queue)
-                                     (node-selections parsed-query node)))))))
+                     (step (into (pop queue)
+                             (node-selections parsed-query node)))))))
         ;; Filter and transform the node
         f (fn [node]
             (when (and (= :field (selection/selection-kind node))
-                       ;; Skip the __typename psuedo-field
-                       (some? (to-field-name node))
-                       ;; Nodes are disabled by the @Skip and @Include directives, but
-                       ;; that only takes place after the query has been prepared.
-                       (not (:disabled? node)))
+                    ;; Skip the __typename psuedo-field
+                    (some? (to-field-name node))
+                    ;; Nodes are disabled by the @Skip and @Include directives, but
+                    ;; that only takes place after the query has been prepared.
+                    (not (:disabled? node)))
               (node-xform node)))]
     (->> (conj PersistentQueue/EMPTY selection)
-         step
-         ;; remove the first node (the selection); just interested
-         ;; in what's beneath the selection
-         next
-         (keepv f))))
+      step
+      ;; remove the first node (the selection); just interested
+      ;; in what's beneath the selection
+      next
+      (keepv f))))
 
 (defn selection
   "Returns the field selection, an object that implements the
@@ -651,8 +637,8 @@
                 (let [{:keys [fragment-name]} selection
                       fragment-selections (get-nested parsed-query [:fragments fragment-name :selections])]
                   (merge-with into m (build-selections-map parsed-query fragment-selections))))))
-          {}
-          selections))
+    {}
+    selections))
 
 (defn selections-tree
   "Constructs a tree of the selections below the current field.
