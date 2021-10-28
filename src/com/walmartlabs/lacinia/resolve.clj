@@ -31,10 +31,10 @@
 
   The [[FieldResolver]] protocol allows a Clojure record to act as a field resolver function."
   (:require
-   [com.walmartlabs.lacinia.selector-context :refer [is-wrapped-value? wrap-value]])
+   [com.walmartlabs.lacinia.select-utils :refer [is-wrapped-value? wrap-value]])
   (:import
    (java.util.concurrent Executor)
-   (clojure.lang IPersistentMap IPersistentVector IPersistentCollection APersistentMap APersistentVector LazySeq APersistentSet)))
+   (clojure.lang APersistentMap)))
 
 (def ^{:dynamic true
        :added "0.20.0"} ^Executor *callback-executor*
@@ -53,7 +53,7 @@
 (defn with-error
   "Wraps a value, modifiying it to include an error map (or seq of error maps).
 
-  The provided error map (or maps) will be enhanced with a :location key,
+  The provided error map will be enhanced with a :location key,
   identifying where field occurs within the query document, and a :path key,
   identifying the sequence of fields (or aliases) and list indexes within the
   :data key of the result map.

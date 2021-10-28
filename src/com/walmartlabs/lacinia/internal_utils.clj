@@ -16,17 +16,13 @@
   "Internal utilities used in the implementation, subject to change without notice."
   {:no-doc true}
   (:require
-    [clojure.string :as str]
-    [com.walmartlabs.lacinia.resolve :as resolve])
+    [clojure.string :as str])
   (:import
    (clojure.lang Named)
-   (com.walmartlabs.lacinia.resolve ResolverResultImpl)
    (java.util.concurrent.atomic AtomicLong)))
 
 (when (-> *clojure-version* :minor (< 9))
   (require '[clojure.future :refer [simple-keyword? boolean?]]))
-
-(defrecord ResultTuple [alias value])
 
 (defmacro cond-let
   "A version of `cond` that allows for `:let` terms. There is hope that someday, perhaps
@@ -402,78 +398,6 @@
   ([type-name field-name arg-name]
    (qualified-name type-name (str (name field-name) "." (name arg-name)))))
 
-(defn aggregate-results
-  "Combines a seq of ResolverResults into a single ResolverResult(Promise) that resolves
-   to a seq of values.
-
-   An optional transform function, fx, is passed the resolved seq of values.
-   The default xf is identity."
-  ([resolver-results]
-   (aggregate-results resolver-results identity))
-  ([resolver-results xf]
-   (cond-let
-     :let [results (if (vector? resolver-results)
-                     resolver-results
-                     (vec resolver-results))
-           n (count results)]
-
-     (= 0 n)
-     (resolve/resolve-as (xf []))
-
-     :let [solo (when (= 1 n)
-                  (first results))]
-
-     (and solo
-          (instance? ResolverResultImpl solo))
-     (resolve/resolve-as (xf [(:resolved-value solo)]))
-
-     :let [aggregate (resolve/resolve-promise)]
-
-     solo
-     (do
-       (resolve/on-deliver! solo (fn [value]
-                                   (resolve/deliver! aggregate (xf [value]))))
-       aggregate)
-
-     :let [buffer (object-array n)
-           *wait-count (atom 1)
-           _ (loop [i 0]
-               (when (< i n)
-                 (let [result (get results i)]
-                   (if (instance? ResolverResultImpl result)
-                     (aset buffer i (:resolved-value result))
-                     (do
-                       (swap! *wait-count inc)
-                       (resolve/on-deliver! result
-                                            (fn [value]
-                                              (aset buffer i value)
-                                              (when (zero? (swap! *wait-count dec))
-                                                (resolve/deliver! aggregate (xf (vec buffer)))))))))
-                 (recur (inc i))))]
-
-     ;; Started count at 1, if it dec's to 0 now, that means all the
-     ;; ResolverResults were immediate (not promises)
-     (zero? (swap! *wait-count dec))
-     (resolve/resolve-as (xf (vec buffer)))
-
-     :else
-     aggregate)))
-
-(defn transform-result
-  "Passes the resolved value of an existing ResolverResult through a transforming
-   function, resulting in a new ResolverResult.
-
-   Optimizes the case for a ResolverResult (pre-realized) vs.
-   a ResolverResultPromise."
-  [resolver-result xf]
-  (if (instance? ResolverResultImpl resolver-result)
-    (resolve/resolve-as (-> resolver-result :resolved-value xf))
-    (let [xformed (resolve/resolve-promise)]
-      (resolve/on-deliver! resolver-result
-                           (fn [value]
-                             (resolve/deliver! xformed (xf value))))
-      xformed)))
-
 (defn seek
   "Returns the first value of coll for which pred returns a truthy value."
   [pred coll]
@@ -507,5 +431,3 @@
   If a key is sequential, then each element in the list is merged."
   [left-value right-value]
   (merge-with deep-merge-value left-value right-value))
-
-

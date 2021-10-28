@@ -28,14 +28,15 @@
     :refer [map-vals map-kvs filter-vals deep-map-merge q get-nested
             is-internal-type-name? sequential-or-set? as-keyword
             cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag
-            to-message qualified-name aggregate-results fast-map-indexed]]
+            to-message qualified-name fast-map-indexed]]
+   [com.walmartlabs.lacinia.select-utils :as su]
    [com.walmartlabs.lacinia.resolve :as resolve
     :refer [ResolverResult resolve-as is-resolver-result?]]
+   [com.walmartlabs.lacinia.resolve-utils :refer [aggregate-results]]
    [clojure.string :as str]
    [clojure.set :refer [difference]]
    [clojure.pprint :as pprint]
-   [com.walmartlabs.lacinia.selection :as selection]
-   [com.walmartlabs.lacinia.selector-context :as sc])
+   [com.walmartlabs.lacinia.selection :as selection])
   (:import
    (clojure.lang IObj)
    (java.io Writer)))
@@ -938,13 +939,18 @@
           (resolve-as raw-value))))))
 
 (defn ^:no-doc floor-selector
-  [selector-context callback resolved-type resolved-value]
-  (callback selector-context resolved-type resolved-value))
+  [execution-context _selection callback resolved-type resolved-value]
+  (callback execution-context resolved-type resolved-value))
 
 (defn ^:private selector-error
-  [execution-context callback error]
-  (callback (cond-> execution-context
-              error (update :errors conj error)) nil nil))
+  [execution-context selection callback error]
+  (su/apply-error execution-context selection :*errors error)
+  (callback execution-context nil nil))
+
+(defn ^:private existing-error?
+  [execution-context]
+  (let [{:keys [path *errors]} execution-context]
+    (some #(= path (:path %)) @*errors)))
 
 (defn ^:private create-root-selector
   "Creates a selector function for the :root kind, which is the point at which
@@ -971,11 +977,11 @@
 
         selector (if (= :scalar category)
                    (let [serializer (:serialize field-type)]
-                     (fn select-coercion [execution-context callback resolved-type resolved-value]
+                     (fn select-coercion [execution-context selection callback resolved-type resolved-value]
                        (cond-let
 
                          (nil? resolved-value)
-                         (selector execution-context callback resolved-type nil)
+                         (selector execution-context selection callback resolved-type nil)
 
                          :let [serialized (try
                                             (serializer resolved-value)
@@ -984,7 +990,7 @@
 
 
                          (nil? serialized)
-                         (selector-error execution-context callback
+                         (selector-error execution-context selection callback
                            (let [value-str (pr-str resolved-value)]
                              {:message (format "Unable to serialize %s as type %s."
                                          value-str
@@ -993,7 +999,7 @@
                               :type-name field-type-name}))
 
                          (is-coercion-failure? serialized)
-                         (selector-error execution-context callback
+                         (selector-error execution-context selection callback
                            (-> serialized
                                (update :message
                                  #(str "Coercion error serializing value: " %))
@@ -1001,13 +1007,13 @@
                                       :value (pr-str resolved-value))))
 
                          :else
-                         (selector execution-context callback resolved-type serialized))))
+                         (selector execution-context selection callback resolved-type serialized))))
                    selector)
 
         selector (if (= :enum category)
                    (let [possible-values (-> field-type :values set)
                          serializer (:serialize field-type)]
-                     (fn validate-enum [execution-context callback resolved-type resolved-value]
+                     (fn validate-enum [execution-context selection callback resolved-type resolved-value]
                        (cond-let
                          ;; The resolver function can return a value that makes sense from
                          ;; the application's model (for example, a namespaced keyword or even a string)
@@ -1015,38 +1021,38 @@
                          ;; validated to match a known value for the enum.
 
                          (nil? resolved-value)
-                         (selector execution-context callback resolved-type nil)
+                         (selector execution-context selection callback resolved-type nil)
 
                          :let [serialized (serializer resolved-value)]
 
                          (not (possible-values serialized))
-                         (selector-error execution-context callback
+                         (selector-error execution-context selection callback
                            (error "Field resolver returned an undefined enum value."
                              {:resolved-value resolved-value
                               :serialized-value serialized
                               :enum-values possible-values}))
 
                          :else
-                         (selector execution-context callback resolved-type serialized))))
+                         (selector execution-context selection callback resolved-type serialized))))
                    selector)
 
         union-or-interface? (#{:interface :union} category)
 
         selector (if union-or-interface?
                    (let [member-types (:members field-type)]
-                     (fn select-allowed-types [execution-context callback resolved-type resolved-value]
+                     (fn select-allowed-types [execution-context selection callback resolved-type resolved-value]
                        (cond
 
                          (or (nil? resolved-value)
                            (contains? member-types resolved-type))
-                         (selector execution-context callback resolved-type resolved-value)
+                         (selector execution-context selection callback resolved-type resolved-value)
 
                          (nil? resolved-type)
-                         (selector-error execution-context callback
+                         (selector-error execution-context selection callback
                            (error "Field resolver returned an instance not tagged with a schema type."))
 
                          :else
-                         (selector-error execution-context callback
+                         (selector-error execution-context selection callback
                            (error "Value returned from resolver has incorrect type for field."
                                                              {:field-type field-type-name
                                                               :actual-type resolved-type
@@ -1068,19 +1074,19 @@
 
         ;; TODO: Can this be skipped except for union/interface?  If so, can it be merged with above
         ;; selector?
-        selector (fn select-unwrap-tagged-type [execution-context callback resolved-type resolved-value]
+        selector (fn select-unwrap-tagged-type [execution-context selection callback resolved-type resolved-value]
                    (cond-let
                      ;; Use explicitly tagged value (this usually applies to Java objects
                      ;; that can't provide meta data).
                      (is-tagged-value? resolved-value)
-                     (selector execution-context callback (extract-type-tag resolved-value) (extract-value resolved-value))
+                     (selector execution-context selection callback (extract-type-tag resolved-value) (extract-value resolved-value))
 
                      ;; Check for explicit meta-data:
 
                      :let [type-name (-> resolved-value meta ::type-name)]
 
                      (some? type-name)
-                     (selector execution-context callback type-name resolved-value)
+                     (selector execution-context selection callback type-name resolved-value)
 
                      ;; Use, if available, the mapping from tag to object that might be provided
                      ;; for some objects.
@@ -1090,26 +1096,26 @@
                                              (get type-map)))]
 
                      (some? mapped-type)
-                     (selector execution-context callback mapped-type resolved-value)
+                     (selector execution-context selection callback mapped-type resolved-value)
 
                      ;; Let a later stage fail if it is a union or interface and there's no explicit
                      ;; type.
                      :else
-                     (selector execution-context callback resolved-type resolved-value)))
+                     (selector execution-context selection callback resolved-type resolved-value)))
 
 
         ;; TODO: This could possibly be boosted up to the FieldSelection
         selector (if (#{:object :input-object} category)
-                   (fn select-apply-static-type [execution-context callback _resolved-type resolved-value]
+                   (fn select-apply-static-type [execution-context selection callback _resolved-type resolved-value]
                      ;; TODO: Maybe a check that if the resolved value is tagged, that the tag matches the expected tag?
-                     (selector execution-context callback field-type-name resolved-value))
+                     (selector execution-context selection callback field-type-name resolved-value))
                    selector)]
 
-    (fn select-require-single-value [ execution-context callback resolved-type resolved-value]
+    (fn select-require-single-value [execution-context selection callback resolved-type resolved-value]
       (if (sequential-or-set? resolved-value)
-        (selector-error execution-context callback
+        (selector-error execution-context selection callback
           (error "Field resolver returned a collection of values, expected only a single value."))
-        (selector execution-context callback resolved-type resolved-value)))))
+        (selector execution-context selection callback resolved-type resolved-value)))))
 
 (defn ^:private assemble-selector
   "Assembles a selector function for a field.
@@ -1132,14 +1138,14 @@
 
     :list
     (let [next-selector (assemble-selector schema object-type field (:type type))]
-      (fn select-list [execution-context callback resolved-type resolved-value]
+      (fn select-list [execution-context selection callback resolved-type resolved-value]
         (cond
           (nil? resolved-value)
           ;; Bypass the rest of the pipeline and jump to the callback
           (callback execution-context resolved-type nil)
 
           (not (sequential-or-set? resolved-value))
-          (selector-error execution-context callback
+          (selector-error execution-context selection callback
             (error "Field resolver returned a single value, expected a collection of values."))
 
           ;; Optimization for empty seqs:
@@ -1150,15 +1156,15 @@
           ;; So we have some privileged knowledge here: the selector returns a ResolverResult containing
           ;; the value. So we need to combine those together into a new ResolverResult.
           (let [unwrapper (fn [execution-context list-element]
-                            (if-not (sc/is-wrapped-value? list-element)
-                              (next-selector execution-context callback resolved-type list-element)
+                            (if-not (su/is-wrapped-value? list-element)
+                              (next-selector execution-context selection callback resolved-type list-element)
                               (loop [ec execution-context
                                      v list-element]
                                 (let [next-v (:value v)
-                                      next-ec (sc/apply-wrapped-value ec v)]
-                                  (if (sc/is-wrapped-value? next-v)
+                                      next-ec (su/apply-wrapped-value ec selection v)]
+                                  (if (su/is-wrapped-value? next-v)
                                     (recur next-ec next-v)
-                                    (next-selector next-ec callback resolved-type next-v))))))]
+                                    (next-selector next-ec selection callback resolved-type next-v))))))]
             (aggregate-results
               (fast-map-indexed
                 (fn [i v]
@@ -1172,12 +1178,12 @@
                           (-> field :qualified-name q))
                  {:field-name (:qualified-name field)
                   :type (-> field :type type->string)})))
-      (fn select-non-null [execution-context callback resolved-type resolved-value]
+      (fn select-non-null [execution-context selection callback resolved-type resolved-value]
         (if (some? resolved-value)
-          (next-selector execution-context callback resolved-type resolved-value)
-          (selector-error execution-context callback
+          (next-selector execution-context selection callback resolved-type resolved-value)
+          (selector-error execution-context selection callback
             ;; If there's already errors (from the application's resolver function) then don't add more
-            (when-not (-> execution-context :errors seq)
+            (when-not (existing-error? execution-context)
               (error "Non-nullable field was null."))))))
 
     :root

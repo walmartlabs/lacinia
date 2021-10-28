@@ -16,77 +16,21 @@
   "Mechanisms for executing parsed queries against compiled schemas."
   (:require
    [com.walmartlabs.lacinia.internal-utils
-    :refer [cond-let map-vals remove-vals q aggregate-results transform-result to-message
-            deep-merge deep-merge-value keepv get-nested
-            ->ResultTuple]]
+    :refer [cond-let map-vals remove-vals q   to-message
+            deep-merge deep-merge-value keepv get-nested]]
    [flatland.ordered.map :refer [ordered-map]]
+   [com.walmartlabs.lacinia.select-utils :as su]
+   [com.walmartlabs.lacinia.resolve-utils :refer [transform-result aggregate-results]]
    [com.walmartlabs.lacinia.schema :as schema]
    [com.walmartlabs.lacinia.resolve :as resolve
     :refer [resolve-as resolve-promise]]
-   [com.walmartlabs.lacinia.selector-context :as sc]
    [com.walmartlabs.lacinia.tracing :as tracing]
    [com.walmartlabs.lacinia.describe :refer [description-for]]
    [com.walmartlabs.lacinia.constants :as constants]
-   [com.walmartlabs.lacinia.selection :as selection]
-   [com.walmartlabs.lacinia.selection :as sel])
-  (:import
-   (clojure.lang PersistentQueue)
-   (com.walmartlabs.lacinia.internal_utils ResultTuple)))
+   [com.walmartlabs.lacinia.selection :as selection])
+  (:import (clojure.lang PersistentQueue)))
 
 (def ^:private empty-ordered-map (ordered-map))
-
-(defn ^:private ex-info-map
-  [field-selection execution-context]
-  (remove-vals nil? {:locations [(:location field-selection)]
-                     :path (:path execution-context)
-                     :arguments (:reportable-arguments field-selection)}))
-
-(defn ^:private assert-and-wrap-error
-  "An error returned by a resolver should be nil, a map, or a collection
-  of maps, and the map(s) must contain at least a :message key with a string value.
-
-  Returns nil, or a collection of one or more valid error maps."
-  [error-map-or-maps]
-  (cond
-    (nil? error-map-or-maps)
-    nil
-
-    (and (sequential? error-map-or-maps)
-      (every? (comp string? :message)
-        error-map-or-maps))
-    error-map-or-maps
-
-    (string? (:message error-map-or-maps))
-    [error-map-or-maps]
-
-    :else
-    (throw (ex-info (str "Errors must be nil, a map, or a sequence of maps "
-                      "each containing, at minimum, a :message key and a string value.")
-             {:error error-map-or-maps}))))
-
-(defn ^:private structured-error-map
-  "Converts an error map and extra data about location, path, etc. into the
-  correct format:  top level keys :message, :path, and :location, and anything else
-  under a :extensions key."
-  [error-map extra-data]
-  (let [{:keys [message extensions]} error-map
-        {:keys [locations path]} extra-data
-        extensions' (merge (dissoc error-map :message :extensions)
-                      (dissoc extra-data :locations :path)
-                      extensions)]
-    (cond-> {:message message
-             :locations locations
-             :path path}
-      (seq extensions') (assoc :extensions extensions'))))
-
-(defn ^:private enhance-errors
-  "From an error map, or a collection of error maps, add additional data to
-  each error, including location and arguments.  Returns a seq of error maps."
-  [field-selection execution-context error-or-errors]
-  (let [errors-seq (assert-and-wrap-error error-or-errors)]
-    (when errors-seq
-      (let [extra-data (ex-info-map field-selection execution-context)]
-        (map #(structured-error-map % extra-data) errors-seq)))))
 
 (defn ^:private field-selection-resolver
   "Returns the field resolver for the provided field selection.
@@ -187,24 +131,19 @@
   ;; *extensions is an Atom containing a map; if non-empty, it is added to the result map as :extensions
   ;; path is used when reporting errors
   ;; schema is the compiled schema (obtained from the parsed query)
-  [context *errors *warnings *extensions *resolver-tracing path schema
-   ;; These are used during selection; callback is the callback passed down
-   ;; the selector pipeline that is provided with the final resolved value and
-   ;; context.
-   errors warnings])
+  [context *errors *warnings *extensions *resolver-tracing timing-start path schema])
 
 (defn ^:private apply-field-selection
   [execution-context field-selection container-type container-value]
-  (let [alias (sel/alias-name field-selection)
-        {:keys [null-collapser selector]} (:field-definition field-selection)
-        xf (fn [resolved-field-value]
-             (->ResultTuple alias (null-collapser resolved-field-value)))
+  (let [alias (selection/alias-name field-selection)
+        {:keys [resolve-xf]} field-selection
+        {:keys [selector]} (:field-definition field-selection)
         execution-context' (update execution-context :path conj alias)
-        ;; The selector will be null if the field's (root) type is a object, rather than
-        ;; an interface or union; in those cases, we need to know the actual result type
-        ;; in order to find the selector.
+        ;; The selector will be null if the field's (root) type is an interface or union
+        ;; (rather than an object, scalar, or enum); in those cases, we need to
+        ;; know the actual result type in order to find the selector.
         resolver-result (resolve-and-select execution-context' field-selection false selector container-type container-value)]
-    (transform-result resolver-result xf)))
+    (transform-result resolver-result resolve-xf)))
 
 (defn ^:private maybe-apply-fragment
   [execution-context fragment-selection concrete-types container-type container-value]
@@ -247,7 +186,7 @@
   "Merges the left and right values, with a special case for when the right value
   is an ResultTuple."
   [left-value right-value]
-  (if (instance? ResultTuple right-value)
+  (if (su/is-result-tuple? right-value)
     (let [{:keys [alias value]} right-value]
       (if (contains? left-value alias)
         (update left-value alias deep-merge-value value)
@@ -307,12 +246,6 @@
   (let [;; Get the raw selections (not attached to the schema) which is faster
         sub-selections (:selections selection)
 
-        apply-errors (fn [selection-context sc-key ec-atom-key]
-                       (when-let [errors (get selection-context sc-key)]
-                         (->> errors
-                           (mapcat #(enhance-errors selection execution-context %))
-                           (swap! (get execution-context ec-atom-key) into))))
-
         ;; When an exception occurs at a nested field, we don't want to have the same exception wrapped
         ;; at every containing field, but because (synchronous) selection is highly recursive, that's the danger.
         ;; This is one approach to avoiding that scenario.
@@ -324,20 +257,13 @@
         selector-callback
         (fn selector-callback [execution-context resolved-type resolved-value]
           (reset! *pass-through-exceptions true)
-          ;; Any errors from the resolver (via with-errors) or anywhere along the
-          ;; selection pipeline are enhanced and added to the execution context.
-          (apply-errors execution-context :errors :*errors)
-          (apply-errors execution-context :warnings :*warnings)
-
           (if (and (or (some? resolved-value)
                      (= [] (:path execution-context))) ;; This covers the root operation
                 resolved-type
                 (seq sub-selections))
             ;; Case #1: The field is an object type that needs further sub-selections to reach
             ;; scalar (or enum) leafs.
-            (execute-nested-selections
-              (assoc execution-context :errors nil :warnings nil)
-              sub-selections resolved-type resolved-value)
+            (execute-nested-selections execution-context sub-selections resolved-type resolved-value)
             ;; Case #2: A scalar (or leaf) type, no further sub-selections necessary.
             (resolve-as resolved-value)))
         ;; In a concrete type, we know the selector from the field definition
@@ -363,13 +289,13 @@
                                           ;; At this point, we only know the new resolved value, it's type
                                           ;; will be established by the selector pipeline.
                                           new-execution-context execution-context]
-                                     (if (sc/is-wrapped-value? resolved-value)
+                                     (if (su/is-wrapped-value? resolved-value)
                                        (recur (:value resolved-value)
-                                         (sc/apply-wrapped-value new-execution-context resolved-value))
+                                         (su/apply-wrapped-value new-execution-context selection resolved-value))
                                        ;; Finally to a real value, not a wrapper.  The commands may have
                                        ;; modified the :errors or :execution-context keys, and the pipeline
                                        ;; will do the rest. Errors will be dealt with in the callback.
-                                       (selector new-execution-context selector-callback nil resolved-value)))
+                                       (selector new-execution-context selection selector-callback nil resolved-value)))
                                    (catch Throwable t
                                      (if @*pass-through-exceptions
                                        (throw t)
@@ -412,7 +338,7 @@
     (cond
 
       is-fragment?
-      (selector execution-context selector-callback container-type container-value)
+      (selector execution-context selection selector-callback container-type container-value)
 
       ;; Optimization: for simple fields there may be direct function.
       ;; This is a function that synchronously provides the value from the container resolved value.

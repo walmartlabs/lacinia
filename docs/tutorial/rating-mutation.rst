@@ -182,8 +182,7 @@ A similar error would occur if the type of value provided to field argument is u
              :type-name :Int}]}
 
 
-.. [#errormaps] It can also be a seq of error maps, each containing,
-   at a minimum, a ``:message`` key.
+.. [#errormaps] Each map must contain, at a minimum, a ``:message`` key.
 .. [#jun2018] In June 2018 update to the GraphQL specification, the format of error maps in the result map
    changed; when the tutorial upgrades to a version 0.29.0 of Lacinia, or later, the structure of the maps
    in the ``:errors`` key will change somewhat.

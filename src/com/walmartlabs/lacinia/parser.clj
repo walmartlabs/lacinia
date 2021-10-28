@@ -21,7 +21,8 @@
     [com.walmartlabs.lacinia.internal-utils
      :refer [cond-let update? q map-vals filter-vals remove-vals
              with-exception-context throw-exception to-message seek
-             keepv as-keyword *exception-context* get-nested ->ResultTuple]]
+             keepv as-keyword *exception-context* get-nested]]
+    [com.walmartlabs.lacinia.select-utils :as su]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.resolve :as resolve]
@@ -1132,7 +1133,7 @@
                            (get-nested type [:fields field-name]))
         null-collapser (:null-collapser field-definition)
         resolve-xf (fn [raw-value]
-                     (->ResultTuple alias (null-collapser raw-value)))
+                     (su/->ResultTuple alias (null-collapser raw-value)))
         field-type (schema/root-type-name field-definition)
         nested-type (get schema field-type)
         qualified-field-name (:qualified-name field-definition field-name)

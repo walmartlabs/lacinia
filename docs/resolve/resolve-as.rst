@@ -22,15 +22,13 @@ Field resolvers should not throw exceptions; instead, if there is a problem gene
 they should use the :api:`resolve/resolve-as` function to return a ResolverResult value.
 
 When using ``resolve-as``, you may pass the error map as the second parameter (which is optional).
-You may pass a single error map, or a seq of error maps.
 This first parameter is the resolved value, which may be ``nil``.
 
 .. sidebar:: Why not just throw an exception?
 
     Exceptions are a terrible way to deal with control flow issues, even in the
     presence of actual failures.
-    More importantly, the ResolverResult approach allows more than a single error, and
-    works well with Lacinia's
+    More importantly, the ResolverResult approach works well with Lacinia's
     :doc:`asynchronous processing features <async>`.
 
 Errors will be exposed as the top-level ``:errors`` key of the execution result.

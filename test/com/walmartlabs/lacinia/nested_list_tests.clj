@@ -70,7 +70,7 @@
           :errors [{:locations [{:column 2
                                  :line 1}]
                     :message "Non-nullable field was null."
-                    :path [:verse_echo]
+                    :path [:verse_echo 0 1]
                     :extensions {:arguments {:in [["oops"
                                                    nil
                                                    "fail!"]]}}}]}
