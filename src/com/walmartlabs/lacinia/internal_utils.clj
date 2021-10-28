@@ -21,10 +21,12 @@
   (:import
    (clojure.lang Named)
    (com.walmartlabs.lacinia.resolve ResolverResultImpl)
-   (java.util.concurrent.atomic AtomicInteger AtomicLong)))
+   (java.util.concurrent.atomic AtomicLong)))
 
 (when (-> *clojure-version* :minor (< 9))
   (require '[clojure.future :refer [simple-keyword? boolean?]]))
+
+(defrecord ResultTuple [alias value])
 
 (defmacro cond-let
   "A version of `cond` that allows for `:let` terms. There is hope that someday, perhaps

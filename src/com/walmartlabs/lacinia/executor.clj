@@ -18,7 +18,8 @@
    [com.walmartlabs.lacinia.trace :refer [trace]]
    [com.walmartlabs.lacinia.internal-utils
     :refer [cond-let map-vals remove-vals q aggregate-results transform-result to-message
-            deep-merge deep-merge-value keepv get-nested]]
+            deep-merge deep-merge-value keepv get-nested
+             ->ResultTuple]]
    [flatland.ordered.map :refer [ordered-map]]
    [com.walmartlabs.lacinia.schema :as schema]
    [com.walmartlabs.lacinia.resolve :as resolve
@@ -30,7 +31,8 @@
    [com.walmartlabs.lacinia.selection :as selection]
    [com.walmartlabs.lacinia.selection :as sel])
   (:import
-    (clojure.lang PersistentQueue)))
+   (clojure.lang PersistentQueue)
+   (com.walmartlabs.lacinia.internal_utils ResultTuple)))
 
 (def ^:private empty-ordered-map (ordered-map))
 
@@ -193,8 +195,6 @@
    ;; the selector pipeline that is provided with the final resolved value and
    ;; context.
    errors callback warnings])
-
-(defrecord ^:private ResultTuple [alias value])
 
 (defn ^:private apply-field-selection
   [execution-context field-selection]
@@ -622,12 +622,6 @@
     (vector v)
     (conj coll v)))
 
-(defn ^:private intov
-  [coll v]
-  (if (nil? coll)
-    v
-    (into coll v)))
-
 (defn ^:private build-selections-map
   "Builds the selections map for a field selection node."
   [parsed-query selections]
@@ -651,12 +645,12 @@
                   m)
 
                 :inline-fragment
-                (merge-with intov m (build-selections-map parsed-query (:selections selection)))
+                (merge-with into m (build-selections-map parsed-query (:selections selection)))
 
                 :named-fragment
                 (let [{:keys [fragment-name]} selection
                       fragment-selections (get-nested parsed-query [:fragments fragment-name :selections])]
-                  (merge-with intov m (build-selections-map parsed-query fragment-selections))))))
+                  (merge-with into m (build-selections-map parsed-query fragment-selections))))))
           {}
           selections))
 

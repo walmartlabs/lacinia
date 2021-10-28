@@ -21,7 +21,7 @@
     [com.walmartlabs.lacinia.internal-utils
      :refer [cond-let update? q map-vals filter-vals remove-vals
              with-exception-context throw-exception to-message seek
-             keepv as-keyword *exception-context* get-nested]]
+             keepv as-keyword *exception-context* get-nested ->ResultTuple]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.resolve :as resolve]
@@ -798,7 +798,7 @@
 
 (defrecord ^:private FieldSelection [field-definition leaf? concrete-type? reportable-arguments
                                      alias field-name qualified-name selections directives arguments
-                                     location locations root-value-type
+                                     location locations root-value-type resolve-xf
                                      compiled-schema]
 
   Describe
@@ -1125,11 +1125,14 @@
         context (node-context defaults)
         result (with-exception-context context
                  (prepare-parsed-field defaults parsed-field))
-        {:keys [field-name arguments directives]} result
+        {:keys [field-name arguments directives alias]} result
         is-typename-metafield? (= field-name :__typename)
         field-definition (if is-typename-metafield?
                            typename-field-definition
                            (get-nested type [:fields field-name]))
+        null-collapser (:null-collapser field-definition)
+        resolve-xf (fn [raw-value]
+                     (->ResultTuple alias (null-collapser raw-value)))
         field-type (schema/root-type-name field-definition)
         nested-type (get schema field-type)
         qualified-field-name (:qualified-name field-definition field-name)
@@ -1168,7 +1171,11 @@
                                                  (-> type :category #{:object :input-object} some?))
                              :arguments literal-arguments
                              :arguments-extractor dynamic-arguments-extractor
-                             :field-definition field-definition)))]
+                             :field-definition field-definition
+                             ;; An ugly optimization: this gets computed once
+                             ;; rather than at execution time every time the
+                             ;; field is selected.
+                             :resolve-xf resolve-xf)))]
     (normalize-selections schema selection nested-type)))
 
 (defmethod selection :inline-fragment
