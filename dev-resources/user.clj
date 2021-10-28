@@ -6,8 +6,7 @@
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia :as l]
     [clojure.spec.alpha :as s]
-    [com.walmartlabs.lacinia.trace :refer [set-compile-trace!
-                                           set-enable-trace!]]
+    [com.walmartlabs.lacinia.trace :as trace]
     [expound.alpha :as expound]))
 
 (require 'com.walmartlabs.lacinia.expound)
@@ -17,10 +16,12 @@
 (comment
   (do
     (set! *warn-on-reflection* true)
-    (set-compile-trace! true)
-    (set-enable-trace! true))`
+    (trace/set-compile-trace! true)
+    (trace/set-enable-trace! true)
+    (add-tap clojure.pprint/pprint)
+    (trace/trace :msg "Tracing is enabled"))
 
-  (set-enable-trace! false)
+  (trace/set-enable-trace! false)
 
   )
 

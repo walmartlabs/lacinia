@@ -12,13 +12,23 @@
 ; See the License for the specific language governing permissions and
 ; limitations under the License.
 
-(ns ^:no-doc com.walmartlabs.lacinia.trace
-  "Internal tracing utility.  Not for use by applications."
-  (:require [clojure.pprint :refer [pprint]]))
+(ns com.walmartlabs.lacinia.trace
+  "Light-weight, asynchronous logging built around tap>.
 
-(def ^:dynamic *compile-trace* false)
+  Follows the same pattern as asserts: tracing may be compiled or not; if compiled,
+  it may be enabled, or not.  Finally, you must add a tap (typically,
+  clojure.pprint/pprint) to receive the maps that trace may produce."
+  (:require [io.aviso.exception :refer [demangle]]
+            [clojure.string :as string]))
 
-(def ^:dynamic *enable-trace* true)
+(def ^:dynamic *compile-trace*
+  "If false (the default), calls to trace evaluate to nil."
+  false)
+
+(def ^:dynamic *enable-trace*
+  "If false (the default is true) then compiled calls to trace
+  are a no-op."
+  true)
 
 (defn set-compile-trace!
   [value]
@@ -28,18 +38,48 @@
   [value]
   (alter-var-root #'*enable-trace* (constantly value)))
 
+(defn ^:private extract-fn-name
+  [class-name]
+  (let [[_ & raw-function-ids] (string/split class-name #"\$")]
+    (->> raw-function-ids
+      (map #(string/replace % #"__\d+" ""))
+      (map demangle)
+      (string/join "/"))))
+
+(defn ^:no-doc extract-in
+  [trace-ns]
+  (let [ns-string (-> trace-ns ns-name name)
+        stack-frame (-> (Thread/currentThread)
+                        .getStackTrace
+                        (nth 3))
+        fn-name (extract-fn-name (.getClassName ^StackTraceElement stack-frame))]
+    (symbol ns-string fn-name)))
+
 (defmacro trace
+  "Calls to trace generate a map that is passed to `tap>`.
+
+  The map includes keys:
+  :in - a symbol of the namespace and function
+  :line - the line number of the trace invocation (if available)
+  :thread - the string name of the current thread
+
+  Additional keys and values may be supplied.
+
+  trace may expand to nil, if compilation is disabled.
+
+  Any invocation of trace evaluates to nil."
   [& kvs]
   (assert (even? (count kvs))
-          "pass key/value pairs")
+    "pass key/value pairs")
   (when *compile-trace*
     (let [{:keys [line]} (meta &form)
-          trace-ns  *ns*]
+          trace-ns *ns*]
       `(when *enable-trace*
-         ;; Oddly, you need to defer invocation of ns-name to execution
-         ;; time as it will cause odd class loader exceptions if used at
-         ;; macro expansion time.
-         (pprint (array-map
-                   :ns (-> ~trace-ns ns-name (with-meta nil))
-                   ~@(when line [:line line])
-                   ~@kvs))))))
+         ;; Maps are expected to be small; array-map ensures that they keys are in insertion order.
+         (tap> (array-map
+                 :in (extract-in ~trace-ns)
+                 ~@(when line [:line line])
+                 :thread (.getName (Thread/currentThread))
+                 ~@kvs))
+         nil))))
+
