@@ -185,7 +185,7 @@
   ;; appear in the result as [:extensions :warnings].
   ;; *resolver-tracing is usually nil, or may be an Atom containing an empty map, which
   ;; accumulates timing data during execution.
-  ;; *extensions is an atom containing a map, if non-empty, it is added to the result map as :extensions
+  ;; *extensions is an Atom containing a map; if non-empty, it is added to the result map as :extensions
   ;; path is used when reporting errors
   ;; schema is the compiled schema (obtained from the parsed query)
   [context resolved-value resolved-type *errors *warnings *extensions *resolver-tracing path schema
@@ -199,17 +199,21 @@
 (defn ^:private apply-field-selection
   [execution-context field-selection]
   (let [alias (sel/alias-name field-selection)
-        null-collapser (get-nested field-selection [:field-definition :null-collapser])
-        resolver-result (resolve-and-select execution-context field-selection)]
-    (transform-result resolver-result
-                      (fn [resolved-field-value]
-                        (->ResultTuple alias (null-collapser resolved-field-value))))))
+        {:keys [null-collapser selector]} (:field-definition field-selection)
+        xf (fn [resolved-field-value]
+             (->ResultTuple alias (null-collapser resolved-field-value)))
+        execution-context' (update execution-context :path conj alias)
+        ;; The selector will be null if the field's (root) type is a object, rather than
+        ;; an interface or union; in those cases, we need to know the actual result type
+        ;; in order to find the selector.
+        resolver-result (resolve-and-select execution-context' field-selection false selector)]
+    (transform-result resolver-result xf)))
 
 (defn ^:private maybe-apply-fragment
   [execution-context fragment-selection concrete-types]
   (let [actual-type (:resolved-type execution-context)]
     (when (contains? concrete-types actual-type)
-      (resolve-and-select execution-context fragment-selection))))
+      (resolve-and-select execution-context fragment-selection true schema/floor-selector))))
 
 (defn ^:private apply-inline-fragment
   [execution-context inline-fragment-selection]
@@ -301,20 +305,15 @@
   Returns a ResolverResult of the selected value.
 
   Accumulates errors in the execution context as a side-effect."
-  [execution-context selection]
-  (let [is-fragment? (not= :field (selection/selection-kind selection))
-        ;; When starting to execute a field, add the current alias (or field name) to the path.
-        execution-context' (if is-fragment?
-                             execution-context
-                             (update execution-context :path conj (selection/alias-name selection)))
-        ;; Get the raw selections (not attached to the schema) which is faster
+  [execution-context selection is-fragment? static-selector]
+  (let [;; Get the raw selections (not attached to the schema) which is faster
         sub-selections (:selections selection)
 
         apply-errors (fn [selection-context sc-key ec-atom-key]
                        (when-let [errors (get selection-context sc-key)]
                          (->> errors
-                              (mapcat #(enhance-errors selection execution-context' %))
-                              (swap! (get execution-context' ec-atom-key) into))))
+                              (mapcat #(enhance-errors selection execution-context %))
+                              (swap! (get execution-context ec-atom-key) into))))
 
         ;; When an exception occurs at a nested field, we don't want to have the same exception wrapped
         ;; at every containing field, but because (synchronous) selection is highly recursive, that's the danger.
@@ -346,30 +345,29 @@
             ;; Case #2: A scalar (or leaf) type, no further sub-selections necessary.
             (resolve-as resolved-value)))
         ;; In a concrete type, we know the selector from the field definition
-        ;; (a field definition on a concrete object type).  Otherwise, we need
+        ;; (a field definition on a concrete object type).  For a fragment, static-selector
+        ;; is schema/floor-selector. Otherwise, we need
         ;; to use the type of the parent node's resolved value, just
         ;; as we do to get a resolver.
-        resolved-type (:resolved-type execution-context')
-        selector (if is-fragment?
-                   schema/floor-selector
-                   (or (-> selection :field-definition :selector)
-                       (let [field-name (:field-name selection)]
-                         (-> execution-context'
-                             :schema
-                             (get resolved-type)
-                             :fields
-                             (get field-name)
-                             :selector
-                             (or (throw (ex-info "Sanity check: no selector."
-                                                 {:type-name resolved-type
-                                                  :selection selection})))))))
+        selector (or static-selector
+                   (let [field-name (:field-name selection)
+                         resolved-type (:resolved-type execution-context)]
+                     (-> execution-context
+                         :schema
+                         (get resolved-type)
+                         :fields
+                         (get field-name)
+                         :selector
+                         (or (throw (ex-info "Sanity check: no selector."
+                                      {:type-name resolved-type
+                                       :selection selection}))))))
 
         process-resolved-value (fn [resolved-value]
                                  (try
                                    (loop [resolved-value resolved-value
                                           ;; At this point, we only know the new resolved value, it's type
                                           ;; will be established by the selector pipeline.
-                                          new-execution-context execution-context']
+                                          new-execution-context execution-context]
                                      (if (sc/is-wrapped-value? resolved-value)
                                        (recur (:value resolved-value)
                                               (sc/apply-wrapped-value new-execution-context resolved-value))
@@ -393,15 +391,15 @@
                                                               (q qualified-name)
                                                               ": "
                                                               (to-message t))
-                                                         {:path (:path execution-context')
+                                                         {:path (:path execution-context)
                                                           :field-name qualified-name
                                                           :arguments arguments
                                                           :location location} t)))))))
 
         ;; When tracing is enabled, defeat the optimization so that the (trivial) resolver can be
-        ;; invoke and its execution time tracked.
+        ;; invoked and its execution time tracked.
         direct-fn (when-not (:*resolver-tracing execution-context)
-                    (-> selection :field-definition :direct-fn))
+                    (get-nested selection [:field-definition :direct-fn]))
 
         ;; Given a ResolverResult from a field resolver, unwrap the field's RR and pass it through process-resolved-value.
         ;; process-resolved-value also returns an RR and chain that RR's delivered value to the RR returned from this function.
@@ -420,11 +418,12 @@
                                    final-result))]
 
     ;; For fragments, we start with a single value and it passes right through to
-    ;; sub-selections, without changing value or type.
+    ;; sub-selections, without changing value or type. Ultimately, this will be merged
+    ;; into the parent field selection by merge-selected-values.
     (cond
 
       is-fragment?
-      (selector (assoc execution-context' :callback selector-callback))
+      (selector (assoc execution-context :callback selector-callback))
 
       ;; Optimization: for simple fields there may be direct function.
       ;; This is a function that synchronously provides the value from the container resolved value.
@@ -432,7 +431,7 @@
       ;; the selector, which returns a ResolverResult. Thus we've peeled back at least one layer
       ;; of ResolveResultPromise.
       direct-fn
-      (let [resolved-value (-> execution-context'
+      (let [resolved-value (-> execution-context
                                :resolved-value
                                direct-fn)]
         ;; Normally, resolved-value is a raw value, ready to be immediately processed; but in rare cases
@@ -449,7 +448,7 @@
       ;; The result is a scalar value, a map, or a list of maps or scalar values.
 
       :else
-      (unwrap-resolver-result (invoke-resolver-for-field execution-context' selection)))))
+      (unwrap-resolver-result (invoke-resolver-for-field execution-context selection)))))
 
 (defn execute-query
   "Entrypoint for execution of a query.
