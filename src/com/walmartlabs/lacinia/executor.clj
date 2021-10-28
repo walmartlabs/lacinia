@@ -32,6 +32,8 @@
   (:import
     (clojure.lang PersistentQueue)))
 
+(def ^:private empty-ordered-map (ordered-map))
+
 (defn ^:private ex-info-map
   [field-selection execution-context]
   (remove-vals nil? {:locations [(:location field-selection)]
@@ -99,7 +101,7 @@
     (:concrete-type? field-selection)
     (-> field-selection :field-definition :resolve)
 
-    :let [field-name (-> field-selection selection/field selection/field-name)]
+    :let [field-name (get-nested field-selection [:field-definition :field-name])]
 
     (nil? resolved-type)
     (throw (ex-info "Sanity check: value type tag is nil on abstract type."
@@ -260,7 +262,7 @@
   (let [selection-results (keepv #(apply-selection execution-context %) sub-selections)]
     (aggregate-results selection-results
                        (fn [values]
-                         (reduce merge-selected-values (ordered-map) values)))))
+                         (reduce merge-selected-values empty-ordered-map values)))))
 
 (defn ^:private combine-selection-results-sync
   [execution-context previous-resolved-result sub-selection]
@@ -290,7 +292,7 @@
   [execution-context sub-selections]
   ;; This could be optimized for the very common case of a single sub-selection.
   (reduce #(combine-selection-results-sync execution-context %1 %2)
-          (resolve-as (ordered-map))
+          (resolve-as empty-ordered-map)
           sub-selections))
 
 (defn ^:private resolve-and-select
