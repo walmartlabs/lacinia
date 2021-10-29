@@ -99,11 +99,12 @@
     p))
 
 (defn ^:private apply-wrapped-values
-  [selection-context selection value]
+  [selection-context selection path value]
   (if (su/is-wrapped-value? value)
     (apply-wrapped-values
-      (su/apply-wrapped-value selection-context selection value)
+      (su/apply-wrapped-value selection-context selection path value)
       selection
+      path
       (:value value))
     [selection-context value]))
 
@@ -142,24 +143,24 @@
         context {:*extensions *extensions
                  :*errors *errors
                  :*warnings *warnings}
-        [context' final-value] (apply-wrapped-values context nil @*result)]
+        [context' final-value] (apply-wrapped-values context nil [:fake-path] @*result)]
     (is (= 301 final-value))
     (is (= {:fie {:fie {:foe :fum}}}
            @*extensions))
     (is (= [{:locations [nil]
              :message "fail 2"
-             :path nil}
+             :path [:fake-path]}
             {:locations [nil]
              :message "fail 1"
-             :path nil}]
-          @*errors))
+             :path [:fake-path]}]
+           @*errors))
      (is (= [{:locations [nil]
               :message "warn 2"
-              :path nil}
+              :path [:fake-path]}
              {:locations [nil]
               :message "warn 1"
-              :path nil}]
-           @*warnings))
+              :path [:fake-path]}]
+            @*warnings))
     (is (= {:*errors *errors                 ; check order of application
             :*warnings *warnings
             :context {:gnip :gnop}

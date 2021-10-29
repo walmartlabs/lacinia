@@ -23,9 +23,9 @@
 
 
 (defn ^:private ex-info-map
-  [selection execution-context]
+  [selection path]
   (remove-vals nil? {:locations [(:location selection)]
-                     :path (:path execution-context)
+                     :path path
                      :arguments (:reportable-arguments selection)}))
 
 (defn ^:private assert-error-map
@@ -64,14 +64,14 @@
 (defn enhance-error
   "From an error map, or a collection of error maps, add additional data to
   each error, including location and arguments.  Returns a seq of error maps."
-  [execution-context selection error-map]
+  [selection path error-map]
   (when-let [error-map' (assert-error-map error-map)]
-    (let [extra-data (ex-info-map selection execution-context)]
+    (let [extra-data (ex-info-map selection path)]
       (structured-error-map error-map' extra-data))))
 
 (defn apply-error
-  [execution-context selection atom-key error-map]
-  (when-let [error-map' (enhance-error execution-context selection error-map)]
+  [execution-context selection path atom-key error-map]
+  (when-let [error-map' (enhance-error selection path error-map)]
     (swap! (get execution-context atom-key) conj error-map'))
   execution-context)
 
@@ -85,11 +85,11 @@
 
 (defn apply-wrapped-value
   "Modifies the execution context based on the behavior and data in the wrapped value."
-  [execution-context selection {:keys [behavior data]}]
+  [execution-context selection path {:keys [behavior data]}]
   ;; data is different for each behavior
   (case behavior
     ;; data is an error map to add
-    :error (apply-error execution-context selection :*errors data)
+    :error (apply-error execution-context selection path :*errors data)
 
     ;; data is a map of values to merge into the context, consumed by resolves further
     ;; down (closer to the leaves).
@@ -101,4 +101,4 @@
                   execution-context)
 
     ;; data is an error map to be added to the warnings
-    :warning (apply-error execution-context selection :*warnings data)))
+    :warning (apply-error execution-context selection path :*warnings data)))
