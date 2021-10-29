@@ -6,6 +6,9 @@ A small incompatible change is present:  `com.walmartlabs.resolve/resolve-as` an
 support an argument that could be either a single error map, or a sequence of error maps. This was rarely used, and
 has been changed: only a single error map is supported.
 
+New options have been added to `com.walmartlabs.lacina.schema/compile` that turn of certain checks and features
+to boost performance.
+
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/28?closed=1)
 
 
