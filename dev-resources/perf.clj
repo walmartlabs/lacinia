@@ -1,29 +1,29 @@
 (ns perf
   "A namespace where we track relative performance of query parsing and execution."
   (:require
-    [org.example.schema :refer [star-wars-schema]]
-    [criterium.core :as c]
-    [com.walmartlabs.lacinia :refer [execute execute-parsed-query]]
-    [com.walmartlabs.lacinia.parser.schema :refer [parse-schema]]
-    [com.walmartlabs.lacinia.parser :as parser]
-    [clojure.java.shell :refer [sh]]
-    [clojure.string :as str]
-    [clojure.tools.cli :as cli]
-    [clojure.data.json :as json]
-    [clojure.data.csv :as csv]
-    [com.walmartlabs.lacinia.util :as util]
-    [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.lacinia.resolve :refer [resolve-as]]
-    [com.walmartlabs.lacinia.executor :as executor]
-    [clojure.java.io :as io]
-    [clojure.pprint :as pprint]
-    [com.walmartlabs.test-utils :refer [simplify]]
-    [clojure.edn :as edn]
-    [clj-async-profiler.core :as prof]
-    [com.walmartlabs.lacinia.resolve :as resolve])
+   [org.example.schema :refer [star-wars-schema]]
+   [criterium.core :as c]
+   [com.walmartlabs.lacinia :refer [execute execute-parsed-query]]
+   [com.walmartlabs.lacinia.parser.schema :refer [parse-schema]]
+   [com.walmartlabs.lacinia.parser :as parser]
+   [clojure.java.shell :refer [sh]]
+   [clojure.string :as str]
+   [clojure.tools.cli :as cli]
+   [clojure.data.json :as json]
+   [clojure.data.csv :as csv]
+   [com.walmartlabs.lacinia.util :as util]
+   [com.walmartlabs.lacinia.schema :as schema]
+   [com.walmartlabs.lacinia.resolve :refer [resolve-as]]
+   [com.walmartlabs.lacinia.executor :as executor]
+   [clojure.java.io :as io]
+   [clojure.pprint :as pprint]
+   [com.walmartlabs.test-utils :refer [simplify]]
+   [clojure.edn :as edn]
+   [clj-async-profiler.core :as prof]
+   [com.walmartlabs.lacinia.resolve :as resolve])
   (:import
-    (java.util Date)
-    (java.util.concurrent ThreadPoolExecutor TimeUnit LinkedBlockingQueue)))
+   (java.util Date)
+   (java.util.concurrent ThreadPoolExecutor TimeUnit LinkedBlockingQueue)))
 
 (defn -defeat-linter
   []
@@ -47,25 +47,26 @@
 (defn ^:private read-edn
   [file]
   (or (some-> (io/resource file)
-              slurp
-              edn/read-string)
-      (throw (ex-info "File not found" {:file file}))))
+        slurp
+        edn/read-string)
+    (throw (ex-info "File not found" {:file file}))))
 
 (defn ^:private read-json
   [file]
   (or (some-> file
-              io/resource
-              slurp
-              (json/read-str :key-fn keyword))))
+        io/resource
+        slurp
+        (json/read-str :key-fn keyword))))
 
 (def compiled-deep-schema
   (-> "deep.sdl"
-       io/resource
-       slurp
-       parse-schema
-        (util/inject-resolvers {:Query/getResource (constantly
-                                                    (read-json "StructureDefinition-us-core-pulse-oximetry.json"))})
-       schema/compile))
+      io/resource
+      slurp
+      parse-schema
+      (util/inject-resolvers {:Query/getResource (constantly
+                                                   (read-json "StructureDefinition-us-core-pulse-oximetry.json"))})
+      (schema/compile {:disable-checks? true
+                       :disable-java-objects? true})))
 
 ;; A schema to measure the performance of errors
 (def planets-schema
@@ -100,12 +101,12 @@
                      {:name "Uranus"}]
         resolvers {:base-name (fn [_ _ base]
                                 (resolve-as (:name base)
-                                            (cond
-                                              (:alien? base)
-                                              {:message "Europa is forbidden. Attempt no landing there."}
+                                  (cond
+                                    (:alien? base)
+                                    {:message "Europa is forbidden. Attempt no landing there."}
 
-                                              (:destroyed? base)
-                                              {:message "This base has been destroyed."})))
+                                    (:destroyed? base)
+                                    {:message "This base has been destroyed."})))
                    :planets (fn [_ _ _]
                               planet-data)}]
     (-> '{:objects
@@ -455,9 +456,9 @@
         parse-double (fn [row ix]
                        (update row ix #(Double/parseDouble %)))]
     (into [header-row]
-          (->> raw-data
-               (mapv #(parse-double % 3))
-               (mapv #(parse-double % 4))))))
+      (->> raw-data
+        (mapv #(parse-double % 3))
+        (mapv #(parse-double % 4))))))
 
 (defn ^:private run-benchmarks
   [options]
@@ -466,7 +467,7 @@
     (let [prefix [(format "%tY%<tm%<td" (Date.))
                   (or (:commit options) (git-commit))]
           new-benchmarks (->> (map run-benchmark (keys benchmark-queries))
-                              (map #(into prefix %)))
+                           (map #(into prefix %)))
           dataset (into (read-dataset) new-benchmarks)]
 
       (when-not (:no-print options)
@@ -499,7 +500,7 @@
                   (run! println errors)))]
     (cond
       (or (:help options)
-          (seq errors))
+        (seq errors))
       (usage errors)
 
       :else
@@ -515,12 +516,12 @@
   [tree]
   (mapcat (fn [[field-name instances]]
             (let [fields (->> instances
-                              (mapv #(vector field-name (:args %))))
+                           (mapv #(vector field-name (:args %))))
                   sub-selections (->> instances
-                                      (map :selections)
-                                      (mapcat selection-tree->field-tuples))]
+                                   (map :selections)
+                                   (mapcat selection-tree->field-tuples))]
               (into fields sub-selections)))
-          tree))
+    tree))
 
 
 (defn test-parallel
@@ -531,7 +532,7 @@
      (doall
        (pmap (fn [x]
                (test-benchmark benchmark-name))
-             (range n)))
+         (range n)))
      nil)))
 
 (comment

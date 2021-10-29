@@ -447,10 +447,14 @@
 
 (s/def ::apply-field-directives fn?)
 
+(s/def ::disable-checks? boolean?)
+
 (s/def ::compile-options (s/keys :opt-un [::default-field-resolver
                                           ::promote-nils-to-empty-list?
                                           ::enable-introspection?
-                                          ::apply-field-directives]))
+                                          ::apply-field-directives
+                                          ::disable-checks?
+                                          ::disable-java-objects?]))
 
 (defn ^:private wrap-map
   [compiled-schema m]
@@ -961,12 +965,15 @@
   field-type-name - from the root :root kind "
   [schema field-def field-type-name]
   (let [field-type (or (get schema field-type-name)
-                       (throw (ex-info (format "Field %s references unknown type %s."
-                                               (-> field-def :qualified-name q)
-                                               (-> field-def :type q))
-                                       {:field field-def
-                                        :schema-types (type-map schema)})))
+                     (throw (ex-info (format "Field %s references unknown type %s."
+                                       (-> field-def :qualified-name q)
+                                       (-> field-def :type q))
+                              {:field field-def
+                               :schema-types (type-map schema)})))
         category (:category field-type)
+        {:keys [disable-checks? disable-java-objects?]} (::options schema)
+
+        enable-java-objects? (not disable-java-objects?)
 
         ;; Build up layers of checks and other logic and a series of chained selector functions.
         ;; Normally, don't redefine local symbols, but here it makes it easier to follow and less
@@ -979,9 +986,6 @@
                    (let [serializer (:serialize field-type)]
                      (fn select-coercion [execution-context selection callback path resolve-xf resolved-type resolved-value]
                        (cond-let
-
-                         (nil? resolved-value)
-                         (selector execution-context selection callback path resolve-xf resolved-type nil)
 
                          :let [serialized (try
                                             (serializer resolved-value)
@@ -1020,9 +1024,6 @@
                          ;; and the enum's serializer converts that to a keyword, which is then
                          ;; validated to match a known value for the enum.
 
-                         (nil? resolved-value)
-                         (selector execution-context selection callback path resolve-xf resolved-type nil)
-
                          :let [serialized (serializer resolved-value)]
 
                          (not (possible-values serialized))
@@ -1043,8 +1044,7 @@
                      (fn select-allowed-types [execution-context selection callback path resolve-xf resolved-type resolved-value]
                        (cond
 
-                         (or (nil? resolved-value)
-                           (contains? member-types resolved-type))
+                         (contains? member-types resolved-type)
                          (selector execution-context selection callback path resolve-xf resolved-type resolved-value)
 
                          (nil? resolved-type)
@@ -1056,7 +1056,7 @@
                            (error "Value returned from resolver has incorrect type for field."
                              {:field-type field-type-name
                               :actual-type resolved-type
-                                                 :allowed-types member-types}))))))
+                              :allowed-types member-types}))))))
 
 
         type-map (when union-or-interface?
@@ -1073,50 +1073,62 @@
 
         ;; This is needed because *sometimes* the same resolver is used for both a field
         ;; with an object type, and for a field with a union/interface type, and the value
-        ;; may be a tagged value (wrapper around a Java object).
+        ;; may be a tagged value (wrapper around a Java object).  If :disable-java-objects? option is true,
+        ;; then this step only applies to union or interface fields.
 
-        selector (fn select-unwrap-tagged-type [execution-context selection callback path resolve-xf resolved-type resolved-value]
-                   (cond-let
-                     ;; Use explicitly tagged value (this usually applies to Java objects
-                     ;; that can't provide meta data).
-                     (is-tagged-value? resolved-value)
-                     (selector execution-context selection callback path resolve-xf (extract-type-tag resolved-value) (extract-value resolved-value))
+        selector (if-not (or union-or-interface? enable-java-objects?)
+                   selector
+                   (fn select-unwrap-tagged-type [execution-context selection callback path resolve-xf resolved-type resolved-value]
+                     (cond-let
+                       ;; Use explicitly tagged value (this usually applies to Java objects
+                       ;; that can't provide meta data).
+                       (is-tagged-value? resolved-value)
+                       (selector execution-context selection callback path resolve-xf (extract-type-tag resolved-value) (extract-value resolved-value))
 
-                     ;; Check for explicit meta-data:
+                       ;; Check for explicit meta-data:
 
-                     :let [type-name (-> resolved-value meta ::type-name)]
+                       :let [type-name (-> resolved-value meta ::type-name)]
 
-                     (some? type-name)
-                     (selector execution-context selection callback path resolve-xf type-name resolved-value)
+                       (some? type-name)
+                       (selector execution-context selection callback path resolve-xf type-name resolved-value)
 
-                     ;; Use, if available, the mapping from tag to object that might be provided
-                     ;; for some objects.
-                     :let [mapped-type (when type-map
-                                         (->> resolved-value
-                                           class
-                                           (get type-map)))]
+                       ;; Use, if available, the mapping from tag to object that might be provided
+                       ;; for some objects.
+                       :let [mapped-type (when type-map
+                                           (->> resolved-value
+                                             class
+                                             (get type-map)))]
 
-                     (some? mapped-type)
-                     (selector execution-context selection callback path resolve-xf mapped-type resolved-value)
+                       (some? mapped-type)
+                       (selector execution-context selection callback path resolve-xf mapped-type resolved-value)
 
-                     ;; Let a later stage fail if it is a union or interface and there's no explicit
-                     ;; type.
-                     :else
-                     (selector execution-context selection callback path resolve-xf resolved-type resolved-value)))
+                       ;; Let a later stage fail if it is a union or interface and there's no explicit
+                       ;; type.
+                       :else
+                       (selector execution-context selection callback path resolve-xf resolved-type resolved-value))))
 
 
-        ;; TODO: This could possibly be boosted up to the FieldSelection
         selector (if-not (#{:object :input-object} category)
                    selector
                    (fn select-apply-static-type [execution-context selection callback path resolve-xf _resolved-type resolved-value]
                      ;; TODO: Maybe a check that if the resolved value is tagged, that the tag matches the expected tag?
-                     (selector execution-context selection callback path resolve-xf field-type-name resolved-value)))]
+                     (selector execution-context selection callback path resolve-xf field-type-name resolved-value)))
 
-    (fn select-require-single-value [execution-context selection callback path resolve-xf resolved-type resolved-value]
-      (if (sequential-or-set? resolved-value)
-        (selector-error execution-context selection callback path resolve-xf
-          (error "Field resolver returned a collection of values, expected only a single value."))
-        (selector execution-context selection callback path resolve-xf resolved-type resolved-value)))))
+        selector (if disable-checks?
+                   selector
+                   (fn select-require-single-value [execution-context selection callback path resolve-xf resolved-type resolved-value]
+                     (if (sequential-or-set? resolved-value)
+                       (selector-error execution-context selection callback path resolve-xf
+                         (error "Field resolver returned a collection of values, expected only a single value."))
+                       (selector execution-context selection callback path resolve-xf resolved-type resolved-value))))
+
+        selector (if (= selector floor-selector)
+                   selector
+                   (fn select-bypass-if-nil [execution-context selection callback path resolve-xf resolved-type resolved-value]
+                     (if (nil? resolved-value)
+                       (callback execution-context path resolve-xf nil nil)
+                       (selector execution-context selection callback path resolve-xf resolved-type resolved-value))))]
+    selector))
 
 (defn ^:private assemble-selector
   "Assembles a selector function for a field.
@@ -1860,7 +1872,6 @@
   Compile options:
 
   :default-field-resolver
-
   : A function that accepts a field name (as a keyword) and converts it into the
     default field resolver; this defaults to [[default-field-resolver]].
 
@@ -1872,6 +1883,18 @@
   :enable-introspection?
   : If true (the default), then Schema introspection is enabled. Some applications
     may disable introspection in production.
+
+  :disable-checks?  (added in 1.1)
+  : If true (defaults to false), certain runtime checks on data returned from field resolvers
+    are omitted; this trades safety for speed, but may make sense when running in production.
+
+  :disable-java-objects? (added in 1.1)
+  : Normally, Lacinia must check each returned field to see if it is a wrapper around a Java object
+    (this happens when a Java objects is tagged via [[tag-with-type]]);
+    in most applications, resolvers return only Clojure values, not Java objects, and the step
+    that looks for tagged values iis only needed for fields
+    whose type is an interface or union. Using this option improves performance slightly, but should be
+    used consistently across environments (testing and production).
 
   :apply-field-directives
   : An optional callback function; for fields that have any directives on the field definition,
