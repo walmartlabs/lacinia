@@ -939,13 +939,13 @@
           (resolve-as raw-value))))))
 
 (defn ^:no-doc floor-selector
-  [execution-context _selection callback path resolved-type resolved-value]
-  (callback execution-context path resolved-type resolved-value))
+  [execution-context _selection callback path resolve-xf resolved-type resolved-value]
+  (callback execution-context path resolve-xf resolved-type resolved-value))
 
 (defn ^:private selector-error
-  [execution-context selection callback path error]
+  [execution-context selection callback path resolve-xf error]
   (su/apply-error execution-context selection path :*errors error)
-  (callback execution-context path nil nil))
+  (callback execution-context path resolve-xf nil nil))
 
 (defn ^:private existing-error-for-current-path?
   [execution-context path]
@@ -977,11 +977,11 @@
 
         selector (if (= :scalar category)
                    (let [serializer (:serialize field-type)]
-                     (fn select-coercion [execution-context selection callback path resolved-type resolved-value]
+                     (fn select-coercion [execution-context selection callback path resolve-xf resolved-type resolved-value]
                        (cond-let
 
                          (nil? resolved-value)
-                         (selector execution-context selection callback path resolved-type nil)
+                         (selector execution-context selection callback path resolve-xf resolved-type nil)
 
                          :let [serialized (try
                                             (serializer resolved-value)
@@ -990,30 +990,30 @@
 
 
                          (nil? serialized)
-                         (selector-error execution-context selection callback path
-                                         (let [value-str (pr-str resolved-value)]
-                                           {:message (format "Unable to serialize %s as type %s."
-                                                             value-str
-                                                             (q field-type-name))
-                                            :value value-str
-                                            :type-name field-type-name}))
+                         (selector-error execution-context selection callback path resolve-xf
+                           (let [value-str (pr-str resolved-value)]
+                             {:message (format "Unable to serialize %s as type %s."
+                                         value-str
+                                         (q field-type-name))
+                              :value value-str
+                              :type-name field-type-name}))
 
                          (is-coercion-failure? serialized)
-                         (selector-error execution-context selection callback path
-                                         (-> serialized
-                                             (update :message
-                                                     #(str "Coercion error serializing value: " %))
-                                             (assoc :type-name field-type-name
-                                                    :value (pr-str resolved-value))))
+                         (selector-error execution-context selection callback path resolve-xf
+                           (-> serialized
+                               (update :message
+                                 #(str "Coercion error serializing value: " %))
+                               (assoc :type-name field-type-name
+                                      :value (pr-str resolved-value))))
 
                          :else
-                         (selector execution-context selection callback path resolved-type serialized))))
+                         (selector execution-context selection callback path resolve-xf resolved-type serialized))))
                    selector)
 
         selector (if (= :enum category)
                    (let [possible-values (-> field-type :values set)
                          serializer (:serialize field-type)]
-                     (fn validate-enum [execution-context selection callback path resolved-type resolved-value]
+                     (fn validate-enum [execution-context selection callback path resolve-xf resolved-type resolved-value]
                        (cond-let
                          ;; The resolver function can return a value that makes sense from
                          ;; the application's model (for example, a namespaced keyword or even a string)
@@ -1021,42 +1021,42 @@
                          ;; validated to match a known value for the enum.
 
                          (nil? resolved-value)
-                         (selector execution-context selection callback path resolved-type nil)
+                         (selector execution-context selection callback path resolve-xf resolved-type nil)
 
                          :let [serialized (serializer resolved-value)]
 
                          (not (possible-values serialized))
-                         (selector-error execution-context selection callback path
-                                         (error "Field resolver returned an undefined enum value."
-                                                {:resolved-value resolved-value
-                                                 :serialized-value serialized
-                                                 :enum-values possible-values}))
+                         (selector-error execution-context selection callback path resolve-xf
+                           (error "Field resolver returned an undefined enum value."
+                             {:resolved-value resolved-value
+                              :serialized-value serialized
+                              :enum-values possible-values}))
 
                          :else
-                         (selector execution-context selection callback path resolved-type serialized))))
+                         (selector execution-context selection callback path resolve-xf resolved-type serialized))))
                    selector)
 
         union-or-interface? (#{:interface :union} category)
 
         selector (if union-or-interface?
                    (let [member-types (:members field-type)]
-                     (fn select-allowed-types [execution-context selection callback path resolved-type resolved-value]
+                     (fn select-allowed-types [execution-context selection callback path resolve-xf resolved-type resolved-value]
                        (cond
 
                          (or (nil? resolved-value)
-                             (contains? member-types resolved-type))
-                         (selector execution-context selection callback path resolved-type resolved-value)
+                           (contains? member-types resolved-type))
+                         (selector execution-context selection callback path resolve-xf resolved-type resolved-value)
 
                          (nil? resolved-type)
-                         (selector-error execution-context selection callback path
-                                         (error "Field resolver returned an instance not tagged with a schema type."))
+                         (selector-error execution-context selection callback path resolve-xf
+                           (error "Field resolver returned an instance not tagged with a schema type."))
 
                          :else
-                         (selector-error execution-context selection callback path
-                                         (error "Value returned from resolver has incorrect type for field."
-                                                {:field-type field-type-name
-                                                 :actual-type resolved-type
-                                                 :allowed-types member-types})))))
+                         (selector-error execution-context selection callback path resolve-xf
+                           (error "Value returned from resolver has incorrect type for field."
+                             {:field-type field-type-name
+                              :actual-type resolved-type
+                              :allowed-types member-types})))))
                    selector)
 
 
@@ -1067,55 +1067,55 @@
                                             (if tag
                                               (assoc m tag type-name)
                                               m))
-                                          {}
-                                          member-objects)]
+                                    {}
+                                    member-objects)]
                      (when (seq type-map)
                        type-map)))
 
         ;; TODO: Can this be skipped except for union/interface?  If so, can it be merged with above
         ;; selector?
-        selector (fn select-unwrap-tagged-type [execution-context selection callback path resolved-type resolved-value]
+        selector (fn select-unwrap-tagged-type [execution-context selection callback path resolve-xf resolved-type resolved-value]
                    (cond-let
                      ;; Use explicitly tagged value (this usually applies to Java objects
                      ;; that can't provide meta data).
                      (is-tagged-value? resolved-value)
-                     (selector execution-context selection callback path (extract-type-tag resolved-value) (extract-value resolved-value))
+                     (selector execution-context selection callback path resolve-xf (extract-type-tag resolved-value) (extract-value resolved-value))
 
                      ;; Check for explicit meta-data:
 
                      :let [type-name (-> resolved-value meta ::type-name)]
 
                      (some? type-name)
-                     (selector execution-context selection callback path type-name resolved-value)
+                     (selector execution-context selection callback path resolve-xf type-name resolved-value)
 
                      ;; Use, if available, the mapping from tag to object that might be provided
                      ;; for some objects.
                      :let [mapped-type (when type-map
                                          (->> resolved-value
-                                              class
-                                              (get type-map)))]
+                                           class
+                                           (get type-map)))]
 
                      (some? mapped-type)
-                     (selector execution-context selection callback path mapped-type resolved-value)
+                     (selector execution-context selection callback path resolve-xf mapped-type resolved-value)
 
                      ;; Let a later stage fail if it is a union or interface and there's no explicit
                      ;; type.
                      :else
-                     (selector execution-context selection callback path resolved-type resolved-value)))
+                     (selector execution-context selection callback path resolve-xf resolved-type resolved-value)))
 
 
         ;; TODO: This could possibly be boosted up to the FieldSelection
         selector (if (#{:object :input-object} category)
-                   (fn select-apply-static-type [execution-context selection callback path _resolved-type resolved-value]
+                   (fn select-apply-static-type [execution-context selection callback path resolve-xf _resolved-type resolved-value]
                      ;; TODO: Maybe a check that if the resolved value is tagged, that the tag matches the expected tag?
-                     (selector execution-context selection callback path field-type-name resolved-value))
+                     (selector execution-context selection callback path resolve-xf field-type-name resolved-value))
                    selector)]
 
-    (fn select-require-single-value [execution-context selection callback path resolved-type resolved-value]
+    (fn select-require-single-value [execution-context selection callback path resolve-xf resolved-type resolved-value]
       (if (sequential-or-set? resolved-value)
-        (selector-error execution-context selection callback path
-                        (error "Field resolver returned a collection of values, expected only a single value."))
-        (selector execution-context selection callback path resolved-type resolved-value)))))
+        (selector-error execution-context selection callback path resolve-xf
+          (error "Field resolver returned a collection of values, expected only a single value."))
+        (selector execution-context selection callback path resolve-xf resolved-type resolved-value)))))
 
 (defn ^:private assemble-selector
   "Assembles a selector function for a field.
@@ -1138,53 +1138,55 @@
 
     :list
     (let [next-selector (assemble-selector schema object-type field (:type type))]
-      (fn select-list [execution-context selection callback path resolved-type resolved-value]
+      (fn select-list [execution-context selection callback path resolve-xf resolved-type resolved-value]
         (cond
           (nil? resolved-value)
           ;; Bypass the rest of the pipeline and jump to the callback
-          (callback execution-context path resolved-type nil)
+          (callback execution-context path resolve-xf resolved-type nil)
 
           (not (sequential-or-set? resolved-value))
-          (selector-error execution-context selection callback path
-                          (error "Field resolver returned a single value, expected a collection of values."))
+          (selector-error execution-context selection callback path resolve-xf
+            (error "Field resolver returned a single value, expected a collection of values."))
 
           ;; Optimization for empty seqs:
           (not (seq resolved-value))
-          (callback execution-context path nil [])
+          (callback execution-context path resolve-xf nil [])
 
           :else
           ;; So we have some privileged knowledge here: the selector returns a ResolverResult containing
           ;; the value. So we need to combine those together into a new ResolverResult.
           (let [unwrapper (fn [execution-context path list-element]
                             (if-not (su/is-wrapped-value? list-element)
-                              (next-selector execution-context selection callback path resolved-type list-element)
+                              ;; Explicitly set the resolve-xf to nil (bare object or scalar values) when
+                              ;; looping.
+                              (next-selector execution-context selection callback path nil resolved-type list-element)
                               (loop [ec execution-context
                                      v list-element]
                                 (let [next-v (:value v)
                                       next-ec (su/apply-wrapped-value ec selection path v)]
                                   (if (su/is-wrapped-value? next-v)
                                     (recur next-ec next-v)
-                                    (next-selector next-ec selection callback path resolved-type next-v))))))]
-            (aggregate-results
-              (fast-map-indexed
-                (fn [i v]
-                  (unwrapper execution-context (conj path i) v))
-                resolved-value))))))
+                                    (next-selector next-ec selection callback path nil resolved-type next-v))))))
+                list-resolver-results (fast-map-indexed (fn [i v] (unwrapper execution-context (conj path i) v))
+                                        resolved-value)]
+            ;; A list inside a field will have a resolve-xf that applies to the final selected list;
+            ;; pass that aggregated list through the xf if it exists.
+            (aggregate-results list-resolver-results (or resolve-xf identity))))))
 
     :non-null
     (let [next-selector (assemble-selector schema object-type field (:type type))]
       (when (-> field :default-value some?)
         (throw (ex-info (format "Field %s is both non-nullable and has a default value."
-                                (-> field :qualified-name q))
-                        {:field-name (:qualified-name field)
-                         :type (-> field :type type->string)})))
-      (fn select-non-null [execution-context selection callback path resolved-type resolved-value]
+                          (-> field :qualified-name q))
+                 {:field-name (:qualified-name field)
+                  :type (-> field :type type->string)})))
+      (fn select-non-null [execution-context selection callback path resolve-xf resolved-type resolved-value]
         (if (some? resolved-value)
-          (next-selector execution-context selection callback path resolved-type resolved-value)
-          (selector-error execution-context selection callback path
-                          ;; If there's already errors (from the application's resolver function) then don't add more
-                          (when-not (existing-error-for-current-path? execution-context  path)
-                            (error "Non-nullable field was null."))))))
+          (next-selector execution-context selection callback path resolve-xf resolved-type resolved-value)
+          (selector-error execution-context selection callback path resolve-xf
+            ;; If there's already errors (from the application's resolver function) then don't add more
+            (when-not (existing-error-for-current-path? execution-context path)
+              (error "Non-nullable field was null."))))))
 
     :root
     (create-root-selector schema field (:type type))))

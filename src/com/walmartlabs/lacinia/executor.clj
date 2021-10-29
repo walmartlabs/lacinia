@@ -136,17 +136,13 @@
   [execution-context field-selection path container-type container-value]
   (let [alias (selection/alias-name field-selection)
         {:keys [resolve-xf]} field-selection
-        {:keys [selector]} (:field-definition field-selection)
-        ;; The selector will be null if the field's (root) type is an interface or union
-        ;; (rather than an object, scalar, or enum); in those cases, we need to
-        ;; know the actual result type in order to find the selector.
-        resolver-result (resolve-and-select execution-context field-selection false selector (conj path alias) container-type container-value)]
-    (transform-result resolver-result resolve-xf)))
+        {:keys [selector]} (:field-definition field-selection)]
+    (resolve-and-select execution-context field-selection false selector (conj path alias) resolve-xf container-type container-value)))
 
 (defn ^:private maybe-apply-fragment
   [execution-context fragment-selection concrete-types path container-type container-value]
   (when (contains? concrete-types container-type)
-    (resolve-and-select execution-context fragment-selection true schema/floor-selector path container-type container-value)))
+    (resolve-and-select execution-context fragment-selection true schema/floor-selector path nil container-type container-value)))
 
 (defn ^:private apply-inline-fragment
   [execution-context inline-fragment-selection path container-type container-value]
@@ -195,13 +191,14 @@
   "Executes nested sub-selections once a value is resolved.
 
   Returns a ResolverResult delivering an ordered map of keys and selected values."
-  [execution-context sub-selections path container-type container-value]
+  [execution-context sub-selections path resolve-xf container-type container-value]
   ;; First step is easy: convert the selections into ResolverResults.
   ;; Then once all the individual results are ready, combine them in the correct order.
   (let [selection-results (keepv #(apply-selection execution-context % path container-type container-value) sub-selections)]
     (aggregate-results selection-results
                        (fn [values]
-                         (reduce merge-selected-values empty-ordered-map values)))))
+                         (cond-> (reduce merge-selected-values empty-ordered-map values)
+                           resolve-xf resolve-xf)))))
 
 (defn ^:private combine-selection-results-sync
   [execution-context previous-resolved-result sub-selection path container-type container-value]
@@ -228,7 +225,7 @@
   removed.
 
   Returns ResolverResult whose value is a map of keys and selected values."
-  [execution-context sub-selections path container-type container-value]
+  [execution-context sub-selections path _resolve-xf container-type container-value]
   ;; This could be optimized for the very common case of a single sub-selection.
   (reduce #(combine-selection-results-sync execution-context %1 %2 path container-type container-value)
     (resolve-as empty-ordered-map)
@@ -240,7 +237,7 @@
   Returns a ResolverResult of the selected value.
 
   Accumulates errors in the execution context as a side-effect."
-  [execution-context selection is-fragment? static-selector path container-type container-value]
+  [execution-context selection is-fragment? static-selector path resolve-xf container-type container-value]
   (let [;; Get the raw selections (not attached to the schema) which is faster
         sub-selections (:selections selection)
 
@@ -253,16 +250,22 @@
         ;; seqs before (repeatedly) invoking the callback, at which point, it is possible to
         ;; perform a recursive selection on the nested fields of the origin field.
         selector-callback
-        (fn selector-callback [execution-context path resolved-type resolved-value]
+        (fn selector-callback [execution-context path resolve-xf resolved-type resolved-value]
           (reset! *pass-through-exceptions true)
-          (if (and (or (some? resolved-value)
-                       (= [] path))                         ;; This covers the root operation
-                   resolved-type
-                   (seq sub-selections))
+          (cond
+            (and (or (some? resolved-value)
+                     (= [] path)) ;; This covers the root operation
+                resolved-type
+                (seq sub-selections))
             ;; Case #1: The field is an object type that needs further sub-selections to reach
             ;; scalar (or enum) leafs.
-            (execute-nested-selections execution-context sub-selections path resolved-type resolved-value)
+            (execute-nested-selections execution-context sub-selections path resolve-xf resolved-type resolved-value)
             ;; Case #2: A scalar (or leaf) type, no further sub-selections necessary.
+
+            resolve-xf
+            (resolve-as (resolve-xf resolved-value))
+
+            :else
             (resolve-as resolved-value)))
         ;; In a concrete type, we know the selector from the field definition
         ;; (a field definition on a concrete object type).  For a fragment, static-selector
@@ -290,10 +293,8 @@
                                      (if (su/is-wrapped-value? resolved-value)
                                        (recur (:value resolved-value)
                                               (su/apply-wrapped-value new-execution-context selection path resolved-value))
-                                       ;; Finally to a real value, not a wrapper.  The commands may have
-                                       ;; modified the :errors or :execution-context keys, and the pipeline
-                                       ;; will do the rest. Errors will be dealt with in the callback.
-                                       (selector new-execution-context selection selector-callback path nil resolved-value)))
+                                       ;; Finally to a real value, not a wrapper:
+                                       (selector new-execution-context selection selector-callback path resolve-xf nil resolved-value)))
                                    (catch Throwable t
                                      (if @*pass-through-exceptions
                                        (throw t)
@@ -336,7 +337,7 @@
     (cond
 
       is-fragment?
-      (selector execution-context selection selector-callback path container-type container-value)
+      (selector execution-context selection selector-callback path nil container-type container-value)
 
       ;; Optimization: for simple fields there may be direct function.
       ;; This is a function that synchronously provides the value from the container resolved value.
@@ -397,7 +398,7 @@
         f (bound-fn []
             (try
               (let [execute-fn (if (= :mutation operation-type) execute-nested-selections-sync execute-nested-selections)
-                    operation-result (execute-fn execution-context enabled-selections [] root-type root-value)]
+                    operation-result (execute-fn execution-context enabled-selections [] nil root-type root-value)]
                 (resolve/on-deliver! operation-result
                   (fn [selected-data]
                     (let [errors (seq @*errors)
