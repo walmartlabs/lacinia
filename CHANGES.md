@@ -1,6 +1,10 @@
 ## 1.1 -- UNRELEASED
 
-Fixed a tiny performance bug.
+This release features some significant efficiency improvements inside Lacinia.
+
+A small incompatible change is present:  `com.walmartlabs.resolve/resolve-as` and `with-error` did, in prior releases,
+support an argument that could be either a single error map, or a sequence of error maps. This was rarely used, and
+has been changed: only a single error map is supported.
 
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/28?closed=1)
 

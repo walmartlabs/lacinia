@@ -16,8 +16,8 @@
   (:require
     [clojure.test :refer [deftest is]]
     [com.walmartlabs.lacinia.resolve :as r :refer [FieldResolver]]
-    [com.walmartlabs.lacinia.selector-context :as sc]
-    [com.walmartlabs.lacinia.internal-utils :refer [aggregate-results]]
+    [com.walmartlabs.lacinia.select-utils :as su]
+    [com.walmartlabs.lacinia.resolve-utils :refer [aggregate-results]]
     [com.walmartlabs.lacinia.resolve :as resolve])
   (:import (java.util.concurrent Executor)))
 
@@ -92,16 +92,19 @@
   [_ _ _ value]
   (inc value))
 
-(defn ^:private as-promise [resolver-result]
+(defn ^:private as-promise
+  [resolver-result]
   (let [p (promise)]
     (r/on-deliver! resolver-result p)
     p))
 
 (defn ^:private apply-wrapped-values
-  [selection-context value]
-  (if (sc/is-wrapped-value? value)
+  [selection-context selection path value]
+  (if (su/is-wrapped-value? value)
     (apply-wrapped-values
-      (sc/apply-wrapped-value selection-context value)
+      (su/apply-wrapped-value selection-context selection path value)
+      selection
+      path
       (:value value))
     [selection-context value]))
 
@@ -127,23 +130,42 @@
 (deftest restores-commands-around-wrapped-value
   (let [resolver-fn (constantly (-> 300
                                     (r/with-context {:gnip :gnop})
-                                    (r/with-error :fail-1)
-                                    (r/with-error :fail-2)
-                                    (r/with-warning :warning-1)
-                                    (r/with-warning :warning-2)
+                                    (r/with-error {:message "fail 1"})
+                                    (r/with-error {:message "fail 2"})
+                                    (r/with-warning {:message "warn 1"})
+                                    (r/with-warning {:message "warn 2"})
                                     (r/with-extensions assoc-in [:fie :fie :foe] :fum)))
         wrapped (r/wrap-resolver-result resolver-fn inc-wrapper)
         *result (as-promise (wrapped nil nil nil))
         *extensions (atom {})
-        [sc final-value] (apply-wrapped-values {:*extensions *extensions} @*result)]
+        *errors (atom [])
+        *warnings (atom [])
+        context {:*extensions *extensions
+                 :*errors *errors
+                 :*warnings *warnings}
+        [context' final-value] (apply-wrapped-values context nil [:fake-path] @*result)]
     (is (= 301 final-value))
     (is (= {:fie {:fie {:foe :fum}}}
            @*extensions))
-    (is (= {:errors [:fail-1 :fail-2]                       ; check order of application
-            :warnings [:warning-1 :warning-2]
+    (is (= [{:locations [nil]
+             :message "fail 2"
+             :path [:fake-path]}
+            {:locations [nil]
+             :message "fail 1"
+             :path [:fake-path]}]
+           @*errors))
+     (is (= [{:locations [nil]
+              :message "warn 2"
+              :path [:fake-path]}
+             {:locations [nil]
+              :message "warn 1"
+              :path [:fake-path]}]
+            @*warnings))
+    (is (= {:*errors *errors                 ; check order of application
+            :*warnings *warnings
             :context {:gnip :gnop}
             :*extensions *extensions}
-           sc))))
+           context'))))
 
 (deftest wrapped-value-may-itself-be-resolver-result
   (let [resolver-promise (r/resolve-promise)

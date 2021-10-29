@@ -15,7 +15,8 @@
 (ns com.walmartlabs.lacinia.federation
   (:require
     [com.walmartlabs.lacinia.resolve :as resolve :refer [with-error]]
-    [com.walmartlabs.lacinia.internal-utils :as utils]
+    [com.walmartlabs.lacinia.internal-utils :as utils :refer [get-nested]]
+    [com.walmartlabs.lacinia.resolve-utils :as ru]
     [com.walmartlabs.lacinia.schema :as schema]
     [clojure.spec.alpha :as s]))
 
@@ -105,7 +106,7 @@
             errors @*errors
             maybe-wrap (fn [result]
                          (if errors
-                           (with-error result errors)
+                           (reduce with-error result errors)
                            result))]
         ;; Quick optimization; don't do the aggregation if there's only a single
         ;; result (very common case).
@@ -113,10 +114,10 @@
           0 (maybe-wrap [])
 
           1 (if errors
-              (utils/transform-result (first results) #(with-error % errors))
+              (ru/transform-result (first results) #(reduce with-error % errors))
               (first results))
 
-          (utils/aggregate-results results #(maybe-wrap (reduce into [] %))))))))
+          (ru/aggregate-results results #(maybe-wrap (reduce into [] %))))))))
 
 (defn inject-federation
   "Called after SDL parsing to extend the input schema
@@ -124,7 +125,7 @@
   [schema sdl entity-resolvers]
   (let [entity-names (find-entity-names schema)
         entities-resolver (entities-resolver-factory entity-names entity-resolvers)
-        query-root (get-in schema [:roots :query] :Query)]
+        query-root (get-nested schema [:roots :query] :Query)]
     (prevent-collision schema [:unions :_Entity])
     (prevent-collision schema [:objects query-root :fields :_service])
     (prevent-collision schema [:objects query-root :fields :_entities])

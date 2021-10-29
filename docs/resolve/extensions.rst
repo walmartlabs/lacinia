@@ -53,7 +53,7 @@ Sticking with ``assoc-in`` or ``update-in`` is a good bet.
 Warnings
 --------
 
-The ``with-error`` modifier function adds one or more errors to a result; in general, errors are
+The ``with-error`` modifier function adds an error map to a result; in general, errors are
 serious - Lacinia adds errors when it can't parse the GraphQL document, for example.
 
 Lacinia adds a less dramatic level, a warning, via the ``with-warning`` modifier.

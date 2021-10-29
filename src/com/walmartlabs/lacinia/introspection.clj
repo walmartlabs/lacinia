@@ -18,7 +18,8 @@
     [clojure.edn :as edn]
     [clojure.java.io :as io]
     [com.walmartlabs.lacinia.util :as util]
-    [com.walmartlabs.lacinia.internal-utils :refer [remove-keys is-internal-type-name? cond-let]]
+    [com.walmartlabs.lacinia.internal-utils :refer [remove-keys is-internal-type-name? cond-let
+                                                    get-nested keepv]]
     [com.walmartlabs.lacinia.constants :as constants]
     [clojure.string :as str]
     [clojure.data.json :as json]
@@ -157,7 +158,7 @@
       ;; Use the ordered list, not the set, in case order
       ;; has meaning (unlike elsewhere we we sort alphabetically).
       (for [value (get type-def :values)
-            :let [{:keys [description deprecated]} (get-in type-def [:values-detail value])
+            :let [{:keys [description deprecated]} (get-nested type-def [:values-detail value])
                   is-deprecated (is-deprecated? deprecated)]
             :when (or includeDeprecated
                       (not is-deprecated))]
@@ -218,7 +219,7 @@
       :let [kind (:kind type-map)]
 
       (= :root kind)
-      (get-in schema [(:type type-map) :category])
+      (get-nested schema [(:type type-map) :category])
 
       :else
       kind)))
@@ -258,7 +259,7 @@
 (defmethod emit-default-value :input-object
   [schema type-map value]
   (let [type-def (get schema (:type type-map))
-        kvs (keep (fn [field-def]
+        kvs (keepv (fn [field-def]
                     (let [field-name (:field-name field-def)
                           field-value (emit-default-value schema
                                                           (:type field-def)

@@ -16,7 +16,7 @@
   "Tests for errors and exceptions inside field resolvers, and for the exception converter."
   (:require
    [clojure.test :refer [deftest is testing]]
-   [com.walmartlabs.lacinia.resolve :refer [resolve-as]]
+   [com.walmartlabs.lacinia.resolve :refer [resolve-as with-error]]
    [com.walmartlabs.test-utils :refer [execute compile-schema] :as utils]
    [com.walmartlabs.lacinia.schema :as schema])
   (:import (clojure.lang ExceptionInfo)
@@ -40,11 +40,12 @@
             ;; We could add a serializer that converts this to :BLUE, but we haven't.
             Color/BLUE)
    :multiple-errors (fn [_ _ _]
-                      (resolve-as "Value"
-                                  [{:message "1" :other-key 100}
-                                   {:message "2"}
-                                   {:message "3"}
-                                   {:message "4"}]))
+                      (reduce #(with-error %1 %2)
+                        "Value"
+                        [{:message "1" :other-key 100}
+                                                {:message "2"}
+                                                {:message "3"}
+                                                {:message "4"}]))
    :resolve-root (fn [_ _ _] {})})
 
 (def default-schema
@@ -139,8 +140,8 @@
                                              :contents {:type '(list :item)
                                                         :resolve (fn [ctx args v]
                                                                    (resolve-as
-                                                                    (:contents v)
-                                                                    [{:message "Some error"}]))}}}}
+                                                                     (:contents v)
+                                                                     {:message "Some error"}))}}}}
                                   :queries
                                   {:container {:type :container
                                                :args {:id {:type 'String}}

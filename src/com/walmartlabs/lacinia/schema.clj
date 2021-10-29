@@ -22,23 +22,24 @@
   schema, and pre-computing many defaults."
   (:refer-clojure :exclude [compile])
   (:require
-    [clojure.spec.alpha :as s]
-    [com.walmartlabs.lacinia.introspection :as introspection]
-    [com.walmartlabs.lacinia.internal-utils
-     :refer [map-vals map-kvs filter-vals deep-map-merge q
-             is-internal-type-name? sequential-or-set? as-keyword
-             cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag
-             to-message qualified-name aggregate-results]]
-    [com.walmartlabs.lacinia.resolve :as resolve
-     :refer [ResolverResult resolve-as is-resolver-result?]]
-    [clojure.string :as str]
-    [clojure.set :refer [difference]]
-    [clojure.pprint :as pprint]
-    [com.walmartlabs.lacinia.selection :as selection]
-    [com.walmartlabs.lacinia.selector-context :as sc])
+   [clojure.spec.alpha :as s]
+   [com.walmartlabs.lacinia.introspection :as introspection]
+   [com.walmartlabs.lacinia.internal-utils
+    :refer [map-vals map-kvs filter-vals deep-map-merge q get-nested
+            is-internal-type-name? sequential-or-set? as-keyword
+            cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag
+            to-message qualified-name fast-map-indexed]]
+   [com.walmartlabs.lacinia.select-utils :as su]
+   [com.walmartlabs.lacinia.resolve :as resolve
+    :refer [ResolverResult resolve-as is-resolver-result?]]
+   [com.walmartlabs.lacinia.resolve-utils :refer [aggregate-results]]
+   [clojure.string :as str]
+   [clojure.set :refer [difference]]
+   [clojure.pprint :as pprint]
+   [com.walmartlabs.lacinia.selection :as selection])
   (:import
-    (clojure.lang IObj)
-    (java.io Writer)))
+   (clojure.lang IObj)
+   (java.io Writer)))
 
 ;; When using Clojure 1.8, the dependency on clojure-future-spec must be included,
 ;; and this code will trigger
@@ -93,8 +94,8 @@
                (if (-> v :category (= category))
                  (assoc s k (f v))
                  s))
-             schema
-             schema))
+    schema
+    schema))
 
 (defn tag-with-type
   "Tags a value with a GraphQL type name, a keyword.
@@ -130,16 +131,16 @@
   for exception reporting."
   [schema]
   (->> schema
-       vals
-       (filter :type-name)                                  ;; ::schema/root has no :type-name
-       (group-by :category)
-       (map-vals #(->> (map :type-name %)
-                       (remove is-internal-type-name?)
-                       sort
-                       vec))
-       ;; The above may remove entire categories, drop the keys when
-       ;; all the values have been filtered out.
-       (filter-vals seq)))
+    vals
+    (filter :type-name) ;; ::schema/root has no :type-name
+    (group-by :category)
+    (map-vals #(->> (map :type-name %)
+                 (remove is-internal-type-name?)
+                 sort
+                 vec))
+    ;; The above may remove entire categories, drop the keys when
+    ;; all the values have been filtered out.
+    (filter-vals seq)))
 
 (defn as-conformer
   "Creates a clojure.spec/conformer as a wrapper around the supplied function.
@@ -176,8 +177,8 @@
   [v]
   (cond
     (or (integer? v)
-        (instance? clojure.lang.BigInt v)
-        (instance? java.math.BigInteger v))
+      (instance? clojure.lang.BigInt v)
+      (instance? java.math.BigInteger v))
     (if (<= Integer/MIN_VALUE v Integer/MAX_VALUE)
       (int v)
       (coercion-failure "Int value outside of allowed 32 bit integer range." {:value (pr-str v)}))
@@ -226,7 +227,7 @@
 (defn ^:private parse-boolean
   [v]
   (when
-    (instance? Boolean v)
+   (instance? Boolean v)
     v))
 
 (defn ^:private parse-id
@@ -272,9 +273,9 @@
 ;; ## Validations
 
 (s/def ::deprecated (s/or :basic true?
-                          :detailed string?))
+                      :detailed string?))
 (s/def ::schema-key (s/and simple-keyword?
-                           ::graphql-identifier))
+                      ::graphql-identifier))
 (s/def ::graphql-identifier #(re-matches graphql-identifier (name %)))
 ;; For style and/or historical reasons, type names can be a keyword or a symbol.
 ;; The convention is that built-in types use a symbol, and application-defined types
@@ -282,74 +283,74 @@
 (s/def ::type-name (s/and
                      (s/nonconforming
                        (s/or :keyword simple-keyword?
-                             :symbol simple-symbol?))
+                         :symbol simple-symbol?))
                      ::graphql-identifier))
 (s/def ::type (s/or :base-type ::type-name
-                    :wrapped-type ::wrapped-type))
+                :wrapped-type ::wrapped-type))
 (s/def ::wrapped-type (s/cat :modifier ::wrapped-type-modifier
-                             :type ::type))
+                        :type ::type))
 ;; Use of a function here, rather than just the set, is due to https://github.com/bhb/expound/issues/101
 (s/def ::wrapped-type-modifier #(contains? #{'list 'non-null} %))
 (s/def ::arg (s/keys :req-un [::type]
-                     :opt-un [::description
-                              ::directives
-                              ::default-value]))
+               :opt-un [::description
+                        ::directives
+                        ::default-value]))
 (s/def ::default-value any?)
 (s/def ::args (s/map-of ::schema-key ::arg))
 ;; Defining these callbacks in spec has been a challenge. At some point,
 ;; we can expand this to capture a bit more about what a field resolver
 ;; is passed and should return.
 (s/def ::resolve (s/or :function ::function-or-var
-                       :protocol ::resolver-type))
+                   :protocol ::resolver-type))
 (s/def ::resolver-type #(satisfies? resolve/FieldResolver %))
 (s/def ::field (s/keys :opt-un [::description
                                 ::resolve
                                 ::args
                                 ::directives
                                 ::deprecated]
-                       :req-un [::type]))
+                 :req-un [::type]))
 (s/def ::operation (s/keys :opt-un [::description
                                     ::deprecated
                                     ::args]
-                           :req-un [::type
-                                    ::resolve]))
+                     :req-un [::type
+                              ::resolve]))
 (s/def ::fields (s/map-of ::schema-key ::field))
 (s/def ::implements (s/and (s/coll-of ::type-name)
-                           seq))
+                      seq))
 (s/def ::description string?)
 (s/def ::directives (s/coll-of ::directive))
 (s/def ::directive (s/keys :req-un [::directive-type]
-                           :opt-un [::directive-args]))
+                     :opt-un [::directive-args]))
 (s/def ::directive-type ::schema-key)
 (s/def ::directive-args (s/map-of keyword? any?))
 (s/def ::tag (s/or
                :symbol symbol?
                :class class?))
 (s/def ::object (s/keys :req-un [::fields]
-                        :opt-un [::implements
-                                 ::directives
-                                 ::description
-                                 ::tag]))
+                  :opt-un [::implements
+                           ::directives
+                           ::description
+                           ::tag]))
 ;; Here we'd prefer a version of ::fields where :resolve was not defined.
 (s/def ::interface (s/keys :opt-un [::description
                                     ::directives
                                     ::fields]))
 ;; A list of keyword identifying objects that are part of a union.
 (s/def ::members (s/and (s/coll-of ::type-name)
-                        seq))
+                   seq))
 (s/def ::union (s/keys :opt-un [::description
                                 ::directives]
-                       :req-un [::members]))
+                 :req-un [::members]))
 (s/def ::enum-value (s/and (s/nonconforming
                              (s/or :string string?
-                                   :keyword simple-keyword?
-                                   :symbol simple-symbol?))
-                           ::graphql-identifier))
+                               :keyword simple-keyword?
+                               :symbol simple-symbol?))
+                      ::graphql-identifier))
 (s/def ::enum-value-def (s/or :bare-value ::enum-value
-                              :described (s/keys :req-un [::enum-value]
-                                                 :opt-un [::description
-                                                          ::deprecated
-                                                          ::directives])))
+                          :described (s/keys :req-un [::enum-value]
+                                       :opt-un [::description
+                                                ::deprecated
+                                                ::directives])))
 (s/def ::values (s/and (s/coll-of ::enum-value-def) seq))
 ;; Regrettably, :parse and :serialize on ::enum could reasonably be maps, but
 ;; that can't be easily expressed here (unless we create a :enum/parse and :enum/serialize).
@@ -358,28 +359,28 @@
                                ::parse
                                ::serialize
                                ::directives]
-                      :req-un [::values]))
+                :req-un [::values]))
 ;; The type of an input object field is more constrained than an ordinary field, but that is
 ;; handled with compile-time checks.  Input objects should not have a :resolve or :args as well.
 ;; Defining an input-object in terms of :properties (with a corresponding ::properties and ::property spec)
 ;; may be more correct, but it's a big change.
 (s/def ::input-object (s/keys :opt-un [::description
                                        ::directives]
-                              :req-un [::fields]))
+                        :req-un [::fields]))
 ;; Prior to 0.31.0, specs were conformers.
 ;; With the breaking change in 0.31.0, we want to make sure that custom scalars
 ;; have been updated.
 (s/def ::not-a-conformer #(not (s/spec? %)))
 (s/def ::parse-or-serialize-fn (s/and ::not-a-conformer
-                                      ::function-or-var))
+                                 ::function-or-var))
 (s/def ::function-or-var (s/or :function fn?
-                               :var var?))
+                           :var var?))
 (s/def ::parse ::parse-or-serialize-fn)
 (s/def ::serialize ::parse-or-serialize-fn)
 (s/def ::scalar (s/keys :opt-un [::description
                                  ::directives]
-                        :req-un [::parse
-                                 ::serialize]))
+                  :req-un [::parse
+                           ::serialize]))
 (s/def ::scalars (s/map-of ::schema-key ::scalar))
 (s/def ::interfaces (s/map-of ::schema-key ::interface))
 (s/def ::objects (s/map-of ::schema-key ::object))
@@ -402,15 +403,15 @@
 (s/def ::subscription (s/keys :opt-un [::description
                                        ::resolve
                                        ::args]
-                              :req-un [::type
-                                       ::stream]))
+                        :req-un [::type
+                                 ::stream]))
 
 (s/def ::subscriptions (s/map-of ::schema-key ::subscription))
 
 (s/def ::directive-defs (s/map-of ::schema-key ::directive-def))
 (s/def ::directive-def (s/keys :opt-un [::description
                                         ::args]
-                               :req-un [::locations]))
+                         :req-un [::locations]))
 
 (s/def ::locations (s/coll-of ::location))
 (s/def ::location #{:query :mutation :subscription
@@ -465,7 +466,7 @@
   [compiled-schema type-name]
   (let [type (get compiled-schema type-name)]
     (when (and (some? type)
-               (satisfies? selection/TypeDef type))
+            (satisfies? selection/TypeDef type))
       ;; Essentially, a bucket-brigade approach to passing the compiled schema along, so that
       ;; at field and argument definitions it is possible to jump to the selection/TypeDef of the element.
       (assoc type :compiled-schema compiled-schema))))
@@ -599,11 +600,11 @@
   (let [{:keys [directives]} element]
     (if (seq directives)
       (assoc element :compiled-directives (->> directives
-                                               (map (fn [{:keys [directive-type directive-args]}]
-                                                      (map->Directive
-                                                        {:directive-type directive-type
-                                                         :arguments directive-args})))
-                                               (group-by selection/directive-type)))
+                                            (map (fn [{:keys [directive-type directive-args]}]
+                                                   (map->Directive
+                                                     {:directive-type directive-type
+                                                      :arguments directive-args})))
+                                            (group-by selection/directive-type)))
       element)))
 
 (defn ^:private apply-directive-arg-defaults
@@ -617,17 +618,17 @@
               (let [{:keys [directive-type arguments]} compiled-directive
                     directive-def (get directive-defs directive-type)
                     apply-defaults (fn [m k]
-                        (let [default-value (get-in directive-def [:args k :default-value])]
-                          (if (and (some? default-value)
-                                   (nil? (get m k)))
-                            (assoc m k default-value)
-                            m)))
-                     arguments' (reduce apply-defaults arguments (-> directive-def :args keys))]
+                                     (let [default-value (get-nested directive-def [:args k :default-value])]
+                                       (if (and (some? default-value)
+                                             (nil? (get m k)))
+                                         (assoc m k default-value)
+                                         m)))
+                    arguments' (reduce apply-defaults arguments (-> directive-def :args keys))]
                 (assoc compiled-directive :arguments arguments')))
           g (fn [directives]
               (mapv f directives))]
       (update element :compiled-directives
-              #(map-vals g %)))))
+        #(map-vals g %)))))
 
 (defmulti ^:private check-compatible
   "Given two type definitions, dispatches on a vector of the category of the two types.
@@ -671,7 +672,7 @@
       ;; When the object field is non-null and the interface field allows nulls that's ok,
       ;; the object can be more specific than the interface.
       (and (= o-kind :non-null)
-           (not= i-kind :non-null))
+        (not= i-kind :non-null))
       (recur schema interface-type o-type)
 
       ;; Otherwise :list must match :list, and :root must match :root,
@@ -689,7 +690,7 @@
 
       :else
       (check-compatible (get schema i-type)
-                        (get schema o-type)))))
+        (get schema o-type)))))
 
 (defn ^:private is-assignable?
   "Returns true if the object field is type compatible with the interface field."
@@ -697,7 +698,7 @@
   (let [interface-type (:type interface-field)
         object-type (:type object-field)]
     (or (= interface-type object-type)
-        (is-compatible-type? schema interface-type object-type))))
+      (is-compatible-type? schema interface-type object-type))))
 
 ;;-------------------------------------------------------------------------------
 ;; ## Types
@@ -742,10 +743,10 @@
           kind (get {'list :list
                      'non-null :non-null} modifier)]
       (when (or (nil? next-type)
-                (nil? kind)
-                (seq anything-else))
+              (nil? kind)
+              (seq anything-else))
         (throw (ex-info "Expected (list|non-null <type>)."
-                        {:type type})))
+                 {:type type})))
 
       (map->Kind {:kind kind
                   :type (expand-type next-type)}))
@@ -753,13 +754,13 @@
     ;; By convention, symbols are used for pre-defined scalar types, and
     ;; keywords are used for user-defined types, interfaces, unions, enums, etc.
     (or (keyword? type)
-        (symbol? type))
+      (symbol? type))
     (map->Kind {:kind :root
                 :type (as-keyword type)})
 
     :else
     (throw (ex-info "Could not process type."
-                    {:type type}))))
+             {:type type}))))
 
 (defn ^:private add-type-string
   [field-definition]
@@ -781,8 +782,8 @@
     (update element :type expand-type)
     (catch Throwable t
       (throw (ex-info "Could not identify type of element (field or argument)."
-                      {:element element}
-                      t)))))
+               {:element element}
+               t)))))
 
 (defrecord ArgumentDef [arg-name compiled-schema type qualified-name
                         description directives default-value has-default-value? is-required?]
@@ -807,14 +808,14 @@
   [arg-name arg-def]
   (let [arg-def' (-> (rewrite-type arg-def) map->ArgumentDef)
         has-default-value? (contains? arg-def :default-value)
-        is-required? (and (= :non-null (get-in arg-def' [:type :kind]))
-                          (not has-default-value?))]
+        is-required? (and (= :non-null (get-nested arg-def' [:type :kind]))
+                       (not has-default-value?))]
     (assoc arg-def'
-           :arg-name arg-name
-           ;; Older code used (contains? arg :default-value) but that doesn't work anymore
-           ;; with a record that has a default-value field, so ... even more fields.
-           :has-default-value? has-default-value?
-           :is-required? is-required?)))
+      :arg-name arg-name
+      ;; Older code used (contains? arg :default-value) but that doesn't work anymore
+      ;; with a record that has a default-value field, so ... even more fields.
+      :has-default-value? has-default-value?
+      :is-required? is-required?)))
 
 (defn ^:private is-null?
   [v]
@@ -877,20 +878,20 @@
 
       :list
       (let [nested-collapser (build-null-collapser schema true nested-type)
-            promote-nils-to-empty-list (get-in schema [::options :promote-nils-to-empty-list?])
+            promote-nils-to-empty-list (get-nested schema [::options :promote-nils-to-empty-list?])
             empty-list (if promote-nils-to-empty-list [] nil)]
         (fn [values]
-          (let [values' (when values
-                          (map nested-collapser values))]
-            (cond
-              (nil? values')
-              empty-list
+          (cond-let
+            (nil? values)
+            empty-list
 
-              (some is-null? values')
-              (if forgive-null? empty-list ::null)
+            :let [values' (mapv nested-collapser values)]
 
-              :else
-              values')))))))
+            (some is-null? values')
+            (if forgive-null? empty-list ::null)
+
+            :else
+            values'))))))
 
 (defn ^:private compile-field
   "Rewrites the type of the field, and the type of any arguments."
@@ -905,8 +906,8 @@
                               :qualified-name (qualified-name type-name field-name))
                        (update :args #(map-kvs (fn [arg-name arg-def]
                                                  [arg-name (assoc (compile-arg arg-name arg-def)
-                                                                  :qualified-name (qualified-name type-name field-name arg-name))])
-                                               %)))
+                                                             :qualified-name (qualified-name type-name field-name arg-name))])
+                                        %)))
         collapser (build-null-collapser schema true (:type field-def'))]
     (assoc field-def' :null-collapser collapser)))
 
@@ -938,19 +939,18 @@
           (resolve-as raw-value))))))
 
 (defn ^:no-doc floor-selector
-  [selector-context]
-  (let [callback (:callback selector-context)]
-    (callback selector-context)))
+  [execution-context _selection callback path resolve-xf resolved-type resolved-value]
+  (callback execution-context path resolve-xf resolved-type resolved-value))
 
 (defn ^:private selector-error
-  [execution-context error]
-  (let [callback (:callback execution-context)]
-    (-> execution-context
-        (assoc
-          :resolved-value nil
-          :resolved-type nil)
-        (cond-> error (update :errors conj error))
-        callback)))
+  [execution-context selection callback path resolve-xf error]
+  (su/apply-error execution-context selection path :*errors error)
+  (callback execution-context path resolve-xf nil nil))
+
+(defn ^:private existing-error-for-current-path?
+  [execution-context path]
+  (let [{:keys [*errors]} execution-context]
+    (some #(= path (:path %)) @*errors)))
 
 (defn ^:private create-root-selector
   "Creates a selector function for the :root kind, which is the point at which
@@ -960,13 +960,12 @@
   field - field definition
   field-type-name - from the root :root kind "
   [schema field-def field-type-name]
-  (let [field-type (get schema field-type-name)
-        _ (when (nil? field-type)
-            (throw (ex-info (format "Field %s references unknown type %s."
-                                    (-> field-def :qualified-name q)
-                                    (-> field-def :type q))
-                            {:field field-def
-                             :schema-types (type-map schema)})))
+  (let [field-type (or (get schema field-type-name)
+                       (throw (ex-info (format "Field %s references unknown type %s."
+                                               (-> field-def :qualified-name q)
+                                               (-> field-def :type q))
+                                       {:field field-def
+                                        :schema-types (type-map schema)})))
         category (:category field-type)
 
         ;; Build up layers of checks and other logic and a series of chained selector functions.
@@ -975,52 +974,46 @@
 
         selector floor-selector
 
-        selector (if (= :scalar category)
+        selector (if (not= :scalar category)
+                   selector
                    (let [serializer (:serialize field-type)]
-                     (fn select-coercion [execution-context]
+                     (fn select-coercion [execution-context selection callback path resolve-xf resolved-type resolved-value]
                        (cond-let
 
-                         :let [{:keys [resolved-value]} execution-context]
-
                          (nil? resolved-value)
-                         (selector execution-context)
+                         (selector execution-context selection callback path resolve-xf resolved-type nil)
 
                          :let [serialized (try
                                             (serializer resolved-value)
                                             (catch Throwable t
                                               (coercion-failure (to-message t) (ex-data t))))]
 
-                         ;; Often, the serializer is a pass-thru and the original value
-                         ;; is fine, so avoid further checks and modifications to execution-context.
-                         (= resolved-value serialized)
-                         (selector execution-context)
 
                          (nil? serialized)
-                         (selector-error execution-context
-                                         (let [value-str (pr-str resolved-value)]
-                                           {:message (format "Unable to serialize %s as type %s."
-                                                             value-str
-                                                             (q field-type-name))
-                                            :value value-str
-                                            :type-name field-type-name}))
+                         (selector-error execution-context selection callback path resolve-xf
+                           (let [value-str (pr-str resolved-value)]
+                             {:message (format "Unable to serialize %s as type %s."
+                                         value-str
+                                         (q field-type-name))
+                              :value value-str
+                              :type-name field-type-name}))
 
                          (is-coercion-failure? serialized)
-                         (selector-error execution-context
-                                         (-> serialized
-                                             (update :message
-                                                     #(str "Coercion error serializing value: " %))
-                                             (assoc :type-name field-type-name
-                                                    :value (pr-str resolved-value))))
+                         (selector-error execution-context selection callback path resolve-xf
+                           (-> serialized
+                               (update :message
+                                 #(str "Coercion error serializing value: " %))
+                               (assoc :type-name field-type-name
+                                      :value (pr-str resolved-value))))
 
                          :else
-                         (selector (assoc execution-context :resolved-value serialized)))))
-                   selector)
+                         (selector execution-context selection callback path resolve-xf resolved-type serialized)))))
 
-        selector (if (= :enum category)
+        selector (if (not= :enum category)
+                   selector
                    (let [possible-values (-> field-type :values set)
                          serializer (:serialize field-type)]
-                     (fn validate-enum [{:keys [resolved-value]
-                                         :as execution-context}]
+                     (fn validate-enum [execution-context selection callback path resolve-xf resolved-type resolved-value]
                        (cond-let
                          ;; The resolver function can return a value that makes sense from
                          ;; the application's model (for example, a namespaced keyword or even a string)
@@ -1028,46 +1021,42 @@
                          ;; validated to match a known value for the enum.
 
                          (nil? resolved-value)
-                         (selector execution-context)
+                         (selector execution-context selection callback path resolve-xf resolved-type nil)
 
                          :let [serialized (serializer resolved-value)]
 
                          (not (possible-values serialized))
-                         (selector-error execution-context (error "Field resolver returned an undefined enum value."
-                                                                  {:resolved-value resolved-value
-                                                                   :serialized-value serialized
-                                                                   :enum-values possible-values}))
-
-                         ;; Most often, it's a keyword before and after so a cheap check here
-                         ;; avoids modifying the execution-context
-                         (= resolved-value serialized)
-                         (selector execution-context)
+                         (selector-error execution-context selection callback path resolve-xf
+                           (error "Field resolver returned an undefined enum value."
+                             {:resolved-value resolved-value
+                              :serialized-value serialized
+                              :enum-values possible-values}))
 
                          :else
-                         (selector (assoc execution-context :resolved-value serialized)))))
-                   selector)
+                         (selector execution-context selection callback path resolve-xf resolved-type serialized)))))
 
         union-or-interface? (#{:interface :union} category)
 
-        selector (if union-or-interface?
+        selector (if-not union-or-interface?
+                   selector
                    (let [member-types (:members field-type)]
-                     (fn select-allowed-types [{:keys [resolved-type resolved-value]
-                                                :as execution-context}]
+                     (fn select-allowed-types [execution-context selection callback path resolve-xf resolved-type resolved-value]
                        (cond
 
                          (or (nil? resolved-value)
-                             (contains? member-types resolved-type))
-                         (selector execution-context)
+                           (contains? member-types resolved-type))
+                         (selector execution-context selection callback path resolve-xf resolved-type resolved-value)
 
                          (nil? resolved-type)
-                         (selector-error execution-context (error "Field resolver returned an instance not tagged with a schema type."))
+                         (selector-error execution-context selection callback path resolve-xf
+                           (error "Field resolver returned an instance not tagged with a schema type."))
 
                          :else
-                         (selector-error execution-context (error "Value returned from resolver has incorrect type for field."
-                                                                  {:field-type field-type-name
-                                                                   :actual-type resolved-type
-                                                                   :allowed-types member-types})))))
-                   selector)
+                         (selector-error execution-context selection callback path resolve-xf
+                           (error "Value returned from resolver has incorrect type for field."
+                             {:field-type field-type-name
+                              :actual-type resolved-type
+                                                 :allowed-types member-types}))))))
 
 
         type-map (when union-or-interface?
@@ -1077,56 +1066,57 @@
                                             (if tag
                                               (assoc m tag type-name)
                                               m))
-                                          {}
-                                          member-objects)]
+                                    {}
+                                    member-objects)]
                      (when (seq type-map)
                        type-map)))
 
-        selector (fn select-unwrap-tagged-type [execution-context]
+        ;; This is needed because *sometimes* the same resolver is used for both a field
+        ;; with an object type, and for a field with a union/interface type, and the value
+        ;; may be a tagged value (wrapper around a Java object).
+
+        selector (fn select-unwrap-tagged-type [execution-context selection callback path resolve-xf resolved-type resolved-value]
                    (cond-let
                      ;; Use explicitly tagged value (this usually applies to Java objects
                      ;; that can't provide meta data).
-                     :let [resolved-value (:resolved-value execution-context)]
                      (is-tagged-value? resolved-value)
-                     (selector (assoc execution-context
-                                      :resolved-value (extract-value resolved-value)
-                                      :resolved-type (extract-type-tag resolved-value)))
+                     (selector execution-context selection callback path resolve-xf (extract-type-tag resolved-value) (extract-value resolved-value))
 
                      ;; Check for explicit meta-data:
 
                      :let [type-name (-> resolved-value meta ::type-name)]
 
                      (some? type-name)
-                     (selector (assoc execution-context :resolved-type type-name))
+                     (selector execution-context selection callback path resolve-xf type-name resolved-value)
 
                      ;; Use, if available, the mapping from tag to object that might be provided
                      ;; for some objects.
-                     :let [resolved-type (when type-map
-                                           (->> resolved-value
-                                                class
-                                                (get type-map)))]
+                     :let [mapped-type (when type-map
+                                         (->> resolved-value
+                                           class
+                                           (get type-map)))]
 
-                     (some? resolved-type)
-                     (selector (assoc execution-context :resolved-type resolved-type))
+                     (some? mapped-type)
+                     (selector execution-context selection callback path resolve-xf mapped-type resolved-value)
 
                      ;; Let a later stage fail if it is a union or interface and there's no explicit
                      ;; type.
                      :else
-                     (selector execution-context)))
+                     (selector execution-context selection callback path resolve-xf resolved-type resolved-value)))
 
 
-        selector (if (#{:object :input-object} category)
-                   (fn select-apply-static-type [execution-context]
+        ;; TODO: This could possibly be boosted up to the FieldSelection
+        selector (if-not (#{:object :input-object} category)
+                   selector
+                   (fn select-apply-static-type [execution-context selection callback path resolve-xf _resolved-type resolved-value]
                      ;; TODO: Maybe a check that if the resolved value is tagged, that the tag matches the expected tag?
-                     (selector (assoc execution-context :resolved-type field-type-name)))
-                   selector)]
+                     (selector execution-context selection callback path resolve-xf field-type-name resolved-value)))]
 
-    (fn select-require-single-value [{:keys [resolved-value]
-                                      :as execution-context}]
+    (fn select-require-single-value [execution-context selection callback path resolve-xf resolved-type resolved-value]
       (if (sequential-or-set? resolved-value)
-        (selector-error execution-context
-                        (error "Field resolver returned a collection of values, expected only a single value."))
-        (selector execution-context)))))
+        (selector-error execution-context selection callback path resolve-xf
+          (error "Field resolver returned a collection of values, expected only a single value."))
+        (selector execution-context selection callback path resolve-xf resolved-type resolved-value)))))
 
 (defn ^:private assemble-selector
   "Assembles a selector function for a field.
@@ -1149,70 +1139,66 @@
 
     :list
     (let [next-selector (assemble-selector schema object-type field (:type type))]
-      (fn select-list [{:keys [resolved-value callback]
-                        :as execution-context}]
+      (fn select-list [execution-context selection callback path resolve-xf resolved-type resolved-value]
         (cond
           (nil? resolved-value)
           ;; Bypass the rest of the pipeline and jump to the callback
-          (callback execution-context)
+          (callback execution-context path resolve-xf resolved-type nil)
 
           (not (sequential-or-set? resolved-value))
-          (selector-error execution-context
-                          (error "Field resolver returned a single value, expected a collection of values."))
+          (selector-error execution-context selection callback path resolve-xf
+            (error "Field resolver returned a single value, expected a collection of values."))
 
           ;; Optimization for empty seqs:
           (not (seq resolved-value))
-          (callback (assoc execution-context
-                           :resolved-value []
-                           :resolved-type nil))
+          (callback execution-context path resolve-xf nil [])
 
           :else
-          ;; So we have some privileged knowledge here: the callback returns a ResolverResult containing
+          ;; So we have some privileged knowledge here: the selector returns a ResolverResult containing
           ;; the value. So we need to combine those together into a new ResolverResult.
-          (let [unwrapper (fn [{:keys [resolved-value] :as execution-context}]
-                            (if-not (sc/is-wrapped-value? resolved-value)
-                              (next-selector execution-context)
-                              (loop [v resolved-value
-                                     ec execution-context]
+          (let [unwrapper (fn [execution-context path list-element]
+                            (if-not (su/is-wrapped-value? list-element)
+                              ;; Explicitly set the resolve-xf to nil (bare object or scalar values) when
+                              ;; looping.
+                              (next-selector execution-context selection callback path nil resolved-type list-element)
+                              (loop [ec execution-context
+                                     v list-element]
                                 (let [next-v (:value v)
-                                      next-ec (sc/apply-wrapped-value ec v)]
-                                  (if (sc/is-wrapped-value? next-v)
-                                    (recur next-v next-ec)
-                                    (next-selector (assoc next-ec :resolved-value next-v)))))))]
-            (aggregate-results
-              (map-indexed
-                (fn [i v]
-                  (unwrapper (-> execution-context
-                                 (assoc :resolved-value v)
-                                 (update :path conj i))))
-                resolved-value))))))
+                                      next-ec (su/apply-wrapped-value ec selection path v)]
+                                  (if (su/is-wrapped-value? next-v)
+                                    (recur next-ec next-v)
+                                    (next-selector next-ec selection callback path nil resolved-type next-v))))))
+                list-resolver-results (fast-map-indexed (fn [i v] (unwrapper execution-context (conj path i) v))
+                                        resolved-value)]
+            ;; A list inside a field will have a resolve-xf that applies to the final selected list;
+            ;; pass that aggregated list through the xf if it exists.
+            (aggregate-results list-resolver-results (or resolve-xf identity))))))
 
     :non-null
     (let [next-selector (assemble-selector schema object-type field (:type type))]
       (when (-> field :default-value some?)
         (throw (ex-info (format "Field %s is both non-nullable and has a default value."
-                                (-> field :qualified-name q))
-                        {:field-name (:qualified-name field)
-                         :type (-> field :type type->string)})))
-      (fn select-non-null [{:keys [resolved-value]
-                            :as execution-context}]
+                          (-> field :qualified-name q))
+                 {:field-name (:qualified-name field)
+                  :type (-> field :type type->string)})))
+      (fn select-non-null [execution-context selection callback path resolve-xf resolved-type resolved-value]
         (if (some? resolved-value)
-          (next-selector execution-context)
-          (selector-error execution-context
-                          ;; If there's already errors (from the application's resolver function) then don't add more
-                          (when-not (-> execution-context :errors seq)
-                            (error "Non-nullable field was null."))))))
+          (next-selector execution-context selection callback path resolve-xf resolved-type resolved-value)
+          (selector-error execution-context selection callback path resolve-xf
+            ;; If there's already errors (from the application's resolver function) then don't add more
+            (when-not (existing-error-for-current-path? execution-context path)
+              (error "Non-nullable field was null."))))))
 
-    :root                                                   ;;
+    :root
     (create-root-selector schema field (:type type))))
 
 (defn ^:private default-field-description
   [schema type-def field-name]
   (->> type-def
-       :implements
-       (map schema)
-       (keep #(get-in % [:fields field-name :description]))
-       first))
+    :implements
+    (map schema)
+    (keep #(get-nested % [:fields field-name :description]))
+    first))
 
 (defn ^:private provide-default-arg-descriptions
   [field-def schema type-def]
@@ -1220,12 +1206,12 @@
         {:keys [field-name]} field-def
         reducer (fn [m arg-name arg-def]
                   (assoc m arg-name
-                         (if (:description arg-def)
-                           arg-def
-                           (assoc arg-def :description
-                                  (->> interface-defs
-                                       (keep #(get-in % [:fields field-name :args arg-name :description]))
-                                       first)))))]
+                           (if (:description arg-def)
+                             arg-def
+                             (assoc arg-def :description
+                                            (->> interface-defs
+                                              (keep #(get-nested % [:fields field-name :args arg-name :description]))
+                                              first)))))]
     (update field-def :args #(reduce-kv reducer {} %))))
 
 (defn ^:private prepare-field
@@ -1245,7 +1231,7 @@
     (-> field-def'
         (assoc :type-name type-name
                :description (or description
-                                (default-field-description schema type-def field-name))
+                              (default-field-description schema type-def field-name))
                :selector selector
                :direct-fn direct-fn)
         (provide-default-arg-descriptions schema type-def))))
@@ -1255,15 +1241,15 @@
   (let [{:keys [default-field-resolver apply-field-directives]} options
         {:keys [field-name compiled-directives]} field-def
         resolver (or (:resolve field-def)
-                     (default-field-resolver field-name))
+                   (default-field-resolver field-name))
         resolver' (if-not (and apply-field-directives
-                               (seq compiled-directives))
+                            (seq compiled-directives))
                     resolver
                     (or (apply-field-directives (assoc field-def :compiled-schema schema) (resolve/as-resolver-fn resolver))
-                        resolver))
-        direct-fn  (-> resolver' meta ::direct-fn)]
+                      resolver))
+        direct-fn (-> resolver' meta ::direct-fn)]
     (assoc field-def :resolve (wrap-resolver-to-ensure-resolver-result resolver')
-           :direct-fn direct-fn)))
+                     :direct-fn direct-fn)))
 
 ;;-------------------------------------------------------------------------------
 ;; ## Compile schema
@@ -1277,31 +1263,31 @@
   (reduce-kv (fn [s k v]
                (when (contains? s k)
                  (throw (ex-info (format "Name collision compiling schema. %s %s conflicts with existing %s."
-                                         category
-                                         (q k)
-                                         (name (get-in s [k :category])))
-                                 {:type-name k
-                                  :category category
-                                  :type v})))
+                                   category
+                                   (q k)
+                                   (name (get-nested s [k :category])))
+                          {:type-name k
+                           :category category
+                           :type v})))
                (assoc s k
-                      (assoc v :category category
-                             :type-name k)))
-             compiled-schema
-             input-map))
+                        (assoc v :category category
+                                 :type-name k)))
+    compiled-schema
+    input-map))
 
 
 (defn ^:private types-with-category
   "Extracts from a compiled schema all the types with a matching category (:object, :interface, etc.)."
   [schema category]
   (->> schema
-       vals
-       (filter #(= category (:category %)))))
+    vals
+    (filter #(= category (:category %)))))
 
 (defn ^:private compile-fields
   [schema type-def]
   (update type-def :fields #(map-kvs (fn [field-name field-def]
                                        [field-name (compile-field schema type-def field-name field-def)])
-                                     %)))
+                              %)))
 
 (defmulti ^:private compile-type
   "Performs general compilation and validation of a type from the compiled schema.
@@ -1328,24 +1314,24 @@
     (doseq [member members]
       (when-not (seq members)
         (throw (ex-info (format "Union %s does not define any members."
-                                (-> union :type-name q))
-                        {:union union})))
+                          (-> union :type-name q))
+                 {:union union})))
       (let [type (get schema member)]
         (cond
           (nil? type)
           (throw (ex-info (format "Union %s references unknown type %s."
-                                  (-> union :type-name q)
-                                  (q member))
-                          {:union union
-                           :schema-types (type-map schema)}))
+                            (-> union :type-name q)
+                            (q member))
+                   {:union union
+                    :schema-types (type-map schema)}))
 
           (not= :object (:category type))
           (throw (ex-info (format "Union %s includes member %s of type %s. Members must only be object types."
-                                  (-> union :type-name q)
-                                  (q member)
-                                  (-> type :category name))
-                          {:union union
-                           :schema-types (type-map schema)})))))
+                            (-> union :type-name q)
+                            (q member)
+                            (-> type :category name))
+                   {:union union
+                    :schema-types (type-map schema)})))))
     (-> union
         map->Union
         compile-directives
@@ -1356,10 +1342,10 @@
   if present, sets the definitions :deprecated key."
   [element-def]
   (if-let [directive (some->> element-def
-                              :directives
-                              (filter #(-> % :directive-type (= :deprecated)))
-                              first)]
-    (assoc element-def :deprecated (get-in directive [:directive-args :reason] true))
+                       :directives
+                       (filter #(-> % :directive-type (= :deprecated)))
+                       first)]
+    (assoc element-def :deprecated (get-nested directive [:directive-args :reason] true))
     element-def))
 
 (defn ^:private normalize-enum-value-def
@@ -1376,9 +1362,9 @@
 (defmethod compile-type :enum
   [enum-def _]
   (let [value-defs (->> enum-def
-                        :values
-                        (map normalize-enum-value-def)
-                        (mapv apply-deprecated-directive))
+                     :values
+                     (map normalize-enum-value-def)
+                     (mapv apply-deprecated-directive))
         {:keys [serialize parse]
          :or {serialize as-keyword
               parse identity}} enum-def
@@ -1388,12 +1374,12 @@
         ;; may include :description, :deprecated, and/or :directives.
         details (reduce (fn [m {:keys [enum-value] :as detail}]
                           (assoc m enum-value detail))
-                        {}
-                        value-defs)]
+                  {}
+                  value-defs)]
     (when-not (= (count values) (count values-set))
       (throw (ex-info (format "Values defined for enum %s must be unique."
-                              (-> enum-def :type-name q))
-                      {:enum enum-def})))
+                        (-> enum-def :type-name q))
+               {:enum enum-def})))
     (-> enum-def
         map->EnumType
         compile-directives
@@ -1417,24 +1403,24 @@
                         (-> tag name Class/forName)
                         (catch Throwable t
                           (throw (ex-info (format "Object %s has tag %s, which can't be converted to a Java class."
-                                                  (-> object :type-name q)
-                                                  (q tag))
-                                          {:object object}
-                                          t))))))]
+                                            (-> object :type-name q)
+                                            (q tag))
+                                   {:object object}
+                                   t))))))]
     (doseq [interface implements
             :let [type (get schema interface)]]
       (when-not type
         (throw (ex-info (format "Object %s extends interface %s, which does not exist."
-                                (-> object :type-name q)
-                                (q interface))
-                        {:object object
-                         :schema-types (type-map schema)})))
+                          (-> object :type-name q)
+                          (q interface))
+                 {:object object
+                  :schema-types (type-map schema)})))
       (when-not (= :interface (:category type))
         (throw (ex-info (format "Object %s implements type %s, which is not an interface."
-                                (-> object :type-name q)
-                                (q interface))
-                        {:object object
-                         :schema-types (type-map schema)}))))
+                          (-> object :type-name q)
+                          (q interface))
+                 {:object object
+                  :schema-types (type-map schema)}))))
     (let [object' (-> object
                       map->Type
                       (assoc :implements implements
@@ -1452,18 +1438,18 @@
                   category (:category type-def)]]
       (when-not type-def
         (throw (ex-info (format "Field %s references unknown type %s."
-                                (q qualified-field-name)
-                                (q field-type-name))
-                        {:field-name qualified-field-name
-                         :schema-types (type-map schema)}))))
+                          (q qualified-field-name)
+                          (q field-type-name))
+                 {:field-name qualified-field-name
+                  :schema-types (type-map schema)}))))
     input-object'))
 
 (defmethod compile-type :interface
   [interface schema]
   (->> interface
-       map->Interface
-       compile-directives
-       (compile-fields schema)))
+    map->Interface
+    compile-directives
+    (compile-fields schema)))
 
 (defn ^:private extract-type-name
   "Navigates a type map down to the root kind and returns the type name."
@@ -1477,11 +1463,11 @@
   (let [type-name (:type-name element-def)
         category (-> element-def :category name str/capitalize)]
     (throw (ex-info (format "%s %s references unknown directive @%s."
-                            category
-                            (q type-name)
-                            (name directive-type))
-                    {location type-name
-                     :directive-type directive-type}))))
+                      category
+                      (q type-name)
+                      (name directive-type))
+             {location type-name
+              :directive-type directive-type}))))
 
 (defn ^:private inapplicable-directive
   [location element-def directive-def]
@@ -1490,17 +1476,17 @@
         type-name (:type-name element-def)
         category (-> element-def :category name)]
     (throw (ex-info (format "Directive @%s on %s %s is not applicable."
-                            (name directive-type)
-                            category
-                            (q type-name))
-                    {location type-name
-                     :directive-type directive-type
-                     :allowed-locations locations}))))
+                      (name directive-type)
+                      category
+                      (q type-name))
+             {location type-name
+              :directive-type directive-type
+              :allowed-locations locations}))))
 
 (defn ^:private validate-directives-in-def
   [schema object-def location]
   (doseq [{:keys [directive-type]} (:directives object-def)
-          :let [directive-def (get-in schema [::directive-defs directive-type])]]
+          :let [directive-def (get-nested schema [::directive-defs directive-type])]]
     (when-not directive-def
       (unknown-directive location object-def directive-type))
 
@@ -1522,43 +1508,43 @@
                   field-category (:category field-type)]]
       (when (nil? field-type)
         (throw (ex-info (format "Field %s references unknown type %s."
-                                (q qualified-field-name)
-                                (q field-type-name))
-                        {:field-name qualified-field-name
-                         :schema-types (type-map schema)})))
+                          (q qualified-field-name)
+                          (q field-type-name))
+                 {:field-name qualified-field-name
+                  :schema-types (type-map schema)})))
 
       (when (and (not input-object?)
-                 (= :input-object field-category))
+              (= :input-object field-category))
         (throw (ex-info (format "Field %s is type %s, input objects may only be used as field arguments."
-                                (q qualified-field-name)
-                                (q field-type-name))
-                        {:field-name qualified-field-name
-                         :schema-types (type-map schema)})))
+                          (q qualified-field-name)
+                          (q field-type-name))
+                 {:field-name qualified-field-name
+                  :schema-types (type-map schema)})))
 
       (when (and input-object?
-                 (not (#{:scalar :enum :input-object} field-category)))
+              (not (#{:scalar :enum :input-object} field-category)))
         (throw (ex-info (format "Field %s is type %s, input objects may only contain fields that are scalar, enum, or input object."
-                                (q qualified-field-name)
-                                (q field-type-name))
-                        {:field-name qualified-field-name
-                         :schema-types (type-map schema)})))
+                          (q qualified-field-name)
+                          (q field-type-name))
+                 {:field-name qualified-field-name
+                  :schema-types (type-map schema)})))
 
       (doseq [{:keys [directive-type]} (:directives field-def)
               :let [directive (get directive-defs directive-type)]]
         (when-not directive
           (throw (ex-info (format "Field %s references unknown directive @%s."
-                                  (q qualified-field-name)
-                                  (name directive-type))
-                          {:field-name qualified-field-name
-                           :directive-type directive-type})))
+                            (q qualified-field-name)
+                            (name directive-type))
+                   {:field-name qualified-field-name
+                    :directive-type directive-type})))
 
         (when-not (-> directive :locations (contains? location))
           (throw (ex-info (format "Directive @%s on field %s is not applicable."
-                                  (name directive-type)
-                                  (q qualified-field-name))
-                          {:field-name qualified-field-name
-                           :directive-type directive-type
-                           :allowed-locations (:locations directive)}))))
+                            (name directive-type)
+                            (q qualified-field-name))
+                   {:field-name qualified-field-name
+                    :directive-type directive-type
+                    :allowed-locations (:locations directive)}))))
 
       (doseq [arg-def (-> field-def :args vals)
               :let [arg-type-name (extract-type-name (:type arg-def))
@@ -1566,32 +1552,32 @@
                     qualified-arg-name (:qualified-name arg-def)]]
         (when-not arg-type-def
           (throw (ex-info (format "Argument %s references unknown type %s."
-                                  (q qualified-arg-name)
-                                  (q arg-type-name))
-                          {:arg-name qualified-arg-name
-                           :schema-types (type-map schema)})))
+                            (q qualified-arg-name)
+                            (q arg-type-name))
+                   {:arg-name qualified-arg-name
+                    :schema-types (type-map schema)})))
 
         (when-not (#{:scalar :enum :input-object} (:category arg-type-def))
           (throw (ex-info (format "Argument %s is must be a scalar type, an enum, or an input object."
-                                  (q qualified-arg-name))
-                          {:arg-name qualified-arg-name})))
+                            (q qualified-arg-name))
+                   {:arg-name qualified-arg-name})))
 
         (doseq [{:keys [directive-type]} (:directives arg-def)
                 :let [directive (get directive-defs directive-type)]]
           (when-not directive
             (throw (ex-info (format "Argument %s references unknown directive @%s."
-                                    (q qualified-arg-name)
-                                    (name directive-type))
-                            {:arg-name qualified-arg-name
-                             :directive-type directive-type})))
+                              (q qualified-arg-name)
+                              (name directive-type))
+                     {:arg-name qualified-arg-name
+                      :directive-type directive-type})))
 
           (when-not (-> directive :locations (contains? :argument-definition))
             (throw (ex-info (format "Directive @%s on argument %s is not applicable."
-                                    (name directive-type)
-                                    (q qualified-arg-name))
-                            {:arg-name qualified-arg-name
-                             :directive-type directive-type
-                             :allowed-locations (:locations directive)}))))))))
+                              (name directive-type)
+                              (q qualified-arg-name))
+                     {:arg-name qualified-arg-name
+                      :directive-type directive-type
+                      :allowed-locations (:locations directive)}))))))))
 
 (defn ^:private prepare-and-validate-interfaces
   "Invoked after compilation to add a :members set identifying which concrete types implement
@@ -1599,22 +1585,22 @@
   [schema]
   (let [objects (types-with-category schema :object)]
     (map-types schema :interface
-               (fn [interface]
-                 (verify-fields-and-args schema interface)
-                 (validate-directives-in-def schema interface :interface)
-                 (let [interface-name (:type-name interface)
-                       implementors (->> objects
-                                         (filter #(-> % :implements interface-name))
-                                         (map :type-name)
-                                         set)
-                       fields' (->> interface
-                                    :fields
-                                    (map-vals #(assoc % :type-name interface-name))
-                                    (map-vals apply-deprecated-directive))]
-                   (-> interface
-                       (assoc :members implementors
-                              :fields fields')
-                       (dissoc :resolve)))))))
+      (fn [interface]
+        (verify-fields-and-args schema interface)
+        (validate-directives-in-def schema interface :interface)
+        (let [interface-name (:type-name interface)
+              implementors (->> objects
+                             (filter #(-> % :implements interface-name))
+                             (map :type-name)
+                             set)
+              fields' (->> interface
+                        :fields
+                        (map-vals #(assoc % :type-name interface-name))
+                        (map-vals apply-deprecated-directive))]
+          (-> interface
+              (assoc :members implementors
+                     :fields fields')
+              (dissoc :resolve)))))))
 
 (defn ^:private prepare-and-validate-object
   [schema object-def]
@@ -1625,20 +1611,20 @@
             :let [interface (get schema interface-name)
                   type-name (:type-name object-def)]
             [field-name interface-field] (:fields interface)
-            :let [object-field (get-in object-def [:fields field-name])
+            :let [object-field (get-nested object-def [:fields field-name])
                   interface-field-args (:args interface-field)
                   object-field-args (:args object-field)]]
 
       (when-not object-field
         (throw (ex-info "Missing interface field in object definition."
-                        {:object type-name
-                         :field-name field-name
-                         :interface-name interface-name})))
+                 {:object type-name
+                  :field-name field-name
+                  :interface-name interface-name})))
 
       (when-not (is-assignable? schema interface-field object-field)
         (throw (ex-info "Object field is not compatible with extended interface type."
-                        {:interface-name interface-name
-                         :field-name (:qualified-name object-field)})))
+                 {:interface-name interface-name
+                  :field-name (:qualified-name object-field)})))
 
       (when interface-field-args
         (doseq [interface-field-arg interface-field-args
@@ -1647,46 +1633,46 @@
 
           (when-not object-field-arg-def
             (throw (ex-info "Missing interface field argument in object definition."
-                            {:field-name (:qualified-name object-field)
-                             :interface-argument (:qualified-name interface-arg-def)})))
+                     {:field-name (:qualified-name object-field)
+                      :interface-argument (:qualified-name interface-arg-def)})))
 
           (when-not (is-assignable? schema interface-arg-def object-field-arg-def)
             (throw (ex-info "Object field's argument is not compatible with extended interface's argument type."
-                            {:interface-name interface-name
-                             :argument-name (:qualified-name object-field-arg-def)})))))
+                     {:interface-name interface-name
+                      :argument-name (:qualified-name object-field-arg-def)})))))
 
       (when-let [additional-args (seq (difference (into #{} (keys object-field-args))
-                                                  (into #{} (keys interface-field-args))))]
+                                        (into #{} (keys interface-field-args))))]
         (doseq [additional-arg-name additional-args
-                :let [arg-kind (get-in object-field-args [additional-arg-name :type :kind])]]
+                :let [arg-kind (get-nested object-field-args [additional-arg-name :type :kind])]]
           (when (= arg-kind :non-null)
             (throw (ex-info "Additional arguments on an object field that are not defined in extended interface cannot be required."
-                            {:interface-name interface-name
-                             :argument-name (-> object-field-args (get additional-arg-name) :qualified-name)}))))))
+                     {:interface-name interface-name
+                      :argument-name (-> object-field-args (get additional-arg-name) :qualified-name)}))))))
 
     (-> (apply-directive-arg-defaults schema object-def)
         (update :fields #(map-vals (fn [field-def]
                                      (cond-> (prepare-field schema object-def field-def)
                                        object-def? apply-deprecated-directive))
-                                   %)))))
+                           %)))))
 
 (defn ^:private prepare-and-validate-objects
   "Comes very late in the compilation process to prepare objects, including validation that
   all implemented interface fields are present in each object."
   [schema category]
   (map-types schema category
-             #(prepare-and-validate-object schema %)))
+    #(prepare-and-validate-object schema %)))
 
 (defn ^:private prepare-resolvers-in-object
   [schema object-def options]
   (update object-def :fields #(map-vals (fn [field-def]
                                           (prepare-field-resolver schema options field-def))
-                                        %)))
+                                %)))
 
 (defn ^:private prepare-field-resolvers
   [schema options]
   (map-types schema :object
-             #(prepare-resolvers-in-object schema % options)))
+    #(prepare-resolvers-in-object schema % options)))
 
 (def ^:private default-subscription-resolver
 
@@ -1702,9 +1688,9 @@
 
     (nil? existing)
     (assoc compiled-schema object-name
-           (map->Type {:category :object
-                       :type-name object-name
-                       :fields fields}))
+                           (map->Type {:category :object
+                                       :type-name object-name
+                                       :fields fields}))
 
     (empty? fields)
     compiled-schema
@@ -1715,12 +1701,12 @@
     (let [merged-fields (reduce-kv (fn [m k v]
                                      (when (contains? m k)
                                        (throw (ex-info (format "Name collision compiling schema: %s already exists with value from %s."
-                                                               (q (qualified-name object-name k))
-                                                               operation-key)
-                                                       {:field-name k})))
+                                                         (q (qualified-name object-name k))
+                                                         operation-key)
+                                                {:field-name k})))
                                      (assoc m k v))
-                                   (:fields existing)
-                                   fields)]
+                          (:fields existing)
+                          fields)]
       (assoc-in compiled-schema [object-name :fields] merged-fields))))
 
 (defn ^:private compile-directive-defs
@@ -1731,26 +1717,26 @@
                                       arg-type (get schema arg-type-name)]
                                   (when-not arg-type
                                     (throw (ex-info "Unknown argument type."
-                                                    {:arg-name arg-name
-                                                     :arg-type-name arg-type-name
-                                                     :schema-types (type-map schema)})))
+                                             {:arg-name arg-name
+                                              :arg-type-name arg-type-name
+                                              :schema-types (type-map schema)})))
                                   (when-not (#{:enum :scalar :input-object} (:category arg-type))
                                     (throw (ex-info "Directive argument is not a scalar, enum, or input object type."
-                                                    {:arg-name arg-name
-                                                     :arg-type-name arg-type-name
-                                                     :schema-types (type-map schema)})))
+                                             {:arg-name arg-name
+                                              :arg-type-name arg-type-name
+                                              :schema-types (type-map schema)})))
                                   [arg-name (assoc arg-def'
-                                                   :qualified-name (qualified-name nil directive-type arg-name))]))
+                                              :qualified-name (qualified-name nil directive-type arg-name))]))
         compile-directive-args (fn [directive-type directive-def]
                                  [directive-type (-> directive-def
                                                      (assoc :directive-type directive-type)
                                                      (update :args (fn [args]
                                                                      (map-kvs #(compile-directive-arg directive-type %1 %2) args))))])]
     (assoc schema ::directive-defs
-           (map-kvs compile-directive-args
+                  (map-kvs compile-directive-args
                     (assoc directive-defs
-                           :deprecated {:args {:reason {:type 'String}}
-                                        :locations #{:field-definition :enum-value}})))))
+                      :deprecated {:args {:reason {:type 'String}}
+                                   :locations #{:field-definition :enum-value}})))))
 
 (defn ^:private validate-directives-by-category
   [schema category]
@@ -1764,7 +1750,7 @@
   [schema]
   (doseq [enum-def (types-with-category schema :enum)]
     (doseq [{:keys [directive-type]} (:directives enum-def)
-            :let [directive-def (get-in schema [::directive-defs directive-type])]]
+            :let [directive-def (get-nested schema [::directive-defs directive-type])]]
       (when-not directive-def
         (unknown-directive :enum enum-def directive-type))
 
@@ -1774,21 +1760,21 @@
     (doseq [{:keys [enum-value directives]} (-> enum-def :values-detail vals)
             :let [value-name (keyword (-> enum-def :type-name name) (name enum-value))]
             {:keys [directive-type]} directives
-            :let [{:keys [locations] :as directive-def} (get-in schema [::directive-defs directive-type])]]
+            :let [{:keys [locations] :as directive-def} (get-nested schema [::directive-defs directive-type])]]
       (when-not directive-def
         (throw (ex-info (format "Enum value %s referenced unknown directive @%s."
-                                (q value-name)
-                                (name directive-type))
-                        {:enum-value value-name
-                         :directive-type directive-type})))
+                          (q value-name)
+                          (name directive-type))
+                 {:enum-value value-name
+                  :directive-type directive-type})))
 
       (when-not (contains? locations :enum-value)
         (throw (ex-info (format "Directive @%s on enum value %s is not applicable."
-                                (name directive-type)
-                                (q value-name))
-                        {:enum-value value-name
-                         :directive-type directive-type
-                         :allowed-locations locations})))))
+                          (name directive-type)
+                          (q value-name))
+                 {:enum-value value-name
+                  :directive-type directive-type
+                  :allowed-locations locations})))))
   schema)
 
 (defn ^:private construct-compiled-schema
@@ -1796,18 +1782,18 @@
   ;; Note: using merge, not two calls to xfer-types, since want to allow
   ;; for overrides of the built-in scalars without a name conflict exception.
   (let [merged-scalars (->> schema
-                            :scalars
-                            (merge default-scalar-transformers)
-                            (map-vals #(assoc % :category :scalar)))
+                         :scalars
+                         (merge default-scalar-transformers)
+                         (map-vals #(assoc % :category :scalar)))
         {:keys [query mutation subscription]
          :or {query :Query
               mutation :Mutation
               subscription :Subscription}} (map-vals as-keyword (:roots schema))
         defaulted-subscriptions (->> schema
-                                     :subscriptions
-                                     (map-vals #(if-not (:resolve %)
-                                                  (assoc % :resolve default-subscription-resolver)
-                                                  %)))]
+                                  :subscriptions
+                                  (map-vals #(if-not (:resolve %)
+                                               (assoc % :resolve default-subscription-resolver)
+                                               %)))]
     (-> {::roots {:query query
                   :mutation mutation
                   :subscription subscription}
@@ -1822,7 +1808,7 @@
         (add-root mutation :mutations (:mutations schema))
         (add-root subscription :subscriptions defaulted-subscriptions)
         (as-> s
-              (map-vals #(compile-type % s) s))
+          (map-vals #(compile-type % s) s))
         (compile-directive-defs (:directive-defs schema))
         (prepare-and-validate-interfaces)
         (prepare-and-validate-objects :object)
@@ -1861,7 +1847,7 @@
 
 (s/def ::compile-args
   (s/cat :schema ::schema-object
-         :options (s/? (s/nilable ::compile-options))))
+    :options (s/? (s/nilable ::compile-options))))
 
 (defn compile
   "Compiles a schema, verifies its correctness, and prepares it for query execution.
