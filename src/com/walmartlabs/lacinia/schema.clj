@@ -960,13 +960,12 @@
   field - field definition
   field-type-name - from the root :root kind "
   [schema field-def field-type-name]
-  (let [field-type (get schema field-type-name)
-        _ (when (nil? field-type)
-            (throw (ex-info (format "Field %s references unknown type %s."
-                              (-> field-def :qualified-name q)
-                              (-> field-def :type q))
-                     {:field field-def
-                      :schema-types (type-map schema)})))
+  (let [field-type (or (get schema field-type-name)
+                       (throw (ex-info (format "Field %s references unknown type %s."
+                                               (-> field-def :qualified-name q)
+                                               (-> field-def :type q))
+                                       {:field field-def
+                                        :schema-types (type-map schema)})))
         category (:category field-type)
 
         ;; Build up layers of checks and other logic and a series of chained selector functions.
@@ -975,7 +974,8 @@
 
         selector floor-selector
 
-        selector (if (= :scalar category)
+        selector (if (not= :scalar category)
+                   selector
                    (let [serializer (:serialize field-type)]
                      (fn select-coercion [execution-context selection callback path resolved-type resolved-value]
                        (cond-let
@@ -1007,10 +1007,10 @@
                                                     :value (pr-str resolved-value))))
 
                          :else
-                         (selector execution-context selection callback path resolved-type serialized))))
-                   selector)
+                         (selector execution-context selection callback path resolved-type serialized)))))
 
-        selector (if (= :enum category)
+        selector (if (not= :enum category)
+                   selector
                    (let [possible-values (-> field-type :values set)
                          serializer (:serialize field-type)]
                      (fn validate-enum [execution-context selection callback path resolved-type resolved-value]
@@ -1033,12 +1033,12 @@
                                                  :enum-values possible-values}))
 
                          :else
-                         (selector execution-context selection callback path resolved-type serialized))))
-                   selector)
+                         (selector execution-context selection callback path resolved-type serialized)))))
 
         union-or-interface? (#{:interface :union} category)
 
-        selector (if union-or-interface?
+        selector (if-not union-or-interface?
+                   selector
                    (let [member-types (:members field-type)]
                      (fn select-allowed-types [execution-context selection callback path resolved-type resolved-value]
                        (cond
@@ -1056,8 +1056,7 @@
                                          (error "Value returned from resolver has incorrect type for field."
                                                 {:field-type field-type-name
                                                  :actual-type resolved-type
-                                                 :allowed-types member-types})))))
-                   selector)
+                                                 :allowed-types member-types}))))))
 
 
         type-map (when union-or-interface?
@@ -1072,8 +1071,10 @@
                      (when (seq type-map)
                        type-map)))
 
-        ;; TODO: Can this be skipped except for union/interface?  If so, can it be merged with above
-        ;; selector?
+        ;; This is needed because *sometimes* the same resolver is used for both a field
+        ;; with an object type, and for a field with a union/interface type, and the value
+        ;; may be a tagged value (wrapper around a Java object).
+
         selector (fn select-unwrap-tagged-type [execution-context selection callback path resolved-type resolved-value]
                    (cond-let
                      ;; Use explicitly tagged value (this usually applies to Java objects
@@ -1105,11 +1106,11 @@
 
 
         ;; TODO: This could possibly be boosted up to the FieldSelection
-        selector (if (#{:object :input-object} category)
+        selector (if-not (#{:object :input-object} category)
+                   selector
                    (fn select-apply-static-type [execution-context selection callback path _resolved-type resolved-value]
                      ;; TODO: Maybe a check that if the resolved value is tagged, that the tag matches the expected tag?
-                     (selector execution-context selection callback path field-type-name resolved-value))
-                   selector)]
+                     (selector execution-context selection callback path field-type-name resolved-value)))]
 
     (fn select-require-single-value [execution-context selection callback path resolved-type resolved-value]
       (if (sequential-or-set? resolved-value)
