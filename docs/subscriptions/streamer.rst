@@ -50,6 +50,19 @@ until ``nil`` is passed to the source stream callback.
 
 In either case, the cleanup callback will then be invoked.
 
+Invoking the streamer
+---------------------
+
+The streamer must be invoked with the parsed query and source stream callback in order to setup the
+subscription using :api:`executor/invoke-streamer`.
+
+.. literalinclude:: ../_examples/invoke-streamer.edn
+  :language: clojure
+
+Typically subscriptions are used with websockets so this example could be adapted to receive a message
+with a query and variables from a connected websocket client. Then any messages received by the source
+stream callback can be pushed to the client.
+
 Timing
 ------
 

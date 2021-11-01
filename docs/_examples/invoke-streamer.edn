@@ -1,0 +1,16 @@
+(require
+  '[com.walmartlabs.lacinia.executor :as executor]
+   [com.walmartlabs.lacinia.parser :as parser]
+   [com.walmartlabs.lacinia.constants :as constants])
+
+(let [prepared-query (-> schema
+                         (parser/parse-query query)
+                         (parser/prepare-with-query-variables variables))
+      source-stream-callback (fn [data]
+                               ;; Do something with the data
+                               ;; e.g. send it to a websocket client
+                               )
+      cleanup-fn (executor/invoke-streamer
+                   {constants/parsed-query-key prepared-query} source-stream-callback)]
+  ;; Do something with the cleanup-fn e.g. call it when a websocket connection is closed
+  )
