@@ -75,8 +75,15 @@
   (wrap-value value :context context-map))
 
 (defprotocol ResolverResult
-  "A special type returned from a field resolver that can contain a resolved value,
-  possibly wrapped with modifiers."
+  "A special type returned from a field resolver that can contain a resolved value.
+  A ResolverResult encapsulates the difference between when Lacinia invokes a field resolver function,
+  and when the value computed by that field resolver is ready.
+
+  In most cases, a field resolver returns a simple value, which is wrapped by [[resolve-as]] into
+  a ResolverResult.
+
+  More sophisticated field resolvers can return a ResolverResultPromise (via [[resolve-promise]]),
+  and deliver the result's value asynchronously via [[deliver!]]."
 
   (on-deliver! [this callback]
     "Provides a callback that is invoked immediately after the ResolverResult is realized.
@@ -89,23 +96,23 @@
     immediately.
 
     For a [[ResolverResultPromise]], the callback may be invoked on another thread.
+    Per-thread bindings in place when `on-deliver!` is invoked will be restored prior
+    to invoking the callback.
 
-    The callback is invoked for side-effects; its result is ignored.
-
-    If per-thread bindings are relevant to the callback, it should make use of clojure.core/bound-fn."))
+    The callback is invoked for side-effects; its result is ignored."))
 
 (defprotocol ResolverResultPromise
   "A specialization of ResolverResult that supports asynchronous delivery of the resolved value and errors."
 
   (deliver!
     [this value]
-    [this value errors]
-    "Invoked to realize the ResolverResult, triggering the callback to receive the value and errors.
+    [this value error]
+    "Invoked to realize the ResolverResult, triggering the callback to receive the value.
 
     The callback is invoked in the current thread, unless [[*thread-pool*]] is non-nil, in which case
     the callback is invoked in a pooled thread.
 
-    The two arguments version is simply a convienience around the [[with-error]] modifier.
+    The two arguments version is simply a convenience around the [[with-error]] modifier.
 
     Returns `this`."))
 
