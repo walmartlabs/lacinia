@@ -825,10 +825,6 @@
   [v]
   (= v ::null))
 
-(defn ^:private null-to-nil
-  [v]
-  (if (is-null? v) nil v))
-
 (defn ^:private collapse-nulls-in-object
   [forgive-null? map-type? value]
   (cond
@@ -847,7 +843,7 @@
     (if forgive-null? nil ::null)
 
     :else
-    (map-vals null-to-nil value)))
+    value))
 
 (defn ^:no-doc collapse-nulls-in-map
   [m]
