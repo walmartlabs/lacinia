@@ -345,12 +345,7 @@
       ;; the selector, which returns a ResolverResult. Thus we've peeled back at least one layer
       ;; of ResolveResultPromise.
       direct-fn
-      (let [resolved-value (direct-fn container-value)]
-        ;; Normally, resolved-value is a raw value, ready to be immediately processed; but in rare cases
-        ;; it may be a ResolverResult that needs to be unwrapped before processing.
-        (if (resolve/is-resolver-result? resolved-value)
-          (unwrap-resolver-result resolved-value)
-          (process-resolved-value resolved-value)))
+      (-> container-value direct-fn process-resolved-value)
 
       ;; Here's where it comes together.  The field's selector
       ;; does the validations, and for list types, does the mapping.

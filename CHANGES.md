@@ -2,12 +2,19 @@
 
 This release features some significant efficiency improvements inside Lacinia.
 
-A small incompatible change is present:  `com.walmartlabs.resolve/resolve-as` and `with-error` did, in prior releases,
+New options have been added to `com.walmartlabs.lacina.schema/compile` that turn off certain checks and features
+to boost performance.
+
+### Incompatible Changes
+
+* `com.walmartlabs.lacinia.resolve/resolve-as` and `with-error` did, in prior releases,
 support an argument that could be either a single error map, or a sequence of error maps. This was rarely used, and
 has been changed: only a single error map is supported.
 
-New options have been added to `com.walmartlabs.lacina.schema/compile` that turn off certain checks and features
-to boost performance.
+* Previously, a resolver, including a default resolver, could return a map containing a value that was
+  a `ResolverResult`, and Lacinia would de-reference it; this is no longer allowed, resolvers must return
+  a value (or a value delivered by a `ResolverResult`).  The value may be wrapped
+  (.e.g, calling `with-error`), but must be a value.
 
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/28?closed=1)
 
