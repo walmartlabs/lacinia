@@ -948,7 +948,8 @@
 
 (defn ^:private selector-error
   [execution-context selection callback path resolve-xf error]
-  (su/apply-error execution-context selection path :*errors error)
+  (when error
+    (su/apply-error execution-context selection path :*errors error))
   (callback execution-context path resolve-xf nil nil))
 
 (defn ^:private existing-error-for-current-path?
