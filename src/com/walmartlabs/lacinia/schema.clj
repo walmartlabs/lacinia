@@ -38,8 +38,8 @@
    [clojure.pprint :as pprint]
    [com.walmartlabs.lacinia.selection :as selection])
   (:import
-   (clojure.lang IObj)
-   (java.io Writer)))
+    (clojure.lang IObj PersistentQueue)
+    (java.io Writer)))
 
 ;; When using Clojure 1.8, the dependency on clojure-future-spec must be included,
 ;; and this code will trigger
@@ -104,7 +104,7 @@
 
   In most cases, this is accomplished by modifying the value's metadata.
 
-  For the more rare case, where a particular type is used rather than a Clojure
+  For the more rare case, where a particular Java object is used rather than a Clojure
   map, this function returns a new wrapper instance that combines the value and the type name."
   [x type-name]
   (cond
@@ -514,8 +514,8 @@
         (:type type-def)
         (recur (:type type-def))))))
 
-(defrecord ^:private FieldDef [type type-string directives compiled-directives compiled-schema
-                               field-name qualified-name args null-collapser direct-fn]
+(defrecord ^:private FieldDef [type type-string directives compiled-directives compiled-schema root-type-name
+                               field-name qualified-name args null-producer? null-collapser direct-fn]
 
   selection/FieldDef
 
@@ -531,10 +531,10 @@
   (kind [_]
     (assoc type :compiled-schema compiled-schema))
 
-  (root-type [this]
-    (select-type compiled-schema (root-type-name this)))
+  (root-type [_]
+    (select-type compiled-schema root-type-name))
 
-  (root-type-name [this] (root-type-name this))
+  (root-type-name [_] root-type-name)
 
   selection/QualifiedName
 
@@ -789,7 +789,7 @@
                {:element element}
                t)))))
 
-(defrecord ArgumentDef [arg-name compiled-schema type qualified-name
+(defrecord ArgumentDef [arg-name compiled-schema type qualified-name root-type-name
                         description directives default-value has-default-value? is-required?]
 
   selection/ArgumentDef
@@ -803,10 +803,10 @@
   (kind [_]
     (assoc type :compiled-schema compiled-schema))
 
-  (root-type [this]
-    (select-type compiled-schema (root-type-name this)))
+  (root-type [_]
+    (select-type compiled-schema root-type-name))
 
-  (root-type-name [this] (root-type-name this)))
+  (root-type-name [_] root-type-name))
 
 (defn ^:private compile-arg
   [arg-name arg-def]
@@ -815,22 +815,19 @@
         is-required? (and (= :non-null (get-nested arg-def' [:type :kind]))
                        (not has-default-value?))]
     (assoc arg-def'
-      :arg-name arg-name
-      ;; Older code used (contains? arg :default-value) but that doesn't work anymore
-      ;; with a record that has a default-value field, so ... even more fields.
-      :has-default-value? has-default-value?
-      :is-required? is-required?)))
+           :arg-name arg-name
+           :root-type-name (root-type-name arg-def')
+           ;; Older code used (contains? arg :default-value) but that doesn't work anymore
+           ;; with a record that has a default-value field, so ... even more fields.
+           :has-default-value? has-default-value?
+           :is-required? is-required?)))
 
 (defn ^:private is-null?
   [v]
   (= v ::null))
 
-(defn ^:private null-to-nil
-  [v]
-  (if (is-null? v) nil v))
-
 (defn ^:private collapse-nulls-in-object
-  [forgive-null? map-type? value]
+  [forgive-null? null-producer? value]
   (cond
     (nil? value)
     value
@@ -840,18 +837,49 @@
       nil
       ::null)
 
-    (not map-type?)
+    (not null-producer?)
     value
 
+    ;; If a map, and some potential field in the map may produce a null,
+    ;; then need to scan for any null values.  Slightly limited here
+    ;; in that this check may occur even when
     (some is-null? (vals value))
     (if forgive-null? nil ::null)
 
     :else
-    (map-vals null-to-nil value)))
+    value))
 
 (defn ^:no-doc collapse-nulls-in-map
   [m]
   (collapse-nulls-in-object true true m))
+
+(defn can-reach-null-producer?
+  [schema element-def]
+  (loop [visited #{}
+         queue (conj PersistentQueue/EMPTY element-def)]
+    (cond-let
+      :let [element-def (peek queue)]
+
+      (nil? element-def)
+      false
+
+      (or (contains? visited element-def)
+          (not (contains? #{:object :interface} (:category element-def))))
+      (recur visited (pop queue))
+
+      :let [field-defs (-> element-def :fields vals)]
+
+      (some :produces-null? field-defs)
+      true
+
+      :else
+      (recur (conj visited element-def)
+             (->> field-defs
+                  (map :root-type-name)
+                  distinct
+                  (map #(get schema %))
+                  (filter #(contains? #{:object :interface} (:category %)))
+                  (into queue))))))
 
 (defn ^:private build-null-collapser
   "Builds a null-collapser for a field definition; the null collapser transforms a resolved value
@@ -868,9 +896,11 @@
       :root
       (let [element-def (get schema nested-type)
             {:keys [category]} element-def
-            map-type? (contains? #{:union :object :interface} category)]
+            map-type? (contains? #{:union :object :interface} category)
+            produces-null? (and map-type?
+                                (can-reach-null-producer? schema element-def))]
         (fn [value]
-          (collapse-nulls-in-object forgive-null? map-type? value)))
+          (collapse-nulls-in-object forgive-null? produces-null? value)))
 
       :non-null
       (let [nested-collapser (build-null-collapser schema false nested-type)]
@@ -897,6 +927,16 @@
             :else
             values'))))))
 
+(defn ^:private produces-null?
+  [type]
+  (let [{:keys [kind]
+         nested-type :type} type]
+    (case kind
+      ;; This false is only definitive for scalar and enum types.
+      :root false
+      :list (recur nested-type)
+      :non-null true)))
+
 (defn ^:private compile-field
   "Rewrites the type of the field, and the type of any arguments."
   [schema type-def field-name field-def]
@@ -910,10 +950,16 @@
                               :qualified-name (qualified-name type-name field-name))
                        (update :args #(map-kvs (fn [arg-name arg-def]
                                                  [arg-name (assoc (compile-arg arg-name arg-def)
-                                                             :qualified-name (qualified-name type-name field-name arg-name))])
-                                        %)))
-        collapser (build-null-collapser schema true (:type field-def'))]
-    (assoc field-def' :null-collapser collapser)))
+                                                                  :qualified-name (qualified-name type-name field-name arg-name))])
+                                               %)))
+        null-producer? (-> field-def' :type produces-null?)]
+    (assoc field-def'
+           :root-type-name (root-type-name field-def')
+           :produces-null? null-producer?)))
+
+(defn ^:private inject-null-collapser-into-field
+  [schema field-def]
+  (assoc field-def :null-collapser (build-null-collapser schema true (:type field-def))))
 
 (defn ^:private wrap-resolver-to-ensure-resolver-result
   [resolver]
@@ -948,7 +994,8 @@
 
 (defn ^:private selector-error
   [execution-context selection callback path resolve-xf error]
-  (su/apply-error execution-context selection path :*errors error)
+  (when error
+    (su/apply-error execution-context selection path :*errors error))
   (callback execution-context path resolve-xf nil nil))
 
 (defn ^:private existing-error-for-current-path?
@@ -1602,17 +1649,21 @@
         (validate-directives-in-def schema interface :interface)
         (let [interface-name (:type-name interface)
               implementors (->> objects
-                             (filter #(-> % :implements interface-name))
-                             (map :type-name)
-                             set)
+                                (filter #(-> % :implements interface-name))
+                                (map :type-name)
+                                set)
               fields' (->> interface
-                        :fields
-                        (map-vals #(assoc % :type-name interface-name))
-                        (map-vals apply-deprecated-directive))]
+                           :fields
+                           (map-vals #(assoc % :type-name interface-name))
+                           (map-vals apply-deprecated-directive))]
           (-> interface
               (assoc :members implementors
                      :fields fields')
               (dissoc :resolve)))))))
+
+(defn ^:private update-fields-in-object
+  [object-def f]
+  (update object-def :fields #(map-vals f %)))
 
 (defn ^:private prepare-and-validate-object
   [schema object-def]
@@ -1645,46 +1696,52 @@
 
           (when-not object-field-arg-def
             (throw (ex-info "Missing interface field argument in object definition."
-                     {:field-name (:qualified-name object-field)
-                      :interface-argument (:qualified-name interface-arg-def)})))
+                            {:field-name (:qualified-name object-field)
+                             :interface-argument (:qualified-name interface-arg-def)})))
 
           (when-not (is-assignable? schema interface-arg-def object-field-arg-def)
             (throw (ex-info "Object field's argument is not compatible with extended interface's argument type."
-                     {:interface-name interface-name
-                      :argument-name (:qualified-name object-field-arg-def)})))))
+                            {:interface-name interface-name
+                             :argument-name (:qualified-name object-field-arg-def)})))))
 
       (when-let [additional-args (seq (difference (into #{} (keys object-field-args))
-                                        (into #{} (keys interface-field-args))))]
+                                                  (into #{} (keys interface-field-args))))]
         (doseq [additional-arg-name additional-args
                 :let [arg-kind (get-nested object-field-args [additional-arg-name :type :kind])]]
           (when (= arg-kind :non-null)
             (throw (ex-info "Additional arguments on an object field that are not defined in extended interface cannot be required."
-                     {:interface-name interface-name
-                      :argument-name (-> object-field-args (get additional-arg-name) :qualified-name)}))))))
+                            {:interface-name interface-name
+                             :argument-name (-> object-field-args (get additional-arg-name) :qualified-name)}))))))
 
     (-> (apply-directive-arg-defaults schema object-def)
-        (update :fields #(map-vals (fn [field-def]
-                                     (cond-> (prepare-field schema object-def field-def)
-                                       object-def? apply-deprecated-directive))
-                           %)))))
+        (update-fields-in-object (fn [field-def]
+                                   (cond-> (prepare-field schema object-def field-def)
+                                     object-def? apply-deprecated-directive))))))
 
 (defn ^:private prepare-and-validate-objects
   "Comes very late in the compilation process to prepare objects, including validation that
   all implemented interface fields are present in each object."
   [schema category]
   (map-types schema category
-    #(prepare-and-validate-object schema %)))
+             #(prepare-and-validate-object schema %)))
 
 (defn ^:private prepare-resolvers-in-object
   [schema object-def options]
-  (update object-def :fields #(map-vals (fn [field-def]
-                                          (prepare-field-resolver schema options field-def))
-                                %)))
+  (update-fields-in-object object-def #(prepare-field-resolver schema options %)))
 
 (defn ^:private prepare-field-resolvers
   [schema options]
   (map-types schema :object
-    #(prepare-resolvers-in-object schema % options)))
+             #(prepare-resolvers-in-object schema % options)))
+
+(defn ^:private inject-null-collapsers
+  [schema]
+  (reduce (fn [schema' kind]
+            (map-types schema' kind
+                       (fn [object-def]
+                         (update-fields-in-object object-def #(inject-null-collapser-into-field schema %)))))
+          schema
+          [:object :interface]))
 
 (def ^:private default-subscription-resolver
 
@@ -1828,6 +1885,7 @@
         (validate-directives-by-category :union)
         (validate-directives-by-category :scalar)
         validate-enum-directives
+        inject-null-collapsers
         ;; Last so that schema is as close to final and verified state as possible
         (prepare-field-resolvers options)
         map->CompiledSchema)))

@@ -28,7 +28,7 @@
                      :path path
                      :arguments (:reportable-arguments selection)}))
 
-(defn ^:private assert-error-map
+(defn assert-error-map
   "An error returned by a resolver should be nil,or a map
   containing at least a :message key with a string value.
 
@@ -65,9 +65,8 @@
   "From an error map, or a collection of error maps, add additional data to
   each error, including location and arguments.  Returns a seq of error maps."
   [selection path error-map]
-  (when-let [error-map' (assert-error-map error-map)]
-    (let [extra-data (ex-info-map selection path)]
-      (structured-error-map error-map' extra-data))))
+  (let [extra-data (ex-info-map selection path)]
+    (structured-error-map error-map extra-data)))
 
 (defn apply-error
   [execution-context selection path atom-key error-map]

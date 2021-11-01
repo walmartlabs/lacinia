@@ -31,10 +31,10 @@
 
   The [[FieldResolver]] protocol allows a Clojure record to act as a field resolver function."
   (:require
-   [com.walmartlabs.lacinia.select-utils :refer [is-wrapped-value? wrap-value]])
+    [com.walmartlabs.lacinia.select-utils :refer [is-wrapped-value? wrap-value assert-error-map]])
   (:import
-   (java.util.concurrent Executor)
-   (clojure.lang APersistentMap)))
+    (java.util.concurrent Executor)
+    (clojure.lang APersistentMap)))
 
 (def ^{:dynamic true
        :added "0.20.0"} ^Executor *callback-executor*
@@ -51,7 +51,7 @@
     context, field arguments, and container value, and returns a resolved value."))
 
 (defn with-error
-  "Wraps a value, modifiying it to include an error map (or seq of error maps).
+  "Wraps a value, modifying it to include an error map (or seq of error maps).
 
   The provided error map will be enhanced with a :location key,
   identifying where field occurs within the query document, and a :path key,
@@ -62,7 +62,9 @@
   and must be a string) will be added to an embedded :extensions map."
   {:added "0.19.0"}
   [value error]
-  (wrap-value value :error error))
+  (if error
+    (wrap-value value :error (assert-error-map error))
+    value))
 
 (defn with-context
   "Wraps a value so that when nested fields (at any depth) are executed, the provided values will be in the context.
@@ -73,8 +75,15 @@
   (wrap-value value :context context-map))
 
 (defprotocol ResolverResult
-  "A special type returned from a field resolver that can contain a resolved value,
-  possibly wrapped with modifiers."
+  "A special type returned from a field resolver that can contain a resolved value.
+  A ResolverResult encapsulates the difference between when Lacinia invokes a field resolver function,
+  and when the value computed by that field resolver is ready.
+
+  In most cases, a field resolver returns a simple value, which is wrapped by [[resolve-as]] into
+  a ResolverResult.
+
+  More sophisticated field resolvers can return a ResolverResultPromise (via [[resolve-promise]]),
+  and deliver the result's value asynchronously via [[deliver!]]."
 
   (on-deliver! [this callback]
     "Provides a callback that is invoked immediately after the ResolverResult is realized.
@@ -87,23 +96,23 @@
     immediately.
 
     For a [[ResolverResultPromise]], the callback may be invoked on another thread.
+    Per-thread bindings in place when `on-deliver!` is invoked will be restored prior
+    to invoking the callback.
 
-    The callback is invoked for side-effects; its result is ignored.
-
-    If per-thread bindings are relevant to the callback, it should make use of clojure.core/bound-fn."))
+    The callback is invoked for side-effects; its result is ignored."))
 
 (defprotocol ResolverResultPromise
   "A specialization of ResolverResult that supports asynchronous delivery of the resolved value and errors."
 
   (deliver!
     [this value]
-    [this value errors]
-    "Invoked to realize the ResolverResult, triggering the callback to receive the value and errors.
+    [this value error]
+    "Invoked to realize the ResolverResult, triggering the callback to receive the value.
 
     The callback is invoked in the current thread, unless [[*thread-pool*]] is non-nil, in which case
     the callback is invoked in a pooled thread.
 
-    The two arguments version is simply a convienience around the [[with-error]] modifier.
+    The two arguments version is simply a convenience around the [[with-error]] modifier.
 
     Returns `this`."))
 
@@ -118,7 +127,7 @@
 (defn resolve-as
   "Invoked by field resolvers to wrap a simple return value as a ResolverResult.
 
-  The two-arguments version is a convienience around using [[with-error]].
+  The two-arguments version is a convenience around using [[with-error]].
 
   This is an immediately realized ResolverResult.
 
@@ -127,8 +136,8 @@
   When [[on-deliver!]] is invoked, the provided callback is immediately invoked (in the same thread)."
   ([resolved-value]
    (->ResolverResultImpl resolved-value))
-  ([resolved-value resolver-errors]
-   (->ResolverResultImpl (with-error resolved-value resolver-errors))))
+  ([resolved-value resolver-error]
+   (->ResolverResultImpl (with-error resolved-value resolver-error))))
 
 (def ^:private *promise-id-allocator (atom 0))
 
@@ -206,7 +215,7 @@
   "Is the provided value actually a [[ResolverResult]]?"
   {:added "0.23.0"}
   [value]
-  ;; The call to satisifies? can be very expensive, so avoid it if at all possible.
+  ;; The call to satisfies? can be very expensive, so avoid it if at all possible.
   ;; Ignore nil, common scalar types, and normal maps and vectors
   (and (some? value)
     (not (or (keyword? value)
@@ -319,4 +328,6 @@
   for an error and what call for a warning."
   {:added "0.31.0"}
   [value warning]
-  (wrap-value value :warning warning))
+  (if warning
+    (wrap-value value :warning (assert-error-map warning))
+    value))

@@ -131,19 +131,6 @@
     (is (= {:data {:hello "Like magic!"}}
            (tu/execute schema "{ hello }")))))
 
-(deftest default-resolver-return-resolver-result
-  (let [data-resolver (fn [_ _ _]
-                        {:value (resolve/resolve-as "Ahsoka Tano")})
-        schema (schema/compile (-> {:objects
-                                    {:Data
-                                     {:fields
-                                      {:value {:type :String}}}}
-                                    :queries
-                                    {:data {:type :Data}}}
-                                   (util/inject-resolvers {:queries/data data-resolver})))]
-    (is (= {:data {:data {:value "Ahsoka Tano"}}}
-           (tu/execute schema "{ data { value } }")))))
-
 (deftest as-resolver-fn-var
   (is (identical? #'identity
                   (resolve/as-resolver-fn #'identity))))

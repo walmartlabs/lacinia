@@ -318,18 +318,13 @@
         ;; Given a ResolverResult from a field resolver, unwrap the field's RR and pass it through process-resolved-value.
         ;; process-resolved-value also returns an RR and chain that RR's delivered value to the RR returned from this function.
         unwrap-resolver-result (fn [field-resolver-result]
-                                 (let [final-result (resolve-promise)]
-                                   (resolve/on-deliver! field-resolver-result
-                                     (fn receive-resolved-value-from-field [resolved-value]
-                                       ;; This is for a specific case, where a parent resolver returns a map whose value
-                                       ;; is also a ResolverResult; in that case, unwrap one layer further before calling
-                                       ;; process-resolved-value.
-                                       (if (resolve/is-resolver-result? resolved-value)
-                                         (resolve/on-deliver! resolved-value receive-resolved-value-from-field)
-                                         (resolve/on-deliver! (process-resolved-value resolved-value)
-                                           (fn deliver-selection-for-field [resolved-value]
-                                             (resolve/deliver! final-result resolved-value))))))
-                                   final-result))]
+                                     (let [final-result (resolve-promise)]
+                                       (resolve/on-deliver! field-resolver-result
+                                                            (fn receive-resolved-value-from-field [resolved-value]
+                                                              (resolve/on-deliver! (process-resolved-value resolved-value)
+                                                                                   (fn deliver-selection-for-field [resolved-value]
+                                                                                     (resolve/deliver! final-result resolved-value)))))
+                                       final-result))]
 
     ;; For fragments, we start with a single value and it passes right through to
     ;; sub-selections, without changing value or type. Ultimately, this will be merged
@@ -345,12 +340,7 @@
       ;; the selector, which returns a ResolverResult. Thus we've peeled back at least one layer
       ;; of ResolveResultPromise.
       direct-fn
-      (let [resolved-value (direct-fn container-value)]
-        ;; Normally, resolved-value is a raw value, ready to be immediately processed; but in rare cases
-        ;; it may be a ResolverResult that needs to be unwrapped before processing.
-        (if (resolve/is-resolver-result? resolved-value)
-          (unwrap-resolver-result resolved-value)
-          (process-resolved-value resolved-value)))
+      (-> container-value direct-fn process-resolved-value)
 
       ;; Here's where it comes together.  The field's selector
       ;; does the validations, and for list types, does the mapping.
