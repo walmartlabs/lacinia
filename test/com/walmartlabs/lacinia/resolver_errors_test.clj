@@ -179,3 +179,7 @@
                       :message "Error processing request"
                       :path [:hello]}]}
            (execute schema "{ hello }")))))
+
+(deftest with-error-nil
+  (is (= ::value
+         (with-error ::value nil))))
