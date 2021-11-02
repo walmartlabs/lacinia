@@ -7,10 +7,6 @@ to boost performance.
 
 ### Incompatible Changes
 
-* `com.walmartlabs.lacinia.resolve/resolve-as` and `with-error` did, in prior releases,
-support an argument that could be either a single error map, or a sequence of error maps. This was rarely used, and
-has been changed: only a single error map is supported.
-
 * Previously, a resolver, including a default resolver, could return a map containing a value that was
   a `ResolverResult`, and Lacinia would de-reference it; this is no longer allowed, resolvers must return
   a value (or a value delivered by a `ResolverResult`).  The value may be wrapped
