@@ -50,8 +50,18 @@
     "The analog of a field resolver function, this method is passed the instance, and the standard
     context, field arguments, and container value, and returns a resolved value."))
 
+(defn ^:private wrap-error-maps
+  [value behavior error]
+  (cond
+    ;; Old behavior --- supported but not documented
+    (sequential? error)
+    (reduce #(wrap-value %1 behavior (assert-error-map %2)) value (reverse error))
+
+    (some? error)
+    (wrap-value value behavior (assert-error-map error))))
+
 (defn with-error
-  "Wraps a value, modifying it to include an error map (or seq of error maps).
+  "Wraps a value, modifying it to include an error map.
 
   The provided error map will be enhanced with a :location key,
   identifying where field occurs within the query document, and a :path key,
@@ -62,9 +72,7 @@
   and must be a string) will be added to an embedded :extensions map."
   {:added "0.19.0"}
   [value error]
-  (if error
-    (wrap-value value :error (assert-error-map error))
-    value))
+  (wrap-error-maps value :error error))
 
 (defn with-context
   "Wraps a value so that when nested fields (at any depth) are executed, the provided values will be in the context.
@@ -328,6 +336,4 @@
   for an error and what call for a warning."
   {:added "0.31.0"}
   [value warning]
-  (if warning
-    (wrap-value value :warning (assert-error-map warning))
-    value))
+  (wrap-error-maps value :warning warning))

@@ -40,12 +40,11 @@
             ;; We could add a serializer that converts this to :BLUE, but we haven't.
             Color/BLUE)
    :multiple-errors (fn [_ _ _]
-                      (reduce #(with-error %1 %2)
-                        "Value"
+                      (resolve-as "Value"
                         [{:message "1" :other-key 100}
-                                                {:message "2"}
-                                                {:message "3"}
-                                                {:message "4"}]))
+                         {:message "2"}
+                         {:message "3"}
+                         {:message "4"}]))
    :resolve-root (fn [_ _ _] {})})
 
 (def default-schema
@@ -113,8 +112,7 @@
            :message "4"
            :path [:root :multiple_errors_field]}]
          (->> (execute default-schema "{ root { multiple_errors_field }}")
-              :errors
-              (sort-by :message)))))
+              :errors))))
 
 (deftest extensions-are-merged
   (is (= {:data {:root {:with_extensions nil}}
