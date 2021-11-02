@@ -58,7 +58,11 @@
     (reduce #(wrap-value %1 behavior (assert-error-map %2)) value (reverse error))
 
     (some? error)
-    (wrap-value value behavior (assert-error-map error))))
+    (wrap-value value behavior (assert-error-map error))
+    (wrap-value value behavior (assert-error-map error))
+
+    :else
+    value))
 
 (defn with-error
   "Wraps a value, modifying it to include an error map.
