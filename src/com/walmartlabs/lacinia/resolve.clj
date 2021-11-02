@@ -59,7 +59,6 @@
 
     (some? error)
     (wrap-value value behavior (assert-error-map error))
-    (wrap-value value behavior (assert-error-map error))
 
     :else
     value))
