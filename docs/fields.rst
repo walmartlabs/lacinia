@@ -123,5 +123,5 @@ A field may include a ``:description`` key; the value is a string exposed throug
 Deprecation
 -----------
 
-A field may include a ``:deprecation`` key; this identifies that the field
+A field may include a ``:deprecated`` key; this identifies that the field
 is :doc:`deprecated <deprecation>`.
