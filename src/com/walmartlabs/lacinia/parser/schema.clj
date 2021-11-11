@@ -62,6 +62,14 @@
                                 (q (qualified-name k property)))
                         (cond-> {:key k}
                           (seq locations) (assoc :locations locations)))))))
+  (doseq [member (get org :members [])]
+    (when (contains? (set (:members v)) member)
+      (let [locations (keepv meta [org v])]
+        (throw (ex-info (format "%s already member of union %s in the existing schema. It cannot also be defined in this union extension."
+                                (q member) (q k))
+                        (cond-> {:key k
+                                 :member member}
+                                (seq locations) (assoc :locations locations)))))))
   (reduce merge
           {}
           [(some->> (merge (get org :fields {}) (get v :fields {}))
