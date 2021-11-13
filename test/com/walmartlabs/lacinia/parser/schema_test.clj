@@ -184,7 +184,14 @@
   (is (= {:unions
           {:Matter
            {:members [:Solid :Liquid :Gas :Plasma :INPUT_OBJECT]}}}
-         (parse-string "union Matter = Solid | Liquid | Gas | Plasma | INPUT_OBJECT"))))
+         (parse-string "union Matter = Solid | Liquid | Gas | Plasma | INPUT_OBJECT")))
+
+  (testing "extensions"
+   (is (= {:unions
+           {:Matter
+            {:members [:Solid :Liquid :Gas :Plasma :INPUT_OBJECT]}}}
+          (parse-string (str "union Matter = Solid\n"
+                             "extend union Matter = Liquid | Gas | Plasma | INPUT_OBJECT"))))))
 
 (deftest schema-field-args
   (is (= {:objects
@@ -598,4 +605,3 @@
                                        :members [:File
                                                  :Directory]}}}
            schema))))
-
