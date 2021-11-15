@@ -44,18 +44,23 @@
 
 (defn ^:private stream-logs
   [_context args source-stream]
-  (let [{:keys [severity]} args
+  (let [{:keys [severity fakeError]} args
         watch-key (gensym)]
     (add-watch *latest-log-event watch-key
                (fn [_ _ _ log-event]
                  (when *verbose*
                    (prn :log-event-received log-event))
-                 (when (or (nil? log-event)
-                           (nil? severity)
-                           (= severity (:severity log-event)))
+                 (cond
+                   (nil? log-event)
+                   (source-stream nil)
+
+                   fakeError
+                   (source-stream (resolve/resolve-as nil {:message "Expected error"}))
+
+                   (or (nil? severity)
+                       (= severity (:severity log-event)))
                    (source-stream log-event))))
     #(remove-watch *latest-log-event watch-key)))
-
 
 (def ^:private compiled-schema
   (-> (io/resource "subscriptions-schema.edn")
@@ -127,6 +132,22 @@
 
   (is (= {:data {:logs {:message "second"
                         :severity "critical"}}}
+         (latest-response)))
+
+  (log-event nil)
+
+  (is (nil? (latest-response))))
+
+(deftest errors-are-returned
+  (execute "subscription { logs(fakeError: true) { severity message } }" {})
+
+  (log-event {:severity "critical" :message "first"})
+
+  (is (= {:data {:logs nil}
+          :errors [{:message "Expected error"
+                    :locations [{:line 1, :column 16}]
+                    :path [:logs]
+                    :extensions {:arguments {:fakeError true}}}]}
          (latest-response)))
 
   (log-event nil)
