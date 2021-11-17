@@ -1,7 +1,7 @@
 grammar GraphqlSchema;
 
 graphqlSchema
-  : (schemaDef|typeDef|typeExtDef|inputTypeDef|inputTypeExtDef|unionDef|enumDef|interfaceDef|scalarDef|directiveDef)*
+  : (schemaDef|typeDef|typeExtDef|inputTypeDef|inputTypeExtDef|unionDef|unionExtDef|enumDef|interfaceDef|scalarDef|directiveDef)*
   ;
 
 description
@@ -111,6 +111,10 @@ scalarDef
 
 unionDef
   : description? K_UNION anyName directiveList? '=' unionTypes
+  ;
+
+unionExtDef
+  : description? K_EXTEND K_UNION anyName directiveList? '=' unionTypes
   ;
 
 unionTypes

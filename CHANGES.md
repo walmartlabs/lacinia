@@ -3,17 +3,16 @@
 This release features some significant efficiency improvements inside Lacinia.
 
 New options have been added to `com.walmartlabs.lacina.schema/compile` that turn off certain checks and features
-to boost performance.
+to boost performance even further.
 
 ### Incompatible Changes
 
 * Previously, a resolver, including a default resolver, could return a map containing a value that was
   a `ResolverResult`, and Lacinia would de-reference it; this is no longer allowed, resolvers must return
-  a value (or a value delivered by a `ResolverResult`).  The value may be wrapped
-  (.e.g, calling `with-error`), but must be a value.
+  a value (or a value delivered by a `ResolverResult`).  A map that contains a ResolverResult is not a value.
+  However, a value may be wrapped (.e.g, calling `with-error`), as before.
 
 [Closed Issues](https://github.com/walmartlabs/lacinia/milestone/28?closed=1)
-
 
 ## 1.0 -- 9 Oct 2021
 

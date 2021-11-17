@@ -53,7 +53,7 @@
   [v]
   (get (meta v) :extension false))
 
-(defn ^:private merge-type-extension
+(defn ^:private merge-extension
   [k v org]
   (doseq [property (keys (get org :fields {}))]
     (when (contains? (get v :fields {}) property)
@@ -62,9 +62,23 @@
                                 (q (qualified-name k property)))
                         (cond-> {:key k}
                           (seq locations) (assoc :locations locations)))))))
+  (doseq [member (get org :members [])]
+    (when (contains? (set (:members v)) member)
+      (let [locations (keepv meta [org v])]
+        (throw (ex-info (format "%s already member of union %s in the existing schema. It cannot also be defined in this union extension."
+                                (q member) (q k))
+                        (cond-> {:key k
+                                 :member member}
+                                (seq locations) (assoc :locations locations)))))))
   (reduce merge
           {}
-          [{:fields (merge (get org :fields) (get v :fields))}
+          [(some->> (merge (get org :fields {}) (get v :fields {}))
+                    (#(if (not-empty %) % nil))
+                    (assoc {} :fields))
+           (some->> (into (get org :members []) (get v :members []))
+                    (vec)
+                    (#(if (not-empty %) % nil))
+                    (assoc {} :members))
            (some->> (into (get org :implements []) (get v :implements []))
                     (distinct)
                     (vec)
@@ -94,7 +108,7 @@
         (assoc m k v)
 
         (is-extension? v)
-        (update m k (partial merge-type-extension k v))
+        (update m k (partial merge-extension k v))
 
         (contains? m k)
         (let [locations (keepv meta [(get m k) v])]
@@ -405,6 +419,17 @@
          (common/copy-meta anyName)
          (apply-description description)
          (apply-directives directiveList))]))
+
+(defmethod xform :unionExtDef
+  [prod]
+  (let [{:keys [description anyName unionTypes directiveList]} (tag prod)]
+    (with-meta [[:unions (xform anyName)]
+                (-> {:members (xform unionTypes)}
+                    (common/copy-meta anyName)
+                    (common/add-meta extension-meta)
+                    (apply-description description)
+                    (apply-directives directiveList))]
+               extension-meta)))
 
 (defmethod xform :unionTypes
   [prod]
