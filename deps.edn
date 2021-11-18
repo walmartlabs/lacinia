@@ -51,5 +51,5 @@
    :exec-fn codox.main/generate-docs
    :exec-args {:metadata {:doc/format :markdown}
                :name "com.walmartlabs/lacinia"
-               :version "1.1-alpha-5a"
+               :version "1.1-alpha-6"
                :description "Clojure-native implementation of GraphQL"}}}}
