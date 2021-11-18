@@ -352,6 +352,14 @@
       :else
       (unwrap-resolver-result (invoke-resolver-for-field execution-context selection path container-type container-value)))))
 
+(defn ^:private unwrap-root-value
+  "For compatibility reasons, the value passed to a subscriber stream function may be a wrapped value."
+  [execution-context selection  value]
+  (if (su/is-wrapped-value? value)
+    (recur (su/apply-wrapped-value execution-context selection [(selection/alias-name selection)] value)
+           selection (:value value))
+    [execution-context value]))
+
 (defn execute-query
   "Entrypoint for execution of a query.
 
@@ -373,7 +381,7 @@
         context' (assoc context constants/schema-key schema)
         ;; Outside of subscriptions, the ::root-value is nil.
         ;; For subscriptions, the :root-value will be set to a non-nil value before
-        ;; executing the query.
+        ;; executing the query. It may be a wrapped value.
         root-type (get-nested parsed-query [:root :type-name])
         root-value (::resolved-value context)
         execution-context (map->ExecutionContext {:context context'
@@ -383,12 +391,13 @@
                                                   :*resolver-tracing *resolver-tracing
                                                   :timing-start timing-start
                                                   :*extensions *extensions})
+        [execution-context' root-value'] (unwrap-root-value execution-context (first selections) root-value)
         result-promise (resolve-promise)
         executor resolve/*callback-executor*
         f (bound-fn []
             (try
               (let [execute-fn (if (= :mutation operation-type) execute-nested-selections-sync execute-nested-selections)
-                    operation-result (execute-fn execution-context enabled-selections [] nil root-type root-value)]
+                    operation-result (execute-fn execution-context' enabled-selections [] nil root-type root-value')]
                 (resolve/on-deliver! operation-result
                   (fn [selected-data]
                     (let [errors (seq @*errors)
