@@ -44,15 +44,21 @@
 
 (defn ^:private stream-logs
   [_context args source-stream]
-  (let [{:keys [severity]} args
+  (let [{:keys [severity fakeError]} args
         watch-key (gensym)]
     (add-watch *latest-log-event watch-key
                (fn [_ _ _ log-event]
                  (when *verbose*
                    (prn :log-event-received log-event))
-                 (when (or (nil? log-event)
-                           (nil? severity)
-                           (= severity (:severity log-event)))
+                 (cond
+                   (nil? log-event)
+                   (source-stream nil)
+
+                   fakeError
+                   (source-stream (resolve/resolve-as log-event {:message "Expected error"}))
+
+                   (or (nil? severity)
+                       (= severity (:severity log-event)))
                    (source-stream log-event))))
     #(remove-watch *latest-log-event watch-key)))
 
@@ -70,16 +76,23 @@
                            (parser/prepare-with-query-variables vars))
         *cleanup-callback (promise)
         context {constants/parsed-query-key prepared-query}
-        source-stream (fn [value]
-                        (if (some? value)
-                          (resolve/on-deliver!
-                            (executor/execute-query (assoc context
-                                                      ::executor/resolved-value value))
-                            (fn [result]
-                              (reset! *latest-response result)))
+        ;; For compatibility reasons, the value may be a ResolvedValue.
+        source-stream (fn accept-value [value]
+                        (cond
+                          (nil? value)
                           (do
                             (@*cleanup-callback)
-                            (reset! *latest-response nil))))]
+                            (reset! *latest-response nil))
+
+                          (resolve/is-resolver-result? value)
+                          (resolve/on-deliver! value accept-value)
+
+                          :else
+                          (resolve/on-deliver!
+                            (executor/execute-query (assoc context
+                                                           ::executor/resolved-value value))
+                            (fn [result]
+                              (reset! *latest-response result)))))]
     (deliver *cleanup-callback (executor/invoke-streamer context source-stream))))
 
 (deftest basic-subscription
@@ -139,13 +152,31 @@
     (is (= "Subscriptions only allow exactly one selection for the operation."
            (.getMessage e)))))
 
+(deftest errors-are-returned
+  (execute "subscription { logs(fakeError: true) { severity message } }" {})
+
+  (log-event {:severity "critical" :message "first"})
+
+  (is (= {:data {:logs {:message "first"
+                               :severity "critical"}}
+          :errors [{:message "Expected error"
+                    :locations [{:line 1, :column 16}]
+                    :path [:logs]
+                    :extensions {:arguments {:fakeError true}}}]}
+         (latest-response)))
+
+  (log-event nil)
+
+  (is (nil? (latest-response))))
 
 (deftest introspection
   (is (= {:data
           {:__schema
            {:subscriptionType
             {:description nil
-             :fields [{:args [{:name "severity"
+             :fields [{:args [{:name "fakeError"
+                               :type {:name "Boolean"}}
+                              {:name "severity"
                                :type {:name "String"}}]
                        :name "logs"
                        :type {:name "LogEvent"}}]}

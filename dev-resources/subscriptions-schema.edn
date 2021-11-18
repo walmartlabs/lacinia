@@ -7,5 +7,7 @@
  :subscriptions
  {:logs
   {:type :LogEvent
-   :args {:severity {:type String}}
+   :args {:severity {:type String}
+          :fakeError {:type Boolean
+                      :default false}}
    :stream :stream-logs}}}

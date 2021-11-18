@@ -78,4 +78,15 @@ are converted to responses in the response stream.
 Likewise, when the subscription is closed (by either the client or by the streamer itself),
 the callback will be invoked asynchronously.
 
+Notes
+-----
+
+The value passed to the source stream callback is normally a plain, non-nil value.
+
+It may be a wrapped value (e.g., via :api:`resolve/with-error`).
+This will be handled inside :api:`execute/execute-query` (which is invoked with the value passed to the callback).
+
+For historical reasons, it may also be a ResolverResult; it is the implementation's job to obtain
+the resolved value from this result before calling ``execute-query``; this is handled by lacinia-pedestal, for example.
+
 
