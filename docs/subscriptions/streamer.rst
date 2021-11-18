@@ -81,7 +81,7 @@ the callback will be invoked asynchronously.
 Notes
 -----
 
-The value based to the source stream callback is normally a plain, non-nil value.
+The value passed to the source stream callback is normally a plain, non-nil value.
 
 It may be a wrapped value (e.g., via :api:`resolve/with-error`).
 This will be handled inside :api:`execute/execute-query` (which is invoked with the value passed to the callback).
