@@ -45,11 +45,9 @@
   :coverage {:extra-deps {cloverage/cloverage {:mvn/version "1.2.1"}}
              :main-opts ["-m" "cloverage.coverage" "-p" "src" "-s" "test" "--codecov"]}
 
-  ;; clj -Xdev:codox
-  :codox
-  {:extra-deps {codox/codox {:mvn/version "0.10.7"}}
-   :exec-fn codox.main/generate-docs
-   :exec-args {:metadata {:doc/format :markdown}
-               :name "com.walmartlabs/lacinia"
-               :version "1.1-alpha-6"
-               :description "Clojure-native implementation of GraphQL"}}}}
+  ;; clj -T:build <command>
+
+  :build {:deps {io.github.clojure/tools.build {:git/tag "v0.6.8" :git/sha "d79ae84"}
+                 slipset/deps-deploy {:mvn/version "0.2.0"}
+                 codox/codox {:mvn/version "0.10.7"}}
+          :ns-default build}}}
