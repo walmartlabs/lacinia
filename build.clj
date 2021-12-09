@@ -65,7 +65,7 @@
         expression `(do
                       ((requiring-resolve 'codox.main/generate-docs)
                        {:metadata {:doc/format :markdown}
-                        :name "com.walmartlabs/lacinia"
+                        :name ~(str lib)
                         :version ~version
                         :description "Clojure-native implementation of GraphQL"})
                       nil)
