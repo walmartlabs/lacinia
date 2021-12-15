@@ -224,7 +224,7 @@
       (catch Throwable _
         nil))))
 
-(defn ^:private parse-boolean
+(defn ^:private parse-boolean-string
   [v]
   (when
    (instance? Boolean v)
@@ -258,8 +258,8 @@
            :serialize seralize-float}
    :Int {:parse parse-int
          :serialize serialize-int}
-   :Boolean {:parse parse-boolean
-             :serialize parse-boolean}
+   :Boolean {:parse parse-boolean-string
+             :serialize parse-boolean-string}
    :ID {:parse parse-id
         :serialize serialize-id}})
 
