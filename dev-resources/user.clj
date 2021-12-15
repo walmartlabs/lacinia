@@ -13,15 +13,24 @@
 
 (alter-var-root #'s/*explain-out* (constantly expound/printer))
 
+
+(defn trace-demo
+  []
+  (->> (range 10)
+       (trace/trace>> :values %)
+       (filter even?)
+       (take 2)))
+
 (comment
   (do
     (set! *warn-on-reflection* true)
-    (trace/set-compile-trace! true)
-    (trace/set-enable-trace! true)
-    (add-tap clojure.pprint/pprint)
+    (trace/setup-default)
     (trace/trace :msg "Tracing is enabled"))
 
+  (trace-demo)
+
   (trace/set-enable-trace! false)
+  (trace/set-compile-trace! false)
 
   )
 
