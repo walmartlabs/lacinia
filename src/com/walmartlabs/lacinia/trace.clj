@@ -15,11 +15,16 @@
 (ns com.walmartlabs.lacinia.trace
   "Light-weight, asynchronous logging built around tap>.
 
-  Follows the same pattern as asserts: tracing may be compiled or not; if compiled,
-  it may be enabled, or not.  Finally, you must add a tap (typically,
-  clojure.pprint/pprint) to receive the maps that trace may produce."
+  Follows the same pattern as clojure.core/assert: When tracing is not compiled,
+  the tracing macros should create no runtime overhead.
+
+  When tracing is compiled, a check occurs to see if tracing is enabled; only then
+  do the most expensive operations (e.g., identifying the function containing the
+  trace call) occur, as well as the call to clojure.core/tap>."
+  {:no-doc true}
   (:require [io.aviso.exception :refer [demangle]]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [clojure.pprint :refer [pprint]]))
 
 (def ^:dynamic *compile-trace*
   "If false (the default), calls to trace evaluate to nil."
@@ -40,20 +45,36 @@
 
 (defn ^:private extract-fn-name
   [class-name]
-  (let [[_ & raw-function-ids] (string/split class-name #"\$")]
-    (->> raw-function-ids
-      (map #(string/replace % #"__\d+" ""))
-      (map demangle)
-      (string/join "/"))))
+  (let [[ns-id & raw-function-ids] (string/split class-name #"\$")
+        fn-name (->> raw-function-ids
+                     (map #(string/replace % #"__\d+" ""))
+                     (map demangle)
+                     (string/join "/"))]
+    (symbol (demangle ns-id) fn-name)))
+
+(defn ^:private in-trace-ns?
+  [^StackTraceElement frame]
+  (string/starts-with? (.getClassName frame) "com.walmartlabs.lacinia.trace$"))
 
 (defn ^:no-doc extract-in
-  [trace-ns]
-  (let [ns-string (-> trace-ns ns-name name)
-        stack-frame (-> (Thread/currentThread)
-                        .getStackTrace
-                        (nth 3))
-        fn-name (extract-fn-name (.getClassName ^StackTraceElement stack-frame))]
-    (symbol ns-string fn-name)))
+  []
+  (let [stack-frame (->> (Thread/currentThread)
+                         .getStackTrace
+                         (drop 1) ; Thread/getStackTrace
+                         (drop-while in-trace-ns?)
+                         first)]
+    (extract-fn-name (.getClassName ^StackTraceElement stack-frame))))
+
+(defmacro ^:no-doc emit-trace
+  [trace-line & kvs]
+  ;; Maps are expected to be small; array-map ensures that the keys are in insertion order.
+  `(when *enable-trace*
+     (tap> (array-map
+             :in (extract-in)
+             ~@(when trace-line [:line trace-line])
+             :thread (.getName (Thread/currentThread))
+             ~@kvs))
+     nil))
 
 (defmacro trace
   "Calls to trace generate a map that is passed to `tap>`.
@@ -70,16 +91,48 @@
   Any invocation of trace evaluates to nil."
   [& kvs]
   (assert (even? (count kvs))
-    "pass key/value pairs")
+          "pass key/value pairs")
   (when *compile-trace*
-    (let [{:keys [line]} (meta &form)
-          trace-ns *ns*]
-      `(when *enable-trace*
-         ;; Maps are expected to be small; array-map ensures that they keys are in insertion order.
-         (tap> (array-map
-                 :in (extract-in ~trace-ns)
-                 ~@(when line [:line line])
-                 :thread (.getName (Thread/currentThread))
-                 ~@kvs))
-         nil))))
+    (let [{:keys [line]} (meta &form)]
+      `(emit-trace ~line ~@kvs))))
 
+(defmacro trace>
+  "A version of trace that works inside -> thread expressions.  Within the
+  trace body, `%` is bound to the threaded value. When compilation is disabled,
+  `(trace> <form>)` is replaced by just `<form>`."
+  [value & kvs]
+  (assert (even? (count kvs))
+          "pass key/value pairs")
+  (if-not *compile-trace*
+    value
+    (let [{:keys [line]} (meta &form)]
+      `(let [~'% ~value]
+         (emit-trace ~line ~@kvs)
+         ~'%))))
+
+(defmacro trace>>
+  "A version of trace that works inside ->> thread expressions.  Within the
+  trace body, `%` is bound to the threaded value.  When compilation is disabled,
+  `(trace>> <form>)` expands to just `<form>`."
+  ;; This is tricky because the value comes at the end due to ->> so we have to
+  ;; work harder (fortunately, at compile time) to separate the value expression
+  ;; from the keys and values.
+  [& kvs-then-value]
+  (let [value (last kvs-then-value)
+        kvs (butlast kvs-then-value)]
+    (assert (even? (count kvs))
+            "pass key/value pairs")
+    (if-not *compile-trace*
+      value
+      (let [{:keys [line]} (meta &form)]
+        `(let [~'% ~value]
+           (emit-trace ~line ~@kvs)
+           ~'%)))))
+
+
+(defn setup-default
+  "Enables tracing output with a default tap of `pprint`."
+  []
+  (set-compile-trace! true)
+  (set-enable-trace! true)
+  (add-tap pprint))

@@ -16,12 +16,11 @@
 (comment
   (do
     (set! *warn-on-reflection* true)
-    (trace/set-compile-trace! true)
-    (trace/set-enable-trace! true)
-    (add-tap clojure.pprint/pprint)
+    (trace/setup-default)
     (trace/trace :msg "Tracing is enabled"))
 
   (trace/set-enable-trace! false)
+  (trace/set-compile-trace! false)
 
   )
 
