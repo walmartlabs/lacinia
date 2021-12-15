@@ -875,12 +875,12 @@
 
       :else
       (recur (conj visited element-def)
-             (->> field-defs
-                  (map :root-type-name)
-                  distinct
-                  (map #(get schema %))
-                  (filter #(contains? #{:object :interface} (:category %)))
-                  (into queue))))))
+             (into queue
+                   (comp (map :root-type-name)
+                         (distinct)
+                         (map #(get schema %))
+                         (filter #(contains? #{:object :interface} (:category %))))
+                   field-defs)))))
 
 (defn ^:private build-null-collapser
   "Builds a null-collapser for a field definition; the null collapser transforms a resolved value
