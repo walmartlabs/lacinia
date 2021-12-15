@@ -492,7 +492,8 @@
 
   (type-name [_] type-name)
 
-  (type-category [_] :object)
+  ;; May be used for :object or :input-object
+  (type-category [_] category)
 
   selection/Fields
 
@@ -1501,7 +1502,9 @@
                           (q field-type-name))
                  {:field-name qualified-field-name
                   :schema-types (type-map schema)}))))
-    input-object'))
+    (-> input-object'
+        map->Type
+        compile-directives)))
 
 (defmethod compile-type :interface
   [interface schema]
