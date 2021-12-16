@@ -73,6 +73,26 @@
                     {:t ["lego"]}
                     nil)))
 
+    ;; Rejects a literal null in the query parameter
+
+    (is (= "Variable `t' contains null members but supplies the value for a list that can't have any null members."
+           (->> (execute schema
+                        "query($t: [String]) { search(filter: {terms: $t, max_count: 5}) }"
+                        {:t [nil "lego"]}
+                        nil)
+                :errors
+                first
+                :message)))
+
+    (is (= "Exception applying arguments to field `search': For argument `filter', an explicit null value was provided for a non-nullable argument."
+           (->> (execute schema
+                         "{ search(filter: {terms: [null, \"lego\"], max_count: 5}) }"
+                         nil
+                         nil)
+                :errors
+                first
+                :message)))
+
     ;; Supports default values for inputs
 
     (is (= {:data {:search ["{:filter {:terms \"whatsit\", :max_count 10}}"]}}
