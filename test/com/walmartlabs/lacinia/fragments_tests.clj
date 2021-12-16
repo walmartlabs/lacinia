@@ -251,3 +251,13 @@
             name
          }
          "))))
+
+(deftest fragment-at-root
+  (is (= {:data {:characters [{:name "R2-D2"}
+                              {:name "Luke"}]}}
+         (q "
+          query { ...All }
+
+          fragment All on Query {
+            characters { name }
+          }"))))

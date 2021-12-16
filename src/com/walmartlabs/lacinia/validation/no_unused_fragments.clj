@@ -16,26 +16,37 @@
   {:no-doc true}
   (:require
     [clojure.set :as set]
-    [com.walmartlabs.lacinia.internal-utils :refer [q]]))
-
-(defn ^:private fragment-names-used
-  "Returns a sequence of all fragment names
-  used in a selection, if present, or empty
-  sequence otherwise."
-  [sel]
-  (let [sub-selections (:selections sel)]
-    (concat
-     (keep :fragment-name sub-selections)
-     (mapcat fragment-names-used sub-selections))))
+    [com.walmartlabs.lacinia.trace :refer [trace]]
+    [com.walmartlabs.lacinia.internal-utils  :refer [q cond-let]])
+  (:import (clojure.lang PersistentQueue)))
 
 (defn ^:private all-fragments-used
-  "Returns a set of unique fragment names used
-  throughout the entire query: selections and
-  nested fragments."
-  [fragments selections]
-  (-> #{}
-      (into (mapcat fragment-names-used selections))
-      (into (mapcat fragment-names-used (vals fragments)))))
+  [fragments root-selections]
+  (loop [result (transient #{})
+         queue (-> (PersistentQueue/EMPTY)
+                   (into root-selections)
+                   (into (vals fragments)))]
+    (cond-let
+
+      :let [selection (peek queue)]
+
+      (nil? selection)
+      (persistent! result)
+
+      :let [{:keys [fragment-name]} selection
+            queue' (pop queue)]
+
+      ;; Named fragments do not, themselves, have sub-selections
+      fragment-name
+      (recur (conj! result fragment-name) queue')
+
+      :let [sub-selections (:selections selection)]
+
+      (seq sub-selections)
+      (recur result (into queue' sub-selections))
+
+      :else
+      (recur result queue'))))
 
 (defn no-unused-fragments
   "Validates if all fragment definitions are spread
