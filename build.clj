@@ -19,7 +19,7 @@
             [deps-deploy.deps-deploy :as d]))
 
 (def lib 'com.walmartlabs/lacinia)
-(def version "1.1-alpha-7")
+(def version "1.1-beta-1")
 (def class-dir "target/classes")
 (def jar-file (format "target/%s-%s.jar" (name lib) version))
 (def copy-srcs ["src" "resources"])
