@@ -15,13 +15,10 @@ Dependency Changes
 
 .. literalinclude:: /_examples/tutorial/project-5.clj
    :caption: project.clj
-   :emphasize-lines: 6,8-
+   :emphasize-lines: 8,10-12
 
 We're bringing in the latest versions of lacinia and lacinia-pedestal available at the time
-this page was written (something we'll
-likely do almost every chapter).
-Since these are now based on Clojure 1.9, it's a fine time to upgrade
-to that.
+this page was updated (something we'll likely do almost every chapter).
 
 We're also adding several new dependencies for accessing a PostgreSQL database:
 
