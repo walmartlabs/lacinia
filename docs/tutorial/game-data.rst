@@ -44,7 +44,7 @@ to provide only what is most essential, or truly useful and universal.
 
 Lacinia explicitly `does not` provide a single function to read, parse, attach resolvers, and compile an EDN file in a single
 line.
-That may seem odd -- it feels like very application will just cut-and-paste something virtually identical to ``load-schema``.
+That may seem odd -- it feels like every application will just cut-and-paste something virtually identical to ``load-schema``.
 
 In fact, not all schemas will come directly from a single EDN file.
 Because the schema is Clojure `data` it can be constructed, modified, merged, and otherwise transformed
