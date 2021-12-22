@@ -28,7 +28,7 @@ Our first step is to fill in a few details, including the dependency on Lacinia:
 
 .. literalinclude:: /_examples/tutorial/project-2.clj
    :caption: project.clj
-   :emphasize-lines: 2,3,7
+   :emphasize-lines: 2,3,7-9
 
 Lacinia has just a few dependencies of its own:
 
