@@ -20,7 +20,7 @@ a different port.
 
 .. literalinclude:: /_examples/tutorial/server-2.clj
    :caption: src/clojure_game_geek/server.clj
-   :emphasize-lines: 6,12-13,23
+   :emphasize-lines: 6,12-14,24
 
 We've added a bit of configuration for the ``:server`` component, the port to bind to.
 This will make it possible for our test code to use a different port.

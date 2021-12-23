@@ -142,20 +142,20 @@ directly in the REPL: no web browser necessary!
 
 With all that in place, we can launch a REPL and try it out::
 
-  14:26:41 ~/workspaces/github/clojure-game-geek > lein repl
-  nREPL server started on port 56053 on host 127.0.0.1 - nrepl://127.0.0.1:56053
-  REPL-y 0.3.7, nREPL 0.2.12
-  Clojure 1.8.0
-  Java HotSpot(TM) 64-Bit Server VM 1.8.0_74-b02
+   14:26:41 ~/workspaces/github/clojure-game-geek > lein repl
+   nREPL server started on port 46737 on host 127.0.0.1 - nrepl://127.0.0.1:46737
+   REPL-y 0.5.1, nREPL 0.8.3
+   Clojure 1.10.3
+   OpenJDK 64-Bit Server VM 17.0.1+1
       Docs: (doc function-name-here)
             (find-doc "part-of-name-here")
-    Source: (source function-name-here)
+   Source: (source function-name-here)
    Javadoc: (javadoc java-object-or-class-here)
       Exit: Control+D or (exit) or (quit)
    Results: Stored in vars *1, *2, *3, an exception in *e
-  
-  user=> (q "{ game_by_id(id: \"foo\") { id name summary }}")
-  {:data #ordered/map ([:game_by_id nil])}
+
+   user=> (q "{ game_by_id(id: \"foo\") { id name summary }}")
+   {:data #ordered/map ([:game_by_id nil])}
 
 The value returned makes use of an ordered map.
 Again, that's part of the GraphQL

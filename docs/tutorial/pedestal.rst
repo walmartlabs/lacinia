@@ -13,7 +13,7 @@ Add Dependencies
 
 .. literalinclude:: /_examples/tutorial/project-3.clj
    :caption: project.clj
-   :emphasize-lines: 7-8
+   :emphasize-lines: 7
 
 We've added two libraries: ``lacinia-pedestal`` and ``io.aviso/logging``.
 We no longer need to list ``lacinia``, as that is a transitive dependency of ``lacinia-pedestal``. [#deps]_

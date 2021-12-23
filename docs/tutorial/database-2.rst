@@ -15,7 +15,7 @@ if you don't know what queries are even executing.
 
 .. literalinclude:: /_examples/tutorial/db-4.clj
    :caption: src/clojure_game_geek/db.clj
-   :emphasize-lines: 4,35-40
+   :emphasize-lines: 4,6,35-40
    :lines: 1-40
 
 We've introduced our own version of ``clojure.java.jdbc/query`` with

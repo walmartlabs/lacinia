@@ -72,6 +72,11 @@ Testing it Out
 --------------
 
 Back at the REPL, we can test out the new functionality.
+We need the server started after the component refactoring::
+
+   (start)
+   => :started
+
 First, select the rating summary data for a game::
 
    (q "{ game_by_id(id: \"1237\") { name rating_summary { count average }}}")
