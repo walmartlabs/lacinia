@@ -25,12 +25,11 @@
 (def copy-srcs ["src" "resources"])
 
 (defn clean
-  [params]
-  (b/delete {:path "target"})
-  params)
+  [_]
+  (b/delete {:path "target"}))
 
 (defn jar
-  [params]
+  [_]
   (let [basis (b/create-basis)]
     (b/write-pom {:class-dir class-dir
                   :lib lib
@@ -42,22 +41,22 @@
                  :target-dir class-dir})
     (b/jar {:class-dir class-dir
             :jar-file jar-file}))
-  (println "Created:" jar-file)
-  params)
+  (println "Created:" jar-file))
 
 (defn deploy
-  [params]
-  (let [params' (-> params clean jar)]
-    (d/deploy {:installer :remote
-               :artifact jar-file
-               :pom-file (b/pom-path {:lib lib :class-dir class-dir})
-               :sign-releases? true
-               :sign-key-id (or (System/getenv "CLOJARS_GPG_ID")
-                                (throw (RuntimeException. "CLOJARS_GPG_ID environment variable not set")))})
-    params'))
+  []
+  (clean nil)
+  (jar nil)
+  (d/deploy {:installer :remote
+             :artifact jar-file
+             :pom-file (b/pom-path {:lib lib
+                                    :class-dir class-dir})
+             :sign-releases? true
+             :sign-key-id (or (System/getenv "CLOJARS_GPG_ID")
+                              (throw (RuntimeException. "CLOJARS_GPG_ID environment variable not set")))}))
 
 (defn codox
-  [params]
+  [_]
   (let [basis (b/create-basis {:extra '{:deps {codox/codox {:mvn/version "0.10.8"}}}
                                ;; This is needed because some of the namespaces
                                ;; rely on optional dependencies provided by :dev
@@ -73,5 +72,4 @@
                          {:basis basis
                           :main "clojure.main"
                           :main-args ["--eval" (pr-str expression)]})]
-    (b/process process-params))
-  params)
+    (b/process process-params)))
