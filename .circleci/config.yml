@@ -1,29 +1,13 @@
-version: 2
+version: 2.1
+
+orbs:
+  clojure: lambdaisland/clojure@0.0.7
 
 jobs:
-  test:
-    docker:
-      - image: clojure:lein-2.7.1
-    working_directory: /root/lacinia
+  build:
+    executor: clojure/openjdk8
     steps:
       - checkout
-      - restore_cache:
-          keys:
-            - &cache_key v1-dependency-jars-{{ checksum "project.clj" }}
-            - v1-dependency-jars
-      - run:
-          command: lein deps
-      - save_cache:
-          key: *cache_key
-          paths:
-            - /root/.m2
-      - run:
-          command: lein test2junit
-      - store_test_results:
-          path: /root/lacinia/target/test2junit
-
-workflows:
-  version: 2
-  test:
-    jobs:
-      - test
+      - clojure/with_cache:
+          steps:
+            - run: clojure -Xdev:test
