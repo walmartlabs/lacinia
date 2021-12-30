@@ -9,7 +9,8 @@
   (start [this]
     (assoc this :server (-> schema-provider
                             :schema
-                            (lp/service-map {:graphiql true})
+                            (lp/service-map {:graphiql true
+                                             :host "0.0.0.0"})
                             http/create-server
                             http/start)))
 
@@ -21,5 +22,4 @@
   []
   {:server (component/using (map->Server {})
                             [:schema-provider])})
-
 
