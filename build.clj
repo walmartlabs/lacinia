@@ -64,6 +64,7 @@
         expression `(do
                       ((requiring-resolve 'codox.main/generate-docs)
                        {:metadata {:doc/format :markdown}
+                        :source-uri "https://github.com/walmartlabs/lacinia/blob/master/{filepath}#L{line}"
                         :name ~(str lib)
                         :version ~version
                         :description "Clojure-native implementation of GraphQL"})
