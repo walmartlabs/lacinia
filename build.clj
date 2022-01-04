@@ -25,11 +25,11 @@
 (def copy-srcs ["src" "resources"])
 
 (defn clean
-  [_]
+  [_params]
   (b/delete {:path "target"}))
 
 (defn jar
-  [_]
+  [_params]
   (let [basis (b/create-basis)]
     (b/write-pom {:class-dir class-dir
                   :lib lib
@@ -44,7 +44,7 @@
   (println "Created:" jar-file))
 
 (defn deploy
-  []
+  [_params]
   (clean nil)
   (jar nil)
   (d/deploy {:installer :remote
@@ -56,7 +56,7 @@
                               (throw (RuntimeException. "CLOJARS_GPG_ID environment variable not set")))}))
 
 (defn codox
-  [_]
+  [_params]
   (let [basis (b/create-basis {:extra '{:deps {codox/codox {:mvn/version "0.10.8"}}}
                                ;; This is needed because some of the namespaces
                                ;; rely on optional dependencies provided by :dev
