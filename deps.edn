@@ -11,6 +11,7 @@
                 joda-time/joda-time {:mvn/version "2.10.13"}
                 com.walmartlabs/test-reporting {:mvn/version "1.1"}
                 io.aviso/logging {:mvn/version "1.0"}
+                io.aviso/pretty {:mvn/version "1.1"}
                 io.pedestal/pedestal.log {:mvn/version "0.5.9"}
                 org.clojure/test.check {:mvn/version "1.1.1"}
                 org.clojure/data.csv {:mvn/version "1.0.0"}
