@@ -34,7 +34,7 @@ To provide a description for individual enum values, a different form must be us
 
 The ``:description`` key is optional.
 
-You may include the ``:deprecation`` key used to mark a single value as :doc:`deprecated <deprecation>`.
+You may include the ``:deprecated`` key used to mark a single value as :doc:`deprecated <deprecation>`.
 
 You may mix-and-match the two forms.
 
