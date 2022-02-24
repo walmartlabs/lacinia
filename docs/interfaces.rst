@@ -22,7 +22,7 @@ An interface definition may include a ``:description`` key; the value is a strin
 
 The description on an interface field, or on an argument of an interface field, will be inherited by
 the object field (or argument) unless overriden.
-This helps to elimiate duplication of documentation between an interface and the object implementing
+This helps to eliminate duplication of documentation between an interface and the object implementing
 the interface.
 
 The :doc:`object definition <objects>` must include all the fields of all extended interfaces.
