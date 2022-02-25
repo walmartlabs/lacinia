@@ -1,4 +1,4 @@
-## 1.1 -- 14 Jan 2021
+## 1.1 -- 14 Jan 2022
 
 This release features some significant efficiency improvements inside Lacinia.
 
