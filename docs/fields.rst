@@ -1,51 +1,45 @@
-Fields
+필드
 ======
 
-Fields are the basic building block of GraphQL data.
+필드는 GraphQL 데이터의 기본적인 구성 요소입니다.
 
-:doc:`objects` and :doc:`interfaces <interfaces>` are composed of fields.
-Queries and mutations are a special kind of field.
+:doc:`객체` 와 :doc:`인터페이스 <interfaces>` 는 필드로 이루어져 있습니다.
+쿼리와 뮤테이션은 특별한 종류의 필드입니다.
 
-**Fields are functions**. Or, more specifically, fields are a kind of operation
-that begins with some data, adds in other details (such as field arguments provided
-in the query), and produces new data that can be incorporated into the overall result.
+**필드는 함수입니다**. 더 정확하게는, 필드는 어떤 데이터로부터 시작하여 (쿼리에서 주어진 필드 인자와 같은)
+다른 세부 사항을 더하여, 전체 결과에 포함될 수 있는 새로운 데이터를 내어놓는 연산의 한 종류입니다.
 
-Field Definition
+필드 정의
 ----------------
 
-A field definition occurs in the schema to describe the type and other details of a
-field.
-A field definition is a map with specific keys.
+필드 정의는 스키마에서 일어나며, 필드의 타입과 다른 세부 사항을 설명합니다.
+필드 정의는 특정 키들을 가지는 맵입니다.
 
-
-Field Type
+필드 타입
 ----------
 
-The main key in a field definition is ``:type``, which is required.
-This is the type of value that may be returned by the field resolver, and
-is specified in terms of the type DSL.
+필드 정의의 메인 키는 ``:type``이며, 필수적으로 있어야 합니다.
+이는 필드 리졸버에 의해 반환될 수 있는 값의 타입이며, 타입 DSL로서 작성됩니다.
 
 
-Types DSL
+타입 DSL
 ---------
 
-Types are the essence of fields; they can represent scalar values (simple values,
-such as string or numbers), composite objects with their own fields,
-or lists of either scalars or objects.
+타입은 필드의 정수입니다. 타입은 스칼라 값(문자열이나 수와 같은 간단한 값)을 나타낼 수도, 
+여러 필드로 구성된 객체를 나타낼 수도, 아니면 스칼라나 객체의 리스트를 나타낼 수도 있습니다.
 
 
-In the schema, a type can be:
+스키마 속에서, 타입은 다음 중 하나가 될 수 있습니다.
+- 객체, 인터페이스, 열거형, 공용형에 대응되는 키워드
+- 스칼라 타입 (내장 혹은 스키마에서 정의한)
+- 위의 것들의 non-nil 버전 ``(non-null X)``
+- 위의 것들의 리스트 ``(list X)``
 
-- A keyword corresponding to an object, interface, enum, or union
-- A scalar type (built in, or schema defined)
-- A non-nillable version of any of the above: ``(non-null X)``
-- A list of any of the above: ``(list X)``
+내장 스칼라 타입:
 
-The built-in scalar types:
+.. sidebar:: GraphQL 스펙
 
-.. sidebar:: GraphQL Spec
-
-   Read about :spec:`scalar types <Built-in-Scalars>`.
+   :spec:`scalar types <Built-in-Scalars>` 을 읽어 보세요.
 
 * String
 * Float
@@ -53,75 +47,62 @@ The built-in scalar types:
 * Boolean
 * ID
 
-.. sidebar:: Conventions
+.. sidebar:: 관습
 
-  By convention, the built-in scalar types are identified as symbols, such as ``{:type String}``.
-  Other types (objects, interfaces, enums, and unions) are identified as keywords,
-  ``{:type (list :character)}``.
-  It actually makes no difference; internally everything is converted to keywords in the
-  compiled schema.
+  관습적으로 내장 스칼라 타입은 심벌로서 식별됩니다. (예: ``{:type String}``)
+  그 외의 타입(객체, 인터페이스, 열거형, 공용형)은 키워드로서 식별됩니다. (예: ``{:type (list :character)}``)
+  사실은 이 둘에는 차이가 없습니다. 내부적으로 모든 것은 컴파일된 스키마 속의 키워드로 변환됩니다.
 
-Field Resolver
+필드 리졸버
 --------------
 
-The ``:resolve`` key identifies the field resolver function, used to provide the actual data.
+``:resolve`` 키는 필드 리졸버 함수를 식별합니다. 필드 리졸버 함수는 실제 데이터를 내어 주는 데에 사용합니다.
 
-This data, the *resolved value*, is never directly returned to the client; this is because
-in GraphQL, the client query identifies which fields from the resolved value are selected
-(and often, renamed) to form the result value.
+이 데이터, 즉 *리졸브된 값*은 절대 클라이언트에게 직접적으로 반환되지 않습니다. 이는 GraphQL에서, 결과값을 만들기 위해
+리졸브된 값에서 어떤 필드를 선택할지 (그리고 종종 이름을 바꾸라고) 클라이언트 쿼리가 지정하기 때문입니다. 
 
-``:resolve`` is optional; when not provided it is assumed that the containing field's
-resolved value is a map containing a key exactly matching the field's name.
+``:resolve``는 선택적입니다. 넣어 주지 않으면, 자신을 담는 필드의 리졸브된 값이 자신의 이름과 정확히 매치되는 키를 가지는 맵이라고 가정됩니다.
+(자신을 담는 필드의 리졸브된 값 안에 자신의 이름과 같은 키가 있을 것이라고 가정합니다.)
 
-A field resolver function may be provided on a field inside an
-:doc:`object definition <objects>`, or
-inside a :doc:`query definition <queries>` or
-:doc:`mutation definition <mutations>`.  No field resolver function should be provided
-in the fields of an :doc:`interface definition <interfaces>`: if provided in an interface
-definition, the resolve will be silently ignored.
+필드 리졸버 함수는 :doc:`객체 정의<objects>`의 필드, :doc:`쿼리 정의<queries>`,
+ :doc:`뮤테이션 정의<mutations>`에 지정할 수 있습니다.
+:doc:`인터페이스 정의<interfaces>`의 필드에는 필드 리졸버 함수를 지정하면 안 됩니다.
+만약 지정한다면 :resolve 는 조용히 무시될 것입니다.
 
 .. sidebar:: Field Resolvers
 
-   Please refer to the :doc:`full description of field resolvers <resolve/index>`.
+   :doc:`필드 리졸버 완전 설명<resolve/index>`을 참고하세요.
 
-The field's resolver is passed the resolved value of the **containing** field, object, query, or mutation.
+필드 리졸버는 자신이 포함된 필드, 객체, 쿼리, 뮤테이션의 리졸브된 값을 전달받습니다.
 
-The return value may be a scalar type, or a structured type, as defined by the
-field's ``:type``.
+반환값의 타입은 스칼라 타입일수도, 구조화된 타입일수도 있으며, 필드의 ``:type``에 정의됩니다.
 
-For composite (non-scalar) types, the client query **must** include a nested set of fields
-to be returned in the result map.
-The query is a tree, and the leaves of that tree will always be simple scalar values.
+복합 타입(스칼라가 아닌)의 경우, 클라이언트 쿼리는 결과 맵에 반환될 필드의 중첩된 집합을 무조건 포함해야 합니다.
+쿼리를 트리라고 보면, 이 트리의 모든 잎은 언제나 단순 스칼라 값이 될 것입니다.
 
-Arguments
+인자
 ---------
 
-A field may define arguments using the ``:args`` key; this is a map from argument name to
-an argument definition.
+필드는 ``:args`` 키로 인자를 정의할 수 있습니다. 이는 인자 이름과 인자 정의의 맵입니다.
 
-A field uses arguments to modify what data, and in what order, is to be returned.
-For example, arguments could set boundaries on a query based on date or price, or determine
-sort order.
+필드는 어떤 데이터가 어떤 순서로 반환될지를 조작하기 위해 인자를 사용합니다.
+예를 들어, 인자는 쿼리에 날짜나 가격 기준으로 범위를 설정하거나, 정렬 순서를 설정할 수 있습니다.
 
-Argument definitions define a value for ``:type``, and may optionally provide a ``:description``.
-Arguments do **not** have resolvers, as they represent explicit data from the client
-passed to the field.
+인자 정의에는 ``:type`` 값을 정의해야 하며, 선택적으로 ``:description``을 지정할 수 있습니다.
+인자는 클라이언트로부터 필드에 전달된 명백한 값을 나타내므로, 리졸버를 가지지 않습니다.
 
-Arguments may also have a ``:default-value``.
-The default value is supplied to the field resolver when the request does not itself supply
-a value for the argument.
+인자는 또한 ``:default-value``를 가질 수 있습니다.
+기본값은 요청에 해당 인자를 위한 값이 들어오지 않았을 때 필드 리졸버에 대신 들어갑니다.
 
-An argument that is not specified in the query, and does not have a default value, will be omitted
-from the argument map passed to the :doc:`field resolver <resolve/index>`.
+쿼리에 명시되지 않은 인자가 기본값도 없다면, :doc:`필드 리졸버<resolve/index>`에 전달되는 인자 맵에서 생략될 것입니다.
 
 
-Description
+설명
 -----------
 
-A field may include a ``:description`` key; the value is a string exposed through :doc:`introspection`.
+필드에는 ``:description`` 키가 포함될 수 있습니다. 그 값은 문자열이고, :doc:`인트로스펙션`을 통해 노출됩니다.
 
-Deprecation
+Deprecation (구식화?)
 -----------
 
-A field may include a ``:deprecated`` key; this identifies that the field
-is :doc:`deprecated <deprecation>`.
+필드에는 ``:deprecated`` 키가 포함될 수 있습니다. 이는 이 필드가 :doc:`deprecated <deprecation>`되었다는 것을 나타냅니다.

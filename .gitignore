@@ -19,3 +19,7 @@ build.xml
 .project
 .classpath
 
+.clj-kondo/
+.cpcache/
+.lsp/
+.vscode/
