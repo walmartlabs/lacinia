@@ -67,7 +67,7 @@
 필드 리졸버 함수는 :doc:`객체 정의<objects>`의 필드, :doc:`쿼리 정의<queries>`,
  :doc:`뮤테이션 정의<mutations>`에 지정할 수 있습니다.
 :doc:`인터페이스 정의<interfaces>`의 필드에는 필드 리졸버 함수를 지정하면 안 됩니다.
-만약 지정한다면 :resolve 는 조용히 무시될 것입니다.
+만약 지정한다면 :resolve는 조용히 무시될 것입니다.
 
 .. sidebar:: Field Resolvers
 
