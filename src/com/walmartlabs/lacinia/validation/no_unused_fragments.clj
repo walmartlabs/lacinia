@@ -16,7 +16,6 @@
   {:no-doc true}
   (:require
     [clojure.set :as set]
-    [com.walmartlabs.lacinia.trace :refer [trace]]
     [com.walmartlabs.lacinia.internal-utils  :refer [q cond-let]])
   (:import (clojure.lang PersistentQueue)))
 

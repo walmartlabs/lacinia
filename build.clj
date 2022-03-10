@@ -16,13 +16,13 @@
 
 (ns build
   (:require [clojure.tools.build.api :as b]
-            [deps-deploy.deps-deploy :as d]))
+            [net.lewisship.build :refer [requiring-invoke]]))
 
 (def lib 'com.walmartlabs/lacinia)
 (def version "1.1")
-(def class-dir "target/classes")
-(def jar-file (format "target/%s-%s.jar" (name lib) version))
-(def copy-srcs ["src" "resources"])
+
+(def jar-params {:project-name lib
+                 :version version})
 
 (defn clean
   [_params]
@@ -30,47 +30,17 @@
 
 (defn jar
   [_params]
-  (let [basis (b/create-basis)]
-    (b/write-pom {:class-dir class-dir
-                  :lib lib
-                  :version version
-                  :basis basis
-                  :src-dirs ["src"]
-                  :resource-dirs ["resources"]})
-    (b/copy-dir {:src-dirs copy-srcs
-                 :target-dir class-dir})
-    (b/jar {:class-dir class-dir
-            :jar-file jar-file}))
-  (println "Created:" jar-file))
+  (requiring-invoke net.lewisship.build.jar/create-jar jar-params))
 
 (defn deploy
   [_params]
   (clean nil)
   (jar nil)
-  (d/deploy {:installer :remote
-             :artifact jar-file
-             :pom-file (b/pom-path {:lib lib
-                                    :class-dir class-dir})
-             :sign-releases? true
-             :sign-key-id (or (System/getenv "CLOJARS_GPG_ID")
-                              (throw (RuntimeException. "CLOJARS_GPG_ID environment variable not set")))}))
+  (requiring-invoke net.lewisship.build.jar/deploy-jar jar-params))
 
 (defn codox
   [_params]
-  (let [basis (b/create-basis {:extra '{:deps {codox/codox {:mvn/version "0.10.8"}}}
-                               ;; This is needed because some of the namespaces
-                               ;; rely on optional dependencies provided by :dev
-                               :aliases [:dev]})
-        expression `(do
-                      ((requiring-resolve 'codox.main/generate-docs)
-                       {:metadata {:doc/format :markdown}
-                        :source-uri "https://github.com/walmartlabs/lacinia/blob/master/{filepath}#L{line}"
-                        :name ~(str lib)
-                        :version ~version
-                        :description "Clojure-native implementation of GraphQL"})
-                      nil)
-        process-params (b/java-command
-                         {:basis basis
-                          :main "clojure.main"
-                          :main-args ["--eval" (pr-str expression)]})]
-    (b/process process-params)))
+  (requiring-invoke net.lewisship.build.codox/generate
+   {:project-name lib
+    :version version
+    :aliases [:dev]}))

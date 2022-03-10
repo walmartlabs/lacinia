@@ -6,7 +6,7 @@
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia :as l]
     [clojure.spec.alpha :as s]
-    [com.walmartlabs.lacinia.trace :as trace]
+    [net.lewisship.trace :as trace]
     [expound.alpha :as expound]))
 
 (require 'com.walmartlabs.lacinia.expound)
