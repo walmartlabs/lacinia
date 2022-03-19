@@ -79,29 +79,23 @@ EDN 파일은 데이터일 뿐입니다. EDN 데이터에는 함수를 가리키
    `#ordered/map``이 사용된 것에서 알 수 있듯이, 반환되는 맵의 필드들은 질의서에 특정한 것과 `동일한 순서` [#order]_ 로 반환됩니다.
    문서를 간결하게 유지하기 위해 이 문서에서는 대부분 순서 유지 맵 대신 기본 맵으로 표기할 것입니다.
 
-The query string is parsed and matched against the queries defined in the schema.
+라시니아는 질의 문자열을 해석하여 스키마의 정의된 질의 가운데 실행할 것을 고릅니다.
 
-The two nils are variables to be used executing the query, and an application context.
+함수에 전달한 nil 두 개는 각각 질의를 실행할 때 사용할 변수와 애플리케이션의 문맥 정보입니다.
 
-In GraphQL, queries can pass arguments (such as ``id``) and queries identify
-exactly which fields
-of the matching objects are to be returned.
-This query can be stated as `just provide the name of the human with id '1001'`.
+그래프QL에서는 클라이언트가 질의에 인자들(``id`` 등)을 전달할 수 있습니다. 그러면 서버가 질의를 실행할 때 인자에 부합하는 객체를 특정하여 반환할 수 있습니다.
+이 질의는 `ID가 '1001'인 인간의 이름을 알려주세요`라고 해석할 수 있습니다.
 
-This is a successful query, it returns a result map [#result]_ with a ``:data`` key.
-A failed query would return a map with an ``:errors`` key.
-A query can even be partially successful, returning as much data as it can, but also errors.
+질의는 성공했고, 반환 결과 맵 [#result]_에 ``:data`` 키가 들어있습니다.
 
-Inside ``:data`` is a key corresponding to the query, ``:human``, whose value is the single
-matching human.  Other queries might return a list of matches.
-Since we requested just a slice of a full human object, just the human's name, the map has just a single
-``:name`` key.
+질의가 실패하면, 반환 결과 맵에 ``:errors`` 키가 들어갑니다.
 
-.. [#order] This shouldn't be strictly necessary (JSON and EDN don't normally care about key order, and
-   keys can appear in arbitrary order),
-   but having consistent ordering makes writing tests involving GraphQL queries easier: you can
-   typically check the textual, not parsed, version of the result map directly against an expected string value.
+질의가 일부분만 성공하는 경우도 있습니다. 이 경우 성공한 데이터들이 모두 반환되는 동시에 오류들도 함께 반환됩니다.
 
-.. [#result] In GraphQL's specification, this is referred to as the "response"; in practice,
-   this result data forms the body of a response map (when using Ring or Pedestal). Lacinia
-   uses the terms `result map` or `result data` to keep these ideas distinct.
+``:data`` 안에는 질의 내용에 대응하는 키 ``:human``과 그 값으로 인간 하나가 들어있습니다. 질의의 종류에 따라 리스트가 반환될 수도 있습니다.
+질의에서 인간 객체의 모든 내용 가운데 한 부분인 이름만을 요청했으므로, 인간을 표현한 맵에는 ``:name`` 단 하나의 키만이 들어있습니다.
+
+.. [#order] 일반적으로 JSON이나 EDN은 키의 순서를 고려하지 않으며 순서가 뒤섞일 수 있습니다. 따라서 순서를 유지하도록 하는 것이 필수는 아닙니다. 하지만 순서를 유지하면 그래프QL 질의를 다루는 테스트를 작성할 때 편리합니다. 특히 결과 맵을 맵 데이터로 해석하여 검사하지 않고 텍스트 자체로 검사하는 경우에 그렇습니다.
+
+.. [#result] 그래프QL 명세에서는 이와 같이 응답하는 것을 권장합니다. 링(Ring) 또는 페데스탈(Pedestal)을 사용하는 경우, 결과 맵의 본문에 결과 데이터가 들어갑니다. 라시니아는 이러한 개념을 구별하기 위해 `결과 맵(result map)`, `결과 데이터(result data)` 라는 용어를 사용합니다.
+
