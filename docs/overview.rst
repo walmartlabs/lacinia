@@ -1,35 +1,30 @@
-Overview
+둘러보기
 ========
 
-GraphQL consists of two main parts:
+그래프QL은 크게 두 부분으로 구성되어 있습니다.
 
-* A server-side *schema* that defines the available queries and types of data that may be returned.
+* 질의와 반환 데이터 유형을 정의하는 서버측의 *스키마*
 
-* A client query language that allows the client to specify what query to execute, and what data
-  to return.
+* 실행할 쿼리와 구하려는 데이터를 특정하기 위한 클라이언트 질의어
 
-The `GraphQL specification <https://facebook.github.io/graphql>`_ goes into detail about the
-format of the client query language, and the expected behavior of the server.
+클라이언트 질의어의 형식과 그에 대해 서버가 수행해야 하는 일을 자세히 확인하려면 `그래프QL 명세 <https://facebook.github.io/graphql>`_ 를 참고하세요.
 
-This library, Lacinia, is an implementation of the key component of the server,
-in idiomatic Clojure.
+이 라이브러리, '라시니아(Lacinia)'는 서버측 핵심 기능을 클로저 문화에 맞춰 구현한 것입니다.
 
-Schema
+
+스키마
 ------
 
-The GraphQL specification includes a language to define the server-side schema; the
-``type`` keyword is used to introduce a new kind of object.
+그래프QL 명세에는 서버측 스키마 정의어가 있습니다. 예를 들어, 객체 유형을 정의할 때는 ``type`` 키워드를 사용하게 정의되어 있습니다.
 
-In Lacinia, the schema is Clojure data: a map of keys and values; top level
-keys indicate the type of data being defined:
+라시니아에서는 서버측 스키마를 클로저 데이터(키와 값의 맵)로 정의합니다. 다음 예와 같이, 정의할 수 있는 데이터의 종류를 맵의 최상위 키로 확인할 수 있습니다.
 
 .. literalinclude:: ../dev-resources/star-wars-schema.edn
    :language: clojure
 
-Here, we are defining *human* and *droid* objects.
-These have a lot in common, so we define a shared *character* interface.
+예에서는 *human(인간)*과 *droid(로봇)* 객체(objects)를 정의했군요. 이 둘은 많은 점을 공유하고 있어, 이를 나타내기 위해 *character(캐릭터)* 인터페이스(interfaces)를 정의했습니다.
 
-But how to access that data?  That's accomplished using one of three queries:
+이 데이터에 접근하려면 어떻게 할까요? 스키마 예에서 정의한 다음 세 질의(queries)를 이용하면 됩니다.
 
 * hero
 
@@ -37,60 +32,52 @@ But how to access that data?  That's accomplished using one of three queries:
 
 * droid
 
-In this example, each query returns a single instance of the matching object.
-Often, a query will return a list of matching objects.
+이 예에서는 각 질의가 매치된 객체 하나를 반환합니다.
+하지만 질의 하나가 여러 개의 객체를 담은 리스트를 반환하는 경우도 많습니다.
 
-Injecting Data
---------------
+데이터는 어디서 가져오나요
+--------------------------
 
-The schema defines the *shape* of the data that can be queried, but leaves out where that data comes from.
-Unlike an object/relational mapping layer, where we might discuss database tables and rows, GraphQL (and
-by extension, Lacinia) has *no* idea where the data comes from.
+스키마는 질의로 받을 데이터의 *모양*만을 정의합니다. 데이터가 어디서 오는지는 스키마로는 알 수 없죠.
+객체-관계 매핑(ORM) 계층이었다면 데이터베이스의 표와 열을 같이 정의하라고 하겠지만, 그래프QL(그리고 라시니아)에서는 데이터가 어디서 오는지를 굳이 알려고 하지 않습니다.
 
-That's the realm of the :doc:`field resolver function <resolve/index>`.
-Since EDN files are just data, we leave placeholder keywords in the EDN data and attach the
-actual functions once the EDN data is read into memory.
+데이터를 가져오는 일은 :doc:`필드 리졸브 함수 <resolve/index>`가 담당합니다.
+EDN 파일은 데이터일 뿐입니다. EDN 데이터에는 함수를 가리키는 키워드만 넣어둡니다. EDN 데이터를 메모리에 올린 뒤, 키워드를 보고 실제 함수와 연결합니다.
 
-Compiling the Schema
---------------------
+스키마 컴파일
+-------------
 
-The schema starts as a data structure, we need to add in the field resolver and then *compile* the result.
+스키마는 처음에는 단순한 데이터 구조일 뿐입니다. 여기에 필드 리졸버를 붙이고 *컴파일*
+합니다.
 
 .. literalinclude:: ../dev-resources/org/example/schema.clj
     :language: clojure
 
-The ``attach-resolvers`` function walks the schema tree and replaces the values for ``:resolve`` keys.
-With actual functions in place, the schema can be compiled for execution.
+``attach-resolvers`` 함수는 스키마 트리를 탐색하며 ``:resolve`` 키의 값들을 실제 함수로 교체합니다.
+함수들을 올바른 위치에 놓은 뒤, 스키마를 컴파일하여 실행할 수 있도록 합니다.
 
-Compilation performs a number of checks, applies defaults, merges in introspection data about the schema,
-and performs a number of other operations to ready the schema for use.
-The structure passed into ``compile`` is quite complex, so it is always validated using
-:doc:`clojure.spec <spec>`.
+컴파일 과정에서는 스키마 오류 검사, 기본값 적용, 클라이언트용 스키마 정보 준비, 그 외 몇 가지 처리를 수행합니다.
+``compile``이 처리해야 하는 데이터 구조는 상당히 복잡합니다. 따라서 :doc:`clojure.spec <spec>`을 이용하여 유효성을 검사합니다.
 
+그래프QL 인터페이스 정의어(IDL) 불러오기
+----------------------------------------
 
-Parsing GraphQL IDL Schemas
----------------------------
+라시니아는 `그래프QL 인터페이스 정의어 <https://github.com/facebook/graphql/pull/90>`_ 로 쓰인 스키마를 해석하여 클로저 데이터 구조로 변환하는 기능도 제공합니다.
 
-Lacinia also offers support for parsing schemas defined in the `GraphQL Interface
-Definition Language <https://github.com/facebook/graphql/pull/90>`_ and tranforming
-them into the Lacinia schema data structure.
+자세한 점은 :doc:`그래프QL 인터페이스 정의어 해석 <schema/parsing>` 을 참고하세요.
 
-See :doc:`GraphQL IDL Schema Parsing <schema/parsing>` for details.
+질의 실행
+---------
 
-Executing Queries
------------------
-
-With that in place, we can now execute queries.
+스키마를 준비했다면, 이제 질의를 실행할 수 있습니다.
 
 .. literalinclude:: _examples/overview-exec-query.edn
    :language: clojure
 
-.. sidebar:: Ordered Map?
+.. sidebar:: 순서 유지 맵?
 
-   The ``#ordered/map`` indicates that the fields in the result map are returned in the
-   `same order` [#order]_ as they are specified in the query document.
-
-   In most examples, for conciseness, a standard (unordered) map is shown.
+   `#ordered/map``이 사용된 것에서 알 수 있듯이, 반환되는 맵의 필드들은 질의서에 특정한 것과 `동일한 순서` [#order]_ 로 반환됩니다.
+   문서를 간결하게 유지하기 위해 이 문서에서는 대부분 순서 유지 맵 대신 기본 맵으로 표기할 것입니다.
 
 The query string is parsed and matched against the queries defined in the schema.
 
