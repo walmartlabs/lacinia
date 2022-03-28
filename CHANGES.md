@@ -1,9 +1,15 @@
+## 1.2 - Not Released
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/issues?q=is%3Aclosed+milestone%3A1.2)
+
 ## 1.1 -- 14 Jan 2022
 
 This release features some significant efficiency improvements inside Lacinia.
 
 New options have been added to `com.walmartlabs.lacina.schema/compile` that turn off certain checks and features
 to boost performance even further.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/issues?q=is%3Aclosed+milestone%3A1.1)
 
 ### Incompatible Changes
 
