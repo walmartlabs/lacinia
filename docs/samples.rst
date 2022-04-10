@@ -1,6 +1,9 @@
 Sample Projects
 ===============
 
+`Lacinia Game of Thrones backend [2022] <https://github.com/learnuidev/learn-lacinia>`_
+  A comphensive tutorial on building GraphQL applications using Lacinia, Clojure and Datomic
+
 `boardgamegeek-graphql-proxy <https://github.com/hlship/boardgamegeek-graphql-proxy>`_
   Howard Lewis Ship created this simple proxy to expose part of the
   `BoardGameGeek <https://boardgamegeek.com/>`_ database as GraphQL, using Lacinia.
@@ -32,3 +35,6 @@ Sample Projects
 
 `Lacinia Qliksense backend <https://github.com/matteoredaelli/lacinia-backend-ldap/>`_
   A sample library for querying an Qliksense server (Repository API) using GraphQL
+
+
+
