@@ -18,4 +18,5 @@ build.xml
 .settings
 .project
 .classpath
+*.pom.asc
 
