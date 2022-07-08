@@ -7,14 +7,14 @@
  {:dev
   {:extra-deps {criterium/criterium {:mvn/version "0.4.6"}
                 org.clojure/core.async {:mvn/version "1.5.648"}
-                expound/expound {:mvn/version "0.8.10"}
+                expound/expound {:mvn/version "0.9.0"}
                 joda-time/joda-time {:mvn/version "2.10.13"}
-                com.walmartlabs/test-reporting {:mvn/version "1.1"}
+                com.walmartlabs/test-reporting {:mvn/version "1.2"}
                 io.aviso/logging {:mvn/version "1.0"}
                 io.github.hlship/trace {:mvn/version "v1.0"}
                 io.pedestal/pedestal.log {:mvn/version "0.5.9"}
                 org.clojure/test.check {:mvn/version "1.1.1"}
-                org.clojure/data.csv {:mvn/version "1.0.0"}
+                org.clojure/data.csv {:mvn/version "1.0.1"}
                 org.clojure/tools.cli {:mvn/version "1.0.206"}
                 com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.5.1"}}
    :jvm-opts ["-Xmx1g"
@@ -35,8 +35,8 @@
 
   ;; :test needs :dev, i.e. clj -Xdev:test
   :test
-  {:extra-deps {io.github.cognitect-labs/test-runner {:git/tag "v0.5.0"
-                                                      :git/sha "b3fd0d2"}}
+  {:extra-deps {io.github.cognitect-labs/test-runner {:git/tag "v0.5.1"
+                                                      :git/sha "dfb30dd"}}
    :exec-fn cognitect.test-runner.api/test
    :exec-args
    {:patterns [".*-tests?$"]}}
