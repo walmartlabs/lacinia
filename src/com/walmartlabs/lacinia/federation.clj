@@ -14,11 +14,13 @@
 
 (ns com.walmartlabs.lacinia.federation
   (:require
-    [com.walmartlabs.lacinia.resolve :as resolve :refer [with-error]]
-    [com.walmartlabs.lacinia.internal-utils :as utils :refer [get-nested]]
-    [com.walmartlabs.lacinia.resolve-utils :as ru]
-    [com.walmartlabs.lacinia.schema :as schema]
-    [clojure.spec.alpha :as s]))
+   [com.walmartlabs.lacinia.resolve :as resolve :refer [with-error]]
+   [com.walmartlabs.lacinia.internal-utils :as utils :refer [get-nested]]
+   [com.walmartlabs.lacinia.resolve-utils :as ru]
+   [com.walmartlabs.lacinia.schema :as schema]
+   [clojure.spec.alpha :as s]
+   [clojure.string :refer [join]]
+   [clojure.core.match :refer [match]]))
 
 (def foundation-types
   "Map of annotations and types to automatically include into an SDL
@@ -119,25 +121,206 @@
 
           (ru/aggregate-results results #(maybe-wrap (reduce into [] %))))))))
 
+(defn apply-list
+  [f x]
+  (if (-> x first seq?)
+    (apply f x)
+    (f x)))
+
+(defn edn-description->sdl-description
+  [description]
+  (if (nil? description)
+    ""
+    (str "\"\"\"\n" description "\n\"\"\"\n")))
+
+(defn edn-type->sdl-type
+  [type]
+  (if (seq? type)
+    (let [[hd & tl] type]
+      (match hd
+        nil ""
+        'non-null (str (apply-list edn-type->sdl-type tl) "!")
+        'list (str "[" (apply-list edn-type->sdl-type tl) "]")
+        'String "String"
+        'Int "Int"
+        'Float "Float"
+        'Boolean "Boolean"
+        'ID "ID"
+        (object :guard keyword?) (name object)
+        (scalar :guard symbol?) (name scalar)))
+    (recur (list type))))
+
+(defn value->string
+  [value]
+  (match value
+    (string :guard string?) (str "\"" string "\"")
+    (keyword :guard keyword?) (name keyword)
+    else (str else)))
+
+(defn edn-default-value->sdl-default-value
+  [default-value]
+  (if (nil? default-value)
+    ""
+    (str " = " (value->string default-value))))
+
+(defn- edn-arg-descrption->sdl-arg-description
+  [description]
+  (if (nil? description)
+    ""
+    (str "\"" description "\" ")))
+
+(defn edn-args->sdl-args
+  [args]
+  (if (nil? args)
+    ""
+    (str "(" (join ", " (map (fn [[arg-name {:keys [type default-value description]}]] (str (edn-arg-descrption->sdl-arg-description description) (name arg-name) ": " (edn-type->sdl-type type) (edn-default-value->sdl-default-value default-value))) args)) ")")))
+
+(defn edn-directive-args->sdl-directive-args
+  [directive-args]
+  (if (nil? directive-args)
+    ""
+    (str "(" (->> directive-args
+                  (map (fn [[arg-name arg-value]] (str (name arg-name) ": " (value->string arg-value))))
+                  (join ", ")) ")")))
+
+(defn edn-directives->sdl-directives
+  [directives]
+  (if (nil? directives)
+    ""
+    (str " "
+         (->> directives
+              (map (fn [{:keys [directive-type directive-args]}]
+                     (str "@" (name directive-type) (edn-directive-args->sdl-directive-args directive-args))))
+              (join " ")) " ")))
+
+(defn edn-fields->sdl-fields
+  [fields]
+  (str
+   "{\n"
+   (->> fields
+        (map (fn [[field-name {:keys [type args description]}]]
+               (str (edn-description->sdl-description description) (name field-name) (edn-args->sdl-args args) ": " (edn-type->sdl-type type))))
+        (join "\n"))
+   "\n}"))
+
+(defn edn-objects->sdl-objects
+  [objects]
+  (->> objects
+       (map (fn [[key {:keys [fields directives description]}]]
+              (str (edn-description->sdl-description description)
+                   "type "
+                   (name key)
+                   (edn-directives->sdl-directives directives)
+                   (edn-fields->sdl-fields fields))))
+       (join "\n")))
+(defn edn-queries->sdl-queries
+  [queries]
+  (str (-> queries :description edn-description->sdl-description) "type Query " (edn-fields->sdl-fields queries)))
+
+(defn edn-interfaces->sdl-interfaces
+  [interfaces]
+  (->> interfaces
+       (map (fn [[key val]]
+              (str "interface "
+                   (name key)
+                   (-> val :fields edn-fields->sdl-fields))))
+       (join "\n")))
+(defn edn-input-objects->sdl-input-objects
+  [input-objects]
+  (->> input-objects
+       (map (fn [[key val]]
+              (str "input "
+                   (name key)
+                   (-> val :fields edn-fields->sdl-fields))))
+       (join "\n")))
+(defn edn-unions->sdl-unions
+  [unions]
+  (->> unions
+       (map (fn [[union-name {members :members}]]
+              (str "union " (name union-name) " = " (->> members
+                                                         (map name)
+                                                         (join " | ")))))
+       (join "\n")))
+(defn edn-mutations->sdl-mutations
+  [mutations]
+  (str "type Mutation " (edn-fields->sdl-fields mutations)))
+(defn edn-enums->sdl-enums
+  [enums]
+  (->> enums
+       (map (fn [[enum-name {values :values}]]
+              (str "enum " (name enum-name) "{\n" (->> values (map :enum-value) (map name) (join "\n")) "\n}")))
+       (join "\n")))
+(defn edn-scalars->sdl-scalars
+  [scalars]
+  (->> (keys scalars)
+       (map name)
+       (map #(str "scalar " %))
+       (join "\n")))
+
+(def directive-targets
+  {:enum                   "ENUM"
+   :input-field-definition "INPUT_FIELD_DEFINITION"
+   :interface              "INTERFACE"
+   :input-object           "INPUT_OBJECT"
+   :enum-value             "ENUM_VALUE"
+   :scalar                 "SCALAR"
+   :argument-definition    "ARGUMENT_DEFINITION"
+   :union                  "UNION"
+   :field-definition       "FIELD_DEFINITION"
+   :object                 "OBJECT"
+   :schema                 "SCHEMA"})
+
+(defn edn-directive-defs->sdl-directives
+  [directive-defs]
+  (->> directive-defs
+       (map (fn [[directive-name {:keys [locations args]}]]
+              (str "directive @"
+                   (name directive-name)
+                   (edn-args->sdl-args args)
+                   " on "
+                   (->> locations
+                        (map directive-targets)
+                        (join " | ")))))
+       (join "\n")))
+
+(defn generate-sdl
+  [schema]
+  (->> schema
+       (map (fn [[key val]]
+              (case key
+                :objects (edn-objects->sdl-objects val)
+                :queries (edn-queries->sdl-queries val)
+                :interfaces (edn-interfaces->sdl-interfaces val)
+                :scalars (edn-scalars->sdl-scalars val)
+                :unions (edn-unions->sdl-unions val)
+                :input-objects (edn-input-objects->sdl-input-objects val)
+                :mutations (edn-mutations->sdl-mutations val)
+                :enums (edn-enums->sdl-enums val)
+                :directive-defs (edn-directive-defs->sdl-directives val)
+                :roots "")))
+       (join "\n")))
+
 (defn inject-federation
   "Called after SDL parsing to extend the input schema
   (not the compiled schema) with federation support."
-  [schema sdl entity-resolvers]
-  (let [entity-names (find-entity-names schema)
-        entities-resolver (entities-resolver-factory entity-names entity-resolvers)
-        query-root (get-nested schema [:roots :query] :Query)]
-    (prevent-collision schema [:unions :_Entity])
-    (prevent-collision schema [:objects query-root :fields :_service])
-    (prevent-collision schema [:objects query-root :fields :_entities])
-    (cond-> (assoc-in schema [:objects query-root :fields :_service]
-                      {:type '(non-null :_Service)
-                       :resolve (fn [_ _ _] {:sdl sdl})})
-      entity-names (-> (assoc-in [:unions :_Entity :members] entity-names)
-                       (assoc-in [:objects query-root :fields :_entities]
-                                 {:type '(non-null (list :_Entity))
-                                  :args
-                                  {:representations
-                                   {:type '(non-null (list (non-null :_Any)))}}
-                                  :resolve entities-resolver})))))
+  ([schema entity-resolvers]
+   (inject-federation schema (generate-sdl schema) entity-resolvers))
+  ([schema sdl entity-resolvers]
+   (let [entity-names (find-entity-names schema)
+         entities-resolver (entities-resolver-factory entity-names entity-resolvers)
+         query-root (get-nested schema [:roots :query] :Query)]
+     (prevent-collision schema [:unions :_Entity])
+     (prevent-collision schema [:objects query-root :fields :_service])
+     (prevent-collision schema [:objects query-root :fields :_entities])
+     (cond-> (assoc-in schema [:objects query-root :fields :_service]
+                       {:type '(non-null :_Service)
+                        :resolve (fn [_ _ _] {:sdl sdl})})
+       entity-names (-> (assoc-in [:unions :_Entity :members] entity-names)
+                        (assoc-in [:objects query-root :fields :_entities]
+                                  {:type '(non-null (list :_Entity))
+                                   :args
+                                   {:representations
+                                    {:type '(non-null (list (non-null :_Any)))}}
+                                   :resolve entities-resolver}))))))
 
 (s/def ::entity-resolvers (s/map-of simple-keyword? ::schema/resolve))

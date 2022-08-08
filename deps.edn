@@ -1,7 +1,8 @@
 {:deps {org.clojure/clojure {:mvn/version "1.10.3"}
         clj-antlr/clj-antlr {:mvn/version "0.2.12"}
         org.flatland/ordered {:mvn/version "1.15.10"}
-        org.clojure/data.json {:mvn/version "2.4.0"}}
+        org.clojure/data.json {:mvn/version "2.4.0"}
+        org.clojure/core.match {:mvn/version "1.0.0"}}
  :paths ["src" "resources"]
  :aliases
  {:dev
