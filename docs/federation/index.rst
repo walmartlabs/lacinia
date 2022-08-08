@@ -14,11 +14,6 @@ service-spanning queries apart and build an overall query plan.
 Lacinia has been extended, starting in 0.38.0, to support acting as an implementing service; there is no plan
 at this time to act as a gateway.
 
-.. warning::
-
-    At this time, only a schema defined with the :doc:`Schema Definition Language </schema/parsing>`, can be extended to act as
-    a service implementation.
-
 Essentially, federation allows a set of services to each provide their own types, queries, and mutations, and organizes things so that
 each service can provide additional fields to the types provided by the other services.
 
