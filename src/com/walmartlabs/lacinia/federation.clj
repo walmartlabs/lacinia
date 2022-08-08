@@ -121,19 +121,19 @@
 
           (ru/aggregate-results results #(maybe-wrap (reduce into [] %))))))))
 
-(defn apply-list
+(defn ^:private apply-list
   [f x]
   (if (-> x first seq?)
     (apply f x)
     (f x)))
 
-(defn edn-description->sdl-description
+(defn ^:private edn-description->sdl-description
   [description]
   (if (nil? description)
     ""
     (str "\"\"\"\n" description "\n\"\"\"\n")))
 
-(defn edn-type->sdl-type
+(defn ^:private edn-type->sdl-type
   [type]
   (if (seq? type)
     (let [[hd & tl] type]
@@ -150,32 +150,32 @@
         (scalar :guard symbol?) (name scalar)))
     (recur (list type))))
 
-(defn value->string
+(defn ^:private value->string
   [value]
   (match value
     (string :guard string?) (str "\"" string "\"")
     (keyword :guard keyword?) (name keyword)
     else (str else)))
 
-(defn edn-default-value->sdl-default-value
+(defn ^:private edn-default-value->sdl-default-value
   [default-value]
   (if (nil? default-value)
     ""
     (str " = " (value->string default-value))))
 
-(defn- edn-arg-descrption->sdl-arg-description
+(defn ^:private edn-arg-descrption->sdl-arg-description
   [description]
   (if (nil? description)
     ""
     (str "\"" description "\" ")))
 
-(defn edn-args->sdl-args
+(defn ^:private edn-args->sdl-args
   [args]
   (if (nil? args)
     ""
     (str "(" (join ", " (map (fn [[arg-name {:keys [type default-value description]}]] (str (edn-arg-descrption->sdl-arg-description description) (name arg-name) ": " (edn-type->sdl-type type) (edn-default-value->sdl-default-value default-value))) args)) ")")))
 
-(defn edn-directive-args->sdl-directive-args
+(defn ^:private edn-directive-args->sdl-directive-args
   [directive-args]
   (if (nil? directive-args)
     ""
@@ -183,7 +183,7 @@
                   (map (fn [[arg-name arg-value]] (str (name arg-name) ": " (value->string arg-value))))
                   (join ", ")) ")")))
 
-(defn edn-directives->sdl-directives
+(defn ^:private edn-directives->sdl-directives
   [directives]
   (if (nil? directives)
     ""
@@ -193,7 +193,7 @@
                      (str "@" (name directive-type) (edn-directive-args->sdl-directive-args directive-args))))
               (join " ")) " ")))
 
-(defn edn-fields->sdl-fields
+(defn ^:private edn-fields->sdl-fields
   [fields]
   (str
    "{\n"
@@ -203,7 +203,7 @@
         (join "\n"))
    "\n}"))
 
-(defn edn-objects->sdl-objects
+(defn ^:private edn-objects->sdl-objects
   [objects]
   (->> objects
        (map (fn [[key {:keys [fields directives description]}]]
@@ -213,11 +213,11 @@
                    (edn-directives->sdl-directives directives)
                    (edn-fields->sdl-fields fields))))
        (join "\n")))
-(defn edn-queries->sdl-queries
+(defn ^:private edn-queries->sdl-queries
   [queries]
   (str (-> queries :description edn-description->sdl-description) "type Query " (edn-fields->sdl-fields queries)))
 
-(defn edn-interfaces->sdl-interfaces
+(defn ^:private edn-interfaces->sdl-interfaces
   [interfaces]
   (->> interfaces
        (map (fn [[key val]]
@@ -225,7 +225,7 @@
                    (name key)
                    (-> val :fields edn-fields->sdl-fields))))
        (join "\n")))
-(defn edn-input-objects->sdl-input-objects
+(defn ^:private edn-input-objects->sdl-input-objects
   [input-objects]
   (->> input-objects
        (map (fn [[key val]]
@@ -233,7 +233,7 @@
                    (name key)
                    (-> val :fields edn-fields->sdl-fields))))
        (join "\n")))
-(defn edn-unions->sdl-unions
+(defn ^:private edn-unions->sdl-unions
   [unions]
   (->> unions
        (map (fn [[union-name {members :members}]]
@@ -241,16 +241,16 @@
                                                          (map name)
                                                          (join " | ")))))
        (join "\n")))
-(defn edn-mutations->sdl-mutations
+(defn ^:private edn-mutations->sdl-mutations
   [mutations]
   (str "type Mutation " (edn-fields->sdl-fields mutations)))
-(defn edn-enums->sdl-enums
+(defn ^:private edn-enums->sdl-enums
   [enums]
   (->> enums
        (map (fn [[enum-name {values :values}]]
               (str "enum " (name enum-name) "{\n" (->> values (map :enum-value) (map name) (join "\n")) "\n}")))
        (join "\n")))
-(defn edn-scalars->sdl-scalars
+(defn ^:private edn-scalars->sdl-scalars
   [scalars]
   (->> (keys scalars)
        (map name)
@@ -270,7 +270,7 @@
    :object                 "OBJECT"
    :schema                 "SCHEMA"})
 
-(defn edn-directive-defs->sdl-directives
+(defn ^:private edn-directive-defs->sdl-directives
   [directive-defs]
   (->> directive-defs
        (map (fn [[directive-name {:keys [locations args]}]]
@@ -284,6 +284,7 @@
        (join "\n")))
 
 (defn generate-sdl
+  "Translate the edn lacinia schema to the SDL schema."
   [schema]
   (->> schema
        (map (fn [[key val]]
@@ -302,7 +303,8 @@
 
 (defn inject-federation
   "Called after SDL parsing to extend the input schema
-  (not the compiled schema) with federation support."
+  (not the compiled schema) with federation support.
+   If the SDL string is not given, it is automatically created through the schema."
   ([schema entity-resolvers]
    (inject-federation schema (generate-sdl schema) entity-resolvers))
   ([schema sdl entity-resolvers]

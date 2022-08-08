@@ -14,7 +14,7 @@
 
 (ns com.walmartlabs.lacinia.federation-tests
   (:require
-    [clojure.test :refer [deftest is run-tests]]
+    [clojure.test :refer [deftest is]]
     [clojure.string :refer [trim]]
     [com.walmartlabs.lacinia.parser.schema :refer [parse-schema]]
     [com.walmartlabs.lacinia.resolve :refer [FieldResolver resolve-as]]
@@ -341,7 +341,3 @@ query($reps : [_Any!]!) {
                                 :name "User #9998"}}}
            (execute schema
                     "{ user_by_id(id: 9998) { id name }}")))))
-
-(comment
-  (run-tests)
-  )
