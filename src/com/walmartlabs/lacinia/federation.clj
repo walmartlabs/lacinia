@@ -244,11 +244,18 @@
 (defn ^:private edn-mutations->sdl-mutations
   [mutations]
   (str "type Mutation " (edn-fields->sdl-fields mutations)))
+
+(defn ^:private edn-enum-value->sdl-enum-value
+  [enum-value]
+  (match enum-value
+    {:enum-value value} value
+    (value :guard keyword?) value))
+
 (defn ^:private edn-enums->sdl-enums
   [enums]
   (->> enums
        (map (fn [[enum-name {values :values}]]
-              (str "enum " (name enum-name) "{\n" (->> values (map :enum-value) (map name) (join "\n")) "\n}")))
+              (str "enum " (name enum-name) "{\n" (->> values (map edn-enum-value->sdl-enum-value) (map name) (join "\n")) "\n}")))
        (join "\n")))
 (defn ^:private edn-scalars->sdl-scalars
   [scalars]
