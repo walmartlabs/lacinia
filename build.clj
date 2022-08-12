@@ -19,7 +19,7 @@
             [net.lewisship.build :refer [requiring-invoke]]))
 
 (def lib 'com.walmartlabs/lacinia)
-(def version "1.2-alpha-1")
+(def version "1.2-alpha-2")
 
 (def jar-params {:project-name lib
                  :version version})
