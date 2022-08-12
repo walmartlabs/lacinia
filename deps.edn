@@ -8,7 +8,7 @@
   {:extra-deps {criterium/criterium {:mvn/version "0.4.6"}
                 org.clojure/core.async {:mvn/version "1.5.648"}
                 expound/expound {:mvn/version "0.9.0"}
-                joda-time/joda-time {:mvn/version "2.10.13"}
+                joda-time/joda-time {:mvn/version "2.11.0"}
                 com.walmartlabs/test-reporting {:mvn/version "1.2"}
                 io.aviso/logging {:mvn/version "1.0"}
                 io.github.hlship/trace {:mvn/version "v1.0"}
@@ -16,7 +16,7 @@
                 org.clojure/test.check {:mvn/version "1.1.1"}
                 org.clojure/data.csv {:mvn/version "1.0.1"}
                 org.clojure/tools.cli {:mvn/version "1.0.206"}
-                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.5.1"}}
+                com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.0.0"}}
    :jvm-opts ["-Xmx1g"
               "-Xms1g"
               "-XX:NewSize=200m"
@@ -42,7 +42,7 @@
    {:patterns [".*-tests?$"]}}
 
   ;; clj -Mdev:test:coverage
-  :coverage {:extra-deps {cloverage/cloverage {:mvn/version "1.2.2"}}
+  :coverage {:extra-deps {cloverage/cloverage {:mvn/version "1.2.4"}}
              :main-opts ["-m" "cloverage.coverage" "-p" "src" "-s" "test" "--codecov"]}
 
   ;; clj -T:build <command>
