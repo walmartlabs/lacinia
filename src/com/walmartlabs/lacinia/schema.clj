@@ -868,6 +868,14 @@
           (not (contains? #{:object :interface} (:category element-def))))
       (recur visited (pop queue))
 
+      ;; if it's a union, mark as visited and process its members
+      (-> element-def :category (= :union))
+      (recur (conj visited element-def)
+             (-> queue
+                 (pop)
+                 (into (for [member (:members element-def)]
+                         (get schema member)))))
+
       :let [field-defs (-> element-def :fields vals)]
 
       (some :produces-null? field-defs)
