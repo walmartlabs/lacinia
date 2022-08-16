@@ -234,6 +234,7 @@
                    (name key)
                    (-> val :fields edn-fields->sdl-fields))))
        (join "\n")))
+
 (defn ^:private edn-input-objects->sdl-input-objects
   [input-objects]
   (->> input-objects
@@ -242,6 +243,7 @@
                    (name key)
                    (-> val :fields edn-fields->sdl-fields))))
        (join "\n")))
+
 (defn ^:private edn-unions->sdl-unions
   [unions]
   (->> unions
@@ -250,6 +252,7 @@
                                                          (map name)
                                                          (join " | ")))))
        (join "\n")))
+
 (defn ^:private edn-mutations->sdl-mutations
   [mutations]
   (str "type Mutation " (edn-fields->sdl-fields mutations)))
@@ -266,6 +269,7 @@
        (map (fn [[enum-name {values :values}]]
               (str "enum " (name enum-name) "{\n" (->> values (map edn-enum-value->sdl-enum-value) (map name) (join "\n")) "\n}")))
        (join "\n")))
+
 (defn ^:private edn-scalars->sdl-scalars
   [scalars]
   (->> (keys scalars)
