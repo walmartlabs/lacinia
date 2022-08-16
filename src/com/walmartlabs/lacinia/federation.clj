@@ -19,8 +19,7 @@
    [com.walmartlabs.lacinia.resolve-utils :as ru]
    [com.walmartlabs.lacinia.schema :as schema]
    [clojure.spec.alpha :as s]
-   [clojure.string :refer [join]]
-   [clojure.core.match :refer [match]]))
+   [clojure.string :refer [join]]))
 
 (def foundation-types
   "Map of annotations and types to automatically include into an SDL
@@ -137,25 +136,25 @@
   [type]
   (if (seq? type)
     (let [[hd & tl] type]
-      (match hd
-        nil ""
-        'non-null (str (apply-list edn-type->sdl-type tl) "!")
-        'list (str "[" (apply-list edn-type->sdl-type tl) "]")
-        'String "String"
-        'Int "Int"
-        'Float "Float"
-        'Boolean "Boolean"
-        'ID "ID"
-        (object :guard keyword?) (name object)
-        (scalar :guard symbol?) (name scalar)))
+      (cond
+        (nil? hd) ""
+        (= 'non-null hd) (str (apply-list edn-type->sdl-type tl) "!")
+        (= 'list hd) (str "[" (apply-list edn-type->sdl-type tl) "]")
+        (= 'String hd) "String"
+        (= 'Int hd) "Int"
+        (= 'Float hd) "Float"
+        (= 'Boolean hd) "Boolean"
+        (= 'ID hd) "ID"
+        (keyword? hd) (name hd)
+        (symbol? hd) (name hd)))
     (recur (list type))))
 
 (defn ^:private value->string
   [value]
-  (match value
-    (string :guard string?) (str "\"" string "\"")
-    (keyword :guard keyword?) (name keyword)
-    else (str else)))
+  (cond
+    (string? value) (str "\"" value "\"")
+    (keyword? value) (name value)
+    :else (str value)))
 
 (defn ^:private edn-default-value->sdl-default-value
   [default-value]
@@ -257,9 +256,9 @@
 
 (defn ^:private edn-enum-value->sdl-enum-value
   [enum-value]
-  (match enum-value
-    {:enum-value value} value
-    (value :guard keyword?) value))
+  (cond
+    (keyword? enum-value) enum-value
+    :else (:enum-value enum-value)))
 
 (defn ^:private edn-enums->sdl-enums
   [enums]
