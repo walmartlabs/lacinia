@@ -279,7 +279,7 @@ query($reps : [_Any!]!) {
                          {:fields
                           {:todo
                            {:type :Todo
-                            :description "Get one todo item"
+                            :description "\"Get one todo item\""
                             :args
                             {:id
                              {:type (non-null ID)}}}
