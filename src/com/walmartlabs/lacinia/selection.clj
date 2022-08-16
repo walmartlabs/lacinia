@@ -39,7 +39,7 @@
     "Returns a map of keyword name to [[ArgumentDef]], or nil."))
 
 (defprotocol ArgumentDef
-  "An argument definition, implements [[Type]] and [[QualifiedName]].")
+  "An argument definition, implements [[Type]], [[QualifiedName]] and [[Directives]].")
 
 (defprotocol Directive
 
