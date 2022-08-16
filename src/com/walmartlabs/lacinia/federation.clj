@@ -203,16 +203,26 @@
         (join "\n"))
    "\n}"))
 
+(defn ^:private edn-implements->sdl-implements
+  [implements]
+  (if (seq implements)
+    (str " implements " (->> implements
+                             (map name)
+                             (join " & ")))
+    ""))
+
 (defn ^:private edn-objects->sdl-objects
   [objects]
   (->> objects
-       (map (fn [[key {:keys [fields directives description]}]]
+       (map (fn [[key {:keys [fields directives description implements]}]]
               (str (edn-description->sdl-description description)
                    "type "
                    (name key)
+                   (edn-implements->sdl-implements implements)
                    (edn-directives->sdl-directives directives)
                    (edn-fields->sdl-fields fields))))
        (join "\n")))
+
 (defn ^:private edn-queries->sdl-queries
   [queries]
   (str (-> queries :description edn-description->sdl-description) "type Query " (edn-fields->sdl-fields queries)))

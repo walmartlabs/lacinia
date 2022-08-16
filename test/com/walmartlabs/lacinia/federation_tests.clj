@@ -269,28 +269,46 @@ query($reps : [_Any!]!) {
       (is (= #{"Stuff"} union-names)))))
 
 (deftest edn-schema->sdl-schema
-  (let [sample-schema '{:objects
+  (let [sample-schema '{:interfaces
+                        {:Node
+                         {:fields
+                          {:id
+                           {:type (non-null ID)}}}}
+                        :objects
                         {:Query
                          {:fields
                           {:todo
-                           {:type :Todo :description "Get one todo item" :args
+                           {:type :Todo
+                            :description "Get one todo item"
+                            :args
                             {:id
-                             {:type (non-null ID)}}} :allTodos
-                           {:type (non-null (list (non-null :Todo))) :description "List of all todo items"}}} :Mutation
+                             {:type (non-null ID)}}}
+                           :allTodos
+                           {:type (non-null (list (non-null :Todo))) :description "List of all todo items"}}}
+                         :Mutation
                          {:fields
                           {:addTodo
-                           {:type (non-null :Todo) :args
+                           {:type (non-null :Todo)
+                            :args
                             {:name
-                             {:type (non-null String) :description "Name for the todo item"} :priority
-                             {:type :Priority :description "Priority level of todo item" :default-value :LOW}}} :removeTodo
-                           {:type (non-null :Todo) :args
+                             {:type (non-null String) :description "Name for the todo item"}
+                             :priority
+                             {:type :Priority :description "Priority level of todo item" :default-value :LOW}}}
+                           :removeTodo
+                           {:type (non-null :Todo)
+                            :args
                             {:id
-                             {:type (non-null ID)}}}}} :Todo
-                         {:fields
+                             {:type (non-null ID)}}}}}
+                         :Todo
+                         {:implements  [:Node]
+                          :fields
                           {:id
-                           {:type (non-null ID)} :name
-                           {:type (non-null String)} :description
-                           {:type String :description "Useful description for todo item"} :priority
+                           {:type (non-null ID)}
+                           :name
+                           {:type (non-null String)}
+                           :description
+                           {:type String :description "Useful description for todo item"}
+                           :priority
                            {:type (non-null :Priority)}}}}
                         :enums
                         {:Priority
@@ -299,15 +317,19 @@ query($reps : [_Any!]!) {
                                    {:enum-value :HIGH}]}}
                         :unions
                         {:_Entity
-                         {:members [:Todo]}} :scalars
+                         {:members [:Todo]}}
+                        :scalars
                         {:FieldSet
                          {}}
                         :directive-defs
                         {:key
-                         {:locations #{:interface :object} :args
+                         {:locations #{:interface :object}
+                          :args
                           {:fields
-                           {:type (non-null :FieldSet)} :resolvable
-                           {:type Boolean :default-value true}}} :external
+                           {:type (non-null :FieldSet)}
+                           :resolvable
+                           {:type Boolean :default-value true}}}
+                         :external
                          {:locations #{:field-definition}}}}]
     (is (= (-> sample-schema generate-sdl parse-schema) sample-schema))))
 
