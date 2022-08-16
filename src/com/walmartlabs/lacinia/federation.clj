@@ -274,6 +274,7 @@
   [scalars]
   (->> (keys scalars)
        (map name)
+       sort
        (map #(str "scalar " %))
        (join "\n")))
 
@@ -307,6 +308,15 @@
   "Translate the edn lacinia schema to the SDL schema."
   [schema]
   (->> schema
+       (sort-by {:directive-defs 0
+                 :scalars 1
+                 :enums 2
+                 :unions 3
+                 :interfaces 4
+                 :input-objects 5
+                 :queries 6
+                 :mutations 7
+                 :objects 8})
        (map (fn [[key val]]
               (case key
                 :objects (edn-objects->sdl-objects val)
