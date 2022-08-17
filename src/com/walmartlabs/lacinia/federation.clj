@@ -321,13 +321,13 @@
        fold-queries
        fold-mutations
        fold-subscriptions
-       (sort-by {:directive-defs 0
-                 :scalars 1
-                 :enums 2
-                 :unions 3
-                 :interfaces 4
-                 :input-objects 5
-                 :objects 6})
+       (sort-by #(-> % first {:directive-defs 0
+                              :scalars 1
+                              :enums 2
+                              :unions 3
+                              :interfaces 4
+                              :input-objects 5
+                              :objects 6}))
        (map (fn [[key val]]
               (case key
                 :objects (edn-objects->sdl-objects val)
