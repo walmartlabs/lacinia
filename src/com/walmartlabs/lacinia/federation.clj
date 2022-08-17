@@ -304,31 +304,48 @@
                         (join " | ")))))
        (join "\n")))
 
+(defn ^:private fold-queries
+  [{:keys [queries] :as schema}]
+  (cond
+    (map? queries) (update-in schema [:objects :Query :fields] merge queries)
+    :else schema))
+
+(defn ^:private fold-mutations
+  [{:keys [mutations] :as schema}]
+  (cond
+    (map? mutations) (update-in schema [:objects :Mutation :fields] merge mutations)
+    :else schema))
+
+(defn ^:private fold-subscriptions
+  [{:keys [subscriptions] :as schema}]
+  (cond
+    (map? subscriptions) (update-in schema [:objects :Subscription :fields] merge subscriptions)
+    :else schema))
+
 (defn generate-sdl
   "Translate the edn lacinia schema to the SDL schema."
   [schema]
   (->> schema
+       fold-queries
+       fold-mutations
+       fold-subscriptions
        (sort-by {:directive-defs 0
                  :scalars 1
                  :enums 2
                  :unions 3
                  :interfaces 4
                  :input-objects 5
-                 :queries 6
-                 :mutations 7
-                 :objects 8})
+                 :objects 6})
        (map (fn [[key val]]
               (case key
                 :objects (edn-objects->sdl-objects val)
-                :queries (edn-queries->sdl-queries val)
                 :interfaces (edn-interfaces->sdl-interfaces val)
                 :scalars (edn-scalars->sdl-scalars val)
                 :unions (edn-unions->sdl-unions val)
                 :input-objects (edn-input-objects->sdl-input-objects val)
-                :mutations (edn-mutations->sdl-mutations val)
                 :enums (edn-enums->sdl-enums val)
                 :directive-defs (edn-directive-defs->sdl-directives val)
-                :roots "")))
+                "")))
        (join "\n")))
 
 (defn inject-federation
