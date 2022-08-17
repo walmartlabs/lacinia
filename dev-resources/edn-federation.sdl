@@ -11,24 +11,24 @@ scalar _Any
 scalar _FieldSet
 scalar link__Import
 enum link__Purpose{
-SECURITY
-EXECUTION
+  SECURITY
+  EXECUTION
 }
 type _Service{
-sdl: String!
+  sdl: String!
 }
 type User @key(fields: "id") {
-id: Int!
-name: String!
+  id: Int!
+  name: String!
 }
 type Query{
-user_by_id(id: Int!): User
+  user_by_id(id: Int!): User
 }
 type Account @key(fields: "acct_number") {
-acct_number: String!
-name: String!
+  acct_number: String!
+  name: String!
 }
 type Product @key(fields: "upc") @extends {
-upc: String!
-reviewed_by: User
+  upc: String!
+  reviewed_by: User
 }

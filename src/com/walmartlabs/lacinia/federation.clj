@@ -126,6 +126,12 @@
     (apply f x)
     (f x)))
 
+(defn ^:private indent
+  [s]
+  (cond
+    (clojure.string/blank? s) ""
+    :else (str "  " (clojure.string/replace s #"\n" "\n  "))))
+
 (defn ^:private edn-description->sdl-description
   [description]
   (if (nil? description)
@@ -199,7 +205,8 @@
    (->> fields
         (map (fn [[field-name {:keys [type args description]}]]
                (str (edn-description->sdl-description description) (name field-name) (edn-args->sdl-args args) ": " (edn-type->sdl-type type))))
-        (join "\n"))
+        (join "\n")
+        indent)
    "\n}"))
 
 (defn ^:private edn-implements->sdl-implements
@@ -259,7 +266,7 @@
   [enums]
   (->> enums
        (map (fn [[enum-name {values :values}]]
-              (str "enum " (name enum-name) "{\n" (->> values (map edn-enum-value->sdl-enum-value) (map name) (join "\n")) "\n}")))
+              (str "enum " (name enum-name) "{\n" (->> values (map edn-enum-value->sdl-enum-value) (map name) (join "\n") indent) "\n}")))
        (join "\n")))
 
 (defn ^:private edn-scalars->sdl-scalars
