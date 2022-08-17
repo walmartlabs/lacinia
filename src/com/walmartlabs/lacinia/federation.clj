@@ -222,10 +222,6 @@
                    (edn-fields->sdl-fields fields))))
        (join "\n")))
 
-(defn ^:private edn-queries->sdl-queries
-  [queries]
-  (str (-> queries :description edn-description->sdl-description) "type Query " (edn-fields->sdl-fields queries)))
-
 (defn ^:private edn-interfaces->sdl-interfaces
   [interfaces]
   (->> interfaces
@@ -252,10 +248,6 @@
                                                          (map name)
                                                          (join " | ")))))
        (join "\n")))
-
-(defn ^:private edn-mutations->sdl-mutations
-  [mutations]
-  (str "type Mutation " (edn-fields->sdl-fields mutations)))
 
 (defn ^:private edn-enum-value->sdl-enum-value
   [enum-value]
