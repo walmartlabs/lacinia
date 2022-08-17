@@ -7,13 +7,16 @@ directive @link(url: String, as: String, for: link__Purpose, import: [link__Impo
 directive @provides(fields: _FieldSet!) on FIELD_DEFINITION
 directive @override(from: String!) on FIELD_DEFINITION
 directive @inaccessible on ENUM | INPUT_FIELD_DEFINITION | INTERFACE | INPUT_OBJECT | ENUM_VALUE | SCALAR | ARGUMENT_DEFINITION | UNION | FIELD_DEFINITION | OBJECT
+
 scalar _Any
 scalar _FieldSet
 scalar link__Import
+
 enum link__Purpose{
   SECURITY
   EXECUTION
 }
+
 type _Service{
   sdl: String!
 }

@@ -345,7 +345,7 @@
                 :enums (edn-enums->sdl-enums val)
                 :directive-defs (edn-directive-defs->sdl-directives val)
                 "")))
-       (join "\n")))
+       (join "\n\n")))
 
 (defn inject-federation
   "Called after SDL parsing to extend the input schema
