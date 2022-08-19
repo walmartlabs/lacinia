@@ -16,7 +16,7 @@
   "Mechanisms for executing parsed queries against compiled schemas."
   (:require
     [com.walmartlabs.lacinia.internal-utils
-     :refer [cond-let map-vals remove-vals q to-message
+     :refer [cond-let q to-message
              deep-merge deep-merge-value keepv get-nested]]
     [flatland.ordered.map :refer [ordered-map]]
     [com.walmartlabs.lacinia.select-utils :as su]
@@ -25,7 +25,6 @@
     [com.walmartlabs.lacinia.resolve :as resolve
      :refer [resolve-as resolve-promise]]
     [com.walmartlabs.lacinia.tracing :as tracing]
-    [com.walmartlabs.lacinia.describe :refer [description-for]]
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.selection :as selection])
   (:import (clojure.lang PersistentQueue)))
