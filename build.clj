@@ -44,3 +44,20 @@
    {:project-name lib
     :version version
     :aliases [:dev]}))
+
+(def publish-dir "../apidocs/lacinia")
+
+(defn publish
+  "Generate Codox documentation and publish via a GitHub push."
+  [_params]
+  (println "Generating Codox documentation")
+  (codox nil)
+  (println "Copying documentation to" publish-dir "...")
+  (b/copy-dir {:target-dir publish-dir
+               :src-dirs ["target/doc"]})
+  (println "Committing changes ...")
+  (b/process {:dir publish-dir
+              :command-args ["git" "commit" "-a" "-m" (str "lacinia " version)]})
+  (println "Pushing changes ...")
+  (b/process {:dir publish-dir
+              :command-args ["git" "push"]}))
