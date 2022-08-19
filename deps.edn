@@ -46,7 +46,8 @@
              :main-opts ["-m" "cloverage.coverage" "-p" "src" "-s" "test" "--codecov"]}
 
   ;; clj -T:build <command>
-  :build {:deps {io.github.hlship/build-tools {:git/tag "v0.3" :git/sha "1ca74c2"}}
+  :build {:deps {io.github.hlship/build-tools
+                 {:git/tag "v0.4" :git/sha "05704808"}}
           :ns-default build}}
 
  :codox/config

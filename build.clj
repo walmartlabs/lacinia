@@ -15,8 +15,8 @@
 ;; clj -T:build <var>
 
 (ns build
-  (:require [clojure.tools.build.api :as b]
-            [net.lewisship.build :refer [requiring-invoke]]))
+  (:require [clojure.tools.build.api :as build]
+            [net.lewisship.build :as b]))
 
 (def lib 'com.walmartlabs/lacinia)
 (def version "1.2-alpha-2")
@@ -26,24 +26,23 @@
 
 (defn clean
   [_params]
-  (b/delete {:path "target"}))
+  (build/delete {:path "target"}))
 
 (defn jar
   [_params]
-  (requiring-invoke net.lewisship.build.jar/create-jar jar-params))
+  (b/create-jar jar-params))
 
 (defn deploy
   [_params]
   (clean nil)
   (jar nil)
-  (requiring-invoke net.lewisship.build.jar/deploy-jar jar-params))
+  (b/deploy-jar jar-params))
 
 (defn codox
   [_params]
-  (requiring-invoke net.lewisship.build.codox/generate
-   {:project-name lib
-    :version version
-    :aliases [:dev]}))
+  (b/codox {:project-name lib
+            :version version
+            :aliases [:dev]}))
 
 (def publish-dir "../apidocs/lacinia")
 
@@ -53,11 +52,11 @@
   (println "Generating Codox documentation")
   (codox nil)
   (println "Copying documentation to" publish-dir "...")
-  (b/copy-dir {:target-dir publish-dir
+  (build/copy-dir {:target-dir publish-dir
                :src-dirs ["target/doc"]})
   (println "Committing changes ...")
-  (b/process {:dir publish-dir
+  (build/process {:dir publish-dir
               :command-args ["git" "commit" "-a" "-m" (str "lacinia " version)]})
   (println "Pushing changes ...")
-  (b/process {:dir publish-dir
+  (build/process {:dir publish-dir
               :command-args ["git" "push"]}))
