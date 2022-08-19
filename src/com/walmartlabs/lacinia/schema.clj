@@ -208,7 +208,7 @@
     (number? v)
     (double v)))
 
-(defn ^:private seralize-float
+(defn ^:private serialize-float
   [v]
   (cond
     (instance? Double v)
@@ -255,7 +255,7 @@
   {:String {:parse parse-string
             :serialize str}
    :Float {:parse parse-float
-           :serialize seralize-float}
+           :serialize serialize-float}
    :Int {:parse parse-int
          :serialize serialize-int}
    :Boolean {:parse parse-boolean-string
