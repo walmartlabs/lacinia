@@ -57,7 +57,7 @@
              (update-in! [:objects :Flow :fields :id :args :show :type] str " Type")
              (get-in [:objects :Flow :fields :id :args]))))
 
-  (when-let [e (is (thrown-with-msg? ExceptionInfo #"Intermdiate key not found during update-in!"
+  (when-let [e (is (thrown-with-msg? ExceptionInfo #"Intermediate key not found during update-in!"
                                      (update-in! subject [:objects :Ebb :fields :missing :description] str/upper-case)))]
     (is (= '{:key :missing
              :map {:name {:type String}}
