@@ -1,0 +1,5 @@
+directive @non_negative on ARGUMENT_DEFINITION
+
+type Query {
+    sqrt(num: Float! @non_negative) : Float!
+}

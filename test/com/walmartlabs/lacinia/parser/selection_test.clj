@@ -321,6 +321,25 @@
             [:role "basic"]]
            @*facts))))
 
+(deftest access-to-argument-def-directives
+  (let [res (fn [context {:keys [num]} _]
+              (is (= [:non_negative] (-> context
+                                         executor/selection
+                                         selection/field
+                                         selection/argument-defs
+                                         :num
+                                         selection/directives
+                                         keys)))
+              (Math/sqrt num))
+        schema (-> "selection/argument-def-directive.sdl"
+                   io/resource
+                   slurp
+                   parse-schema
+                   (util/inject-resolvers {:Query/sqrt res})
+                   schema/compile)]
+    (is (= {:data {:sqrt (Math/sqrt 4.0)}}
+           (execute schema "{ sqrt(num: 4.0) }")))))
+
 (deftest directive-args
   (let [f (fn [context _ _]
             (let [limit (->> context
