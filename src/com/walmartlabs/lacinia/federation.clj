@@ -303,6 +303,15 @@
                         (join " | ")))))
        (join "\n")))
 
+(defn ^:private edn-roots->sdl-schema
+  [{:keys [query mutation subscription]}]
+  (cond-> "schema {"
+    (some? query) (str "\n  query: " (name query))
+    (some? mutation) (str "\n  mutation: " (name mutation))
+    (some? subscription) (str "\n  subscription: " (name subscription))
+    true (str "\n}"))
+  )
+
 (defn ^:private fold-queries
   [{:keys [queries] :as schema}]
   (cond
@@ -328,13 +337,13 @@
        fold-queries
        fold-mutations
        fold-subscriptions
-       (sort-by #(-> % first {:directive-defs 0
-                              :scalars 1
-                              :enums 2
-                              :unions 3
-                              :interfaces 4
-                              :input-objects 5
-                              :objects 6}))
+       (sort-by #(-> % first {:directive-defs 1
+                              :scalars 2
+                              :enums 3
+                              :unions 4
+                              :interfaces 5
+                              :input-objects 6
+                              :objects 7}))
        (map (fn [[key val]]
               (case key
                 :objects (edn-objects->sdl-objects val)
@@ -344,6 +353,7 @@
                 :input-objects (edn-input-objects->sdl-input-objects val)
                 :enums (edn-enums->sdl-enums val)
                 :directive-defs (edn-directive-defs->sdl-directives val)
+                :roots (edn-roots->sdl-schema val)
                 "")))
        (join "\n\n")))
 

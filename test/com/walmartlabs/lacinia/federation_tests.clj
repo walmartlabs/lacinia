@@ -269,7 +269,9 @@ query($reps : [_Any!]!) {
       (is (= #{"Stuff"} union-names)))))
 
 (deftest edn-schema->sdl-schema
-  (let [sample-schema '{:interfaces
+  (let [sample-schema '{:roots {:query :query
+                                :mutation :mutation}
+                        :interfaces
                         {:Node
                          {:fields
                           {:id

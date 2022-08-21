@@ -1,4 +1,8 @@
-{:objects
+{:roots
+ {:query :Query
+  :mutation :Mutation
+  :subscription :Subscription}
+ :objects
  {:_Service
   {:fields
    {:sdl
