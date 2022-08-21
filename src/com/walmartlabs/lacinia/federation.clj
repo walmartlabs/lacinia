@@ -314,21 +314,24 @@
 
 (defn ^:private fold-queries
   [{:keys [queries] :as schema}]
-  (cond
-    (map? queries) (update-in schema [:objects :Query :fields] merge queries)
-    :else schema))
+  (let [query (get-in schema [:roots :query] :Query)]
+    (cond
+     (map? queries) (update-in schema [:objects query :fields] merge queries)
+     :else schema)))
 
 (defn ^:private fold-mutations
   [{:keys [mutations] :as schema}]
-  (cond
-    (map? mutations) (update-in schema [:objects :Mutation :fields] merge mutations)
-    :else schema))
+  (let [mutation (get-in schema [:roots :mutation] :Mutation)]
+    (cond
+     (map? mutations) (update-in schema [:objects mutation :fields] merge mutations)
+     :else schema)))
 
 (defn ^:private fold-subscriptions
   [{:keys [subscriptions] :as schema}]
-  (cond
-    (map? subscriptions) (update-in schema [:objects :Subscription :fields] merge subscriptions)
-    :else schema))
+  (let [subscription (get-in schema [:roots :subscription] :Subscription)]
+    (cond
+     (map? subscriptions) (update-in schema [:objects subscription :fields] merge subscriptions)
+     :else schema)))
 
 (defn generate-sdl
   "Translate the edn lacinia schema to the SDL schema."
@@ -355,7 +358,8 @@
                 :directive-defs (edn-directive-defs->sdl-directives val)
                 :roots (edn-roots->sdl-schema val)
                 "")))
-       (join "\n\n")))
+       (join "\n\n")
+       clojure.string/trim))
 
 (defn inject-federation
   "Called after SDL parsing to extend the input schema

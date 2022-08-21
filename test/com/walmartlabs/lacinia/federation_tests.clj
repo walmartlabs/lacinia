@@ -269,15 +269,15 @@ query($reps : [_Any!]!) {
       (is (= #{"Stuff"} union-names)))))
 
 (deftest edn-schema->sdl-schema
-  (let [sample-schema '{:roots {:query :query
-                                :mutation :mutation}
+  (let [sample-edn-1 '{:roots {:query :MyQuery
+                                :mutation :Mutation}
                         :interfaces
                         {:Node
                          {:fields
                           {:id
                            {:type (non-null ID)}}}}
                         :objects
-                        {:Query
+                        {:MyQuery
                          {:fields
                           {:todo
                            {:type :Todo
@@ -332,8 +332,18 @@ query($reps : [_Any!]!) {
                            :resolvable
                            {:type Boolean :default-value true}}}
                          :external
-                         {:locations #{:field-definition}}}}]
-    (is (= (-> sample-schema generate-sdl parse-schema) sample-schema))))
+                         {:locations #{:field-definition}}}}
+        sample-edn-2 '{:queries
+                       {:node
+                        {:description "node query"
+                         :type Node
+                         :args {:id {:type (non-null ID)}}}}
+                       :roots
+                       {:query :CustomQuery}}
+        sample-sdl-2 "schema {\n  query: CustomQuery\n}\n\ntype CustomQuery{\n  \"\"\"\n  node query\n  \"\"\"\n  node(id: ID!): Node\n}"]
+    
+    (is (= (-> sample-edn-1 generate-sdl parse-schema) sample-edn-1))
+    (is (= (generate-sdl sample-edn-2) sample-sdl-2))))
 
 (deftest only-edn-schama-essential
   (let [edn (-> "dev-resources/edn-federation.edn" slurp read-string)
