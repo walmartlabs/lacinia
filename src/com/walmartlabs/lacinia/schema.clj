@@ -208,7 +208,7 @@
     (number? v)
     (double v)))
 
-(defn ^:private seralize-float
+(defn ^:private serialize-float
   [v]
   (cond
     (instance? Double v)
@@ -255,7 +255,7 @@
   {:String {:parse parse-string
             :serialize str}
    :Float {:parse parse-float
-           :serialize seralize-float}
+           :serialize serialize-float}
    :Int {:parse parse-int
          :serialize serialize-int}
    :Boolean {:parse parse-boolean-string
@@ -791,7 +791,7 @@
                t)))))
 
 (defrecord ArgumentDef [arg-name compiled-schema type qualified-name root-type-name
-                        description directives default-value has-default-value? is-required?]
+                        description directives compiled-directives default-value has-default-value? is-required?]
 
   selection/ArgumentDef
 
@@ -807,21 +807,26 @@
   (root-type [_]
     (select-type compiled-schema root-type-name))
 
-  (root-type-name [_] root-type-name))
+  (root-type-name [_] root-type-name)
+
+  selection/Directives
+
+  (directives [_] compiled-directives))
 
 (defn ^:private compile-arg
   [arg-name arg-def]
   (let [arg-def' (-> (rewrite-type arg-def) map->ArgumentDef)
         has-default-value? (contains? arg-def :default-value)
         is-required? (and (= :non-null (get-nested arg-def' [:type :kind]))
-                       (not has-default-value?))]
-    (assoc arg-def'
-           :arg-name arg-name
-           :root-type-name (root-type-name arg-def')
-           ;; Older code used (contains? arg :default-value) but that doesn't work anymore
-           ;; with a record that has a default-value field, so ... even more fields.
-           :has-default-value? has-default-value?
-           :is-required? is-required?)))
+                          (not has-default-value?))]
+    (-> arg-def'
+        (assoc :arg-name arg-name
+               :root-type-name (root-type-name arg-def')
+               ;; Older code used (contains? arg :default-value) but that doesn't work anymore
+               ;; with a record that has a default-value field, so ... even more fields.
+               :has-default-value? has-default-value?
+               :is-required? is-required?)
+        compile-directives)))
 
 (defn ^:private is-null?
   [v]
@@ -867,6 +872,14 @@
       (or (contains? visited element-def)
           (not (contains? #{:object :interface} (:category element-def))))
       (recur visited (pop queue))
+
+      ;; if it's a union, mark as visited and process its members
+      (-> element-def :category (= :union))
+      (recur (conj visited element-def)
+             (-> queue
+                 (pop)
+                 (into (for [member (:members element-def)]
+                         (get schema member)))))
 
       :let [field-defs (-> element-def :fields vals)]
 

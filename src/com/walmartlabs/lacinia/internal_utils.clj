@@ -286,7 +286,7 @@
   [m [k & more-ks] f]
   (cond
     (not (contains? m k))
-    (throw (ex-info "Intermdiate key not found during update-in!"
+    (throw (ex-info "Intermediate key not found during update-in!"
                     {:map m
                      :key k
                      :more-keys more-ks}))
