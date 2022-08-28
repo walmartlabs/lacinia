@@ -146,11 +146,6 @@
         (nil? hd) ""
         (= 'non-null hd) (str (apply-list edn-type->sdl-type tl) "!")
         (= 'list hd) (str "[" (apply-list edn-type->sdl-type tl) "]")
-        (= 'String hd) "String"
-        (= 'Int hd) "Int"
-        (= 'Float hd) "Float"
-        (= 'Boolean hd) "Boolean"
-        (= 'ID hd) "ID"
         (keyword? hd) (name hd)
         (symbol? hd) (name hd)))
     (recur (list type))))
