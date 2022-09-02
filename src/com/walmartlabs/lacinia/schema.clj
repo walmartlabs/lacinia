@@ -56,7 +56,7 @@
 ;;-------------------------------------------------------------------------------
 ;; ## Helpers
 
-(defn default-executor
+(defn ^{:added "1.2"} default-executor
   "Creates and returns a default executor used if one is not explicitly provided.
 
   Returns an unbounded ThreadPoolExecutor, with a maximum of 10 threads, and a 1 second
@@ -68,7 +68,7 @@
                                  (^Thread newThread [_ ^Runnable runnable]
                                    (Thread. runnable
                                             (format "GraphQL Executor #%d" (swap! *thread-id inc)))))]
-    (ThreadPoolExecutor. (int 1) (int 10)
+    (ThreadPoolExecutor. (int 0) (int 10)
                          1 TimeUnit/SECONDS
                          queue
                          factory)))
