@@ -22,24 +22,25 @@
   schema, and pre-computing many defaults."
   (:refer-clojure :exclude [compile])
   (:require
-   [clojure.spec.alpha :as s]
-   [com.walmartlabs.lacinia.introspection :as introspection]
-   [com.walmartlabs.lacinia.internal-utils
-    :refer [map-vals map-kvs filter-vals deep-map-merge q get-nested
-            is-internal-type-name? sequential-or-set? as-keyword
-            cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag
-            to-message qualified-name fast-map-indexed]]
-   [com.walmartlabs.lacinia.select-utils :as su]
-   [com.walmartlabs.lacinia.resolve :as resolve
-    :refer [ResolverResult resolve-as is-resolver-result?]]
-   [com.walmartlabs.lacinia.resolve-utils :refer [aggregate-results]]
-   [clojure.string :as str]
-   [clojure.set :refer [difference]]
-   [clojure.pprint :as pprint]
-   [com.walmartlabs.lacinia.selection :as selection])
+    [clojure.spec.alpha :as s]
+    [com.walmartlabs.lacinia.introspection :as introspection]
+    [com.walmartlabs.lacinia.internal-utils
+     :refer [map-vals map-kvs filter-vals deep-map-merge q get-nested
+             is-internal-type-name? sequential-or-set? as-keyword
+             cond-let ->TaggedValue is-tagged-value? extract-value extract-type-tag
+             to-message qualified-name fast-map-indexed]]
+    [com.walmartlabs.lacinia.select-utils :as su]
+    [com.walmartlabs.lacinia.resolve :as resolve
+     :refer [ResolverResult resolve-as is-resolver-result?]]
+    [com.walmartlabs.lacinia.resolve-utils :refer [aggregate-results]]
+    [clojure.string :as str]
+    [clojure.set :refer [difference]]
+    [clojure.pprint :as pprint]
+    [com.walmartlabs.lacinia.selection :as selection])
   (:import
     (clojure.lang IObj PersistentQueue)
-    (java.io Writer)))
+    (java.io Writer)
+    (java.util.concurrent Executor ThreadPoolExecutor TimeUnit LinkedBlockingQueue ThreadFactory)))
 
 ;; When using Clojure 1.8, the dependency on clojure-future-spec must be included,
 ;; and this code will trigger
@@ -54,6 +55,23 @@
 
 ;;-------------------------------------------------------------------------------
 ;; ## Helpers
+
+(defn default-executor
+  "Creates and returns a default executor used if one is not explicitly provided.
+
+  Returns an unbounded ThreadPoolExecutor, with a maximum of 10 threads, and a 1 second
+  keep-alive."
+  []
+  (let [queue (LinkedBlockingQueue.)
+        *thread-id (atom 0)
+        ^ThreadFactory factory (reify ThreadFactory
+                                 (^Thread newThread [_ ^Runnable runnable]
+                                   (Thread. runnable
+                                            (format "GraphQL Executor #%d" (swap! *thread-id inc)))))]
+    (ThreadPoolExecutor. (int 1) (int 10)
+                         1 TimeUnit/SECONDS
+                         queue
+                         factory)))
 
 (def ^:private graphql-identifier #"(?ix) _* [a-z] [a-z0-9_]*")
 
@@ -191,9 +209,9 @@
           (int long-v)
           (coercion-failure "Int value outside of allowed 32 bit integer range." {:value (pr-str v)}))))
 
-    (instance? java.math.BigDecimal v)
-    (when (>= 0 (.. v stripTrailingZeros scale))
-      (let [long-v (.longValueExact v)]
+    (instance? BigDecimal v)
+    (when (>= 0 (.. ^BigDecimal v stripTrailingZeros scale))
+      (let [long-v (.longValueExact ^BigDecimal v)]
         (if (<= Integer/MIN_VALUE long-v Integer/MAX_VALUE)
           (int long-v)
           (coercion-failure "Int value outside of allowed 32 bit integer range." {:value (pr-str v)}))))))
@@ -449,12 +467,15 @@
 
 (s/def ::disable-checks? boolean?)
 
+(s/def ::executor #(instance? Executor %))
+
 (s/def ::compile-options (s/keys :opt-un [::default-field-resolver
                                           ::promote-nils-to-empty-list?
                                           ::enable-introspection?
                                           ::apply-field-directives
                                           ::disable-checks?
-                                          ::disable-java-objects?]))
+                                          ::disable-java-objects?
+                                          ::executor]))
 
 (defn ^:private wrap-map
   [compiled-schema m]
@@ -1870,6 +1891,8 @@
                          :scalars
                          (merge default-scalar-transformers)
                          (map-vals #(assoc % :category :scalar)))
+        executor (or (:executor options)
+                     (default-executor))
         {:keys [query mutation subscription]
          :or {query :Query
               mutation :Mutation
@@ -1882,6 +1905,7 @@
     (-> {::roots {:query query
                   :mutation mutation
                   :subscription subscription}
+         ::executor executor
          ::options options}
         (xfer-types merged-scalars :scalar)
         (xfer-types (:enums schema) :enum)
@@ -1933,7 +1957,7 @@
 
 (s/def ::compile-args
   (s/cat :schema ::schema-object
-    :options (s/? (s/nilable ::compile-options))))
+         :options (s/? (s/nilable ::compile-options))))
 
 (defn compile
   "Compiles a schema, verifies its correctness, and prepares it for query execution.
@@ -1957,6 +1981,11 @@
   :enable-introspection?
   : If true (the default), then Schema introspection is enabled. Some applications
     may disable introspection in production.
+
+  :executor (added in 1.2)
+  : An instance of java.util.concurrent.Executor; this will be used during query execution,
+    primarily when [[resolve-promise]] callbacks are invoked. If omitted, a default
+    ThreadPoolExecutor is supplied.
 
   :disable-checks?  (added in 1.1)
   : If true (defaults to false), certain runtime checks on data returned from field resolvers

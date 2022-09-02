@@ -27,7 +27,8 @@
     [com.walmartlabs.lacinia.tracing :as tracing]
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.selection :as selection])
-  (:import (clojure.lang PersistentQueue)))
+  (:import (clojure.lang PersistentQueue)
+           (java.util.concurrent Executor)))
 
 (def ^:private empty-ordered-map (ordered-map))
 
@@ -370,56 +371,55 @@
   [context]
   (let [parsed-query (get context constants/parsed-query-key)
         {:keys [selections operation-type ::tracing/timing-start]} parsed-query
-        enabled-selections (remove :disabled? selections)
-        *errors (atom [])
-        *warnings (atom [])
-        *extensions (atom {})
-        *resolver-tracing (when (::tracing/enabled? context)
-                            (atom []))
         schema (get parsed-query constants/schema-key)
-        context' (assoc context constants/schema-key schema)
-        ;; Outside of subscriptions, the ::root-value is nil.
-        ;; For subscriptions, the :root-value will be set to a non-nil value before
-        ;; executing the query. It may be a wrapped value.
-        root-type (get-nested parsed-query [:root :type-name])
-        root-value (::resolved-value context)
-        execution-context (map->ExecutionContext {:context context'
-                                                  :schema schema
-                                                  :*errors *errors
-                                                  :*warnings *warnings
-                                                  :*resolver-tracing *resolver-tracing
-                                                  :timing-start timing-start
-                                                  :*extensions *extensions})
-        [execution-context' root-value'] (unwrap-root-value execution-context (first selections) root-value)
-        result-promise (resolve-promise)
-        executor resolve/*callback-executor*
-        f (bound-fn []
-            (try
-              (let [execute-fn (if (= :mutation operation-type) execute-nested-selections-sync execute-nested-selections)
-                    operation-result (execute-fn execution-context' enabled-selections [] nil root-type root-value')]
-                (resolve/on-deliver! operation-result
-                                     (fn [selected-data]
-                                       (let [errors (seq @*errors)
-                                             warnings (seq @*warnings)
-                                             extensions @*extensions]
-                                         (resolve/deliver! result-promise
-                                                           (cond-> {:data (schema/collapse-nulls-in-map selected-data)}
-                                                             (seq extensions) (assoc :extensions extensions)
-                                                             *resolver-tracing
-                                                             (tracing/inject-tracing timing-start
-                                                                                     (::tracing/parsing parsed-query)
-                                                                                     (::tracing/validation context)
-                                                                                     @*resolver-tracing)
-                                                             errors (assoc :errors (distinct errors))
-                                                             warnings (assoc-in [:extensions :warnings] (distinct warnings))))))))
-              (catch Throwable t
-                (resolve/deliver! result-promise t))))]
-
-    (if executor
-      (.execute executor f)
-      (future (f)))
-
-    result-promise))
+        ^Executor executor (::schema/executor schema)]
+    (binding [resolve/*callback-executor* executor]
+      (let [enabled-selections (remove :disabled? selections)
+            *errors (atom [])
+            *warnings (atom [])
+            *extensions (atom {})
+            *resolver-tracing (when (::tracing/enabled? context)
+                                (atom []))
+            context' (assoc context constants/schema-key schema)
+            ;; Outside of subscriptions, the ::root-value is nil.
+            ;; For subscriptions, the :root-value will be set to a non-nil value before
+            ;; executing the query. It may be a wrapped value.
+            root-type (get-nested parsed-query [:root :type-name])
+            root-value (::resolved-value context)
+            execution-context (map->ExecutionContext {:context context'
+                                                      :schema schema
+                                                      :*errors *errors
+                                                      :*warnings *warnings
+                                                      :*resolver-tracing *resolver-tracing
+                                                      :timing-start timing-start
+                                                      :*extensions *extensions})
+            [execution-context' root-value'] (unwrap-root-value execution-context (first selections) root-value)
+            result-promise (resolve-promise)
+            f (bound-fn []
+                (try
+                  (let [execute-fn (if (= :mutation operation-type) execute-nested-selections-sync execute-nested-selections)
+                        operation-result (execute-fn execution-context' enabled-selections [] nil root-type root-value')]
+                    (resolve/on-deliver! operation-result
+                                         (fn [selected-data]
+                                           (let [errors (seq @*errors)
+                                                 warnings (seq @*warnings)
+                                                 extensions @*extensions]
+                                             (resolve/deliver! result-promise
+                                                               (cond-> {:data (schema/collapse-nulls-in-map selected-data)}
+                                                                 (seq extensions) (assoc :extensions extensions)
+                                                                 *resolver-tracing
+                                                                 (tracing/inject-tracing timing-start
+                                                                                         (::tracing/parsing parsed-query)
+                                                                                         (::tracing/validation context)
+                                                                                         @*resolver-tracing)
+                                                                 errors (assoc :errors (distinct errors))
+                                                                 warnings (assoc-in [:extensions :warnings] (distinct warnings))))))))
+                  (catch Throwable t
+                    (resolve/deliver! result-promise t))))]
+        ;; Execute in the background
+        (.execute executor f)
+        ;; And return a promise
+        result-promise))))
 
 (defn invoke-streamer
   "Given a parsed and prepared query (inside the context, as with [[execute-query]]),
