@@ -19,7 +19,7 @@
    [com.walmartlabs.lacinia.resolve-utils :as ru]
    [com.walmartlabs.lacinia.schema :as schema]
    [clojure.spec.alpha :as s]
-   [clojure.string :refer [join]]))
+   [clojure.string :refer [join escape]]))
 
 (def foundation-types
   "Map of annotations and types to automatically include into an SDL
@@ -136,7 +136,7 @@
   [description]
   (if (nil? description)
     ""
-    (str "\"\"\"\n" description "\n\"\"\"\n")))
+    (str "\"\"\"\n" (escape description {\" "\\\""}) "\n\"\"\"\n")))
 
 (defn ^:private edn-type->sdl-type
   [type]
@@ -153,7 +153,7 @@
 (defn ^:private value->string
   [value]
   (cond
-    (string? value) (str "\"" value "\"")
+    (string? value) (str "\"" (escape value {\" "\\\""}) "\"")
     (keyword? value) (name value)
     :else (str value)))
 
@@ -167,7 +167,7 @@
   [description]
   (if (nil? description)
     ""
-    (str "\"" description "\" ")))
+    (str "\"" (escape description {\" "\\\""}) "\" ")))
 
 (defn ^:private edn-args->sdl-args
   [args]

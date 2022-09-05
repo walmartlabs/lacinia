@@ -281,10 +281,11 @@ query($reps : [_Any!]!) {
                          {:fields
                           {:todo
                            {:type :Todo
-                            :description "\"Get one todo item\""
+                            :description "\"\"\"Get one todo item\""
                             :args
                             {:id
-                             {:type (non-null ID)}}}
+                             {:type (non-null ID)
+                              :default-value "\"default-node-id"}}}
                            :allTodos
                            {:type (non-null (list (non-null :Todo))) :description "List of all todo items"}}}
                          :Mutation
