@@ -39,7 +39,9 @@
 (def ^{:dynamic true
        :added "0.20.0"} ^Executor *callback-executor*
   "If non-nil, then specifies a java.util.concurrent.Executor (typically, a thread pool of some form) used to invoke callbacks
-  when ResolveResultPromises are delivered."
+  when ResolveResultPromises are delivered.
+
+  Starting in 1.2, this is always bound when query execution begins."
   nil)
 
 (def ^:private ^:dynamic *in-callback-thread* false)

@@ -6,6 +6,8 @@ within a single request.
 
 This can be very desirable: different fields within the same query
 may operate on different databases or other backend data sources, for example.
+Queries to these backends can easily execute in parallel, resulting in better
+throughput for the overall GraphQL query execution than executing serially.
 
 Alternately, a single request may invoke multiple top-level operations which, again,
 can execute in parallel.
@@ -75,16 +77,14 @@ In the example above, any thrown exception is converted to an
 Thread Pools
 ------------
 
-By default, calls to ``deliver!`` invoke the callback (provided to ``on-deliver!``) in
-the same thread.
-This is not always desirable; for example, when using Clojure core.async, this can result
-in considerable processing occuring within a thread from the dispatch thread pool
-(the one used for ``go`` blocks).
-There are typically only eight threads in that pool, so a callback that does a lot of
-processing (or blocks due to I/O operations) can result in a damaging impact on overall server throughput.
+The ``on-deliver!`` callback does not execute on the main thread, it is always
+invoked in a worker thread within a thread pool.
 
-To address this, an optional executor can be provided, via the dynamic
-:api:`resolve/*callback-executor*` var.
-When a ResolverResultPromise is delivered, the executor (if non-nil) will be used
-to execute the callback; Java thread pools implement this interface.
+It is recommended that an application-specific ``ThreadPoolExecutor`` be provided as the
+``:executor`` option when compiling the schema.  If omitted, then a default
+executor will be provided.
+
+.. note::
+
+   The ``:executor`` option was added in Lacinia 1.2.
 

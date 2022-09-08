@@ -1,5 +1,11 @@
 ## 1.2 - Not Released
 
+A new schema compile option, :executor, has been added;
+this is an `Executor` used primarily when invoking
+`ResolverResultPromise` callbacks.  If omitted, a default executor is provided.
+Most applications, especially those that make heavy use of 
+`com.walmartlabs.lacinia.resolve/resolve-promise`, will want to provide their own executor. 
+
 [Closed Issues](https://github.com/walmartlabs/lacinia/issues?q=is%3Aclosed+milestone%3A1.2)
 
 ## 1.1 -- 14 Jan 2022
