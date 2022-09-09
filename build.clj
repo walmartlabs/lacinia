@@ -19,7 +19,7 @@
             [net.lewisship.build :as b]))
 
 (def lib 'com.walmartlabs/lacinia)
-(def version "1.2-alpha-2")
+(def version "1.2-alpha-3")
 
 (def jar-params {:project-name lib
                  :version version})
