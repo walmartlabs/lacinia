@@ -432,8 +432,9 @@
         selection (do
                     (assert (= :subscription operation-type))
                     (first selections))
-        streamer (get-nested selection [:field-definition :stream])]
-    (streamer context (:arguments selection) source-stream)))
+        streamer (get-nested selection [:field-definition :stream])
+        context' (assoc context constants/selection-key selection)]
+    (streamer context' (:arguments selection) source-stream)))
 
 (defn ^:private node-selections
   [parsed-query node]

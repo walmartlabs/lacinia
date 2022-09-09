@@ -6,10 +6,12 @@ this is an `Executor` used primarily when invoking
 Most applications, especially those that make heavy use of 
 `com.walmartlabs.lacinia.resolve/resolve-promise`, will want to provide their own executor. 
 
-[Closed Issues](https://github.com/walmartlabs/lacinia/issues?q=is%3Aclosed+milestone%3A1.2)
-
 Subscription streamer functions can now be wrapped to implement field definition directives
 using a new schema compilation option.
+
+Subscription streamer functions can now access the field selections (via the _preview api_).
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/issues?q=is%3Aclosed+milestone%3A1.2)
 
 ## 1.1 -- 14 Jan 2022
 
