@@ -83,29 +83,31 @@
       (schema/compile {:apply-subscription-field-directives apply-subscription-field-directives})))
 
 (defn ^:private execute
-  [query-string vars]
-  (let [prepared-query (-> (parser/parse-query compiled-schema query-string)
-                           (parser/prepare-with-query-variables vars))
-        *cleanup-callback (promise)
-        context {constants/parsed-query-key prepared-query}
-        ;; For compatibility reasons, the value may be a ResolvedValue.
-        source-stream (fn accept-value [value]
-                        (cond
-                          (nil? value)
-                          (do
-                            (@*cleanup-callback)
-                            (reset! *latest-response nil))
+  ([query-string vars]
+   (execute compiled-schema query-string vars))
+  ([schema query-string vars]
+   (let [prepared-query (-> (parser/parse-query schema query-string)
+                            (parser/prepare-with-query-variables vars))
+         *cleanup-callback (promise)
+         context {constants/parsed-query-key prepared-query}
+         ;; For compatibility reasons, the value may be a ResolvedValue.
+         source-stream (fn accept-value [value]
+                         (cond
+                           (nil? value)
+                           (do
+                             (@*cleanup-callback)
+                             (reset! *latest-response nil))
 
-                          (resolve/is-resolver-result? value)
-                          (resolve/on-deliver! value accept-value)
+                           (resolve/is-resolver-result? value)
+                           (resolve/on-deliver! value accept-value)
 
-                          :else
-                          (resolve/on-deliver!
-                            (executor/execute-query (assoc context
-                                                           ::executor/resolved-value value))
-                            (fn [result]
-                              (reset! *latest-response result)))))]
-    (deliver *cleanup-callback (executor/invoke-streamer context source-stream))))
+                           :else
+                           (resolve/on-deliver!
+                             (executor/execute-query (assoc context
+                                                            ::executor/resolved-value value))
+                             (fn [result]
+                               (reset! *latest-response result)))))]
+     (deliver *cleanup-callback (executor/invoke-streamer context source-stream)))))
 
 (deftest basic-subscription
   (reset! *instrumentation 0)
@@ -214,3 +216,26 @@
   (reset! *instrumentation 0)
   (execute "subscription { directive_logs { message }}" nil)
   (is (= 1 @*instrumentation)))
+
+
+(deftest subscription-is-passed-selection
+  (let [*selections (atom nil)
+        *args (atom nil)
+        streamer (fn [context args _]
+                   (reset! *args args)
+                   (reset! *selections (executor/selections-seq context))
+                   nil)
+        schema (-> "subscription-selection.edn"
+                   io/resource
+                   slurp
+                   edn/read-string
+                   (util/inject-streamers {:Subscription/time_from streamer})
+                   schema/compile)]
+    (execute schema
+                    "subscription ($when : String!) { time_from (when: $when) { hour minute }}"
+                    {:when "now"})
+    (log-event nil)
+
+    (is (= {:when "now"
+            :interval 60} @*args))
+    (is (= [:Instant/hour :Instant/minute] @*selections))))

@@ -1,0 +1,12 @@
+{:objects
+ {:Instant
+  {:fields {:hour {:type (non-null Int)}
+            :minute {:type (non-null Int)}
+            :second {:type (non-null Int)}}}
+
+  :Subscription
+  {:fields {:time_from
+            {:type :Instant
+             :args {:when {:type (non-null String)}
+                    :interval {:type Int
+                               :default-value 60}}}}}}}
