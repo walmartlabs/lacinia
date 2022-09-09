@@ -8,6 +8,9 @@ Most applications, especially those that make heavy use of
 
 [Closed Issues](https://github.com/walmartlabs/lacinia/issues?q=is%3Aclosed+milestone%3A1.2)
 
+Subscription streamer functions can now be wrapped to implement field definition directives
+using a new schema compilation option.
+
 ## 1.1 -- 14 Jan 2022
 
 This release features some significant efficiency improvements inside Lacinia.

@@ -1,4 +1,7 @@
-{:objects
+{:directive-defs
+ {:instrument {:locations #{:field-definition}}}
+
+ :objects
  {:LogEvent
   {:fields
    {:severity {:type String}
@@ -7,6 +10,14 @@
  :subscriptions
  {:logs
   {:type :LogEvent
+   :args {:severity {:type String}
+          :fakeError {:type Boolean
+                      :default false}}
+   :stream :stream-logs}
+
+  :directive_logs
+  {:type :LogEvent
+   :directives [{:directive-type :instrument}]
    :args {:severity {:type String}
           :fakeError {:type Boolean
                       :default false}}

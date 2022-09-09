@@ -465,6 +465,8 @@
 
 (s/def ::apply-field-directives fn?)
 
+(s/def ::apply-subscription-field-directives fn?)
+
 (s/def ::disable-checks? boolean?)
 
 (s/def ::executor #(instance? Executor %))
@@ -473,6 +475,7 @@
                                           ::promote-nils-to-empty-list?
                                           ::enable-introspection?
                                           ::apply-field-directives
+                                          ::apply-subscription-field-directives
                                           ::disable-checks?
                                           ::disable-java-objects?
                                           ::executor]))
@@ -1345,6 +1348,19 @@
     (assoc field-def :resolve (wrap-resolver-to-ensure-resolver-result resolver')
                      :direct-fn direct-fn)))
 
+(defn ^:private prepare-field-streamer
+  [schema options field-def]
+  (let [{:keys [apply-subscription-field-directives]} options
+        {:keys [compiled-directives]} field-def
+        streamer (:stream field-def)
+        streamer' (when (and streamer
+                             apply-subscription-field-directives
+                             (seq compiled-directives))
+                    (apply-subscription-field-directives (assoc field-def :compiled-schema schema) streamer))]
+    (if streamer'
+      (assoc field-def :stream streamer')
+      field-def)))
+
 ;;-------------------------------------------------------------------------------
 ;; ## Compile schema
 
@@ -1771,6 +1787,15 @@
   (map-types schema :object
              #(prepare-resolvers-in-object schema % options)))
 
+(defn ^:private prepare-streamers-in-object
+  [schema object-def options]
+  (update-fields-in-object object-def #(prepare-field-streamer schema options %)))
+
+(defn ^:private prepare-field-streamers
+  [schema options]
+  (map-types schema :object
+             #(prepare-streamers-in-object schema % options)))
+
 (defn ^:private inject-null-collapsers
   [schema]
   (reduce (fn [schema' kind]
@@ -1928,6 +1953,7 @@
         inject-null-collapsers
         ;; Last so that schema is as close to final and verified state as possible
         (prepare-field-resolvers options)
+        (prepare-field-streamers options)
         map->CompiledSchema)))
 
 (defn default-field-resolver
@@ -2009,6 +2035,14 @@
 
     The callback should be aware that the base resolver function may return a raw value, or a [[ResolverResult]].
     Generally, this option is used with the [[wrap-resolver-result]] function.
+
+    This processing occurs at the very end of schema compilation.
+
+  :apply-subscription-field-directives
+  : An optional callback function; for subscription fields that have any directives on the field definition,
+    the callback is invoked; it is passed the [[FieldDef]] (from which directives may be extracted)
+    and the streamer function from the subscription definition.
+    The callback may return a new streamer function, or return nil to use the existing streamer function.
 
     This processing occurs at the very end of schema compilation.
 
