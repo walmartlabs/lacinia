@@ -1917,6 +1917,7 @@
                          (merge default-scalar-transformers)
                          (map-vals #(assoc % :category :scalar)))
         executor (or (:executor options)
+                     resolve/*callback-executor*
                      (default-executor))
         {:keys [query mutation subscription]
          :or {query :Query
@@ -2010,7 +2011,8 @@
 
   :executor (added in 1.2)
   : An instance of java.util.concurrent.Executor; this will be used during query execution,
-    primarily when [[resolve-promise]] callbacks are invoked. If omitted, a default
+    primarily when [[resolve-promise]] callbacks are invoked. If omitted, the current value
+    of [[*callback-executor*]] will be used or, if that's nil, a default
     ThreadPoolExecutor is supplied.
 
   :disable-checks?  (added in 1.1)
