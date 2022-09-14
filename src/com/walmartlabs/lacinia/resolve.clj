@@ -115,7 +115,9 @@
     The callback is invoked for side-effects; its result is ignored."))
 
 (defprotocol ResolverResultPromise
-  "A specialization of ResolverResult that supports asynchronous delivery of the resolved value and errors."
+  "A specialization of ResolverResult that supports asynchronous delivery of the resolved value and errors.
+
+  These are created by [[resolve-promise]]."
 
   (deliver!
     [this value]
