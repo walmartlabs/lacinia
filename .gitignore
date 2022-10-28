@@ -19,4 +19,6 @@ build.xml
 .project
 .classpath
 *.pom.asc
-
+.clj-kondo
+.cpcache
+.lsp

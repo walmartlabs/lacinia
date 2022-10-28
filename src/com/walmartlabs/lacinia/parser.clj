@@ -1322,6 +1322,7 @@
     ;; Build the result describing the fragments and selections (for the selected operation).
     (cond-> {:selections selections
              :operation-type operation-type
+             :operation-name operation-name
              :root root
              constants/schema-key schema}
       (seq fragments) (assoc :fragments fragments))))
