@@ -59,6 +59,44 @@
              (execute compiled-schema q {:include true} nil))
           "should return both fields"))))
 
+(deftest external-fragments
+  (testing "when @skip is set on an external fragment"
+    (let [q "fragment IdFrag on human {
+               id @skip(if: $skip)
+             }
+             query ($skip : Boolean!) {
+               human(id: \"1000\") {
+                 name
+                 ... IdFrag
+               }
+             }
+             "]
+      (is (= {:data {:human {:name "Luke Skywalker"}}}
+             (execute compiled-schema q {:skip true} nil))
+          "should return name only")
+      (is (= {:data {:human {:name "Luke Skywalker"
+                             :id "1000"}}}
+             (execute compiled-schema q {:skip false} nil))
+          "should return both fields")))
+
+  (testing "when @include is set on an external fragment"
+    (let [q "fragment IdFrag on human {
+               id @include(if: $include)
+             }
+             query ($include : Boolean!) {
+               human(id: \"1000\") {
+                 name
+                 ... IdFrag
+               }
+             }"]
+      (is (= {:data {:human {:name "Luke Skywalker"}}}
+             (execute compiled-schema q {:include false} nil))
+          "should return name only")
+      (is (= {:data {:human {:name "Luke Skywalker"
+                             :id "1000"}}}
+             (execute compiled-schema q {:include true} nil))
+          "should return both fields"))))
+
 (deftest mixed-directives
   (testing "when both @skip and @include are set"
     (let [q "query ($skip: Boolean!, $include: Boolean!) {
@@ -468,4 +506,3 @@
                     :enum-value :green}
             :red {:enum-value :red}}
            (get-in schema [:Color :values-detail])))))
-
