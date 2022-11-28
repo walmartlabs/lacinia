@@ -634,8 +634,8 @@
 (defmethod process-dynamic-argument :array
   [schema argument-definition arg]
   ;; Sneaky: strip off the outer layer of `(list T)` or `(non-null (list T))` to be just `T`:
-  (let [argument-definition' (cond-> (update argument-definition :type :type)
-                               (non-null-kind? argument-definition) (update :type :type))
+  (let [argument-definition' (cond-> (use-nested-type argument-definition)
+                               (non-null-kind? argument-definition) use-nested-type)
         extractors (mapv #(process-dynamic-argument schema argument-definition' %)
                          ;; The list of values for the array argument
                          (second arg))]
