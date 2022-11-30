@@ -359,8 +359,10 @@
       (throw-exception "Provided argument value is an array, but the argument is not a list.")
 
       :list
-      (let [fake-argument-def (use-nested-type argument-definition)]
-        (mapv #(process-literal-argument schema fake-argument-def %) arg-value)))))
+      ;; if arg-value is nil, should return nil (no coercion is required)
+      (when (some? arg-value)
+        (let [fake-argument-def (use-nested-type argument-definition)]
+          (mapv #(process-literal-argument schema fake-argument-def %) arg-value))))))
 
 (defn ^:private decapitalize
   [s]
