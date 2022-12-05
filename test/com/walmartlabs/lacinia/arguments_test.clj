@@ -144,3 +144,23 @@
 
     (is (= {:data {:echo nil}}
            (execute schema "query($s: Int) { echo(input: $s) }" {:s nil} nil)))))
+
+(deftest non-null-list-type-argument-with-variable
+  (let [schema (schema/compile {:queries
+                                {:echo
+                                 {:type :String
+                                  :args {:input {:type '(non-null (list (non-null Int)))}}
+                                  :resolve (fn [_ args _]
+                                             (str "Echo: " (:input args)))}}})]
+    (is (= {:data {:echo "Echo: [1]"}}
+           (execute schema "query($n : Int!) { echo(input: [$n]) }" {:n 1} nil)))
+
+    (is (= {:data {:echo "Echo: [1]"}}
+           (execute schema "query($n : Int!) { echo(input: $n) }" {:n 1} nil)))
+
+    (is (= {:data {:echo "Echo: [1 2]"}}
+           (execute schema "query($n1 : Int!, $n2 : Int!) { echo(input: [$n1, $n2]) }" {:n1 1 :n2 2} nil)))
+
+    (is (= {:data {:echo "Echo: [1 2]"}}
+           (execute schema "query($n1 : Int!, $n2 : Int!) { ... echo }
+                            fragment echo on Query { echo(input: [$n1, $n2]) }" {:n1 1 :n2 2} nil)))))
