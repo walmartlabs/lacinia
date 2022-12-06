@@ -116,9 +116,9 @@
       (let [q "query { echoArgs (integerArray: [1 null 3], inputObject: {string: null}) { integerArray inputObject  } }"]
         (is (= {:data {:echoArgs {:integerArray [1 nil 3] :inputObject (pr-str {:string nil})}}}
                (execute default-schema q {} nil)))))
-    (testing "null list/object values become null-ish"
+    (testing "null list/object values become null"
       (let [q "query { echoArgs (integerArray: null, inputObject: null) { integerArray inputObject } }"]
-        (is (= {:data {:echoArgs {:integerArray []
+        (is (= {:data {:echoArgs {:integerArray nil
                                   :inputObject "nil"}}}
                (execute default-schema q {} nil)))))))
 
@@ -624,6 +624,6 @@
                   integerArray
                }
              }"]
-      (is (= {:data {:echoArgs {:integerArray []}}}
+      (is (= {:data {:echoArgs {:integerArray nil}}}
              (execute default-schema q nil nil))
-          "should coerce null to an empty array"))))
+          "shouldn't coerce null to an empty array"))))
