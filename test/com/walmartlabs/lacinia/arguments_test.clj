@@ -118,6 +118,33 @@
                       :message "Argument `s' is required, but no value was provided."}]}
            (execute schema "query($s : String) { echo(input: $s) }" {:s nil} nil)))))
 
+(deftest scalar-is-coerced-into-vector-when-arg-type-is-list
+  (let [schema (schema/compile {:queries
+                                {:echo
+                                 {:type '(list (non-null Int))
+                                  :args {:input {:type '(list (non-null Int))}}
+                                  :resolve (fn [_ args _]
+                                             (:input args))}}})]
+
+    (is (= {:data {:echo [1]}}
+           (execute schema "query { echo (input: 1) }" nil nil)))
+
+    (is (= {:data {:echo [1]}}
+           (execute schema "query($s: Int) { echo (input: $s) }" {:s 1} nil)))))
+
+(deftest null-is-not-coerced-into-vector-when-arg-type-is-list
+  (let [schema (schema/compile {:queries
+                                {:echo
+                                 {:type '(list (non-null Int))
+                                  :args {:input {:type '(list (non-null Int))}}
+                                  :resolve (fn [_ args _]
+                                             (:input args))}}})]
+    (is (= {:data {:echo nil}}
+           (execute schema "query { echo(input: null) }" nil nil)))
+
+    (is (= {:data {:echo nil}}
+           (execute schema "query($s: Int) { echo(input: $s) }" {:s nil} nil)))))
+
 (deftest non-null-list-type-argument-with-variable
   (let [schema (schema/compile {:queries
                                 {:echo
