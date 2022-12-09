@@ -13,7 +13,11 @@
 ; limitations under the License.
 
 (ns com.walmartlabs.lacinia.expound
-  "Adds improved spec messages to Lacinia specs."
+  "Adds improved spec messages to Lacinia specs, when using [Expound](https://github.com/bhb/expound).
+
+  This namespace should simply be required; it exports no functions or constants.
+
+  Expound is an optional library for Lacinia and must be added to your project explicitly."
   {:added "0.26.0"}
   (:require
     [expound.alpha :refer [defmsg]]

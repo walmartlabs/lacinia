@@ -40,9 +40,9 @@
 
 (defn codox
   [_params]
-  (b/codox {:project-name lib
-            :version version
-            :aliases [:dev]}))
+  (b/generate-codox {:project-name lib
+                     :version version
+                     :aliases [:dev]}))
 
 (def publish-dir "../apidocs/lacinia")
 
@@ -53,10 +53,10 @@
   (codox nil)
   (println "Copying documentation to" publish-dir "...")
   (build/copy-dir {:target-dir publish-dir
-               :src-dirs ["target/doc"]})
+                   :src-dirs ["target/doc"]})
   (println "Committing changes ...")
   (build/process {:dir publish-dir
-              :command-args ["git" "commit" "-a" "-m" (str "lacinia " version)]})
+                  :command-args ["git" "commit" "-a" "-m" (str "lacinia " version)]})
   (println "Pushing changes ...")
   (build/process {:dir publish-dir
               :command-args ["git" "push"]}))
