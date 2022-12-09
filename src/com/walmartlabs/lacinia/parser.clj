@@ -529,18 +529,23 @@
     [:enum (as-keyword result)]
 
     (= category :input-object)
-    [:object (let [object-fields (get-nested schema [nested-type :fields])]
-               (reduce (fn [acc k]
-                         (let [v (get result k)
-                               field-type (get object-fields k)]
-                           (when-not (contains? object-fields k)
-                             (throw-exception "Field not defined for input object."
-                                              {:field-name k
-                                               :input-object-type nested-type
-                                               :input-object-fields (-> object-fields keys sort vec)}))
-                           (assoc acc k (construct-literal-argument schema v field-type arg-value))))
-                       {}
-                       (keys result)))]
+    [:object (if-not (map? result)
+               (throw-exception (format "Invalid value for input object %s."
+                                        (q nested-type))
+                                {:input-object-type nested-type
+                                 :value result})
+               (let [object-fields (get-nested schema [nested-type :fields])]
+                 (reduce (fn [acc k]
+                           (let [v (get result k)
+                                 field-type (get object-fields k)]
+                             (when-not (contains? object-fields k)
+                               (throw-exception "Field not defined for input object."
+                                                {:field-name k
+                                                 :input-object-type nested-type
+                                                 :input-object-fields (-> object-fields keys sort vec)}))
+                             (assoc acc k (construct-literal-argument schema v field-type arg-value))))
+                         {}
+                         (keys result))))]
 
     :else
     (throw (IllegalStateException. "Sanity check - no option in construct-literal-argument."))))
@@ -1437,4 +1442,3 @@
   (->> parsed-query
        :selections
        (summarize-selections parsed-query)))
-
