@@ -15,6 +15,7 @@
 (ns com.walmartlabs.input-objects-test
   (:require
     [clojure.test :refer [deftest is]]
+    [com.walmartlabs.lacinia :as lacinia]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.test-utils :refer [compile-schema execute expect-exception]]))
 
@@ -215,3 +216,21 @@
         {:fields
          {:speed {:type :Int}}}}})))
 
+(deftest valid-error-when-passing-non-object-to-input-object
+  (let [schema (compile-schema "nested-non-nullable-fields-schema.edn"
+                               {:mutation/create-game (fn [_ args _]
+                                                        (pr-str args))})
+        result (lacinia/execute schema "
+    mutation ($t: game_template) {
+      create_game(game_data: $t)
+    }"
+                                {:t "<string, not object>"}
+                                nil)]
+    (is (= {:errors [{:message "Invalid value for input object `game_template'."
+                      :extensions {:argument :Mutation/create_game.game_data
+                                   :field-name :Mutation/create_game
+                                   :input-object-type :game_template
+                                   :value "<string, not object>"}
+                      :locations [{:line 3
+                                   :column 7}]}]}
+           result))))
