@@ -19,7 +19,7 @@
             [net.lewisship.build :as b]))
 
 (def lib 'com.walmartlabs/lacinia)
-(def version "1.2-alpha-3")
+(def version "1.2-alpha-4")
 
 (def jar-params {:project-name lib
                  :version version})
@@ -35,8 +35,7 @@
 (defn deploy
   [_params]
   (clean nil)
-  (jar nil)
-  (b/deploy-jar jar-params))
+  (b/deploy-jar (jar nil)))
 
 (defn codox
   [_params]
