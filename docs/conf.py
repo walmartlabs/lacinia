@@ -76,7 +76,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'com.walmartlabs/lacinia'
-copyright = u'2015-2020, Walmartlabs'
+copyright = u'2015-2022, Walmartlabs'
 author = u'Lacinia Contributors'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -85,9 +85,7 @@ author = u'Lacinia Contributors'
 #
 # The short X.Y version.
 
-project_def = open("../project.clj", "r").readlines()[0]
-
-version = re.search("\"(.*)\"", project_def).group(1)
+version = open("../VERSION.txt", "r").readlines()[0]
 
 # The full version, including alpha/beta/rc tags.
 release = version
