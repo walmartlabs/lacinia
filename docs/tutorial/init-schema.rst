@@ -8,6 +8,9 @@ By the end of this stage, we'll have a minimal schema and be able to execute our
 Schema EDN File
 ---------------
 
+We're going to define an initial schema for our application that
+matches the :doc:`domain`.
+
 Our initial schema is just for the BoardGame entity, and a single operation to retrieve
 a game by its id:
 
@@ -19,10 +22,12 @@ a game by its id:
   See documentation about :doc:`/objects`, :doc:`/fields`, and :doc:`/queries`.
 
 A Lacinia schema is an `EDN <https://github.com/edn-format/edn>`_ file.
-It is a map of maps; the top level keys identify the type of definition: ``:objects``,
-``:queries``, ``:interfaces``, ``:enums``, and so forth.
+It is a map of maps; the top level keys identify the type of definition: ``:objects``,``:interfaces``, ``:enums``, and so forth.
 The inner maps are keywords to a type-specific structure.
-This schema defines a single query, ``game_by_id`` that returns an object as defined by the
+
+`Query` is a special object that contains the GraphQL queries that
+a client can execute.
+This schema defines a single query, ``gameById``, that returns an object as defined by the
 ``BoardGame`` type.
 
 A schema is declarative: it defines what operations are possible, and what types and fields exist,
@@ -38,9 +43,8 @@ the execution of that query, ultimately invoking application-specific callback h
 Field resolvers are the only source of actual data.
 Ultimately, field resolvers are simple Clojure functions, but those can't, and shouldn't, be
 expressed inside an EDN file.
-Instead we put a placeholder in the EDN, and then `attach` the actual resolver later.
 
-The keyword ``:query/game-by-id`` is just such a placeholder; we'll see how it is used shortly.
+Later we'll see how to connect fields, such as ``gameById`` to a field resolver.
 
 We've made liberal use of the ``:description`` property in the schema.
 These descriptions are intended for developers who will make use of your
@@ -74,7 +78,7 @@ The two wrappers are ``non-null`` (a value *must* be present) and
 ``list`` (the type is a list of values, not a single value).
 These can even be combined!
 
-Notice that the return type of the ``game_by_id`` query is ``:BoardGame`` and `not`
+Notice that the return type of the ``gameByID`` query is ``:BoardGame`` and `not`
 ``(non-null :BoardGame)``.
 This is because we can't guarantee that a game can be resolved, if the id provided in the client query is not valid.
 If the client provides an invalid id, then the result will be nil, and that's not considered an error.
@@ -87,19 +91,18 @@ schema namespace
 With the schema defined, the next step is to write code to load the schema into memory, and make it operational for queries:
 
 .. literalinclude:: /_examples/tutorial/schema-0.clj
-   :caption: src/clojure_game_geek/schema.clj
+   :caption: src/my/clojure_game_geek/schema.clj
 
-This code loads the schema EDN file, :doc:`attaches field resolvers </resolve/attach>` to the schema,
+This code loads the schema EDN file, :doc:`injects field resolvers </resolve/attach>` into the schema,
 then `compiles` the schema.
 The compilation step is necessary before it is possible to execute queries.
-Compilation reorganizes the schema, computes various defaults, perform verifications,
+Compilation reorganizes the schema, computes various defaults, performs verifications,
 and does a number of other necessary steps.
 
-We're using a namespaced keyword for the resolver in the schema, and in the
-``resolver-map`` function; this is a good habit to get into early, before your
-schema gets very large.
+The ``inject-resolvers`` function updates the schema, adding `:resolve` keys to fields.  The keys of the map identify a type and a field,
+and the value is the resolver function.
 
-The field resolver in this case is a placeholder; it ignores all the arguments
+The field resolver in this case is just a temporary placeholder; it ignores all the arguments
 passed to it, and simply returns nil.
 Like all field resolver functions, it accepts three arguments: a context map,
 a map of field arguments, and a container value.
@@ -127,13 +130,26 @@ We can add a bit of scaffolding to the ``user`` namespace, specific to
 our needs in this project.
 When you launch a REPL, it always starts in this namespace.
 
-We can define the user namespace in the ``dev-resources`` folder; this ensures
+The :file:`user.clj` needs to be on the classpath, but shouldn't be packaged when we eventually build a Jar from our project.  We need
+to introduce a new `alias` in the :file:`deps.edn` for this.
+
+An alias is used to extend the base dependencies with more information about
+running the project; this includes extra source paths, extra dependencies,
+and extra configuration about what function to run at startup.
+
+We're going to start by adding a ``:dev`` alias:
+
+.. literalinclude:: /_examples/tutorial/deps-3.edn
+   :caption: deps.edn
+   :emphasize-lines: 15
+
+
+We can now define the user namespace in the ``dev-resources`` folder; this ensures
 that it is not included with the rest of our application when we eventually package
 and deploy the application.
 
 .. literalinclude:: /_examples/tutorial/user-1.clj
    :caption: dev-resources/user.clj
-
 
 The key function is ``q``, which invokes :api:`/execute`.
 
@@ -142,36 +158,32 @@ directly in the REPL: no web browser necessary!
 
 With all that in place, we can launch a REPL and try it out::
 
-   14:26:41 ~/workspaces/github/clojure-game-geek > lein repl
-   nREPL server started on port 46737 on host 127.0.0.1 - nrepl://127.0.0.1:46737
-   REPL-y 0.5.1, nREPL 0.8.3
-   Clojure 1.10.3
-   OpenJDK 64-Bit Server VM 17.0.1+1
-      Docs: (doc function-name-here)
-            (find-doc "part-of-name-here")
-   Source: (source function-name-here)
-   Javadoc: (javadoc java-object-or-class-here)
-      Exit: Control+D or (exit) or (quit)
-   Results: Stored in vars *1, *2, *3, an exception in *e
+    > clj -M:dev
+    Clojure 1.11.1
+    user=> (q "{ gameById(id: \"foo\") { id name summary }}")
+    {:data #ordered/map ([:gameById nil])}
+    user=>
 
-   user=> (q "{ game_by_id(id: \"foo\") { id name summary }}")
-   {:data #ordered/map ([:game_by_id nil])}
+The ``clj -M:dev`` indicates that a REPL should be started that includes the ``:dev`` alias; this is what adds :file:`dev-resources` to the classpath and the ``user`` namespace is then loaded from :file:`dev-resources/user.clj`.
 
-The value returned makes use of an ordered map.
-Again, that's part of the GraphQL
+We get an odd result when executing the query; not a map but that odd ``#ordered/map`` business.
+
+The value returned makes use of an ordered map - a map that always orders its keys in the order that they are added to the map.
+That's part of the GraphQL
 specification: the order in which things appear in the query dictates the order in which
-they appear in the result.
-In any case, this result is equivalent to ``{:data {:game_by_id nil}}``.
+they appear in the result.  Clojure's map implementations don't always keep keys in the order they are added.
+
+In any case, this result is equivalent to ``{:data {:gameById nil}}``.
 
 That's as it should be: the resolver was unable to resolve the provided id
 to a BoardGame, so it returned nil.
 This is not an error ... remember that we defined the type of the
-``game_by_id`` operation to allow nulls, just for this specific situation.
+``gameById`` query to allow nulls, just for this specific situation.
 
 However, Lacinia still returns a map with the operation name and operation selection.
 Failure to return a result with a top-level ``:data`` key would signify an error executing
 the query, such as a parse error.
-That's not the case here at all.
+That's not the case here at all, the lack of a value is not an error.
 
 Summary
 -------
@@ -181,12 +193,12 @@ into memory and compile it.
 We've also used the REPL to execute a query against the schema and seen the initial
 (and quite minimal) result.
 
-In the next chapter, we'll build on this modest start, introducing more schema types, and
+In the next chapter, we'll build on this modest start, introducing more schema types, and a few helpers to keep our code clean and easily testable.
 
 
 
 .. [#internal] Internally, `everything` is converted to keywords, so if you prefer
-   to use symbols everywhere, nothing will break. This is part of the schema compilation
+   to use symbols everywhere, nothing will break. Conversion to keyboards is one part of the schema compilation
    process.
 
 .. [#spec] Because the input schema format is so complex, it is `always` validated

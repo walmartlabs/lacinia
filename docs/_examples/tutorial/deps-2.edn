@@ -1,0 +1,18 @@
+{:paths ["src" "resources"]
+ :deps {org.clojure/clojure {:mvn/version "1.11.1"}
+        com.walmartlabs/lacinia {:mvn/version "1.2-alpha-4"}}
+ :aliases
+ {:run-m {:main-opts ["-m" "my.clojure-game-geek"]}
+  :run-x {:ns-default my.clojure-game-geek
+          :exec-fn greet
+          :exec-args {:name "Clojure"}}
+  :build {:deps {io.github.seancorfield/build-clj
+                 {:git/tag "v0.8.2" :git/sha "0ffdb4c"
+                  ;; since we're building an app uberjar, we do not
+                  ;; need deps-deploy for clojars.org deployment:
+                  :deps/root "slim"}}
+          :ns-default build}
+  :test {:extra-paths ["test"]
+         :extra-deps {org.clojure/test.check {:mvn/version "1.1.1"}
+                      io.github.cognitect-labs/test-runner
+                      {:git/tag "v0.5.0" :git/sha "48c3c67"}}}}}

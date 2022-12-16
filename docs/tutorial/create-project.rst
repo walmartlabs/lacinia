@@ -48,10 +48,10 @@ With this tools installed, we can then create a new Clojure application project:
     Downloading: stencil/stencil/0.5.0/stencil-0.5.0.jar from clojars
     Generating a project called clojure-game-geek based on the 'app' template.
 
-All those downloads will only occur the first time the tool is run.  The name of the project, `my/clojure-game-geek` is used define the main namespace; feel free to change the value if you like
+All those downloads will only occur the first time the tool is run.  The name of the project, ``my/clojure-game-geek`` is used define the main namespace; feel free to change the value if you like
 (but then certain paths in the tutorial will also change).
 
-The ``clj-new`` tool creates a directory, ``clojure-game-geek`` and populates it with a good starting
+The ``clj-new`` tool creates a directory, :file:`clojure-game-geek` and populates it with a good starting
 point for a basic Clojure application::
 
     > cd clojure-game-geek
@@ -76,61 +76,26 @@ point for a basic Clojure application::
 
 This is a good point to load this new, empty project into your IDE of choice.
 
-Initially, the :file:`project.clj` is almost empty:
+You'll want to review the generated ``README.md`` file.
 
-.. literalinclude:: /_examples/tutorial/project-1.clj
-   :caption: project.clj
+``clj-new`` sets things up inside :file:`deps.edn` to support
+sources under a :file:`src` directory, tests under a :file:`test` directory, two different ways to run the project's code, a way to
+run tests, and some support for building and deploying the project.
 
-Our first step is to fill in a few details, including the dependency on Lacinia:
+.. literalinclude:: /_examples/tutorial/deps-1.edn
+   :caption: deps.edn
 
-.. literalinclude:: /_examples/tutorial/project-2.clj
-   :caption: project.clj
-   :emphasize-lines: 2,3,7-9
+We're going to ignore most of that, but add a dependency on the latest
+version of Lacinia.
+
+.. literalinclude:: /_examples/tutorial/deps-2.edn
+   :caption: deps.edn
+   :emphasize-lines: 3
 
 Lacinia has just a few dependencies of its own:
 
-.. graphviz::
-
-    digraph {
-      graph [rankdir=TD];
-      "clojure-game-geek-1216" [label="clojure-game-geek/
-      clojure-game-geek
-      0.1.0-SNAPSHOT",shape=doubleoctagon];
-      "clojure-1217" [label="org.clojure/
-      clojure
-      1.8.0"];
-      "lacinia-1218" [label="com.walmartlabs/
-      lacinia
-      0.21.0"];
-      "clj-antlr-1219" [label="clj-antlr
-      0.2.4"];
-      "antlr4-1220" [label="org.antlr/
-      antlr4
-      4.5.3"];
-      "antlr4-runtime-1221" [label="org.antlr/
-      antlr4-runtime
-      4.5.3"];
-      "clojure-future-spec-1222" [label="clojure-future-spec
-      1.9.0-alpha17"];
-      "ordered-1223" [label="org.flatland/
-      ordered
-      1.5.6"];
-      "useful-1224" [label="org.flatland/
-      useful
-      0.9.0"];
-      "clojure-game-geek-1216" -> "clojure-1217";
-      "clojure-game-geek-1216" -> "lacinia-1218";
-      "lacinia-1218" -> "clj-antlr-1219";
-      "lacinia-1218" -> "clojure-future-spec-1222";
-      "lacinia-1218" -> "ordered-1223";
-      "clj-antlr-1219" -> "antlr4-1220";
-      "clj-antlr-1219" -> "antlr4-runtime-1221";
-      "ordered-1223" -> "useful-1224";
-    }
+.. image:: /_static/tutorial/deps.png
 
 `Antlr <http://www.antlr.org/>`_ is used to parse GraphQL queries and schemas.
 ``org.flatland/ordered`` provides the ordered map type, used to ensure that response
 keys and values are in the client-specified order, as per the GraphQL spec.
-
-Like any open source project, Lacinia is evolving all the time.
-In later tutorial steps, we will change these dependencies to access newly added Lacinia features.
