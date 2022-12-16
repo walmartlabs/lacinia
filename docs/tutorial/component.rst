@@ -2,8 +2,8 @@ Refactoring to Components
 =========================
 
 Before we add the next bit of functionality to our application, it's time to
-take a small detour, into the use of Stuart Sierra's
-`component <https://github.com/stuartsierra/component>`_ library. [#vid]_
+take a small detour, into the use of Sandra Sierra's
+`Component <https://github.com/stuartsierra/component>`_ library. [#vid]_
 
 As Clojure programs grow, the namespaces, and relationships between those
 namespaces, grow in number and complexity.
@@ -46,12 +46,11 @@ our Clojure Game Geek application.
 Add Dependencies
 ----------------
 
-.. literalinclude:: /_examples/tutorial/project-4.clj
-   :caption: project.clj
-   :emphasize-lines: 7
+.. literalinclude:: /_examples/tutorial/deps-5.edn
+   :caption: deps.edn
+   :emphasize-lines: 5
 
 We've added the ``component`` library.
-
 
 System Map
 ----------
@@ -86,7 +85,7 @@ Here, ``:schema-provider`` is started before ``:server``, as ``:server`` depends
 ``:schema-provider``.
 
 Secondly, the *started* version of a dependency is ``assoc``-ed into
-the dependening component.
+the dependant component.
 After ``:schema-provider`` starts, the started version of the component
 will be ``assoc``-ed as the ``:schema-provider`` key of the ``:server`` component.
 
@@ -104,10 +103,10 @@ The ``clojure-game-geek.schema`` namespace has been extended to provide
 the ``:schema-provider`` component.
 
 .. literalinclude:: /_examples/tutorial/schema-3.clj
-   :caption: src/clojure_game_geek/schema.clj
-   :emphasize-lines: 7, 35, 46, 50, 53-
+   :caption: src/my/clojure_game_geek/schema.clj
+   :emphasize-lines: 4,34,45,49,52-64
 
-The real changes are at the bottom of the namespace.
+The significant changes are at the bottom of the namespace.
 There's a new record, SchemaProvider, that implements the Lifecycle
 protocol.
 
@@ -140,11 +139,11 @@ the component with the initial iteration of the component itself. [#system]_
 :server component
 -----------------
 
-Likewise, the ``clojure-game-geek.server`` namespace now provides the
+Next well add the ``clojure-game-geek.server`` namespace to provide the
 ``:server`` component.
 
 .. literalinclude:: /_examples/tutorial/server-1.clj
-   :caption: src/clojure_game_geek/server.clj
+   :caption: src/my/clojure_game_geek/server.clj
 
 Much of the code previously in the ``user`` namespace has moved here.
 
@@ -165,23 +164,25 @@ the dependency on the ``:schema-provider`` component.
 system namespace
 ----------------
 
-A new, tiny namespace has been created, just to put together the Component system map.
+We'll create a new ``my.clojure-game-geek.system`` namespace just to put together the Component system map.
 
 .. literalinclude:: /_examples/tutorial/system-1.clj
-   :caption: src/clojure_game_geek/system.clj
+   :caption: src/my/clojure_game_geek/system.clj
 
 You can imagine that, as the system grows larger, so will this namespace.
-But at the same time, individual components will only need to know about
-the components they directly depend upon.
+But at the same time, the namespaces for the individual components will only
+need to know about the namespaces of components they directly depend upon.
 
 user namespace
 --------------
+
+Next, we'll look at changes to the ``user`` namespace:
 
 .. literalinclude:: /_examples/tutorial/user-4.clj
   :caption: dev-resources/user.clj
   :emphasize-lines: 5, 7, 27, 31-34, 37-
 
-The user namespace has shrunk; previously
+The ``user`` namespace has shrunk; previously
 it was responsible for loading the schema, and creating and starting
 the Pedestal service; this has all shifted to the individual components.
 
@@ -201,8 +202,17 @@ The only wrinkle here is in the ``q`` function; since there's no longer a local
 ``schema`` var it is necessary to pull the ``:schema-provider`` component from the system map,
 and extract the schema from that component.
 
+Summary
+-------
 
-.. [#vid] Stuart provides a really good explanation of Component in his
+Even with just two components, using the Component library simplifies our code,
+and lays the groundwork for rapidly expanding the behaviour of the application.
+
+In the next chapter, we'll look at adding new queries and types to the schema,
+in preparation to adding our first mutations.
+
+
+.. [#vid] Sandra provides a really good explanation of Component in their
    `Clojure/West 2014 talk <https://www.youtube.com/watch?v=13cmHf_kt-Q&t=1106s>`_.
 .. [#test] We've been sloppy so far, in that we haven't even thought about
    testing. That will change shortly.

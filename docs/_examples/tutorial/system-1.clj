@@ -1,8 +1,7 @@
-(ns clojure-game-geek.system
-  (:require
-    [com.stuartsierra.component :as component]
-    [clojure-game-geek.schema :as schema]
-    [clojure-game-geek.server :as server]))
+(ns my.clojure-game-geek.system
+  (:require [com.stuartsierra.component :as component]
+            [my.clojure-game-geek.schema :as schema]
+            [my.clojure-game-geek.server :as server]))
 
 (defn new-system
   []

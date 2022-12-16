@@ -115,8 +115,6 @@ Trust me, they love that.
 
 You'll notice that the returned map is in JSON format, not EDN, and that it includes a lot more information in the ``extensions`` key.  This is optional :doc:`tracing information <../tracing>`, where Lacinia identifies how it spent all the time processing the request.  This is an example of something that's automatic when using ``default-service`` that you'll definitely want to turn off in production.
 
-
-
 Documentation Browser
 ---------------------
 
@@ -131,6 +129,15 @@ declaration, as well as documentation - those
 :doc:`at the beginning <init-schema>`.
 
 Take some time to learn what GraphiQL can do for you.
+
+
+Summary
+-------
+
+It takes very little effort, just a dependency change and a little boilerplate code, to expose our little application to the web, and along the way, we gain access to the powerful GraphiQL IDE.
+
+Next up, we'll look into reorganization our code for later growth by adding a layer of components atop our code.
+
 
 
 .. [#split] That is, where one team or set of developers `just` does the user interface,
