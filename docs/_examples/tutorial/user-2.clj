@@ -1,8 +1,7 @@
 (ns user
-  (:require
-    [clojure-game-geek.schema :as s]
-    [com.walmartlabs.lacinia :as lacinia]
-    [clojure.walk :as walk])
+  (:require [my.clojure-game-geek.schema :as s]
+            [com.walmartlabs.lacinia :as lacinia]
+            [clojure.walk :as walk])
   (:import (clojure.lang IPersistentMap)))
 
 (def schema (s/load-schema))
