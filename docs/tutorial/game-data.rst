@@ -92,7 +92,7 @@ This ``simplify`` function finds all the ordered maps and converts them into
 ordinary maps.
 It also finds any lists and converts them to vectors.
 
-With that in place, we're ready to run some queries::
+With that in place, we're ready to reload our code[#reload]_, and then run some queries::
 
    (q "{ gameById(id: \"anything\") { id name summary }}")
    => {:data {:gameById nil}}
@@ -102,7 +102,7 @@ which are easier to look at in the REPL.
 
 However, we can also get real data back from our query::
 
-   (q "{ gameById(id: \"1236\") { id name summary minPlayers}}")
+   (q "{ gameById(id: \"1236\") { id name summary minPlayers }}")
 
    =>
    {:data {:gameById {:id "1236",
@@ -138,6 +138,13 @@ Next up, we'll continue extending the schema, and start discussing relationships
 .. [#too-much] This is overkill for this very simple case, but it's nice to demonstrate
    techniques that are likely to be used in real applications.
 
+.. [#reload] How to reload your code is going to be specific to your IDE;
+   `Cursive <https://cursive-ide.com/>`_ adds a ``Load File in REPL`` action that loads the current file and any changed namespaces in dependency order automatically.
+
+   If you are new
+   to Clojure or not using Cursive, this is a big area to dive into; you can start
+   with the `Programming at the REPL guide <https://clojure.org/guides/repl/enhancing_your_repl_workflow>`_.
+
 .. [#repl] This REPL output is a bit different than earlier examples; we've switched from
-   the standard Leiningen REPL to the `Cursive REPL <https://cursive-ide.com/>`_; the latter pretty-prints
+   the standard ``clj`` REPL to the `Cursive REPL <https://cursive-ide.com/>`_; the latter pretty-prints
    the returned values.

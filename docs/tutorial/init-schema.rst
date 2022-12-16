@@ -22,10 +22,11 @@ a game by its id:
   See documentation about :doc:`/objects`, :doc:`/fields`, and :doc:`/queries`.
 
 A Lacinia schema is an `EDN <https://github.com/edn-format/edn>`_ file.
-It is a map of maps; the top level keys identify the type of definition: ``:objects``,``:interfaces``, ``:enums``, and so forth.
-The inner maps are keywords to a type-specific structure.
+It is a map of maps; the top level keys identify the type of definition: ``:objects``,
+``:interfaces``, ``:enums``, and so forth.
+The inner maps are from keywords to a type-specific structure.
 
-`Query` is a special object that contains the GraphQL queries that
+Query is a special object that contains the GraphQL queries that
 a client can execute.
 This schema defines a single query, ``gameById``, that returns an object as defined by the
 ``BoardGame`` type.
@@ -166,9 +167,9 @@ With all that in place, we can launch a REPL and try it out::
 
 The ``clj -M:dev`` indicates that a REPL should be started that includes the ``:dev`` alias; this is what adds :file:`dev-resources` to the classpath and the ``user`` namespace is then loaded from :file:`dev-resources/user.clj`.
 
-We get an odd result when executing the query; not a map but that odd ``#ordered/map`` business.
+We get an odd result when executing the query; not a map but that strange ``#ordered/map`` business.
 
-The value returned makes use of an ordered map - a map that always orders its keys in the order that they are added to the map.
+This is because  value for the ``:data`` key makes use of an ordered map - a map that always orders its keys in the exact order that they are added to the map.
 That's part of the GraphQL
 specification: the order in which things appear in the query dictates the order in which
 they appear in the result.  Clojure's map implementations don't always keep keys in the order they are added.
@@ -183,7 +184,7 @@ This is not an error ... remember that we defined the type of the
 However, Lacinia still returns a map with the operation name and operation selection.
 Failure to return a result with a top-level ``:data`` key would signify an error executing
 the query, such as a parse error.
-That's not the case here at all, the lack of a value is not an error.
+That's not the case here at all - the lack of a value is not an error.
 
 Summary
 -------

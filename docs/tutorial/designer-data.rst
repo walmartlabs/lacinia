@@ -1,16 +1,16 @@
 Adding Designers
 ================
 
-So far, we've been working with just a single entity type, BoardGame.
+So far, we've been working with just a single object type, BoardGame.
 
-Let's see what we can do when we add the Designer entity type to the mix.
+Let's see what we can do when we add the Designer object type to the mix.
 
 Initially, we'll define each Designer in terms of an id, a name, and an optional
 home page URL.
 
 .. literalinclude:: /_examples/tutorial/cgg-data-2.edn
    :caption: dev-resources/cgg-data.edn
-   :emphasize-lines: 7,11,16,22,26-
+   :emphasize-lines: 5,11,16,22,26-
 
 If this was a relational database, we'd likely have a join table between
 BoardGame and Designer, but that can come later.
@@ -21,9 +21,9 @@ Schema Changes
 
 .. literalinclude:: /_examples/tutorial/cgg-schema-3.edn
    :caption: resources/cgg-schema.edn
-   :emphasize-lines: 11-13,21-30
+   :emphasize-lines: 11-12,20-28
 
-We've added a ``:designers`` field to BoardGame, and added
+We've added a ``designers`` field to BoardGame, and added
 a new Designer type.
 
 In Lacinia, we use a wrapper, ``list``, around a type, to denote a list of that type.
@@ -32,7 +32,7 @@ In the EDN, the ``list`` wrapper is applied using the syntax of a function call 
 A second wrapper, ``non-null``, is used when a value must be present, and not null (or ``nil`` in Clojure).
 By default, all values `can be` nil and that flexibility is encouraged, so ``non-null`` is rarely used.
 
-Here we've defined the ``:designers`` field as ``(non-null (list :Designer))``.
+Here we've defined the ``designers`` field as ``(non-null (list :Designer))``.
 This is somewhat overkill (the world won't end if the result map contains a ``nil`` instead of an
 empty list), but demonstrates that the ``list`` and ``non-null`` modifiers can
 nest properly.
@@ -45,7 +45,7 @@ adding far more complexity than value.
    You can indicate that, for example, a list contains non-nil values, but there isn't
    anyway in GraphQL to signify a non-`empty` list.
 
-We need a field resolver for the ``:designers`` field, to convert from
+We need a field resolver for the ``designers`` field, to convert from
 what's in our data (a set of designer ids) into what we are promising in the schema:
 a list of Designer objects.
 
@@ -56,11 +56,11 @@ Code Changes
 ------------
 
 .. literalinclude:: /_examples/tutorial/schema-2.clj
-   :caption: src/clojure_game_geek/schema.clj
-   :emphasize-lines: 14-31, 38-39, 41-42
+   :caption: src/my/clojure_game_geek/schema.clj
+   :emphasize-lines: 13-30, 37-41
 
 As with all field resolvers [#root]_, ``resolve-board-game-designers`` is passed the containing resolved value
-(a BoardGame, in this case)
+(a BoardGame map, in this case)
 and in turn, resolves the next step down, in this case, a list of Designers.
 
 This is an important point: the data from your external source does not have to be in the shape
@@ -81,17 +81,17 @@ Testing It Out
 
 After reloading code in the REPL, we can exercise these new types and relationships::
 
-  (q "{ game_by_id(id: \"1237\") { name designers { name }}}")
-  => {:data {:game_by_id {:name "7 Wonders: Duel",
-                          :designers [{:name "Antoine Bauza"}
-                                      {:name "Bruno Cathala"}]}}}
+  (q "{ gameById(id: \"1237\") { name designers { name }}}")
+  => {:data {:gameById {:name "7 Wonders: Duel",
+                        :designers [{:name "Antoine Bauza"}
+                                    {:name "Bruno Cathala"}]}}}
 
 For the first time, we're seeing the "graph" in GraphQL.
 
 An important part of GraphQL is that your query must always extend to scalar fields;
 if you select a field that is a compound type, such as ``BoardGame/designers``, Lacinia will report an error instead::
 
-  (q "{ game_by_id(id: \"1237\") { name designers }}")
+  (q "{ gameById(id: \"1237\") { name designers }}")
   =>
   {:errors [{:message "Field `designers' (of type `Designer') must have at least one selection.",
              :locations [{:line 1, :column 25}]}]}
@@ -102,10 +102,10 @@ occured during the parse and prepare phases, before execution in earnest began.
 
 To really demonstrate navigation, we can go from BoardGame to Designer and back::
 
-  (q "{ game_by_id(id: \"1234\") { name designers { name games { name }}}}")
-  => {:data {:game_by_id {:name "Zertz",
-                          :designers [{:name "Kris Burm",
-                                       :games [{:name "Zertz"}]}]}}}
+  (q "{ gameById(id: \"1234\") { name designers { name games { name }}}}")
+  => {:data {:gameById {:name "Zertz",
+                        :designers [{:name "Kris Burm",
+                                     :games [{:name "Zertz"}]}]}}}
 
 Summary
 -------
@@ -119,5 +119,5 @@ return data from a variety of entities, organized however you need it.
 Next up, we'll take what we have and make it easy to access via HTTP.
 
 
-.. [#root] Root resolvers, such as for the ``game_by_id`` query operation, are the
+.. [#root] Root resolvers, such as for the ``gameById`` query operation, are the
    exception: they are passed nil.
