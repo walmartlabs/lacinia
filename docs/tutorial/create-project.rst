@@ -17,13 +17,6 @@ We're going to install a Clojure tool, `clj-new <https://github.com/seancorfield
   Checking out: https://github.com/seancorfield/clj-new.git at c82384e437a2dfa03b050b204dd2a2008c02a6c7
   clj-new: Installed com.github.seancorfield/clj-new v1.2.399
 
-The first step is to create a new, empty project::
-
-  12:51:44 ~/workspaces/github > lein new clojure-game-geek
-  Generating a project called clojure-game-geek based on the 'default' template.
-  The default template is intended for library projects, not applications.
-  To see other templates (app, plugin, etc), try `lein help new`.
-
 With this tools installed, we can then create a new Clojure application project::
 
     > clj -Tclj-new app :name  my/clojure-game-geek
