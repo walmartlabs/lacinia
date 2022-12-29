@@ -75,7 +75,7 @@ We need the server started after the component refactoring::
 
 First, select the rating summary data for a game::
 
-    (q "{ gameById(id: \"1237\") { name ratingSummary { count average }}}")
+    (q "{ gameById(icd: \"1237\") { name ratingSummary { count average }}}")
     => {:data {:gameById {:name "7 Wonders: Duel", :ratingSummary {:count 3, :average 4.333333333333333}}}}
 
 
