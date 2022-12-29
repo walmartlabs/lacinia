@@ -9,7 +9,7 @@ Schema EDN File
 ---------------
 
 We're going to define an initial schema for our application that
-matches the :doc:`domain`.
+matches the :doc:`domain <domain>`.
 
 Our initial schema is just for the BoardGame entity, and a single operation to retrieve
 a game by its id:
@@ -24,18 +24,19 @@ a game by its id:
 A Lacinia schema is an `EDN <https://github.com/edn-format/edn>`_ file.
 It is a map of maps; the top level keys identify the type of definition: ``:objects``,
 ``:interfaces``, ``:enums``, and so forth.
-The inner maps are from keywords to a type-specific structure.
+Each of these top level keys defines its own structure for the map
+it contains.
 
-Query is a special object that contains the GraphQL queries that
+Query is a special object whose fields define the GraphQL queries that
 a client can execute.
 This schema defines a single query, ``gameById``, that returns an object as defined by the
-``BoardGame`` type.
+BoardGame type.
 
 A schema is declarative: it defines what operations are possible, and what types and fields exist,
 but has nothing to say about where any of the data comes from.
 In fact, Lacinia has no opinion about that either!
 GraphQL is a contract between a consumer and a provider for how to request
-and present data, it's not any form of database layer, object relational mapper, or anything
+and present data - it's not any form of database layer, object relational mapper, or anything
 similar.
 
 Instead, Lacinia handles the parsing of a client query, and guides
@@ -55,7 +56,7 @@ show up later when we :doc:`discuss GraphiQL <pedestal>`.
 It's an excellent habit to add descriptions early, rather than try and go back
 and add them in later.
 
-We'll add more fields, more types, relationships between types, and more operations
+We'll add more fields, more object types, relationships between types, and more operations
 in later chapters.
 
 We've also demonstrated the use of a few Lacinia conventions in our schema:
@@ -71,7 +72,7 @@ In addition, all GraphQL names (for fields, types, and so forth) must contain on
 and the underscore.
 The dash character is, unfortunately, not allowed.
 If we tried to name the query ``query-by-id``, Lacinia would throw a `clojure.spec <https://clojure.org/guides/spec>`_ validation exception when we attempted
-to use the schema. [#spec]_
+to compile the schema. [#spec]_
 
 In Lacinia, there are base types, such as ``String`` and ``:BoardGame`` and wrapped types, such
 as ``(non-null String)``.
@@ -81,7 +82,8 @@ These can even be combined!
 
 Notice that the return type of the ``gameByID`` query is ``:BoardGame`` and `not`
 ``(non-null :BoardGame)``.
-This is because we can't guarantee that a game can be resolved, if the id provided in the client query is not valid.
+This is because we can't guarantee that a game can be resolved, if the id provided in the client query fails
+to match a game in our database.
 If the client provides an invalid id, then the result will be nil, and that's not considered an error.
 
 In any case, this single BoardGame entity is a good starting point.
@@ -100,7 +102,7 @@ The compilation step is necessary before it is possible to execute queries.
 Compilation reorganizes the schema, computes various defaults, performs verifications,
 and does a number of other necessary steps.
 
-The ``inject-resolvers`` function updates the schema, adding `:resolve` keys to fields.  The keys of the map identify a type and a field,
+The ``inject-resolvers`` function updates the schema, adding ``:resolve`` keys to fields.  The keys of the map identify a type and a field,
 and the value is the resolver function.
 
 The field resolver in this case is just a temporary placeholder; it ignores all the arguments
@@ -123,7 +125,7 @@ A key advantage of Clojure is REPL-oriented [#repl]_ development: we want to be 
 run our code through its paces almost as soon as we've written it - and when we
 change code, we want to be able to try out the changed code instantly.
 
-Clojure, by design, is almost uniquely good at this interactive style of development.
+Clojure, by design, is almost uniquely suited for this interactive style of development.
 Features of Clojure exist just to support REPL-oriented development, and its one of the ways
 in which using Clojure will vastly improve your productivity!
 
@@ -152,7 +154,7 @@ and deploy the application.
 .. literalinclude:: /_examples/tutorial/user-1.clj
    :caption: dev-resources/user.clj
 
-The key function is ``q``, which invokes :api:`/execute`.
+The key function is ``q`` (for `query`), which invokes :api:`/execute`.
 
 We'll use that to test GraphQL queries against our schema and see the results
 directly in the REPL: no web browser necessary!
@@ -171,7 +173,7 @@ We get an odd result when executing the query; not a map but that strange ``#ord
 
 This is because  value for the ``:data`` key makes use of an ordered map - a map that always orders its keys in the exact order that they are added to the map.
 That's part of the GraphQL
-specification: the order in which things appear in the query dictates the order in which
+specification: the order in which fields appear in the query dictates the order in which
 they appear in the result.  Clojure's map implementations don't always keep keys in the order they are added.
 
 In any case, this result is equivalent to ``{:data {:gameById nil}}``.
@@ -181,10 +183,7 @@ to a BoardGame, so it returned nil.
 This is not an error ... remember that we defined the type of the
 ``gameById`` query to allow nulls, just for this specific situation.
 
-However, Lacinia still returns a map with the operation name and operation selection.
-Failure to return a result with a top-level ``:data`` key would signify an error executing
-the query, such as a parse error.
-That's not the case here at all - the lack of a value is not an error.
+However, Lacinia still returns a map with the operation name and the selection for that operation.
 
 Summary
 -------

@@ -44,7 +44,7 @@ With this tools installed, we can then create a new Clojure application project:
 All those downloads will only occur the first time the tool is run.  The name of the project, ``my/clojure-game-geek`` is used define the main namespace; feel free to change the value if you like
 (but then certain paths in the tutorial will also change).
 
-The ``clj-new`` tool creates a directory, :file:`clojure-game-geek` and populates it with a good starting
+The ``clj-new`` tool creates a directory, :file:`clojure-game-geek`, and populates it with a good starting
 point for a basic Clojure application::
 
     > cd clojure-game-geek

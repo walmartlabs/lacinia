@@ -23,11 +23,11 @@ It will take the place of an external database.
 Later, we can add more data for the other entities and their relationships.
 
 Although the keys here are camel-case (like Java or JavaScript) and not kebab-case (like Clojure and
-other Lisps), they are still valid keys and, more importantly, they match the field names in the GraphQL schema.
+other Lisps), they are still valid Clojure keywords and, more importantly, they match the field names in the GraphQL schema.
 Lacinia doesn't do any trickery here, field names in the schema are matched directly to corresponding
 keyword keys in the value maps.
 
-Later still, we'll actually connect our application up to an external database.
+Later in this tutorial, we'll actually connect our application up to an external database.
 
 Resolver
 --------
@@ -43,8 +43,7 @@ that can access it.
 You can see a bit of the philosophy of Lacinia inside the ``load-schema`` function: Lacinia strives
 to provide only what is most essential, or truly useful and universal.
 
-Lacinia explicitly `does not` provide a single function to read, parse, attach resolvers, and compile an EDN file in a single
-line.
+Lacinia explicitly `does not` provide a single function to read, parse, attach resolvers, and compile an EDN file in a single call.
 That may seem odd -- it feels like every application will just cut-and-paste something virtually identical to ``load-schema``.
 
 In fact, not all schemas will come directly from a single EDN file.
@@ -72,7 +71,7 @@ BoardGame.
 The ``partial`` function is a real workhorse in Clojure code; it takes an existing function and a set of initial arguments
 to that function and returns a new function that collects the remaining arguments needed by the original function.
 This returned function will accept the standard field resolver arguments -- ``context``, ``args``, and ``value``,
-and pass the ``games-map`` and those arguments to ``resolve-game-by-id``.
+and pass the ``games-map`` and those three arguments to ``resolve-game-by-id``.
 
 This is one common example of the use of `higher orderered functions`.
 It's not as complicated as the term might lead you to believe - just that functions can be arguments to, and return
@@ -92,7 +91,7 @@ This ``simplify`` function finds all the ordered maps and converts them into
 ordinary maps.
 It also finds any lists and converts them to vectors.
 
-With that in place, we're ready to reload our code[#reload]_, and then run some queries::
+With that in place, we're ready to reload our code [#reload]_, and then run some queries::
 
    (q "{ gameById(id: \"anything\") { id name summary }}")
    => {:data {:gameById nil}}

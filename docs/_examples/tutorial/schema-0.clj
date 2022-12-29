@@ -6,14 +6,14 @@
             [clojure.edn :as edn]))
 
 (defn resolver-map
-      []
-      {:Query/gameById (fn [context args value]
-                           nil)})
+  []
+  {:Query/gameById (fn [context args value]
+                     nil)})
 
 (defn load-schema
-      []
-      (-> (io/resource "cgg-schema.edn")
-          slurp
-          edn/read-string
-          (util/inject-resolvers (resolver-map))
-          schema/compile))
+  []
+  (-> (io/resource "cgg-schema.edn")
+    slurp
+    edn/read-string
+    (util/inject-resolvers (resolver-map))
+    schema/compile))

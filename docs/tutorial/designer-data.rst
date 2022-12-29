@@ -68,6 +68,11 @@ described by your schema ... you just must be able to transform it into that sha
 Field resolvers come into play both when you need to fetch data from an external source,
 and when you need to reshape that data to match the schema.
 
+For example, in our BoardGame `values`, the ``:designers`` key is a set of designer ids, but in
+our schema the BoardGame ``designers`` field is a list of Designer objects.
+The ``resolve-board-game-designers`` resolver function dynamically reshapes the BoardGame value's data into the
+shape mandated by the GraphQL schema.
+
 GraphQL doesn't make any guarantees about order of values in a list field;
 when it matters, it falls on us to add documentation to describe the order,
 or even provide field arguments to let the client specify the order.
@@ -120,4 +125,4 @@ Next up, we'll take what we have and make it easy to access via HTTP.
 
 
 .. [#root] Root resolvers, such as for the ``gameById`` query operation, are the
-   exception: they are passed nil.
+   exception: they are passed a nil value.
