@@ -5,6 +5,7 @@
 
 (defn new-system
   []
-  (merge (component/system-map)
-         (server/new-server)
-         (schema/new-schema-provider)))
+  (assoc (component/system-map)
+    :server (component/using (server/map->Server {})
+              [:schema-provider])
+    :schema-provider (schema/map->SchemaProvider {})))

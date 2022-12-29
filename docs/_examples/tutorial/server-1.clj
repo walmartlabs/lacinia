@@ -17,8 +17,3 @@
   (stop [this]
     (http/stop server)
     (assoc this :server nil)))
-
-(defn new-server
-  []
-  {:server (component/using (map->Server {})
-                            [:schema-provider])})

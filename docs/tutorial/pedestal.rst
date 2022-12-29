@@ -4,7 +4,7 @@ Lacinia Pedestal
 Working from the REPL is important, but ultimately GraphQL exists to provide a web-based API.
 Fortunately, it is very easy to get your Lacinia application up on the web, on top of
 the `Pedestal <http://pedestal.io/>`_ web tier, using
-`Lacinia-Pedestal <https://github.com/walmartlabs/lacinia-pedestal>`_.
+the `lacinia-pedestal <https://github.com/walmartlabs/lacinia-pedestal>`_ library.
 
 In addition, for free, we get GraphQL's own REPL: `GraphiQL <https://github.com/graphql/graphiql>`_.
 
@@ -54,7 +54,7 @@ the Pedestal server.
    :emphasize-lines: 3-6,34-
 
 This new code is almost entirely boilerplate for Pedestal and for Lacinia-Pedestal.
-The core function is ``com.walmartlabs.lacinia.pedestal2/default-service`` which is passed the compiled schema
+The core function is ``com.walmartlabs.lacinia.pedestal2/default-service`` [#whytwo]_ which is passed the compiled schema
 and a map of options, and returns a Pedestal service map which is then used
 to create the Pedestal server.
 
@@ -64,9 +64,9 @@ to create the Pedestal server.
    see that it is intended as a quick option when first starting, as here.
    You'll almost certainly want to replace it with more specific calls to
    other functions in the ``pedestal2`` namespace that more precisely
-   address your application's particular needs.
+   address your application's particular functional and security needs.
 
-Lacinia-Pedestal services GraphQL POST requests at the ``/api`` path.
+By default, incoming  GraphQL POST requests are handled at the ``/api`` path.
 The default port is 8888. We'll get to the details later.
 
 The ``/ide`` path (which is opened at startup), and related JavaScript and CSS resources, can only be accessed
@@ -101,15 +101,16 @@ the right arrow button (or type ``Command+Enter``), and see the server response 
 .. image:: /_static/tutorial/graphiql-basic-query.png
 
 Notice that the URL bar in the browser has updated: it contains the full query string.
-This means that you can bookmark a query you like for later (though it's easier to do that using
-the ``History`` button).
-Alternately, and more importantly, you can copy that URL and provide it to other developers.
+This means that you can bookmark a query you like for later (though it's easier to access prior
+queries using the the ``History`` button).
+
+Importantly, you can copy that URL and provide it to other developers.
 They can start up the application on their workstations and see exactly what you see, a real boon for
 describing and diagnosing problems.
 
 This approach works even better when you keep a GraphQL server running on a shared staging server.
 On split [#split]_ teams, the developers creating the application can easily explore the interface exposed
-by the GraphQL server, even before writing their first line of code.
+by the GraphQL server, even before writing their first line of client-side code.
 
 Trust me, they love that.
 
@@ -139,6 +140,12 @@ It takes very little effort, just a dependency change and a little boilerplate c
 Next up, we'll look into reorganization our code for later growth by adding a layer of components atop our code.
 
 
+.. [#whytwo] Why ``pedestal2``?  The initial version of lacinia-pedestal had a slightly different
+   approach to setting up Pedestal that proved to be problematic, it also supported some outdated
+   ideas about how to process incoming requests.
+   For compatibility, the
+   original namespace, ``com.walmartlabs.lacinia.pedestal`` was left functionally s-is, but a new namespace,
+   ``pedestal2`` was created to address the concerns.
 
 .. [#split] That is, where one team or set of developers `just` does the user interface,
    and the other team `just` does the server side (including Lacinia). Part of the

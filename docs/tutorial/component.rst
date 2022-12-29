@@ -33,7 +33,7 @@ The components are formed into a system, which again is just a map.
 Each component has a unique, well-known key in the system map.
 
 Components `may` have dependencies on other components.
-That's where the fun really starts.
+That's where the true value of the library comes into play.
 
 Components `may` have a lifecycle; if they do, they implement the Lifecycle
 protocol containing methods ``start`` and ``stop``.
@@ -92,7 +92,7 @@ will be ``assoc``-ed as the ``:schema-provider`` key of the ``:server`` componen
 Once a component has its dependencies ``assoc``-ed in, and is itself started
 (more on that in a moment), it may be ``assoc``-ed into further components.
 
-The Component library embraces the identity vs. state concept; the identity of
+The Component library embraces Clojure core concept of identity vs. state; the identity of
 the component is its key in the system map ... its state is a series of transformations
 of the initial map.
 
@@ -104,7 +104,7 @@ the ``:schema-provider`` component.
 
 .. literalinclude:: /_examples/tutorial/schema-3.clj
    :caption: src/my/clojure_game_geek/schema.clj
-   :emphasize-lines: 4,34,45,49,52-64
+   :emphasize-lines: 4,52-64
 
 The significant changes are at the bottom of the namespace.
 There's a new record, SchemaProvider, that implements the Lifecycle
@@ -113,11 +113,6 @@ protocol.
 Lifecycle is optional; trivial components may not need it.
 In our case, we use the ``start`` method as an opportunity to
 load and compile the Lacinia schema.
-
-Notice that we are passing the component into ``load-schema``.
-This isn't necessary yet, but in later iterations of the Clojure Game Geek application, the
-``:schema-provider`` component will have dependencies on other components,
-generally because a field resolver will need access to the component.
 
 When you implement a protocol, you must implement all the methods of the
 protocol.
@@ -131,10 +126,6 @@ and acceptable for a ``stop`` method to just return ``this`` if the component
 doesn't have external resources,
 such as a database connection, to manage.
 
-Finally, the ``new-schema-provider`` function is a constructor around the
-SchemaProvider record.
-It returns a single-element map, associating the ``:schema-provider`` system key for
-the component with the initial iteration of the component itself. [#system]_
 
 :server component
 -----------------
@@ -157,9 +148,10 @@ and build the Pedestal server from it.
 This is explicit here, with the call to ``http/stop`` before clearing
 the ``:server`` key.
 
-The ``new-server`` function not only gives the component its system key
-and initial state, but also invokes ``component/using`` to establish
-the dependency on the ``:schema-provider`` component.
+
+``stop`` is especially important in this component, as it calls `http/stop`; without this, the system will shut down,
+but the Jetty instance will continue to listen on port 8080.  This kind of side-effect is exactly what
+the Lifecycle protocol is used for.
 
 system namespace
 ----------------
@@ -168,6 +160,8 @@ We'll create a new ``my.clojure-game-geek.system`` namespace just to put togethe
 
 .. literalinclude:: /_examples/tutorial/system-1.clj
    :caption: src/my/clojure_game_geek/system.clj
+
+The call to ``component/using`` establishes the dependency between the components.
 
 You can imagine that, as the system grows larger, so will this namespace.
 But at the same time, the namespaces for the individual components will only
@@ -180,22 +174,22 @@ Next, we'll look at changes to the ``user`` namespace:
 
 .. literalinclude:: /_examples/tutorial/user-4.clj
   :caption: dev-resources/user.clj
-  :emphasize-lines: 5, 7, 27, 31-34, 37-
+  :emphasize-lines: 3,27,30-34,36-
 
 The ``user`` namespace has shrunk; previously
 it was responsible for loading the schema, and creating and starting
-the Pedestal service; this has all shifted to the individual components.
+the Pedestal service; the code for all that has shifted to the individual components.
 
-Instead, the user namespace creates a system map, and can use
-``start-system`` and ``stop-system`` on that system map: no direct knowledge of
+Instead, the ``user`` namespace  uses the ``my.clojure-game-geek.system/new-system`` function
+to create a system map, and can use ``start-system`` and ``stop-system`` on that system map: no direct knowledge of
 loading schemas or starting and stopping Pedestal is present any longer.
 
 The user namespace previously had vars for both the schema and the Pedestal
 service.
 Now it only has a single var, for the Component system map.
 
-Interestingly, as our system grows later, the user namespace will likely
-not change at all, just the system map it gets from ``system/new-system`` will
+Interestingly, as our system grows in later chapters, the user namespace will likely
+not change at all, just the system map it gets from ``new-system`` will
 expand.
 
 The only wrinkle here is in the ``q`` function; since there's no longer a local
@@ -214,11 +208,14 @@ in preparation to adding our first mutations.
 
 .. [#vid] Sandra provides a really good explanation of Component in their
    `Clojure/West 2014 talk <https://www.youtube.com/watch?v=13cmHf_kt-Q&t=1106s>`_.
+
 .. [#test] We've been sloppy so far, in that we haven't even thought about
-   testing. That will change shortly.
+   testing. That will change later in the tutorial.
+
 .. [#clear] You might be tempted to use a ``dissoc`` here, but if you
    ``dissoc`` a declared key of a record, the result is an ordinary
    map, which can break tests that rely on repeatedly starting and stopping
    the system.
+
 .. [#system] This is just one approach; another would be to provide a function
    that ``assoc``-ed the component into the system map.
