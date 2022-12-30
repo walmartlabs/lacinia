@@ -17,15 +17,16 @@ are expected to make changes to server-side state as a side-effect.
 However, that side-effect is essentially invisible to Lacinia, as
 it will occur during the execution of a field resolver function.
 
-The difference between a query and a mutation in GraphQL is razor thin.
+The difference in how Lacinia executes a query and a mutation is razor thin.
 When the incoming query document contains only a single top level
 operation, as is the case in all the examples so far in this tutorial,
-then there is no difference at all between them.
+then there is no difference in at all.
 
-When the query document contains multiple mutations, then the top-level mutations
-execute sequentially; the first completes before the second begins execution.
-For queries, execution order is not in a specified order (though the order of keys and values
-is specified by the client query).
+GraphQL allows a single request to contain multiple operations `of the same type`: multiple queries or multiple mutations.
+
+When possible, Lacinia will execute multiple query operations in parallel [#parallel]_.
+Multiple mutations are executed serially.
+
 
 We'll consider the changes here back-to-front, starting with our database
 (which is still just a map inside an Atom).
@@ -168,7 +169,7 @@ If the ``rating`` argument is omitted from the query, we can see a significant d
                :extensions {:field-name :Mutation/rateGame, :missing-arguments [:rating]}}]}
 
 Here, the result map contains *only* the ``:errors`` key; the ``:data`` key is missing.
-A similar error would occur if the type of value provided to field argument is unacceptible::
+A similar error would occur if the type of value provided to field argument is incompatible::
 
     (q "mutation { rateGame(memberId: \"1410\", gameId: \"9999\", rating: \"Great!\") { name rating_summary { count average }}}")
 
@@ -186,6 +187,10 @@ Summary
 
 And now we have mutations! The basic structure of our application is nearly fully formed, but we can't go to production with an in-memory database. In the next chapter, we'll start work on storing the database data in an actual SQL database.
 
+.. [#parallel] Parallel execution is optional in Lacinia, and requires
+   :doc:`application changes to support it <../resolve/async>`.
+
 .. [#errormaps] Each map must contain, at a minimum, a ``:message`` key.
+
 .. [#spec] The very idea of changing the HTTP response status is somewhat antithetical
    to some GraphQL developers and this behavior is optional, but on by default.
