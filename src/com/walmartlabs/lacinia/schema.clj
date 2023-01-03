@@ -68,10 +68,12 @@
                                  (^Thread newThread [_ ^Runnable runnable]
                                    (Thread. runnable
                                             (format "GraphQL Executor #%d" (swap! *thread-id inc)))))]
-    (ThreadPoolExecutor. (int 0) (int 10)
-                         1 TimeUnit/SECONDS
-                         queue
-                         factory)))
+    (doto
+      (ThreadPoolExecutor. (int 10) (int 10)
+                           1 TimeUnit/SECONDS
+                           queue
+                           factory)
+      (.allowCoreThreadTimeOut true))))
 
 (def ^:private graphql-identifier #"(?ix) _* [a-z] [a-z0-9_]*")
 
