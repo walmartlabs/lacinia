@@ -1,8 +1,6 @@
-(ns clojure-game-geek.test-utils
-  (:require
-    [clojure.walk :as walk])
-  (:import
-    (clojure.lang IPersistentMap)))
+(ns my.clojure-game-geek.test-utils
+  (:require [clojure.walk :as walk])
+  (:import (clojure.lang IPersistentMap)))
 
 (defn simplify
   "Converts all ordered maps nested within the map into standard hash maps, and
@@ -20,4 +18,3 @@
         :else
         node))
     m))
-

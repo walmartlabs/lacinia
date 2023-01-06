@@ -18,12 +18,38 @@ Unfortunately, we still have one conflict: the HTTP port for inbound requests.
 Only one of the systems can bind to the default 8888 port, so let's make sure our tests use
 a different port.
 
+In previous examples, we've always initialized a component record from an empty map, but
+that is not strictly necessary. Instead, we can start with a map that provides some configuration,
+then perform additional work, inside the ``start`` method, to make the component fully operational
+within the system.
+
 .. literalinclude:: /_examples/tutorial/server-2.clj
    :caption: src/my/clojure_game_geek/server.clj
-   :emphasize-lines: 6,12-14,24
+   :emphasize-lines: 6,13
 
-We've added a bit of configuration for the ``:server`` component, the port to bind to.
-This will make it possible for our test code to use a different port.
+So the Server record now has three fields:
+
+* ``schema-provider``, an injected dependency
+* ``port``, containing configuration supplied from outside
+* ``server``, setup inside ``start``
+
+When we set up the system for production or local REPL development, we use a standard port, such as 8080.
+When we set up the system for testing, we'll use a different port, to prevent conflicts.
+
+system namespace
+----------------
+
+So where does the port come from?  We can peel back the onion a bit to the ``my.clojure-game-geek.system`` namespace, and that's a great place to supply the port and set a default:
+
+.. literalinclude:: /_examples/tutorial/system-3.clj
+   :caption: src/my/clojure_game_geek/system.clj
+   :emphasize-lines: 8-19
+
+``new-system`` now has two arities; in the second, a set of options are passed in and those are used to specify the ``:port`` in the map for the Server record.
+
+Over time, we'll likely add further options, and a fully fledged
+application may require sophisticated approach for configuration.
+
 
 Simplify Utility
 ----------------
@@ -33,7 +59,7 @@ Here, we're creating a new namespace for test utilities, and moving the ``simpli
 from the ``user`` namespace to the ``test-utils`` namespace:
 
 .. literalinclude:: /_examples/tutorial/test_utils-1.clj
-   :caption: dev-resources/clojure_game_geek/test_utils.clj
+   :caption: dev-resources/my/clojure_game_geek/test_utils.clj
 
 This is located in the ``dev-resource`` folder, so that that Leiningen
 won't treat it as a namespace containing tests to execute.
@@ -59,8 +85,7 @@ Our application is layered as follows:
 
       client [label="External Client"]
       fieldresolver [label="Field Resolver\nfunction"]
-      dbaccess [label="clojure-game-geek.db\nfunction"]
-
+      dbaccess [label="my.clojure-game-geek.db\nfunction"]
       client -> Pedestal [label="HTTP"]
       Pedestal -> Lacinia -> fieldresolver -> dbaccess -> PostgreSQL
 
@@ -83,16 +108,18 @@ the exact same code will be exercised when testing the field resolver functions.
 There's still a place for more focused testing, especially testing of failure
 scenarios and other edge cases.
 
-Likewise, as we build up more code in our application outside of Lacinia, such as request
-authentication and authorization, we may want to exercise our code by sending HTTP requests in
-from the tests.
-
 For our first test, we'll do some integration testing; our tests will start at the
 Lacinia step from the diagram above, and work all the way down to the database instance (running in our Docker container).
 
-To that mind, we want to start up the schema connected to field resolvers, the ``db`` namespace,
-and the database itself.
-The easiest way to do this start up a new system, and extract the pieces we need from the running system map.
+To that mind, we want to start up the schema connected to field resolvers, and ensure
+that the resolvers can access the database via the ``:db`` component.
+The easiest way to do this start up a full, new system, and then extract the necessary components
+from the running system map.
+
+Later, as we build up more code in our application outside of Lacinia, such as request
+authentication and authorization, we may want to exercise our code by sending HTTP requests in
+from the tests, rather than bypassing HTTP entirely, as we will do in the meantime.
+
 
 First Test
 ----------
@@ -100,16 +127,26 @@ First Test
 Our first test will replicate a bit of the manual testing we've already done in the REPL: reading
 an existing board game by its primary key.
 
-.. literalinclude:: /_examples/tutorial/system_tests-1.clj
-   :caption: test/clojure_game_geek/system_tests.clj
+.. literalinclude:: /_examples/tutorial/system_test-1.clj
+   :caption: test/clojure_game_geek/system_test.clj
 
 We're making use of the standard ``clojure.test`` library.
 
 The ``test-system`` function builds a standard system, but overrides the HTTP port, as dicussed above.
 
+
 We use that function to create and start a system for our first test.
 This first test is a bit verbose; later we'll refactor some of the code out of it, to make writing
 additional tests easier.
+
+Importantly, we create a new system, start it, run tests and check expectations, and then stop the system, all within the test. Starting a system is not a heavy weight operation, so starting a new system for each
+individual test, or perhaps for each test namespace, is not problematic.
+
+
+The use of ``(try ... finally)``, however, is vitally important.
+If a test errors (throws an exception), we need to ensure
+that the system started by the test is, in fact, shutdown; otherwise the started Jetty threads
+will continue to run, keeping port 8989 bound - and therefore, preventing later tests from starting.
 
 Because we control the initial test data [#testdata]_ we know what at least a couple of rows
 in our database look like.
@@ -120,20 +157,43 @@ in the diagram.
 
 Running the Tests
 -----------------
-
 There's a number of ways to run Clojure tests.
 
-From the command line, ``lein test``::
+Let's look at running them with the command line first.
+We have to make a small change to the ``build.clj`` file
+:doc:`generated from a template earlier in the tutorial <create-project>`
+because our tests require the ``:dev`` alias to be active.
 
-   ~/workspaces/github/clojure-game-geek > lein test
+.. literalinclude:: /_examples/tutorial/build-1.clj
+   :caption: build.clj
+   :emphasize-lines: 10
 
-   lein test clojure-game-geek.system-tests
+Without this change, you would see some namespace loading errors when
+the tests were executed, because
+the ``my.clojure-game-geek.test-utils`` namespace wouldn't be on the classpath.
 
-   Ran 1 tests containing 1 assertions.
-   0 failures, 0 errors.
 
+To actually execute the tests, simply enter ``clj -T:build test``::
 
-But who wants to do that all the time?
+    > clj -T:build test
+
+    Running task for: test, dev
+    WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.utils, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+    WARNING: update-keys already refers to: #'clojure.core/update-keys in namespace: clojure.tools.analyzer.utils, being replaced by: #'clojure.tools.analyzer.utils/update-keys
+    WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+    WARNING: update-keys already refers to: #'clojure.core/update-keys in namespace: clojure.tools.analyzer, being replaced by: #'clojure.tools.analyzer.utils/update-keys
+    WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.passes, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+    WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.passes.uniquify, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+
+    Running tests in #{"test"}
+
+    Testing my.clojure-game-geek.system-test
+
+    Ran 1 tests containing 1 assertions.
+    0 failures, 0 errors.
+    >
+
+But who wants to do that all the time [#time]_?
 
 Clojure startup time is somewhat slow, as before your tests can run, large numbers of Java classes
 must be loaded, and signifcant amounts of Clojure code, both from our application and from any libraries, must
@@ -154,7 +214,7 @@ Cursive is even smart enough to properly reload all modified namespaces before e
 
 Similar commands exist for whichever editor you are using.
 Being able to load code and run tests in a fraction of a second is incredibly liberating if you are
-used to a more typical grind of starting a new process just to run tests [#twitter]_ .
+used to a more typical grind of starting a new process every time you want to run some tests [#twitter]_ .
 
 Database Issues
 ---------------
@@ -164,32 +224,50 @@ These tests assume the database is running locally, and has been initialized.
 
 What if it's not?  It might look like this::
 
-   lein test clojure-game-geek.system-tests
-   WARN  com.mchange.v2.resourcepool.BasicResourcePool - com.mchange.v2.resourcepool.BasicResourcePool$ScatteredAcquireTask@614dbaad -- Acquisition Attempt Failed!!! Clearing pending acquires. While trying to acquire a needed new resource, we failed to succeed more than the maximum number of allowed acquisition attempts (30). Last acquisition attempt exception:
-   org.postgresql.util.PSQLException: Connection to localhost:25432 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.
-           at org.postgresql.core.v3.ConnectionFactoryImpl.openConnectionImpl(ConnectionFactoryImpl.java:280)
-           at org.postgresql.core.ConnectionFactory.openConnection(ConnectionFactory.java:49)
-           at org.postgresql.jdbc.PgConnection.<init>(PgConnection.java:195)
-           at org.postgresql.Driver.makeConnection(Driver.java:454)
-           at org.postgresql.Driver.connect(Driver.java:256)
-           at com.mchange.v2.c3p0.DriverManagerDataSource.getConnection(DriverManagerDataSource.java:175)
-           at com.mchange.v2.c3p0.WrapperConnectionPoolDataSource.getPooledConnection(WrapperConnectionPoolDataSource.java:220)
-           at com.mchange.v2.c3p0.WrapperConnectionPoolDataSource.getPooledConnection(WrapperConnectionPoolDataSource.java:206)
-           at com.mchange.v2.c3p0.impl.C3P0PooledConnectionPool$1PooledConnectionResourcePoolManager.acquireResource(C3P0PooledConnectionPool.java:20
-   ...
+    > clj -T:build test
 
-   Ran 1 tests containing 1 assertions.
-   0 failures, 1 errors.
-   Tests failed.
+    Running task for: test, dev
+    WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.utils, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+    WARNING: update-keys already refers to: #'clojure.core/update-keys in namespace: clojure.tools.analyzer.utils, being replaced by: #'clojure.tools.analyzer.utils/update-keys
+    WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+    WARNING: update-keys already refers to: #'clojure.core/update-keys in namespace: clojure.tools.analyzer, being replaced by: #'clojure.tools.analyzer.utils/update-keys
+    WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.passes, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+    WARNING: update-vals already refers to: #'clojure.core/update-vals in namespace: clojure.tools.analyzer.passes.uniquify, being replaced by: #'clojure.tools.analyzer.utils/update-vals
+
+    Running tests in #{"test"}
+
+    Testing my.clojure-game-geek.system-test
+    WARN  com.mchange.v2.resourcepool.BasicResourcePool - com.mchange.v2.resourcepool.BasicResourcePool$ScatteredAcquireTask@60429885 -- Acquisition Attempt Failed!!! Clearing pending acquires. While trying to acquire a needed new resource, we failed to succeed more than the maximum number of allowed acquisition attempts (30). Last acquisition attempt exception:
+    org.postgresql.util.PSQLException: Connection to localhost:25432 refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.
+            at org.postgresql.core.v3.ConnectionFactoryImpl.openConnectionImpl(ConnectionFactoryImpl.java:319)
+            at org.postgresql.core.ConnectionFactory.openConnection(ConnectionFactory.java:49)
+            at org.postgresql.jdbc.PgConnection.<init>(PgConnection.java:247)
+            at org.postgresql.Driver.makeConnection(Driver.java:434)
+            at org.postgresql.Driver.connect(Driver.java:291)
+            at com.mchange.v2.c3p0.DriverManagerDataSource.getConnection(DriverManagerDataSource.java:175)
+            at com.mchange.v2.c3p0.WrapperConnectionPoolDataSource.getPooledConnection(WrapperConnectionPoolDataSource.java:220)
+            at com.mchange.v2.c3p0.WrapperConnectionPoolDataSource.getPooledConnection(WrapperConnectionPoolDataSource.java:206)
+            at com.mchange.v2.c3p0.impl.C3P0PooledConnectionPool$1PooledConnectionResourcePoolManager.acquireResource(C3P0PooledConnectionPool.java:203)
+    ...
+
+    Ran 1 tests containing 1 assertions.
+    0 failures, 1 errors.
+    Execution error (ExceptionInfo) at org.corfield.build/run-task (build.clj:324).
+    Task failed for: test, dev
+
+    Full report at:
+    /var/folders/yg/vytvxpw500520vzjlc899dlm0000gn/T/clojure-7528489387806836542.edn
+
 
 Because of the connection pooling, this actually takes quite some time
-to fail, and produces hundreds (!) of lines of exception output.
+to fail, and produces hundreds (!) of lines of exception output, which has
+been largely elided here.
 
 If you see a huge swath of tests failing, the first thing to do is double check external dependencies,
 such as the database running inside the Docker container.
 
-Conclusion
-----------
+Summary
+-------
 
 We've created just one test, and managed to get it to run.
 That's a great start.
@@ -201,5 +279,7 @@ and do some refactoring to ensure that our tests are concise, readable, and effi
    each test namespace, and create and populate the tables with fresh test data each time.
    This might be very important when attempting to run these tests inside a Continuous Integration
    server.
+
+.. [#time] On my laptop, it takes 53 **seconds** to run the tests from the command line.
 
 .. [#twitter] Downside: you'll probably read a lot less Twitter while developing.

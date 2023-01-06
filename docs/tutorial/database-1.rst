@@ -3,8 +3,8 @@ External Database, Phase 1
 
 We've gone pretty far with our application so far, but it's time to make that big leap, and convert
 things over to an actual database.
-We'll be running `PostgreSQL <https://www.postgresql.org/>`_ in a
-Docker container. [#container]_
+We'll be running `PostgreSQL <https://www.postgresql.org/>`_ inside a
+`Docker <https://www.docker.com/>`_ container.
 
 We're definitely going to be taking two steps backward before taking further steps forward, but the majority of the changes
 will be in the ``my.clojure-game-geek.db`` namespace; the majority of the application, including the
@@ -48,7 +48,7 @@ To start working with the database, we'll let Docker start it::
 
 You'll see Docker download the necessary Docker images the first time you execute this.
 
-The ``-d`` argument detaches the container from the terminal, otherwise PostgreSQL would write output to your terminal, and would shut down if you hit ``^C``.
+The ``-d`` argument detaches the container from the terminal, otherwise PostgreSQL would write output to your terminal, and would shut down if you hit :kbd:`Ctrl-C`.
 
 Later, you can shut down this detached container with ``docker compose down``.
 
@@ -114,7 +114,7 @@ A class in C3P0 implements the ``javax.sql.DataSource`` interface,
 making it compatible with ``java.jdbc``.
 
 my.clojure-game-geek.db
---------------------
+-----------------------
 
 In prior chapters, the ``:db`` component was just a wrapper around an Atom; starting here, we're going to
 update it to be a wrapper around a pooled connection pool to the PostgreSQL database running in the Docker container.
@@ -188,26 +188,10 @@ We'll fix them in the next couple of chapters.
 Summary
 -------
 
-We now have our application working against a live PostgreSQL database and one operation actually works.  However, we've been sloppy about one aspect of our application: we've entirely been testing at the REPL.
+We now have our application working against a live PostgreSQL database and one operation actually works.  However, we've been sloppy about a key part of our
+application development: we've entirely been testing at the REPL.
 
-It's time to write some tests, then convert the rest of the ``db`` namespace.
-
-.. [#container] A `Docker <https://www.docker.com/>`_ container is
-   the  `Inception <http://www.imdb.com/title/tt1375666/>`_ of computers; a
-   container is essentially a
-   light-weight virtual machine that runs inside your computer.
-
-   To the PostgreSQL server running inside the container, it will appear as if
-   the entire computer is running Linux, just as if Linux and PostgreSQL were installed
-   on a bare-metal computer.
-
-   Docker images
-   are smaller and less demanding than full operating system virtual machines. In fact
-   frequently you will run several interconnected containers together.
-
-   Docker includes infrastructure for downloading the images from a central repository.
-   Ultimately, it's faster and easier to get PostgreSQL running
-   inside a container that to install the database onto your computer.
+In the next chapter, we'll belatedly write some tests, then convert the rest of the ``db`` namespace to use the database.
 
 .. [#incompatible] This kind of change is very incompatible - it could easily break
    clients that expect fields and arguments to still be type ID, and should only be
