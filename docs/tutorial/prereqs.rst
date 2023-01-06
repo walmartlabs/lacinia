@@ -12,3 +12,7 @@ You should have an editor or IDE ready to go, set up for editing Clojure code.
 
 A skim of the Lacinia reference documentation (the rest of this manual, outside of
 this tutorial) is also helpful, or you can follow links provided as we go.
+
+The later chapters use a database stored in a Docker container;
+you should download and install `Docker <https://www.docker.com/>`_ and
+ensure that you can run the ``docker`` command.
