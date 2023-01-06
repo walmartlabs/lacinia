@@ -43,7 +43,7 @@ that can access it.
 You can see a bit of the philosophy of Lacinia inside the ``load-schema`` function: Lacinia strives
 to provide only what is most essential, or truly useful and universal.
 
-Lacinia explicitly `does not` provide a single function to read, parse, attach resolvers, and compile an EDN file in a single call.
+Lacinia explicitly `does not` provide a single function to read, parse, inject resolvers, and compile an EDN file in a single call.
 That may seem odd -- it feels like every application will just cut-and-paste something virtually identical to ``load-schema``.
 
 In fact, not all schemas will come directly from a single EDN file.
@@ -53,8 +53,9 @@ By starting with a pipeline like the one inside ``load-schema``, it becomes easy
 into the steps leading up to ``schema/compile``, which ultimately becomes quite essential.
 
 Back to the schema; the resolver itself is the ``resolve-game-by-id`` function.
-It is provided with a map of games, and the standard triumvirate of
-resolver function arguments: context, field arguments, and container value.
+It is provided with a map of games, and the
+:doc:`standard triumvirate of
+resolver function arguments<../resolve/overview>`: context, field arguments, and container value.
 
 Field resolvers are passed a map of the field arguments (from the client query).
 This map contains keyword keys, and values of varying types (because field arguments have a type in

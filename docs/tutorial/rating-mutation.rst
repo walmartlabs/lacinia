@@ -6,9 +6,9 @@ a GameRating.
 
 Our goal is a mutation which allows a member of ClojureGameGeek to apply a rating to a game.
 We must cover two cases: one where the member is adding an entirely new
-rating, and one where the member is revising a prior rating.
+rating for particular game, and one where the member is revising a prior rating of the game.
 
-Along the way, we'll also start to see how to handle errors, which
+Along the way, we'll also start to see how to handle errors; errors
 tend to be more common when implementing mutations than with queries.
 
 It is implicit that queries are idempotent (can be repeated getting the same results,
@@ -20,12 +20,12 @@ it will occur during the execution of a field resolver function.
 The difference in how Lacinia executes a query and a mutation is razor thin.
 When the incoming query document contains only a single top level
 operation, as is the case in all the examples so far in this tutorial,
-then there is no difference in at all.
+then there is no difference at all.
 
 GraphQL allows a single request to contain multiple operations `of the same type`: multiple queries or multiple mutations.
 
 When possible, Lacinia will execute multiple query operations in parallel [#parallel]_.
-Multiple mutations are executed serially.
+Multiple mutations are always executed serially.
 
 
 We'll consider the changes here back-to-front, starting with our database
@@ -35,7 +35,7 @@ Database Layer Changes
 ----------------------
 
 .. literalinclude:: /_examples/tutorial/db-2.clj
-   :caption: src/clojure_game_geek/db.clj
+   :caption: src/my/clojure_game_geek/db.clj
    :emphasize-lines: 70-
 
 .. sidebar:: What's an upsert?
@@ -44,7 +44,7 @@ Database Layer Changes
   or an update (if the row exists). This terminology is used in
   the Cassandra database; in some SQL dialects it is called a merge.
 
-Now, our goal here is not efficiency, it's to provide clear and concise code.
+Now, our goal here is not efficiency - this is throw away code - it's to provide clear and concise code.
 Efficiency comes later.
 
 To that goal, the meat of the upsert, the ``apply-game-rating`` function,
@@ -60,6 +60,9 @@ Our only change to the schema is to introduce the new mutation.
    :caption: resources/cgg-schema.edn
    :emphasize-lines: 71-
 
+Mutation is another special GraphQL object, much like Query.  It's fields define what mutations are available
+in the schema.
+
 Mutations nearly always include field arguments to define what
 will be affected by the mutation, and how.
 Here we have to provide field arguments to identify the game, the member,
@@ -67,7 +70,7 @@ and the new rating.
 
 Just as with queries, it is necessary to define what value will be
 resolved by the mutation; typically, when a mutation modifies a single
-object, that object is resolved.
+object, that object is resolved, in its updated state.
 
 Here, resolving a GameRating didn't seem to provide value, and
 we arbitrarily decided to instead resolve the BoardGame ... we could have just as easily
@@ -87,7 +90,7 @@ Finally, we knit together the schema changes and the database changes
 in the ``schema`` namespace.
 
 .. literalinclude:: /_examples/tutorial/schema-6.clj
-   :caption: src/clojure_game_geek/schema.clj
+   :caption: src/my/clojure_game_geek/schema.clj
    :emphasize-lines: 22-46,84,7
 
 It all comes together in the ``rate-game`` function;
@@ -152,7 +155,7 @@ We can also see what happens when the query contains mistakes::
                :path [:rateGame],
                :extensions {:status 404, :arguments {:memberId "1410", :gameId "9999", :rating 4}}}]}
 
-Although the ``rate-game`` field resolver just returned a simple map (with keys ``:message`` and ``:status``),
+Although the ``rate-game`` field resolver just returned a simple error map (with keys ``:message`` and ``:status``),
 Lacinia has enhanced the map identifying the location (within the query document), the query path
 (which indicates which operation or nested field was involved), and the arguments passed to
 the field resolver function.  It has also moved any keys it doesn't recognize, in this case ``:status`` and ``:arguments``, to an embedded ``:extensions`` map.

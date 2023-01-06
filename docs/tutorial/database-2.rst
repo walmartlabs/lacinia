@@ -1,7 +1,7 @@
 External Database, Phase 2
 ==========================
 
-Let's get the rest of the functions in the ``clojure-game-geek.db`` namespace
+Let's get the rest of the functions in the ``my.clojure-game-geek.db`` namespace
 working again and add tests for them.
 We'll do a little refactoring as well, to make both the production code
 and the tests clearer and simpler.
@@ -14,7 +14,7 @@ your application; you'll never figure out what's slowing down your application
 if you don't know what queries are even executing.
 
 .. literalinclude:: /_examples/tutorial/db-4.clj
-   :caption: src/clojure_game_geek/db.clj
+   :caption: src/my/clojure_game_geek/db.clj
    :emphasize-lines: 4,6,35-40
    :lines: 1-40
 
@@ -68,7 +68,7 @@ except that it isn't necessary to extract the databased spec from
 the component:
 
 .. literalinclude:: /_examples/tutorial/db-5.clj
-   :caption: src/clojure_game_geek/db.clj
+   :caption: src/my/clojure_game_geek/db.clj
    :lines: 42-47
    :emphasize-lines: 4
 
@@ -87,10 +87,10 @@ a restart.
 Re-running tests
 ----------------
 
-If we switch back to the ``clojure-game-geek.system-tests`` namespace and re-run the tests,
+If we switch back to the ``my.clojure-game-geek.system-tests`` namespace and re-run the tests,
 the debug output will be mixed into the test tool output::
 
-   Loading src/clojure_game_geek/db.clj... done
+   Loading src/my/clojure_game_geek/db.clj... done
    Loading test/clojure_game_geek/system_tests.clj... done
    Running tests in clojure-game-geek.system-tests
    DEBUG clojure-game-geek.db - {:sql "select game_id, name, summary, min_players, max_players, created_at, updated_at from board_game where game_id = $1", :params (1234), :line 42}
@@ -100,11 +100,11 @@ the debug output will be mixed into the test tool output::
 More code updates
 -----------------
 
-The remaining functions in ``clojure-game-geek.db`` can be rewritten to make use of ``query`` and
+The remaining functions in ``my.clojure-game-geek.db`` can be rewritten to make use of ``query`` and
 operate on the real database:
 
 .. literalinclude:: /_examples/tutorial/db-5.clj
-   :caption: src/clojure_game_geek/db.clj
+   :caption: src/my/clojure_game_geek/db.clj
    :lines: 49-
 
 The majority of this is quite straight-forward, except for

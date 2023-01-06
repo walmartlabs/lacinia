@@ -92,14 +92,14 @@ will be ``assoc``-ed as the ``:schema-provider`` key of the ``:server`` componen
 Once a component has its dependencies ``assoc``-ed in, and is itself started
 (more on that in a moment), it may be ``assoc``-ed into further components.
 
-The Component library embraces Clojure core concept of identity vs. state; the identity of
+The Component library embraces Clojure's core concept of identity vs. state; the identity of
 the component is its key in the system map ... its state is a series of transformations
 of the initial map.
 
 :schema-provider component
 --------------------------
 
-The ``clojure-game-geek.schema`` namespace has been extended to provide
+The ``my.clojure-game-geek.schema`` namespace has been extended to provide
 the ``:schema-provider`` component.
 
 .. literalinclude:: /_examples/tutorial/schema-3.clj
@@ -130,7 +130,7 @@ such as a database connection, to manage.
 :server component
 -----------------
 
-Next well add the ``clojure-game-geek.server`` namespace to provide the
+Next well add the ``my.clojure-game-geek.server`` namespace to provide the
 ``:server`` component.
 
 .. literalinclude:: /_examples/tutorial/server-1.clj

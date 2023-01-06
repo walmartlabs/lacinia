@@ -1,10 +1,10 @@
 Mutable Database
 ================
 
-We're still not quite ready to implement our mutation ... because we're storing our data in an
+We're still not quite ready to implement our first mutation ... because we're storing our data in an
 immutable map.
 Once again, we're not going to take on running an external database, instead we'll put our
-immutable map inside an Atom.
+immutable map inside an :clojure:`Atom <reference/atoms>`.
 We'll also do some refactoring that will make our eventual transition to an external database
 that much easier.
 
@@ -12,7 +12,7 @@ System Map
 ----------
 
 In the previous versions of the application, the database data was an immutable map, and all the logic
-for traversing that map was inside the ``clojure-game-geek.schema`` namespace.
+for traversing that map was inside the ``my.clojure-game-geek.schema`` namespace.
 With this change, we're breaking things apart, there'll be a new namespace, and new component,
 to encapsulate the database itself.
 
@@ -33,7 +33,7 @@ db namespace
 ------------
 
 .. literalinclude:: /_examples/tutorial/db-1.clj
-   :caption: src/clojure_game_geek/db.clj
+   :caption: src/my/clojure_game_geek/db.clj
 
 This namespace does two things:
 
@@ -61,9 +61,9 @@ reach into the component, access the ``:data`` property (the Atom) and deref the
 immutable map.
 
 Looking forward to when we do have an external database ... these functions will change, but
-their signatures will not.
+their signatures (their parameters and return values) will not.
 Any code that invokes these functions, for example the field resolver functions defined in
-``clojure-game-geek.schema``, will work, unchanged, after we swap in the external database
+``my.clojure-game-geek.schema``, will work, unchanged, after we swap in the external database
 implementation.
 
 system namespace
@@ -72,7 +72,7 @@ system namespace
 We need to introduce the new ``:db`` component, and wire it into the system.
 
 .. literalinclude:: /_examples/tutorial/system-2.clj
-   :caption: src/clojure_game_geek/system.clj
+   :caption: src/my/clojure_game_geek/system.clj
    :emphasize-lines: 5, 10, 13-15
 
 As promised previously, namespaces that use the system (such as the ``user`` namespace)
@@ -85,7 +85,7 @@ schema namespace
 The schema namespace has shrunk, and improved:
 
 .. literalinclude:: /_examples/tutorial/schema-5.clj
-   :caption: src/clojure_game_geek/schema.clj
+   :caption: src/my/clojure_game_geek/schema.clj
    :emphasize-lines: 7,15-60,63,67,75
 
 Now all of the resolver functions are following the factory style, but they're largely just wrappers

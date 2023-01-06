@@ -51,7 +51,7 @@ Later we'll see how to connect fields, such as ``gameById`` to a field resolver.
 We've made liberal use of the ``:description`` property in the schema.
 These descriptions are intended for developers who will make use of your
 GraphQL interface.
-Descriptions are the equivalent of doc-strings on Clojure functions, and we'll see them
+Descriptions are the equivalent of docstrings on Clojure functions, and we'll see them
 show up later when we :doc:`discuss GraphiQL <pedestal>`.
 It's an excellent habit to add descriptions early, rather than try and go back
 and add them in later.
@@ -74,7 +74,7 @@ The dash character is, unfortunately, not allowed.
 If we tried to name the query ``query-by-id``, Lacinia would throw a `clojure.spec <https://clojure.org/guides/spec>`_ validation exception when we attempted
 to compile the schema. [#spec]_
 
-In Lacinia, there are base types, such as ``String`` and ``:BoardGame`` and wrapped types, such
+In Lacinia, there are base types, such as ``String`` and ``:BoardGame``, and wrapped types, such
 as ``(non-null String)``.
 The two wrappers are ``non-null`` (a value *must* be present) and
 ``list`` (the type is a list of values, not a single value).

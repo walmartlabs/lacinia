@@ -114,7 +114,7 @@ by the GraphQL server, even before writing their first line of client-side code.
 
 Trust me, they love that.
 
-You'll notice that the returned map is in JSON format, not EDN, and that it includes a lot more information in the ``extensions`` key.  This is optional :doc:`tracing information <../tracing>`, where Lacinia identifies how it spent all the time processing the request.  This is an example of something that's automatic when using ``default-service`` that you'll definitely want to turn off in production.
+You'll notice that the returned map is in JSON format, not EDN, and that it includes a lot more information in the ``extensions`` key.  This is optional :doc:`tracing information <../tracing>`, where Lacinia identifies how it spent time processing the request.  This is an example of something that's automatic when using ``default-service`` that you'll definitely want to turn off in production.
 
 Documentation Browser
 ---------------------

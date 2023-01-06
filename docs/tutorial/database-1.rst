@@ -7,7 +7,7 @@ We'll be running `PostgreSQL <https://www.postgresql.org/>`_ in a
 Docker container. [#container]_
 
 We're definitely going to be taking two steps backward before taking further steps forward, but the majority of the changes
-will be in the ``clojure-game-geek.db`` namespace; the majority of the application, including the
+will be in the ``my.clojure-game-geek.db`` namespace; the majority of the application, including the
 field resolvers, will be unaffected.
 
 Dependency Changes
@@ -130,7 +130,7 @@ the query that retrieves a board game by its unique id.
 We'll make just the changes necessary for that one query before moving on.
 
 .. literalinclude:: /_examples/tutorial/db-3.clj
-   :caption: src/clojure_game_geek/db.clj
+   :caption: src/my/clojure_game_geek/db.clj
    :emphasize-lines: 3-26,33-38
 
 The requires for the ``db`` namespace have changed; we're using the ``clojure.java.jdbc`` namespace to
@@ -186,7 +186,7 @@ Notice how everything fits together: the column names in the database (``game_id
 became keywords (``:game_id``,  ``:summary``, etc.) in a map; meanwhile the GraphQL field names did the same
 conversion and everything meets together in the middle, with GraphQL fields selecting those same keys from the map.
 
-Meanwhile all the other ``clojure-game-geek.db`` namespace functions,
+Meanwhile all the other ``my.clojure-game-geek.db`` namespace functions,
 expecting to operate against a map inside an Atom, are now broken.
 We'll fix them in the next couple of chapters.
 

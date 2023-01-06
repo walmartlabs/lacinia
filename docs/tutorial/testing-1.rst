@@ -19,7 +19,7 @@ Only one of the systems can bind to the default 8888 port, so let's make sure ou
 a different port.
 
 .. literalinclude:: /_examples/tutorial/server-2.clj
-   :caption: src/clojure_game_geek/server.clj
+   :caption: src/my/clojure_game_geek/server.clj
    :emphasize-lines: 6,12-14,24
 
 We've added a bit of configuration for the ``:server`` component, the port to bind to.
@@ -67,7 +67,7 @@ Our application is layered as follows:
     }
 
 In theory, we could test each layer separately;  that is, we could test the
-``clojure-game-geek.db`` functions against a database (or even, some mockup of a database),
+``my.clojure-game-geek.db`` functions against a database (or even, some mockup of a database),
 then test the field resolver functions against the ``db`` functions, etc.
 
 In practice, building a Lacinia application is an exercise in integration; the individual bits
@@ -194,7 +194,7 @@ Conclusion
 We've created just one test, and managed to get it to run.
 That's a great start.
 Next up, we'll flesh out our tests, fix the many outdated
-functions in the ``clojure-game-geek.db`` namespace,
+functions in the ``my.clojure-game-geek.db`` namespace,
 and do some refactoring to ensure that our tests are concise, readable, and efficient.
 
 .. [#testdata] An improved approach might be to create a fresh database namespace for each test, or
@@ -203,5 +203,3 @@ and do some refactoring to ensure that our tests are concise, readable, and effi
    server.
 
 .. [#twitter] Downside: you'll probably read a lot less Twitter while developing.
-
-
