@@ -10,6 +10,6 @@
     <appender-ref ref="STDOUT"/>
   </root>
 
-  <logger name="clojure-game-geek.db" level="DEBUG"/>
+  <logger name="my.clojure-game-geek.db" level="DEBUG"/>
 
 </configuration>

@@ -6,7 +6,6 @@
 
 (defn- pooled-data-source
   [host dbname user password port]
-  ;; The jdbc namespace
   (doto (ComboPooledDataSource.)
     (.setDriverClass "org.postgresql.Driver")
     (.setJdbcUrl (str "jdbc:postgresql://" host ":" port "/" dbname))

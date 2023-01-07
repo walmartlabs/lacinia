@@ -125,7 +125,7 @@ We'll make just the changes necessary for that one query before moving on.
 
 .. literalinclude:: /_examples/tutorial/db-3.clj
    :caption: src/my/clojure_game_geek/db.clj
-   :emphasize-lines: 2-16,21,24-41
+   :emphasize-lines: 2-15,20,23-40
 
 The requires for the ``db`` namespace have changed; we're using the ``clojure.java.jdbc`` namespace to
 connect to the database and execute queries, and also making use of the ``ComboPooledDataSource`` class,

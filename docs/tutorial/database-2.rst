@@ -14,15 +14,12 @@ your application; you'll never figure out what's slowing down your application
 if you don't know what queries are even executing.
 
 .. literalinclude:: /_examples/tutorial/db-4.clj
-   :caption: src/my/clojure_game_geek/db.clj
-   :emphasize-lines: 4,6,35-40
-   :lines: 1-40
+   :caption: src/my/clojure_game_geek/db.clj (partial)
+   :emphasize-lines: 3-4,28-33
+   :lines: 1-33
 
-We've introduced our own version of ``clojure.java.jdbc/query`` with
-two differences:
-
-* It logs the SQL and parameters it will execute
-* It accepts a component, and extracts the database specification from the component
+We've introduced our own version of ``clojure.java.jdbc/query`` that
+logs the SQL and parameters before continuing on to the standard implementation.
 
 Because of how we format the SQL in our code, it is useful to convert
 the embedded newlines and indentation into single spaces.
@@ -31,7 +28,7 @@ A bit about logging: In a typical Java, or even Clojure, application
 the focus on logging is on a textural message for the user to read.
 Different developers approach this in different ways ... everything
 from the inscrutably cryptic to the overly verbose.
-Yes, across that spectrum, there always an assumption that some user is reading the log.
+Yet, across that spectrum, there always an assumption that some user is reading the log.
 
 The ``io.pedestal/pedestal.log`` library introduces a different idea:
 logs as a stream of data ... a sequence of maps.
@@ -40,8 +37,7 @@ that are interesting.
 
 When logged, it may look like::
 
-   DEBUG clojure-game-geek.db - {:sql "select game_id, name, summary, min_players, max_players, created_at, updated_at from board_game where game_id = $1",
-     :params (1234), :line 38}
+    DEBUG my.clojure-game-geek.db - {:sql "select game_id, name, summary, min_players, max_players, created_at, updated_at from board_game where game_id = ?", :params (1234), :line 32}
 
 That's the debug level and namespace, and the map of keys and values (``io.pedestal.log``
 adds the ``:line`` key).
@@ -63,13 +59,13 @@ By comparison, data values or other objects in Java
 only have useful debugging output if their class provides
 an override of the ``toString()`` method.
 
-When it comes time to execute a query, not much has changed
-except that it isn't necessary to extract the databased spec from
-the component:
+When it comes time to execute a query, little has changed
+except that the call is now to the local ``query`` function, not the one
+provided by ``clojure.java.jdcb``:
 
-.. literalinclude:: /_examples/tutorial/db-5.clj
-   :caption: src/my/clojure_game_geek/db.clj
-   :lines: 42-47
+.. literalinclude:: /_examples/tutorial/db-4.clj
+   :caption: src/my/clojure_game_geek/db.clj (partial)
+   :lines: 42-49
    :emphasize-lines: 4
 
 logback-test.xml
@@ -87,15 +83,15 @@ a restart.
 Re-running tests
 ----------------
 
-If we switch back to the ``my.clojure-game-geek.system-tests`` namespace and re-run the tests,
+If we switch back to the ``my.clojure-game-geek.system-test`` namespace and re-run the tests,
 the debug output will be mixed into the test tool output::
 
-   Loading src/my/clojure_game_geek/db.clj... done
-   Loading test/clojure_game_geek/system_tests.clj... done
-   Running tests in clojure-game-geek.system-tests
-   DEBUG clojure-game-geek.db - {:sql "select game_id, name, summary, min_players, max_players, created_at, updated_at from board_game where game_id = $1", :params (1234), :line 42}
-   Ran 1 test containing 1 assertion.
-   No failures.
+    Loading src/my/clojure_game_geek/db.clj... done
+    Loading test/my/clojure_game_geek/system_test.clj... done
+    Running tests in my.clojure-game-geek.system-test
+    DEBUG my.clojure-game-geek.db - {:sql "select game_id, name, summary, min_players, max_players, created_at, updated_at from board_game where game_id = ?", :params (1234), :line 31}
+    Ran 1 test containing 1 assertion.
+    No failures.
 
 More code updates
 -----------------
