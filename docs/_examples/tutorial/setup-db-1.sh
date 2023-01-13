@@ -61,7 +61,8 @@ create table game_rating (
   member_id int references member(member_id),
   rating integer not null,
   created_at timestamp not null default current_timestamp,
-  updated_at timestamp not null default current_timestamp);
+  updated_at timestamp not null default current_timestamp,
+  primary key (game_id, member_id));
 
 create trigger game_rating_updated_at before update
 on game_rating for each row execute procedure

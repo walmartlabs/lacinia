@@ -93,7 +93,7 @@ This will be handy when performing joins across tables.
 org.clojure/java.jdbc
 ---------------------
 
-This library is the standard approach to accessing a database from Clojure code.
+This ``java.jdbc`` library is the standard approach to accessing a typical SQL database from Clojure code.
 ``java.jdbc`` can access, in a uniform manner, any database for which there is a Java JDBC driver.
 
 The ``clojure.java.jdbc`` namespace contains a number of functions for acessing a database, including
@@ -101,13 +101,14 @@ functions for executing arbitrary queries, and specialized functions for peformi
 
 For all of those functions, the first parameter is a `database spec`, a map of data used to connect to the database, to perform the desired query or other operation.
 
-The spec is normally a map with many different options for what keys to specify.
-
 In a trivial case, the spec identifies the Java JDBC driver class, and provides extra information to build a JDBC URL, including
 details such as the database host, the user name and password, and the name of the database.
 
-In practice, opening up a new connection for each operation has unacceptible performance, so we'll jump right in with a
-database connection pooling library, C3P0.
+That is fine for initial prototyping, but a JDBC connection is created and destroyed every time
+a query is executed.
+
+In production, opening up a new connection for each operation has unacceptible performance, so we'll jump right in with a
+database connection pooling library, C3P0, from the get go.
 
 ``java.jdbc`` supports this with the ``:datasource`` key in the spec.
 A class in C3P0 implements the ``javax.sql.DataSource`` interface,
@@ -116,16 +117,17 @@ making it compatible with ``java.jdbc``.
 my.clojure-game-geek.db
 -----------------------
 
-In prior chapters, the ``:db`` component was just a wrapper around an Atom; starting here, we're going to
-update it to be a wrapper around a pooled connection pool to the PostgreSQL database running in the Docker container.
+In prior chapters, the ``:db`` component was just a wrapper around a Clojure Atom; starting here, we're going to
+revise the component to be a wrapper around a pooled connection pool to the PostgreSQL database running in the Docker container.
 
 Our goal in this chapter is to update just one basic query to use the database,
 the query that retrieves a board game by its unique id.
 We'll make just the changes necessary for that one query before moving on.
 
 .. literalinclude:: /_examples/tutorial/db-3.clj
-   :caption: src/my/clojure_game_geek/db.clj
-   :emphasize-lines: 2-15,20,23-40
+   :caption: src/my/clojure_game_geek/db.clj  (partial)
+   :lines: 1-24
+   :emphasize-lines: 2-15,20,23-24
 
 The requires for the ``db`` namespace have changed; we're using the ``clojure.java.jdbc`` namespace to
 connect to the database and execute queries, and also making use of the ``ComboPooledDataSource`` class,
@@ -139,14 +141,21 @@ The ``start`` method now creates the connection pool
 For the meantime, we've hardwired the connection details (hostname, username, password, and port) to our Docker container.
 A later chapter will discuss approaches to configuration.
 Also note that we're connecting to port ``25432`` on ``localhost``; Docker will forward that port to the container
-port ``5432``, which is the PostgreSQL server listens to.
+port ``5432``, which is the port the PostgreSQL server listens to.
 
 By the time the ``start`` method completes, the ``:db`` component is in
-the correct shape to be passed as a ``clojure.java.jdbc`` database spec.
+the correct shape to be passed as a ``clojure.java.jdbc`` database spec; it will have a ``:datasource`` key.
+
+find-game-by-id
+---------------
 
 That leaves the revised implementation of the ``find-game-by-id`` function; the only data access function so far rewritten to use
 the database.
 It simply constructs and executes the SQL query.
+
+.. literalinclude:: /_examples/tutorial/db-3.clj
+   :caption: src/my/clojure_game_geek/db.clj  (partial)
+   :lines: 26-40
 
 With ``clojure.java.jdbc`` the query is a vector
 consisting of a SQL query string followed by zero or more query parameters.
@@ -158,7 +167,15 @@ converted from strings into keywords.
 
 For an operation like this one, which returns at most one map, we use ``first``.
 
-Further, we remap the keys from their database snake_case names, to their GraphQL camelCase names, where necessary.
+.. sidebar:: createdAt and updatedAt
+
+   Our code selects and even renames the ``created_at`` and ``updated_at`` columns, even though they are not
+   yet in the schema.
+   This is not strictly necessary, but is useful for illustrative purposes.
+
+
+Further, we remap the keys from their database snake_case names, to their GraphQL camelCase names, where necessary. This `could` be done in the query using the SQL ``AS`` keyword, but it makes
+the SQL code harder to read and write and is easy to do in Clojure code.
 
 If no rows match, then the seq will be empty, and ``first`` will return nil.
 That's a perfectly good way to identify that the provided Board Game id was not valid.

@@ -12,9 +12,9 @@ Let's save ourselves some frustration: when we run our tests, we can't know if t
 is a REPL-started system running or not.
 There's no problem with two complete system maps running at the same time, and even
 hitting the same database, all within a single process
-... that's why we like Component, as it helps us avoid unecessary globals.
+... that's why we like the Component library, as it helps us avoid unnecessary globals.
 
-Unfortunately, we still have one conflict: the HTTP port for inbound requests.
+Unfortunately, we still have one global conflict: the HTTP port for inbound requests.
 Only one of the systems can bind to the default 8888 port, so let's make sure our tests use
 a different port.
 
@@ -31,7 +31,7 @@ So the Server record now has three fields:
 
 * ``schema-provider``, an injected dependency
 * ``port``, containing configuration supplied from outside
-* ``server``, setup inside ``start``
+* ``server``, setup inside the ``start`` method
 
 When we set up the system for production or local REPL development, we use a standard port, such as 8080.
 When we set up the system for testing, we'll use a different port, to prevent conflicts.
@@ -48,14 +48,14 @@ So where does the port come from?  We can peel back the onion a bit to the ``my.
 ``new-system`` now has two arities; in the second, a set of options are passed in and those are used to specify the ``:port`` in the map for the Server record.
 
 Over time, we'll likely add further options, and a fully fledged
-application may require sophisticated approach for configuration.
+application may require a more sophisticated approach for configuration.
 
 
 Simplify Utility
 ----------------
 
 To keep our tests simple, we'll want to use the ``simplify`` utility function discussed earlier.
-Here, we're creating a new namespace for test utilities, and moving the ``simplify`` function
+Here, we're creating a new namespace for test utilities, and moved the ``simplify`` function
 from the ``user`` namespace to the ``test-utils`` namespace:
 
 .. literalinclude:: /_examples/tutorial/test_utils-1.clj
@@ -105,7 +105,7 @@ don't work with the field resolver functions calling that code.
 Likewise, for nominal success cases, there's no point in testing the raw database code if
 the exact same code will be exercised when testing the field resolver functions.
 
-There's still a place for more focused testing, especially testing of failure
+There's still a place for more focused testing, especially when chasing down failure
 scenarios and other edge cases.
 
 For our first test, we'll do some integration testing; our tests will start at the
@@ -140,23 +140,28 @@ This first test is a bit verbose; later we'll refactor some of the code out of i
 additional tests easier.
 
 Importantly, we create a new system, start it, run tests and check expectations, and then stop the system, all within the test. Starting a system is not a heavy weight operation, so starting a new system for each
-individual test, or perhaps for each test namespace, is not problematic.
+individual test is not problematic [#pernamespace]_.
 
 
 The use of ``(try ... finally)``, however, is vitally important.
 If a test errors (throws an exception), we need to ensure
 that the system started by the test is, in fact, shutdown; otherwise the started Jetty threads
-will continue to run, keeping port 8989 bound - and therefore, preventing later tests from starting.
+will continue to run, keeping port 8989 bound - and therefore, preventing later tests from even starting.
 
+The test itself is quite simple: we execute a query and ensure the correct query response.
 Because we control the initial test data [#testdata]_ we know what at least a couple of rows
 in our database look like.
 
-It's quite easy to craft a tiny GraphQL query and execute it; that will flow through Lacinia, to
+It's quite easy to craft a tiny GraphQL query and execute it; execution of that query
+will flow through Lacinia, to
 our field resolvers, to the database access code, and ultimately to the database, just like
-in the diagram.
+in the diagram. Because queries are expected to be side-effect free, simply checking the query result is sufficient - as we'll see, testing mutations is a bit more involved.
 
 Running the Tests
 -----------------
+
+We've written the tests, but now it's time to execute them.
+
 There's a number of ways to run Clojure tests.
 
 Let's look at running them with the command line first.
@@ -201,7 +206,7 @@ be read, parsed, and compiled.
 
 Fortunately, Clojure was created with a REPL-oriented development workflow in mind.
 This is a fast-feedback cycle, where you can run tests, diagnose failures, make code corrections,
-and re-run the tests in a matter of seconds.
+and re-run the tests in a matter of seconds - sometimes as fast as you can type!
 Generally, the slowest part of the loop is the part that executes inside your grey matter.
 
 Because the Clojure code base is already loaded and running, even a change that affects many namespaces
@@ -274,6 +279,11 @@ That's a great start.
 Next up, we'll flesh out our tests, fix the many outdated
 functions in the ``my.clojure-game-geek.db`` namespace,
 and do some refactoring to ensure that our tests are concise, readable, and efficient.
+
+.. [#pernamespace] Another common approach is to create a system for each test namespace,
+    using a `test fixture <https://clojuredocs.org/clojure.test/use-fixtures>`_,
+    that is started before all tests executed, and shut down afterwards.
+
 
 .. [#testdata] An improved approach might be to create a fresh database namespace for each test, or
    each test namespace, and create and populate the tables with fresh test data each time.

@@ -32,6 +32,13 @@
       :params params))
   (jdbc/query component statement))
 
+(defn- execute!
+  [component statement]
+  (let [[sql & params] statement]
+    (log/debug :sql (string/replace sql #"\s+" " ")
+      :params params))
+  (jdbc/execute! component statement))
+
 (defn- remap-board-game
   [row-data]
   (set/rename-keys row-data {:game_id     :id
@@ -39,6 +46,25 @@
                              :max_players :maxPlayers
                              :created_at  :createdAt
                              :updated_at  :updatedAt}))
+
+(defn- remap-member
+  [row-data]
+  (set/rename-keys row-data {:member_id  :id
+                             :created_at :createdAt
+                             :updated_at :updatedAt}))
+
+(defn- remap-designer
+  [row-data]
+  (set/rename-keys row-data {:designer_id :id
+                             :created_at  :createdAt
+                             :updated_at  :updatedAt}))
+
+(defn- remap-rating
+  [row-data]
+  (set/rename-keys row-data {:member_id  :member-id
+                             :game_id    :game-id
+                             :created_at :createdAt
+                             :updated_at :updatedAt}))
 
 (defn find-game-by-id
   [component game-id]
@@ -49,59 +75,59 @@
     remap-board-game))
 
 (defn find-member-by-id
-  [db member-id]
-  (->> db
-    :data
-    deref
-    :members
-    (filter #(= member-id (:id %)))
-    first))
+  [component member-id]
+  (-> (query component
+        ["select member_id, name, created_at, updated_at
+             from member
+             where member_id = ?" member-id])
+    first
+    remap-member))
 
 (defn list-designers-for-game
-  [db game-id]
-  (let [designers (:designers (find-game-by-id db game-id))]
-    (->> db
-      :data
-      deref
-      :designers
-      (filter #(contains? designers (:id %))))))
+  [component game-id]
+  (->> (query component
+         ["select d.designer_id, d.name, d.uri, d.created_at, d.updated_at
+             from designer d
+             inner join designer_to_game j on (d.designer_id = j.designer_id)
+             where j.game_id = ?
+             order by d.name" game-id])
+    (map remap-designer)))
 
 (defn list-games-for-designer
-  [db designer-id]
-  (->> db
-    :data
-    deref
-    :games
-    (filter #(-> % :designers (contains? designer-id)))))
+  [component designer-id]
+  (->> (query component
+         ["select g.game_id, g.name, g.summary, g.min_players, g.max_players, g.created_at,
+                g.updated_at
+              from board_game g
+              inner join designer_to_game j on (g.game_id = j.game_id)
+              where j.designer_id = ?
+              order by g.name" designer-id])
+    (map remap-board-game)))
 
 (defn list-ratings-for-game
-  [db game-id]
-  (->> db
-    :data
-    deref
-    :ratings
-    (filter #(= game-id (:game-id %)))))
+  [component game-id]
+  (->> (query component
+         ["select game_id, member_id, rating, created_at, updated_at
+              from game_rating
+              where game_id = ?" game-id])
+    (map remap-rating)))
 
 (defn list-ratings-for-member
-  [db member-id]
-  (->> db
-    :data
-    deref
-    :ratings
-    (filter #(= member-id (:member-id %)))))
-
-(defn ^:private apply-game-rating
-  [game-ratings game-id member-id rating]
-  (->> game-ratings
-    (remove #(and (= game-id (:game-id %))
-               (= member-id (:member-id %))))
-    (cons {:game-id   game-id
-           :member-id member-id
-           :rating    rating})))
+  [component member-id]
+  (->> (query component
+         ["select game_id, member_id, rating, created_at, updated_at
+              from game_rating
+              where member_id = ?" member-id])
+    (map remap-rating)))
 
 (defn upsert-game-rating
-  "Adds a new game rating, or changes the value of an existing game rating."
-  [db game-id member-id rating]
-  (-> db
-    :data
-    (swap! update :ratings apply-game-rating game-id member-id rating)))
+  "Adds a new game rating, or changes the value of an existing game rating.
+
+  Returns nil."
+  [component game-id member-id rating]
+  (execute! component
+    ["insert into game_rating (game_id, member_id, rating)
+          values (?, ?, ?)
+          on conflict (game_id, member_id) do update set rating = ?"
+     game-id member-id rating rating])
+  nil)
