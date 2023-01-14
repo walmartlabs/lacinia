@@ -3,8 +3,10 @@
   {:locations #{:field-definition}
    :args {:role {:type (non-null String)}}}}
 
- :queries
- {:ultimate_answer
-  {:type String
-   :directives [{:directive-type :access
-                 :directive-args {:role "deep-thought"}}]}}}
+ :objects
+ {:Query
+  {:fields
+   {:ultimateAnswer
+    {:type String
+     :directives [{:directive-type :access
+                   :directive-args {:role "deep-thought"}}]}}}}}

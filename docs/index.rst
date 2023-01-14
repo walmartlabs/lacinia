@@ -17,7 +17,7 @@ In addition, GraphQL is self describing; the shape of the data that
 can be exposed, and the queries by which that data can be accessed,
 are all accessible using GraphQL queries.
 This allows for sophisticated, adaptable clients, such as the
-in-browser GraphQL IDE `graphiql`_.
+in-browser GraphQL IDE `GraphiQL`_.
 
 .. warning::
 
@@ -83,7 +83,7 @@ A GraphQL server starts with a schema of exposed types.
 
 This GraphQL schema is described as an `EDN <https://github.com/edn-format/edn>`_ data structure:
 
-.. literalinclude:: ../dev-resources/star-wars-schema.edn
+.. literalinclude:: _examples/star-wars-schema.edn
   :language: clojure
 
 

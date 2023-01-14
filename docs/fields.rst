@@ -4,7 +4,7 @@ Fields
 Fields are the basic building block of GraphQL data.
 
 :doc:`objects` and :doc:`interfaces <interfaces>` are composed of fields.
-Queries and mutations are a special kind of field.
+Queries, mutations, and subscriptions are also special kinds of fields.
 
 **Fields are functions**. Or, more specifically, fields are a kind of operation
 that begins with some data, adds in other details (such as field arguments provided
@@ -70,15 +70,8 @@ This data, the *resolved value*, is never directly returned to the client; this 
 in GraphQL, the client query identifies which fields from the resolved value are selected
 (and often, renamed) to form the result value.
 
-``:resolve`` is optional; when not provided it is assumed that the containing field's
-resolved value is a map containing a key exactly matching the field's name.
-
-A field resolver function may be provided on a field inside an
-:doc:`object definition <objects>`, or
-inside a :doc:`query definition <queries>` or
-:doc:`mutation definition <mutations>`.  No field resolver function should be provided
-in the fields of an :doc:`interface definition <interfaces>`: if provided in an interface
-definition, the resolve will be silently ignored.
+When a specific resolver is not provided for a field, Lacinia will provide a simple default:
+it is assumed that the containing field's resolved value is a map containing a key exactly matching the field's name.
 
 .. sidebar:: Field Resolvers
 

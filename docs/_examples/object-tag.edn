@@ -1,28 +1,27 @@
-{:objects
- {:business
+{:unions
+ {:Searchable
+  {:members [:Business :Employee]}}
+
+ :objects
+ {:Business
   {:fields
-   {:id {:type :ID}
-    :name {:type :String}}
+   {:id {:type ID}
+    :name {:type String}}
    :tag com.example.data.Business}
 
-  :employee
+  :Employee
   {:fields
-   {:id {:type :ID}
-    :employer {:type :business}
-    :given_name {:type :String}
-    :family_name {:type :String}}
-   :tag com.example.data.Employee}}
+   {:id {:type ID}
+    :employer {:type :Business}
+    :givenName {:type String}
+    :familyName {:type String}}
+   :tag com.example.data.Employee}
 
- :unions
- {:searchable
-  {:members [:business :employee]}}
+  :Query
+  {:fields
+   {:businesses
+    {:type (list :Business)}
 
- :queries
- {:businesses
-  {:type (list :business)
-   :resolve :query/businesses}
-
-  :search
-  {:type (list :searchable)
-   :resolve :query/search}}}
+    :search
+    {:type (list :Searchable)}}}}}
 

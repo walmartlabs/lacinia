@@ -37,7 +37,7 @@ The ``:tag`` key of the object definition must be set to the the class name (as 
 
 .. literalinclude:: /_examples/object-tag.edn
    :language: clojure
-   :emphasize-lines: 6,14
+   :emphasize-lines: 10,18
 
 This only works if the field resolver functions return the corresponding record types, rather than
 ordinary Clojure maps.

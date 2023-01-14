@@ -95,8 +95,8 @@ For structured types, the field resolver returns a resolved value;
 the query *must* contain nested selections.
 These selections will trigger further fields, whose resolvers will be passed the resolved value.
 
-For example, you might have a ``:lineItem`` query of type ``:LineItem``, and LineItem might include a field,
-``:product`` of type ``:Product``.
+For example, you might have a ``lineItem`` query of type ``LineItem``, and ``LineItem`` might include a field,
+``product`` of type ``Product``.
 A query ``{lineItem(id:"12345") { product }}`` is not valid: it is not possible to return a Product directly,
 you **must** select specific fields within Product:  ``{lineItem(id:"12345") { product { name upc price }}}``.
 
@@ -119,7 +119,7 @@ Default Field Resolver
 In the majority of cases, there is a direct mapping from a field name (in the schema) to a key
 of the resolved value.
 
-When the ``:resolve`` key for a field is not specified, a default resolver
+When a resolver for a field is not explicitly specified, a default resolver
 is provided automatically; this default resolver simply expects the container resolved value to be a map
 containing a key that exactly matches the field name.
 
