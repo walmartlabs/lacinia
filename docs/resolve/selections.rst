@@ -33,8 +33,8 @@ The query can be visualized as a tree of selections:
       name
       friends
       fname [label="name"]
-      humanfrag[label="... on human"]
-      planet[label="home_planet"]
+      humanfrag[label="... on Human"]
+      planet[label="homePlanet"]
 
       hero -> {name; humanfrag, friends}
       friends -> fname
@@ -46,10 +46,10 @@ The query can be visualized as a tree of selections:
       label="Schema"
 
       node[shape=rectangle]
-      sqr [label="QueryRoot"]
-      shuman [label="human"]
+      sqr [label="Query"]
+      shuman [label="Human"]
 
-      schar [label="character"]
+      schar [label="Character"]
 
       node[shape=ellipse]
       shero [label="hero"]
@@ -59,9 +59,9 @@ The query can be visualized as a tree of selections:
 
       sname [label="name"]
       shriends [label="friends"]
-      shappears_in [label="appears_in"]
+      shappears_in [label="appearsIn"]
       shname[label="name"]
-      splanet [label="home_planet"]
+      splanet [label="homePlanet"]
 
       sqr -> shero
       schar -> { sname, sfriends, sappears_in}
@@ -80,13 +80,13 @@ The query can be visualized as a tree of selections:
    }
 
 Nodes in the selections tree relate to fields in the schema.
-Remember that the type of query ``hero`` is the interface type ``character`` (and so can be either a ``human``
-or a ``droid``).
+Remember that the type of query ``hero`` is the interface type ``Character`` (and so can be either a ``Human``
+or a ``Droid``).
 
 In execution order, resolution occurs top to bottom, so the ``hero`` selection occurs
-first, then (potentially :doc:`in parallel <async>`) ``friends``, ``home_planet``, and (hero) ``name``.
+first, then (potentially :doc:`in parallel <async>`) ``friends``, ``homePlanet``, and (hero) ``name``.
 These last two are leaf nodes, because they are scalar values.
-The list of ``characters`` (from the ``friends`` field) then has its ``name`` field selected.
+The list of ``Characters`` (from the ``friends`` field) then has its ``name`` field selected.
 The result map then constructs from bottom to top.
 
 Accessing the Selection
@@ -110,7 +110,7 @@ A field resolver can "preview" what fields will be selected below it in the sele
 This is a tool frequently used to optimize data retrieval operations.
 
 As an example, lets assume a starting configuration where the ``hero`` field resolver fetches just the
-basic data for a hero (``id``, ``name``, ``home_planet``, etc.) and the
+basic data for a hero (``id``, ``name``, ``homePlanet``, etc.) and the
 ``friends`` resolver does a second query against the database to fetch the list of friends.
 
 That's two database queries. Perhaps we can optimize things by getting rid of the
@@ -130,7 +130,7 @@ is information about the selections, and ``selects-field?``
 can determine if a particular field appears `anywhere` below ``hero`` in the selection tree.
 
 ``selects-field?`` identifies fields even inside nested or named fragments,
-``(executor/selects-field? context :human/home_planet)`` would return true.
+``(executor/selects-field? context :Human/homePlanet)`` would return true.
 
 It is also possible to get `all` the fields that will be selected, using ``selections-seq``.
 This a lazy, breadth-first navigation of all fields in the selection tree.
@@ -147,11 +147,11 @@ For the above query, it would return the following structure:
    :language: clojure
 
 Each key in the map identifies a specific field by the qualified field name, such as
-``:character/friends``.
+``:Character/friends``.
 The value is a vector of how that field is used; it is a vector because the same field
 may appear in the selection multiple times, using aliases.
 
-This shows, for example, that ``:character/name`` is used in two different ways (inside the
+This shows, for example, that ``:Character/name`` is used in two different ways (inside the
 ``hero`` query itself, and within the ``friends`` field).
 
 For fields with arguments, an ``:args`` key is present, with the exact values which will be

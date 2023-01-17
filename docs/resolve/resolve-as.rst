@@ -87,7 +87,8 @@ When a field does not have an explicit resolver in the schema, a default resolve
 (this is just one of the many operations that occur when compiling a schema);
 ultimately, every field has a resolver, but the vast majority are these default resolvers.
 
-The resolver  maps the field name directly to a map key; a field named ``user_name`` will default to a keyword key, ``:user_name``.
+The default resolver  maps the field name directly to a map key; a field named ``userName`` will default to a keyword key, ``:userName``; it does no
+conversions beyond that, so there is no magic mapping from ``userName`` to ``:user-name``, for example.
 
 Nested Resolver Results
 -----------------------

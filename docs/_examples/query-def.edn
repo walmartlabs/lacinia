@@ -1,9 +1,9 @@
 {:queries
  {:hero
-  {:type (non-null :character)
+  {:type (non-null :Character)
    :args {:episode {:type :episode}}}
 
   :human
-  {:type (non-null :human)
+  {:type (non-null Hhuman)
    :args {:id {:type String
                :default-value "1001"}}}}}

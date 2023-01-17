@@ -26,7 +26,6 @@ the `web tier <https://github.com/walmartlabs/lacinia-pedestal>`_.
   This cleanup function typically stops whatever process was started earlier.
 
 Subscriptions are operations, like queries or mutations.
-They are defined using the top-level ``:subscriptions`` key in the schema,
-or as fields of the :doc:`root subscription object <../roots>`.
+They are defined as fields of the :doc:`Subscription object <../roots>`.
 
 

@@ -4,6 +4,6 @@
 
 (defn resolve-hero
   [context args _]
-  (if (executor/selects-field? context :character/friends)
+  (if (executor/selects-field? context :Character/friends)
     (fetch-hero-with-friends args)
     (fetch-hero args)))

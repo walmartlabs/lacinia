@@ -15,11 +15,12 @@
 ;; clj -T:build <var>
 
 (ns build
-  (:require [clojure.tools.build.api :as build]
+  (:require [clojure.string :as string]
+            [clojure.tools.build.api :as build]
             [net.lewisship.build :as b]))
 
 (def lib 'com.walmartlabs/lacinia)
-(def version "1.2-alpha-4")
+(def version (-> "VERSION.txt" slurp string/trim))
 
 (def jar-params {:project-name lib
                  :version version})

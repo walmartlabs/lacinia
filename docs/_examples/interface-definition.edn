@@ -1,14 +1,14 @@
 {:interfaces
- {:named
+ {:Named
   {:fields {:name {:type String}}}}
 
  :objects
- {:person
-  {:implements [:named]
+ {:Person
+  {:implements [:Named]
    :fields {:name {:type String}
             :age {:type Int}}}
 
-  :business
-  {:implements [:named]
+  :Business
+  {:implements [:Named]
    :fields {:name {:type String}
             :employee_count {:type Int}}}}}

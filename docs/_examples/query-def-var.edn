@@ -1,0 +1,11 @@
+{:objects
+ {:Query
+  {:fields
+   {:hero
+    {:type (non-null :Character)
+     :args {:episode {:type :episode}}}
+
+    :human
+    {:type (non-null :Human)
+     :args {:id {:type String
+                 :default-value "1001"}}}}}}}

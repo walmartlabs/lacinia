@@ -1,3 +1,0 @@
-{:queries
- {:hello {:type String
-          :resolve [:literal "Hello World"]}}}

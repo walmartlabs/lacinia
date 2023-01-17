@@ -1,10 +1,9 @@
-(ns clojure-game-geek.schema
+(ns my.clojure-game-geek.schema
   "Contains custom resolvers and a function to provide the full schema."
-  (:require
-    [clojure.java.io :as io]
-    [com.walmartlabs.lacinia.util :as util]
-    [com.walmartlabs.lacinia.schema :as schema]
-    [clojure.edn :as edn]))
+  (:require [clojure.java.io :as io]
+            [com.walmartlabs.lacinia.util :as util]
+            [com.walmartlabs.lacinia.schema :as schema]
+            [clojure.edn :as edn]))
 
 (defn resolve-game-by-id
   [games-map context args value]
@@ -37,7 +36,7 @@
                      edn/read-string)
         games-map (entity-map cgg-data :games)
         designers-map (entity-map cgg-data :designers)]
-    {:query/game-by-id (partial resolve-game-by-id games-map)
+    {:Query/gameById (partial resolve-game-by-id games-map)
      :BoardGame/designers (partial resolve-board-game-designers designers-map)
      :Designer/games (partial resolve-designer-games games-map)}))
 
@@ -46,5 +45,5 @@
   (-> (io/resource "cgg-schema.edn")
       slurp
       edn/read-string
-      (util/attach-resolvers (resolver-map))
+      (util/inject-resolvers (resolver-map))
       schema/compile))

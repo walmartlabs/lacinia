@@ -36,12 +36,12 @@ Example
 .. code-block:: clojure
 
   (parse-schema (slurp (clojure.java.io/resource "schema.txt"))
-                {:resolvers {:Query {:find_all_in_episode :find-all-in-episode}
-                                     :Mutation {:add_character :add-character}}
+                {:resolvers {:Query/findAllInEpsiode :find-all-in-episode
+                             :Mutation/addCharacter :add-character}}
                  :documentation {:Character "A Star Wars character"
                                  :Character/name "Character name"
-                                 :Query/find_all_in_episode "Find all characters in the given episode"
-                                 :Query/find_all_in_episode.episode "Episode for which to find characters."}})
+                                 :Query/findAllInEpisode "Find all characters in the given episode"
+                                 :Query/findAllInEpisode.episode "Episode for which to find characters."}})
 
 .. literalinclude:: /_examples/parsed_sample_schema.edn
    :caption: *Return value of parse-schema*

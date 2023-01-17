@@ -1,10 +1,9 @@
 (ns user
-  (:require
-    [com.walmartlabs.lacinia :as lacinia]
-    [clojure.java.browse :refer [browse-url]]
-    [clojure-game-geek.system :as system]
-    [clojure.walk :as walk]
-    [com.stuartsierra.component :as component])
+  (:require [com.stuartsierra.component :as component]
+            [my.clojure-game-geek.system :as system]
+            [com.walmartlabs.lacinia :as lacinia]
+            [clojure.java.browse :refer [browse-url]]
+            [clojure.walk :as walk])
   (:import (clojure.lang IPersistentMap)))
 
 (defn simplify
@@ -29,15 +28,15 @@
 (defn q
   [query-string]
   (-> system
-      :schema-provider
-      :schema
-      (lacinia/execute query-string nil nil)
-      simplify))
+    :schema-provider
+    :schema
+    (lacinia/execute query-string nil nil)
+    simplify))
 
 (defn start
   []
   (alter-var-root #'system component/start-system)
-  (browse-url "http://localhost:8888/")
+  (browse-url "http://localhost:8888/ide")
   :started)
 
 (defn stop
