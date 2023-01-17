@@ -86,7 +86,7 @@ that ``#ordered/map`` business.
 
 .. literalinclude:: /_examples/tutorial/user-2.clj
    :caption: dev-resources/user.clj
-   :emphasize-lines: 4-24,28-30
+   :emphasize-lines: 4-24,28-
 
 This ``simplify`` function finds all the ordered maps and converts them into
 ordinary maps.

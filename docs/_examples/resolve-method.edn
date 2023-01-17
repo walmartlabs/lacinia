@@ -1,4 +1,4 @@
-(defn ^:private make-accessor
+(defn- make-accessor
   [method-sym]
   (let [method-name (name method-sym)
         arg-types (make-array Class 0)
@@ -13,3 +13,9 @@
   (let [f (make-accessor method-sym)]
     (fn [_ _ value]
       (f value))))
+
+;; Later, when injecting resolvers ...
+
+  (-> ...
+      (utils/inject-resolvers {:MyObject/myField (resolve-method 'myField)})
+      (schema/compile))

@@ -29,9 +29,9 @@ This fights against the grain of Lacinia, which expects schema objects to be Clo
 
 It would be tedious to write a custom field resolver function for each and every
 Java instance method that needs to be invoked.
-Instead, we can use a :ref:`resolver factory <resolver-factory>`.
+Instead, we can use a factory function:
 
-.. literalinclude:: ../_examples/resolve-method.edn
+.. literalinclude:: /_examples/resolve-method.edn
    :language: clojure
 
 This won't be the most efficient approach, since it has to lookup a method on each use and then

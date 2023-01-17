@@ -67,7 +67,7 @@ provided by ``clojure.java.jdcb``:
 .. literalinclude:: /_examples/tutorial/db-4.clj
    :caption: src/my/clojure_game_geek/db.clj (partial)
    :lines: 69-75
-   :emphasize-lines: 71
+   :emphasize-lines: 3
 
 logback-test.xml
 ----------------

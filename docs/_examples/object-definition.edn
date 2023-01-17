@@ -1,5 +1,5 @@
 {:objects
- {:product
+ {:Product
   {:fields {:id {:type ID}
             :name {:type String}
             :sku {:type String}

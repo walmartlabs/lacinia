@@ -18,7 +18,7 @@ Object definitions are under the ``:objects`` key of the schema.
    :language: clojure
 
 
-This defines a schema containing only a single schema object [#emptyschema]_, `product`, with four fields:
+This defines a schema containing only a single schema object [#emptyschema]_, `Product`, with four fields:
 
 * id - an identifier
 * name - a string
@@ -46,13 +46,13 @@ In some cases, a field defined in an object may be more specific than a field fr
 interface; for example, the field type in the interface may itself be an interface; the field
 type in the object must be that exact interface *or* an object that implements that interface.
 
-In our Star Wars themed example schema, we see that the ``:character`` interface defines the ``:friends`` field
-as type ``(list :character)``. So, in the generic case, the friends of a character can be either Humans or Droids.
+In our Star Wars themed example schema, we see that the ``:Character`` interface defines the ``:friends`` field
+as type ``(list :Character)``. So, in the generic case, the friends of a character can be either Humans or Droids.
 
 Perhaps in a darker version of the Star Wars universe, Humans can not be friends with Droids.
-In that case, the ``:friends`` field of the ``:human`` object would be type
-``(list :human)`` rather than the more egalitarian ``(list :character)``.
-This appears to be a type conflict, as the type of the ``:friends`` field differs between ``:human`` and ``:character``
+In that case, the ``:friends`` field of the ``:Human`` object would be type
+``(list :Human)`` rather than the more egalitarian ``(list :Character)``.
+This appears to be a type conflict, as the type of the ``:friends`` field differs between ``:Human`` and ``:Character``
 
 In fact, this does not violate type constraints, because a Human is always a Character.
 

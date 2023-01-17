@@ -64,7 +64,8 @@ The built-in scalar types:
 Field Resolver
 --------------
 
-The ``:resolve`` key identifies the field resolver function, used to provide the actual data.
+The ``:resolve`` key in the field definition identifies the field resolver function, used to provide the actual data.  The ``:resolve`` key, being a function, is usually
+:doc:`provided at runtime <resolve/attach>`.
 
 This data, the *resolved value*, is never directly returned to the client; this is because
 in GraphQL, the client query identifies which fields from the resolved value are selected
@@ -84,7 +85,7 @@ field's ``:type``.
 
 For composite (non-scalar) types, the client query **must** include a nested set of fields
 to be returned in the result map.
-The query is a tree, and the leaves of that tree will always be simple scalar values.
+The query is a tree, and the leaves of that tree must always be simple scalar values.
 
 Arguments
 ---------

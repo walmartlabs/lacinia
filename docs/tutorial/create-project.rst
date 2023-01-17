@@ -6,7 +6,7 @@ initial dependencies.
 
 Let's get started.
 
-The `clj` command is used to start Clojure projects, but it's a bit of swiss-army knife; it can
+The ``clj`` command is used to start Clojure projects, but it's a bit of swiss-army knife; it can
 also be used to launch arbitrary Clojure tools.  Importantly, `clj` also understands dependencies
 and repositories, so it will download any libraries, as they are needed.
 

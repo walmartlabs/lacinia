@@ -104,7 +104,7 @@ the ``:schema-provider`` component.
 
 .. literalinclude:: /_examples/tutorial/schema-3.clj
    :caption: src/my/clojure_game_geek/schema.clj
-   :emphasize-lines: 4,52-64
+   :emphasize-lines: 4,52-
 
 The significant changes are at the bottom of the namespace.
 There's a new record, SchemaProvider, that implements the Lifecycle

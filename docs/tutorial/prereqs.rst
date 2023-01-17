@@ -13,11 +13,14 @@ You should have an editor or IDE ready to go, set up for editing Clojure code.
 A skim of the Lacinia reference documentation (the rest of this manual, outside of
 this tutorial) is also helpful, or you can follow links provided as we go.
 
-The later chapters use a database stored in a Docker container [#docker]_;
+The later chapters use a database stored in a Docker container [#dockerfn]_ ;
 you should download and install `Docker <https://www.docker.com/>`_ and
 ensure that you can run the ``docker`` command.
 
-.. [#docker] A Docker container is
+With those basics installed and ready, we can build an empty project and work from there, but first
+we'll talk about the application we will be building.
+
+.. [#dockerfn] A Docker container is
    the  `Inception <http://www.imdb.com/title/tt1375666/>`_ of computers; a
    container is essentially a
    light-weight virtual machine that runs inside your computer.
