@@ -12,14 +12,29 @@ container's resolved value, and format it:
 
 .. code-block:: clojure
 
-    (fn [context args resolved-value]
-        (->> resolved-value
-             :updated-at
-             (format "%tm-%<td-%<tY")))
+    (defn resolve-updated-at
+      [context args resolved-value]
+      (->> resolved-value
+           :updated-at
+           (format "%tm-%<td-%<tY")))
+
+        ...
+        (inject-resolvers {:MyType/updatedAt resolve-updated-at})
 
 This example is tied to a specific key (``:updated-at``) and a specific format.
-A :ref:`resolver factory <resolver-factory>` could be used to make this a more general
-pattern.
+
+If this kind of transformation will apply to many different fields, you could
+easily create a function factory:
+
+.. code-block:: clojure
+
+    (defn resolve-date-field
+      [k fmt]
+      (fn [context args resolved-value]
+        (format fmt (get resolved-value k))))
+
+      ...
+      (inject-resolvers {:MyType/updatedAt (resolve-date-field :updated-at "%tm-%<td-%<tY)})
 
 Accessing a Java Instance Method
 --------------------------------
