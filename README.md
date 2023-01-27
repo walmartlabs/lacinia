@@ -35,7 +35,7 @@ Lacinia features:
 
 Lacinia has been developed with a set of core philosophies:
 
-- Prefer data over macros and other tricks. Compose your schema in whatever mix of data and code works for you.
+- Prefer data over macros and other tricks: Compose your schema in whatever mix of data and code works for you.
 
 - Embrace Clojure: Use EDN data, keywords, functions, and persistent data structures.
 
@@ -121,7 +121,7 @@ In real applications, a field resolver might execute a query against a database,
 or send a request to another web service.
 
 After injecting resolvers, it is necessary to compile the schema; this
-step performs validations, provide defaults, and organizes the schema
+step performs validations, provides defaults, and organizes the schema
 for efficient execution of queries.
 
 This needs only be done once, in application startup code:
