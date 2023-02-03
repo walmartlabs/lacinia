@@ -1,4 +1,4 @@
-## 1.2 - Not Released
+## 1.2 - 3 Feb 2023
 
 A new schema compile option, :executor, has been added;
 this is an `Executor` used primarily when invoking
