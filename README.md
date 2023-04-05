@@ -2,6 +2,7 @@
 
 
 [![Clojars Project](https://img.shields.io/clojars/v/com.walmartlabs/lacinia.svg)](https://clojars.org/com.walmartlabs/lacinia)
+[![CI](https://github.com/walmartlabs/lacinia/actions/workflows/config.yml/badge.svg)](https://github.com/walmartlabs/lacinia/actions/workflows/config.yml)
 
 [Lacinia Manual](http://lacinia.readthedocs.io/en/latest/) |
 [Lacinia Tutorial](http://lacinia.readthedocs.io/en/latest/tutorial) |
