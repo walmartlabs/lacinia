@@ -1813,6 +1813,15 @@
   (fn [_ _ value]
     (resolve-as value)))
 
+(defn ^:private apply-default-subscription-resolver
+  [schema subscription]
+  (let [map-vals' (fn [v f]
+                    (map-vals f v))]
+    (update-in schema [subscription :fields]
+      map-vals'
+      (fn [field]
+        (update field :resolve #(or % default-subscription-resolver))))))
+
 (defn ^:private add-root
   "Adds a root object for 'extra' operations (e.g., the :queries map in the input schema)."
   [compiled-schema object-name operation-key fields]
@@ -1924,40 +1933,36 @@
         {:keys [query mutation subscription]
          :or {query :Query
               mutation :Mutation
-              subscription :Subscription}} (map-vals as-keyword (:roots schema))
-        defaulted-subscriptions (->> schema
-                                  :subscriptions
-                                  (map-vals #(if-not (:resolve %)
-                                               (assoc % :resolve default-subscription-resolver)
-                                               %)))]
+              subscription :Subscription}} (map-vals as-keyword (:roots schema))]
     (-> {::roots {:query query
                   :mutation mutation
                   :subscription subscription}
          ::executor executor
          ::options options}
-        (xfer-types merged-scalars :scalar)
-        (xfer-types (:enums schema) :enum)
-        (xfer-types (:unions schema) :union)
-        (xfer-types (:objects schema) :object)
-        (xfer-types (:interfaces schema) :interface)
-        (xfer-types (:input-objects schema) :input-object)
-        (add-root query :queries (:queries schema))
-        (add-root mutation :mutations (:mutations schema))
-        (add-root subscription :subscriptions defaulted-subscriptions)
-        (as-> s
-          (map-vals #(compile-type % s) s))
-        (compile-directive-defs (:directive-defs schema))
-        (prepare-and-validate-interfaces)
-        (prepare-and-validate-objects :object)
-        (prepare-and-validate-objects :input-object)
-        (validate-directives-by-category :union)
-        (validate-directives-by-category :scalar)
-        validate-enum-directives
-        inject-null-collapsers
-        ;; Last so that schema is as close to final and verified state as possible
-        (prepare-field-resolvers options)
-        (prepare-field-streamers options)
-        map->CompiledSchema)))
+      (xfer-types merged-scalars :scalar)
+      (xfer-types (:enums schema) :enum)
+      (xfer-types (:unions schema) :union)
+      (xfer-types (:objects schema) :object)
+      (xfer-types (:interfaces schema) :interface)
+      (xfer-types (:input-objects schema) :input-object)
+      (add-root query :queries (:queries schema))
+      (add-root mutation :mutations (:mutations schema))
+      (add-root subscription :subscriptions (:subscriptions schema))
+      (apply-default-subscription-resolver subscription)
+      (as-> s
+        (map-vals #(compile-type % s) s))
+      (compile-directive-defs (:directive-defs schema))
+      (prepare-and-validate-interfaces)
+      (prepare-and-validate-objects :object)
+      (prepare-and-validate-objects :input-object)
+      (validate-directives-by-category :union)
+      (validate-directives-by-category :scalar)
+      validate-enum-directives
+      inject-null-collapsers
+      ;; Last so that schema is as close to final and verified state as possible
+      (prepare-field-resolvers options)
+      (prepare-field-streamers options)
+      map->CompiledSchema)))
 
 (defn default-field-resolver
   "The default for the :default-field-resolver option, this uses the field name as the key into
@@ -2023,9 +2028,9 @@
 
   :disable-java-objects? (added in 1.1)
   : Normally, Lacinia must check each returned field to see if it is a wrapper around a Java object
-    (this happens when a Java objects is tagged via [[tag-with-type]]);
+    (this happens when a Java object is tagged via [[tag-with-type]]);
     in most applications, resolvers return only Clojure values, not Java objects, and the step
-    that looks for tagged values iis only needed for fields
+    that looks for tagged values is only needed for fields
     whose type is an interface or union. Using this option improves performance slightly, but should be
     used consistently across environments (testing and production).
 
