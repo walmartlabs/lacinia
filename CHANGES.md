@@ -1,3 +1,9 @@
+## 1.2.1 - 5 Apr 2023
+
+Fixed a bug that could prevent subscriptions for operating correctly.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/30?closed=1)
+
 ## 1.2 - 3 Feb 2023
 
 A new schema compile option, :executor, has been added;
