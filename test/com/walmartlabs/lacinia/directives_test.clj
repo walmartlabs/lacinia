@@ -349,7 +349,8 @@
   (directive-test
     "Directive @deprecated on union `Ebb' is not applicable."
     {:allowed-locations #{:enum-value
-                          :field-definition}
+                          :field-definition
+                          :input-field-definition}
      :directive-type :deprecated
      :union :Ebb}
     {:objects
@@ -375,7 +376,8 @@
   (directive-test
     "Directive @deprecated on scalar `Ebb' is not applicable."
     {:allowed-locations #{:enum-value
-                          :field-definition}
+                          :field-definition
+                          :input-field-definition}
      :directive-type :deprecated
      :scalar :Ebb}
     {:scalars
@@ -493,6 +495,18 @@
     (is (= true
            (get-in schema [:Account :fields :id :deprecated])))))
 
+(deftest can-deprecate-input-fields
+  (let [schema (schema/compile
+                 {:input-objects
+                  {:Character
+                   {:description "A character"
+                    :fields {:name {:type '(non-null String)
+                                    :description "Character name"}
+                             :weapon {:type '(non-null String)
+                                      :directives [{:directive-type :deprecated}]
+                                      :description "Weapon of choice"}}}}})]
+    ;; Exception is not thrown
+    (is (any? schema))))
 
 (deftest can-deprecate-enum-values
   (let [schema (schema/compile

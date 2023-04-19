@@ -1878,7 +1878,7 @@
                   (map-kvs compile-directive-args
                     (assoc directive-defs
                       :deprecated {:args {:reason {:type 'String}}
-                                   :locations #{:field-definition :enum-value}})))))
+                                   :locations #{:enum-value :field-definition :input-field-definition}})))))
 
 (defn ^:private validate-directives-by-category
   [schema category]
