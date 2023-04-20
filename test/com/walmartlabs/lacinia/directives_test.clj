@@ -348,7 +348,8 @@
 (deftest union-directive-inapplicable
   (directive-test
     "Directive @deprecated on union `Ebb' is not applicable."
-    {:allowed-locations #{:enum-value
+    {:allowed-locations #{:argument-definition
+                          :enum-value
                           :field-definition
                           :input-field-definition}
      :directive-type :deprecated
@@ -375,7 +376,8 @@
 (deftest scalar-directive-inapplicable
   (directive-test
     "Directive @deprecated on scalar `Ebb' is not applicable."
-    {:allowed-locations #{:enum-value
+    {:allowed-locations #{:argument-definition
+                          :enum-value
                           :field-definition
                           :input-field-definition}
      :directive-type :deprecated
