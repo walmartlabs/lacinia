@@ -7,7 +7,7 @@ Field resolvers are how Lacinia goes beyond data modelling to actually providing
 
    Read about :spec:`value resolution <Value-Resolution>`.
 
-Field resolvers are attached to fields, including the :doc:`root objects <../roots>` ``Query``, ``Mutations``, and ``Subscription``.
+Field resolvers are attached to fields, including the :doc:`root objects <../roots>` ``Query``, ``Mutation``, and ``Subscription``.
 It is only inside field resolvers that a Lacinia application can connect to a database or
 an external system: field resolvers are where the data actually *comes* from.
 
