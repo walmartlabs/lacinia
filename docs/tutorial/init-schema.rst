@@ -198,7 +198,7 @@ In the next chapter, we'll build on this modest start, introducing more schema t
 
 
 .. [#internal] Internally, `everything` is converted to keywords, so if you prefer
-   to use symbols everywhere, nothing will break. Conversion to keyboards is one part of the schema compilation
+   to use symbols everywhere, nothing will break. Conversion to keywords is one part of the schema compilation
    process.
 
 .. [#spec] Because the input schema format is so complex, it is `always` validated
