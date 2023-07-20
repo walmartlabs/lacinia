@@ -181,9 +181,16 @@
   is an ResultTuple."
   [left-value right-value]
   (if (su/is-result-tuple? right-value)
-    (let [{:keys [alias value]} right-value]
-      (if (contains? left-value alias)
+    (let [{:keys [alias value]} right-value
+          left-alias-value (alias left-value)]
+      (cond
+        (= left-alias-value :com.walmartlabs.lacinia.schema/null)
+        left-value
+
+        (map? left-alias-value)
         (update left-value alias deep-merge-value value)
+
+        :else
         (assoc left-value alias value)))
     (deep-merge left-value right-value)))
 
