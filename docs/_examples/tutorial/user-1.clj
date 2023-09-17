@@ -1,6 +1,6 @@
 (ns user
   (:require
-    [clojure-game-geek.schema :as s]
+    [my.clojure-game-geek.schema :as s]
     [com.walmartlabs.lacinia :as lacinia]))
 
 (def schema (s/load-schema))
