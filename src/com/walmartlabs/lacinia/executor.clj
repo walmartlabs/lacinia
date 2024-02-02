@@ -17,7 +17,7 @@
   (:require
     [com.walmartlabs.lacinia.internal-utils
      :refer [cond-let q to-message
-             deep-merge deep-merge-value keepv get-nested]]
+             deep-merge keepv get-nested]]
     [flatland.ordered.map :refer [ordered-map]]
     [com.walmartlabs.lacinia.select-utils :as su]
     [com.walmartlabs.lacinia.resolve-utils :refer [transform-result aggregate-results]]
@@ -183,7 +183,7 @@
   (if (su/is-result-tuple? right-value)
     (let [{:keys [alias value]} right-value]
       (if (contains? left-value alias)
-        (update left-value alias deep-merge-value value)
+        (update left-value alias deep-merge value)
         (assoc left-value alias value)))
     (deep-merge left-value right-value)))
 
@@ -611,5 +611,3 @@
   (let [{:keys [root selections]} parsed-query]
     {constants/parsed-query-key parsed-query
      constants/selection-key (->RootSelections root selections)}))
-
-

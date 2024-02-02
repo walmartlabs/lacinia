@@ -407,27 +407,21 @@
            nil
           coll))
 
-(declare deep-merge)
-
-(defn deep-merge-value
+(defn deep-merge
+  "Merges two maps together.  Later map override earlier.
+  If a key is sequential, then each element in the list is merged."
   [left right]
   (cond
     (and (map? left) (map? right))
-    (deep-merge left right)
+    (merge-with deep-merge left right)
 
     (and (sequential? left) (sequential? right))
     (mapv deep-merge left right)
 
-  (or (map? right) (sequential? right))
+    (or (map? right) (sequential? right))
     (throw (ex-info "unable to deep merge"
                     {:left left
                      :right right}))
 
     :else
     right))
-
-(defn deep-merge
-  "Merges two maps together.  Later map override earlier.
-  If a key is sequential, then each element in the list is merged."
-  [left-value right-value]
-  (merge-with deep-merge-value left-value right-value))
