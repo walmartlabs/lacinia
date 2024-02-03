@@ -93,5 +93,3 @@ query MyQuery {
     id
   }
 }")))))
-
-(clojure.test/run-test deep-merge-on-error)
