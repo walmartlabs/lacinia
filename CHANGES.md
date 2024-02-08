@@ -1,3 +1,9 @@
+## 1.2.2 - 8 Feb 2024
+
+A few minor bug fixes.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/31?closed=1)
+
 ## 1.2.1 - 5 Apr 2023
 
 Fixed a bug that could prevent subscriptions for operating correctly.

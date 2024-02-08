@@ -47,8 +47,11 @@
 
   ;; clj -T:build <command>
   :build {:deps {io.github.hlship/build-tools
-                 {:git/tag "0.7.1" :git/sha "5a0214"}}
+                 {:git/tag "0.10.1" :git/sha "7ecff5"}}
           :ns-default build}}
+
+ :net.lewisship.build/scm
+ {:license :asl}
 
  :codox/config
  {:description "Clojure-native implementation of GraphQL"
