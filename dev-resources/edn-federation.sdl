@@ -1,0 +1,43 @@
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+
+directive @extends on INTERFACE | OBJECT
+directive @key(fields: _FieldSet!, resolvable: Boolean = true) on INTERFACE | OBJECT
+directive @external on FIELD_DEFINITION
+directive @shareable on FIELD_DEFINITION | OBJECT
+directive @requires(fields: _FieldSet!) on FIELD_DEFINITION
+directive @link(url: String, as: String, for: link__Purpose, import: [link__Import]) on SCHEMA
+directive @provides(fields: _FieldSet!) on FIELD_DEFINITION
+directive @override(from: String!) on FIELD_DEFINITION
+directive @inaccessible on ENUM | INPUT_FIELD_DEFINITION | INTERFACE | INPUT_OBJECT | ENUM_VALUE | SCALAR | ARGUMENT_DEFINITION | UNION | FIELD_DEFINITION | OBJECT
+
+scalar _Any
+scalar _FieldSet
+scalar link__Import
+
+enum link__Purpose{
+  SECURITY
+  EXECUTION
+}
+
+type _Service{
+  sdl: String!
+}
+type User @key(fields: "id") {
+  id: Int!
+  name: String!
+}
+type Query{
+  user_by_id(id: Int!): User
+}
+type Account @key(fields: "acct_number") {
+  acct_number: String!
+  name: String!
+}
+type Product @key(fields: "upc") @extends {
+  upc: String!
+  reviewed_by: User
+}

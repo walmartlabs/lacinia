@@ -15,12 +15,14 @@
 (ns com.walmartlabs.lacinia.federation-tests
   (:require
     [clojure.test :refer [deftest is]]
+    [clojure.string :refer [trim]]
     [com.walmartlabs.lacinia.parser.schema :refer [parse-schema]]
     [com.walmartlabs.lacinia.resolve :refer [FieldResolver resolve-as]]
     [com.walmartlabs.lacinia.util :as util]
     [com.walmartlabs.test-utils :refer [execute]]
     [com.walmartlabs.test-reporting :refer [reporting]]
-    [com.walmartlabs.lacinia.schema :as schema]))
+    [com.walmartlabs.lacinia.schema :as schema]
+    [com.walmartlabs.lacinia.federation :refer [inject-federation generate-sdl]]))
 
 (defn ^:private resolve-user
   [_ {:keys [id]} _]
@@ -265,3 +267,112 @@ query($reps : [_Any!]!) {
       (is (contains? field-names "_service"))
       (is (not (contains? field-names "_entities")))
       (is (= #{"Stuff"} union-names)))))
+
+(deftest edn-schema->sdl-schema
+  (let [sample-edn-1 '{:roots {:query :MyQuery
+                                :mutation :Mutation}
+                        :interfaces
+                        {:Node
+                         {:fields
+                          {:id
+                           {:type (non-null ID)}}}}
+                        :objects
+                        {:MyQuery
+                         {:fields
+                          {:todo
+                           {:type :Todo
+                            :description "\"\"\"Get one todo item\""
+                            :args
+                            {:id
+                             {:type (non-null ID)
+                              :default-value "\"default-node-id"}}}
+                           :allTodos
+                           {:type (non-null (list (non-null :Todo))) :description "List of all todo items"}}}
+                         :Mutation
+                         {:fields
+                          {:addTodo
+                           {:type (non-null :Todo)
+                            :args
+                            {:name
+                             {:type (non-null String) :description "Name for the todo item"}
+                             :priority
+                             {:type :Priority :description "Priority level of todo item" :default-value :LOW}}}
+                           :removeTodo
+                           {:type (non-null :Todo)
+                            :args
+                            {:id
+                             {:type (non-null ID)}}}}}
+                         :Todo
+                         {:implements  [:Node]
+                          :fields
+                          {:id
+                           {:type (non-null ID)}
+                           :name
+                           {:type (non-null String)}
+                           :description
+                           {:type String :description "Useful description for todo item"}
+                           :priority
+                           {:type (non-null :Priority)}}}}
+                        :enums
+                        {:Priority
+                         {:values [{:enum-value :LOW}
+                                   {:enum-value :MEDIUM}
+                                   {:enum-value :HIGH}]}}
+                        :unions
+                        {:_Entity
+                         {:members [:Todo]}}
+                        :scalars
+                        {:FieldSet
+                         {}}
+                        :directive-defs
+                        {:key
+                         {:locations #{:interface :object}
+                          :args
+                          {:fields
+                           {:type (non-null :FieldSet)}
+                           :resolvable
+                           {:type Boolean :default-value true}}}
+                         :external
+                         {:locations #{:field-definition}}}}
+        sample-edn-2 '{:queries
+                       {:node
+                        {:description "node query"
+                         :type Node
+                         :args {:id {:type (non-null ID)}}}}
+                       :roots
+                       {:query :CustomQuery}}
+        sample-sdl-2 "schema {\n  query: CustomQuery\n}\n\ntype CustomQuery{\n  \"\"\"\n  node query\n  \"\"\"\n  node(id: ID!): Node\n}"]
+    
+    (is (= (-> sample-edn-1 generate-sdl parse-schema) sample-edn-1))
+    (is (= (generate-sdl sample-edn-2) sample-sdl-2))))
+
+(deftest only-edn-schama-essential
+  (let [edn (-> "dev-resources/edn-federation.edn" slurp read-string)
+        sdl (-> "dev-resources/edn-federation.sdl" slurp trim)
+        schema (-> edn
+                   (inject-federation {:User always-nil
+                                       :Account always-nil
+                                       :Product always-nil})
+                   (util/inject-resolvers {:Query/user_by_id resolve-user})
+                   (util/attach-scalar-transformers {:_Any/parser identity
+                                                     :_Any/serializer identity
+                                                     :_FieldSet/parser identity
+                                                     :_FieldSet/serializer identity
+                                                     :link__Import/parser identity
+                                                     :link__Import/serializer identity})
+                   schema/compile)]
+    (is (= {:data {:_service {:sdl sdl}}}
+           (execute schema
+                    "{ _service { sdl }}")))
+
+    (is (= {:data {:entities {:members [{:name "Account"}
+                                        {:name "Product"}
+                                        {:name "User"}]
+                              :name "_Entity"}}}
+           (execute schema
+                    "{ entities: __type(name: \"_Entity\") { name members: possibleTypes { name }}}")))
+
+    (is (= {:data {:user_by_id {:id 9998
+                                :name "User #9998"}}}
+           (execute schema
+                    "{ user_by_id(id: 9998) { id name }}")))))
