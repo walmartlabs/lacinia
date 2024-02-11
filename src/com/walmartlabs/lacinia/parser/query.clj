@@ -23,7 +23,8 @@
     #_[clojure.pprint :as pprint]
     [com.walmartlabs.lacinia.parser.common :as common])
   (:import
-    (clj_antlr ParseError)))
+    (com.walmartlabs.lacinia GraphqlParser GraphqlLexer)
+    (org.antlr.v4.runtime CharStreams CommonTokenStream)))
 
 (def ^:private grammar
   (common/compile-grammar "com/walmartlabs/lacinia/Graphql.g4"))
@@ -257,8 +258,26 @@
   (xform-query
     (try
       (common/antlr-parse grammar input)
-      (catch ParseError e
+      (catch RuntimeException e
         (let [failures (common/parse-failures e)]
           (throw (ex-info "Failed to parse GraphQL query."
                           {:errors failures})))))))
 
+
+(comment
+
+  (def query (slurp "dev-resources/parser/aliases.gql"))
+  (def query "query { foo }")
+
+  (let [char-stream (CharStreams/fromString query)
+        lexer (GraphqlLexer. char-stream)
+        parser (GraphqlParser. (CommonTokenStream. lexer))]
+    (common/parse parser)
+    (common/traverse (.document parser) parser)
+    )
+
+  (parse-query query)
+
+  (common/antlr-parse grammar query)
+
+  )

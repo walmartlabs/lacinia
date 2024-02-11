@@ -13,15 +13,11 @@
 ; limitations under the License.
 
 (ns ^:no-doc com.walmartlabs.lacinia.parser.common
-  (:require [clj-antlr.proto :as antlr.proto]
-            [clj-antlr.common :as antlr.common]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [com.walmartlabs.lacinia.internal-utils :refer [keepv]]
-            [clojure.java.io :as io]
-            [clj-antlr.core :as antlr.core])
+            [clojure.java.io :as io])
   (:import (org.antlr.v4.runtime.tree ParseTree TerminalNode)
-           (org.antlr.v4.runtime Parser ParserRuleContext Token)
-           (clj_antlr ParseError)))
+           (org.antlr.v4.runtime Parser ParserRuleContext Token)))
 
 (defn as-map
   "Converts a normal Antlr production into a map."
@@ -138,9 +134,9 @@
         {:line (.getLine token)
          :column (-> token .getCharPositionInLine inc)}))))
 
-(defn ^:private traverse
+(defn traverse
   [^ParseTree t ^Parser p]
-  (if (instance? ParserRuleContext t)
+  #_(if (instance? ParserRuleContext t)
     (let [node (cons (->> (.getRuleIndex ^ParserRuleContext t)
                           (antlr.common/parser-rule-name p)
                           antlr.common/fast-keyword)
@@ -160,11 +156,11 @@
 
 (defn antlr-parse
   [grammar input-document]
-  (let [{:keys [tree parser]} (antlr.proto/parse grammar nil input-document)]
+  #_(let [{:keys [tree parser]} (antlr.proto/parse grammar nil input-document)]
     (traverse tree parser)))
 
 (defn parse-failures
-  [^ParseError e]
+  [e]
   (let [errors (deref e)]
     (map (fn [{:keys [line column message]}]
            {:locations [{:line line
@@ -174,7 +170,7 @@
 
 (defn compile-grammar
   [path]
-  (-> path
+  #_(-> path
       io/resource
       slurp
       antlr.core/parser))

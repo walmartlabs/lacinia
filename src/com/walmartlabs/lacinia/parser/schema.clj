@@ -23,9 +23,7 @@
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.federation :as federation]
     [clojure.spec.alpha :as s]
-    [clojure.string :as str])
-  (:import
-    (clj_antlr ParseError)))
+    [clojure.string :as str]))
 
 ;; When using Clojure 1.8, the dependency on clojure-future-spec must be included,
 ;; and this code will trigger
@@ -608,7 +606,7 @@
                         {})
          antlr-tree (try
                       (common/antlr-parse @grammar schema-string)
-                      (catch ParseError e
+                      (catch RuntimeException e
                         (let [failures (common/parse-failures e)]
                           (throw (ex-info "Failed to parse GraphQL schema."
                                           {:errors failures})))))]
