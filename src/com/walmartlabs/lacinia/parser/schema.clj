@@ -33,7 +33,7 @@
   (require '[clojure.future :refer [simple-keyword?]]))
 
 (def ^:private grammar
-  (common/compile-grammar "com/walmartlabs/lacinia/schema.g4"))
+  (delay (common/compile-grammar "com/walmartlabs/lacinia/schema.g4")))
 
 (def ^:private extension-meta {:extension true})
 
@@ -606,7 +606,7 @@
                         federation/foundation-types
                         {})
          antlr-tree (try
-                      (common/antlr-parse grammar schema-string)
+                      (common/antlr-parse @grammar schema-string)
                       (catch ParseError e
                         (let [failures (common/parse-failures e)]
                           (throw (ex-info "Failed to parse GraphQL schema."
