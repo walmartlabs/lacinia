@@ -60,3 +60,11 @@
   (println "Pushing changes ...")
   (build/process {:dir publish-dir
               :command-args ["git" "push"]}))
+
+(def basis (delay (build/create-basis {:project "deps.edn"})))
+
+(defn compile-java [& _]
+  (build/delete {:path "target/classes"})
+  (build/javac {:src-dirs ["gen"]
+                :class-dir "gen/classes"
+                :basis @basis}))
