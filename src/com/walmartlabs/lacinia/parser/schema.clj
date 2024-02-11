@@ -368,7 +368,8 @@
 
 (defmethod xform :booleanValue
   [prod]
-  (Boolean/valueOf ^String (-> prod second second)))
+  (let [v (-> prod second second)]
+    (Boolean/valueOf ^String v)))
 
 (defmethod xform :nullValue
   [_]
