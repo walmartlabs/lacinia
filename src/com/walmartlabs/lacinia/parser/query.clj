@@ -26,9 +26,6 @@
     (com.walmartlabs.lacinia GraphqlParser GraphqlLexer)
     (org.antlr.v4.runtime CharStreams CommonTokenStream)))
 
-(def ^:private grammar
-  (common/compile-grammar "com/walmartlabs/lacinia/Graphql.g4"))
-
 (defmulti ^:private xform
   "Transform an Antlr production into a result.
 
@@ -257,7 +254,11 @@
   [input]
   (xform-query
     (try
-      (common/antlr-parse grammar input)
+      (let [char-stream (CharStreams/fromString input)
+            lexer (GraphqlLexer. char-stream)
+            parser (GraphqlParser. (CommonTokenStream. lexer))]
+        (common/traverse (.document parser) parser))
+
       (catch RuntimeException e
         (let [failures (common/parse-failures e)]
           (throw (ex-info "Failed to parse GraphQL query."
@@ -272,12 +273,9 @@
   (let [char-stream (CharStreams/fromString query)
         lexer (GraphqlLexer. char-stream)
         parser (GraphqlParser. (CommonTokenStream. lexer))]
-    (common/parse parser)
     (common/traverse (.document parser) parser)
     )
 
   (parse-query query)
-
-  (common/antlr-parse grammar query)
 
   )

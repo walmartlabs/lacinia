@@ -15,6 +15,7 @@
 (ns ^:no-doc com.walmartlabs.lacinia.parser.common
   (:require [clojure.string :as str]
             [com.walmartlabs.lacinia.internal-utils :refer [keepv]]
+            [com.walmartlabs.lacinia.parser.antlr :as antlr]
             [clojure.java.io :as io])
   (:import (org.antlr.v4.runtime.tree ParseTree TerminalNode)
            (org.antlr.v4.runtime Parser ParserRuleContext Token)))
@@ -136,28 +137,23 @@
 
 (defn traverse
   [^ParseTree t ^Parser p]
-  #_(if (instance? ParserRuleContext t)
+  (if (instance? ParserRuleContext t)
     (let [node (cons (->> (.getRuleIndex ^ParserRuleContext t)
-                          (antlr.common/parser-rule-name p)
-                          antlr.common/fast-keyword)
+                          (antlr/parser-rule-name p)
+                          antlr/fast-keyword)
                      (keepv (comp
                              #(attach-location-as-meta t %)
                              #(traverse % p))
-                            (antlr.common/children t)))]
+                            (antlr/children t)))]
       (if-let [e (.exception ^ParserRuleContext t)]
         (with-meta (list :clj-antlr/error node)
-          {:error (antlr.common/recognition-exception->map e)})
+          {:error (antlr/recognition-exception->map e)})
         node))
 
     (let [token-name* (token-name t p)]
       (when-not (ignored-terminal? token-name*)
         (list (keyword (str/lower-case token-name*))
               (.getText t))))))
-
-(defn antlr-parse
-  [grammar input-document]
-  #_(let [{:keys [tree parser]} (antlr.proto/parse grammar nil input-document)]
-    (traverse tree parser)))
 
 (defn parse-failures
   [e]
@@ -167,10 +163,3 @@
                          :column column}]
             :message message})
          errors)))
-
-(defn compile-grammar
-  [path]
-  #_(-> path
-      io/resource
-      slurp
-      antlr.core/parser))
