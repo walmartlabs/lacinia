@@ -26,6 +26,8 @@
     [com.walmartlabs.lacinia.tracing :as tracing]
     [com.walmartlabs.lacinia.schema :as schema]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private enable-timing  (tracing/enable-tracing nil))
 
 ;; Used to convert nanos to millis
@@ -41,7 +43,7 @@
   [_ _ value]
   (let [resolved-value (resolve/resolve-promise)
         f (fn []
-            (Thread/sleep (::delay value))
+            (Thread/sleep ^long (::delay value))
             (resolve/deliver! resolved-value (::slow value)))
         thread (Thread. ^Runnable f)]
     (.start thread)
