@@ -1,8 +1,8 @@
 {:deps {org.clojure/clojure {:mvn/version "1.11.1"}
-        org.antlr/antlr4-runtime {:mvn/version "4.13.1"}
+        com.walmartlabs/lacinia-parser {:local/root "./gen"}
         org.flatland/ordered {:mvn/version "1.15.12"}
         org.clojure/data.json {:mvn/version "2.5.1"}}
- :paths ["src" "resources" "gen/src" "gen/classes"]
+ :paths ["src" "resources" "gen/target"]
  :aliases
  {:dev
   {:extra-deps {criterium/criterium {:mvn/version "0.4.6"}
