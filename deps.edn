@@ -2,7 +2,7 @@
         com.walmartlabs/lacinia-parser {:local/root "./gen"}
         org.flatland/ordered {:mvn/version "1.15.12"}
         org.clojure/data.json {:mvn/version "2.5.1"}}
- :paths ["src" "resources" "gen/target"]
+ :paths ["src" "resources"]
  :aliases
  {:dev
   {:extra-deps {criterium/criterium {:mvn/version "0.4.6"}
