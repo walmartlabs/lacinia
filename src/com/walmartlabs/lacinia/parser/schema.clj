@@ -24,8 +24,7 @@
     [com.walmartlabs.lacinia.federation :as federation]
     [clojure.spec.alpha :as s]
     [clojure.string :as str])
-  (:import (com.walmartlabs.lacinia GraphqlSchemaLexer GraphqlSchemaParser)
-           (org.antlr.v4.runtime CharStreams CommonTokenStream)))
+  (:import (com.walmartlabs.lacinia GraphqlSchemaLexer GraphqlSchemaParser)))
 
 ;; When using Clojure 1.8, the dependency on clojure-future-spec must be included,
 ;; and this code will trigger
@@ -604,10 +603,14 @@
                         federation/foundation-types
                         {})
          antlr-tree (try
-                      (let [char-stream (CharStreams/fromString schema-string)
-                            lexer (GraphqlSchemaLexer. char-stream)
-                            parser (GraphqlSchemaParser. (CommonTokenStream. lexer))]
-                        (common/traverse (.graphqlSchema parser) parser))
+                      (let [ap (reify common/AntlrParser
+                                 (lexer [_ char-stream]
+                                   (GraphqlSchemaLexer. char-stream))
+                                 (parser [_ token-stream]
+                                   (GraphqlSchemaParser. token-stream))
+                                 (tree [_ parser]
+                                   (.graphqlSchema ^GraphqlSchemaParser parser)))]
+                        (common/antlr-parse ap schema-string))
                       (catch RuntimeException e
                         (let [failures (common/parse-failures e)]
                           (throw (ex-info "Failed to parse GraphQL schema."

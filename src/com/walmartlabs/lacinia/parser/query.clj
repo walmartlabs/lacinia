@@ -23,8 +23,9 @@
     #_[clojure.pprint :as pprint]
     [com.walmartlabs.lacinia.parser.common :as common])
   (:import
-    (com.walmartlabs.lacinia GraphqlParser GraphqlLexer)
-    (org.antlr.v4.runtime CharStreams CommonTokenStream)))
+    (com.walmartlabs.lacinia GraphqlParser GraphqlLexer)))
+
+(set! *warn-on-reflection* true)
 
 (defmulti ^:private xform
   "Transform an Antlr production into a result.
@@ -254,11 +255,14 @@
   [input]
   (xform-query
     (try
-      (let [char-stream (CharStreams/fromString input)
-            lexer (GraphqlLexer. char-stream)
-            parser (GraphqlParser. (CommonTokenStream. lexer))]
-        (common/traverse (.document parser) parser))
-
+      (let [ap (reify common/AntlrParser
+                 (lexer [_ char-stream]
+                   (GraphqlLexer. char-stream))
+                 (parser [_ token-stream]
+                   (GraphqlParser. token-stream))
+                 (tree [_ parser]
+                   (.document ^GraphqlParser parser)))]
+        (common/antlr-parse ap input))
       (catch RuntimeException e
         (let [failures (common/parse-failures e)]
           (throw (ex-info "Failed to parse GraphQL query."
@@ -270,11 +274,14 @@
   (def query (slurp "dev-resources/parser/aliases.gql"))
   (def query "query { foo }")
 
-  (let [char-stream (CharStreams/fromString query)
-        lexer (GraphqlLexer. char-stream)
-        parser (GraphqlParser. (CommonTokenStream. lexer))]
-    (common/traverse (.document parser) parser)
-    )
+  (let [ap (reify common/AntlrParser
+             (lexer [_ char-stream]
+               (GraphqlLexer. char-stream))
+             (parser [_ token-stream]
+               (GraphqlParser. token-stream))
+             (tree [_ parser]
+               (.document ^GraphqlParser parser)))]
+    (common/antlr-parse ap query))
 
   (parse-query query)
 
