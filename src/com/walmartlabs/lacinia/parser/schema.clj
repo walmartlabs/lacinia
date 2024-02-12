@@ -18,6 +18,7 @@
   (:require
     #_[io.pedestal.log :as log]
     [com.walmartlabs.lacinia.internal-utils :refer [remove-vals keepv q qualified-name]]
+    [com.walmartlabs.lacinia.parser.antlr :refer [AntlrParser]]
     [com.walmartlabs.lacinia.parser.common :as common]
     [com.walmartlabs.lacinia.util :refer [inject-descriptions]]
     [com.walmartlabs.lacinia.schema :as schema]
@@ -364,8 +365,7 @@
 
 (defmethod xform :booleanValue
   [prod]
-  (let [v (-> prod second second)]
-    (Boolean/valueOf ^String v)))
+  (Boolean/valueOf ^String (-> prod second second)))
 
 (defmethod xform :nullValue
   [_]
@@ -603,7 +603,7 @@
                         federation/foundation-types
                         {})
          antlr-tree (try
-                      (let [ap (reify common/AntlrParser
+                      (let [ap (reify AntlrParser
                                  (lexer [_ char-stream]
                                    (GraphqlSchemaLexer. char-stream))
                                  (parser [_ token-stream]

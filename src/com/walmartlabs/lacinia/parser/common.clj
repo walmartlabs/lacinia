@@ -16,8 +16,9 @@
   (:require [clojure.string :as str]
             [com.walmartlabs.lacinia.internal-utils :refer [keepv]]
             [com.walmartlabs.lacinia.parser.antlr :as antlr])
-  (:import (org.antlr.v4.runtime CharStream CharStreams CommonTokenStream Lexer Parser ParserRuleContext Token TokenStream)
-           (org.antlr.v4.runtime.tree ParseTree TerminalNode)))
+  (:import (org.antlr.v4.runtime.tree ParseTree TerminalNode)
+           (org.antlr.v4.runtime Parser ParserRuleContext Token)
+           (com.walmartlabs.lacinia ParseError)))
 
 (defn as-map
   "Converts a normal Antlr production into a map."
@@ -154,33 +155,13 @@
         (list (keyword (str/lower-case token-name*))
               (.getText t))))))
 
-(defprotocol AntlrParser
-  (^Lexer lexer [_ ^CharStream chars])
-  (^Parser parser [_ ^TokenStream lexer])
-  (^ParseTree tree [_ ^Parser parser]))
-
-(defn antlr-parse [ap ^String input]
-  (let [error-listener (antlr/error-listener)
-
-        lexer (lexer ap (CharStreams/fromString input))
-        _ (doto lexer
-            (.removeErrorListeners)
-            (.addErrorListener error-listener))
-
-        parser (parser ap (CommonTokenStream. lexer))
-        _ (doto parser
-            (.removeErrorListeners)
-            (.addErrorListener error-listener))
-
-        tree (tree ap parser)]
-
-    (when-let [errors @error-listener]
-      (throw (antlr/parse-error errors tree)))
-
+(defn antlr-parse
+  [ap input]
+  (let [{:keys [tree parser]} (antlr/parse ap input)]
     (traverse tree parser)))
 
 (defn parse-failures
-  [e]
+  [^ParseError e]
   (let [errors (deref e)]
     (map (fn [{:keys [line column message]}]
            {:locations [{:line line

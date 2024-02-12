@@ -21,6 +21,7 @@
   (:require
     #_[io.pedestal.log :as log]
     #_[clojure.pprint :as pprint]
+    [com.walmartlabs.lacinia.parser.antlr :refer [AntlrParser]]
     [com.walmartlabs.lacinia.parser.common :as common])
   (:import
     (com.walmartlabs.lacinia GraphqlParser GraphqlLexer ParseError)))
@@ -255,7 +256,7 @@
   [input]
   (xform-query
     (try
-      (let [ap (reify common/AntlrParser
+      (let [ap (reify AntlrParser
                  (lexer [_ char-stream]
                    (GraphqlLexer. char-stream))
                  (parser [_ token-stream]

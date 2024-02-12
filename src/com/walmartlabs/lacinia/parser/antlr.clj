@@ -1,13 +1,12 @@
 (ns com.walmartlabs.lacinia.parser.antlr
-  "Common functions for building and using parsers.
-  Excerpted from clj-antlr.common"
+  "Mostly excerpted from clj-antlr.common"
   (:require [clojure.string :as string])
   (:import (com.walmartlabs.lacinia ParseError)
            (java.util.concurrent ConcurrentHashMap)
            (org.antlr.v4.runtime ANTLRErrorListener
-                                 Parser
+                                 CharStreams CommonTokenStream Lexer Parser
                                  RecognitionException)
-           (org.antlr.v4.runtime.tree Tree)))
+           (org.antlr.v4.runtime.tree ParseTree Tree)))
 
 (def ^ConcurrentHashMap fast-keyword-cache
   "A map of strings to keywords."
@@ -119,3 +118,29 @@
                     (merge err (recognition-exception->map e))
                     err)]
         (swap! errors conj err))))))
+
+(defprotocol AntlrParser
+  (^Lexer lexer [_ ^CharStream chars])
+  (^Parser parser [_ ^TokenStream lexer])
+  (^ParseTree tree [_ ^Parser parser]))
+
+(defn parse [ap ^String input]
+  (let [error-listener (error-listener)
+
+        lexer (lexer ap (CharStreams/fromString input))
+        _ (doto lexer
+            (.removeErrorListeners)
+            (.addErrorListener error-listener))
+
+        parser (parser ap (CommonTokenStream. lexer))
+        _ (doto parser
+            (.removeErrorListeners)
+            (.addErrorListener error-listener))
+
+        tree (tree ap parser)]
+
+    (when-let [errors @error-listener]
+      (throw (parse-error errors tree)))
+
+    {:tree tree
+     :parser parser}))
