@@ -1,7 +1,9 @@
 (ns com.walmartlabs.lacinia.parser.antlr
   "Common functions for building and using parsers.
   Excerpted from clj-antlr.common"
-  (:import (java.util.concurrent ConcurrentHashMap)
+  (:require [clojure.string :as string])
+  (:import (com.walmartlabs.lacinia ParseError)
+           (java.util.concurrent ConcurrentHashMap)
            (org.antlr.v4.runtime ANTLRErrorListener
                                  Parser
                                  RecognitionException)
@@ -39,6 +41,13 @@
   [^Parser parser ^long index]
   (when-not (neg? index)
     (aget (.getRuleNames parser) index)))
+
+(defn parse-error
+  "Constructs a new ParseError exception with a list of errors."
+  [errors tree]
+  (ParseError. errors
+               tree
+               (string/join "\n" (map :message errors))))
 
 (defn recognition-exception->map
   "Converts a RecognitionException to a nice readable map."

@@ -23,7 +23,7 @@
     #_[clojure.pprint :as pprint]
     [com.walmartlabs.lacinia.parser.common :as common])
   (:import
-    (com.walmartlabs.lacinia GraphqlParser GraphqlLexer)))
+    (com.walmartlabs.lacinia GraphqlParser GraphqlLexer ParseError)))
 
 (set! *warn-on-reflection* true)
 
@@ -263,26 +263,7 @@
                  (tree [_ parser]
                    (.document ^GraphqlParser parser)))]
         (common/antlr-parse ap input))
-      (catch RuntimeException e
+      (catch ParseError e
         (let [failures (common/parse-failures e)]
           (throw (ex-info "Failed to parse GraphQL query."
                           {:errors failures})))))))
-
-
-(comment
-
-  (def query (slurp "dev-resources/parser/aliases.gql"))
-  (def query "query { foo }")
-
-  (let [ap (reify common/AntlrParser
-             (lexer [_ char-stream]
-               (GraphqlLexer. char-stream))
-             (parser [_ token-stream]
-               (GraphqlParser. token-stream))
-             (tree [_ parser]
-               (.document ^GraphqlParser parser)))]
-    (common/antlr-parse ap query))
-
-  (parse-query query)
-
-  )

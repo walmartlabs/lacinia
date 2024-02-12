@@ -24,7 +24,7 @@
     [com.walmartlabs.lacinia.federation :as federation]
     [clojure.spec.alpha :as s]
     [clojure.string :as str])
-  (:import (com.walmartlabs.lacinia GraphqlSchemaLexer GraphqlSchemaParser)))
+  (:import (com.walmartlabs.lacinia GraphqlSchemaLexer GraphqlSchemaParser ParseError)))
 
 ;; When using Clojure 1.8, the dependency on clojure-future-spec must be included,
 ;; and this code will trigger
@@ -611,7 +611,7 @@
                                  (tree [_ parser]
                                    (.graphqlSchema ^GraphqlSchemaParser parser)))]
                         (common/antlr-parse ap schema-string))
-                      (catch RuntimeException e
+                      (catch ParseError e
                         (let [failures (common/parse-failures e)]
                           (throw (ex-info "Failed to parse GraphQL schema."
                                           {:errors failures})))))]

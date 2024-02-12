@@ -163,11 +163,21 @@
   (let [error-listener (antlr/error-listener)
 
         lexer (lexer ap (CharStreams/fromString input))
-        _ (.addErrorListener lexer error-listener)
+        _ (doto lexer
+            (.removeErrorListeners)
+            (.addErrorListener error-listener))
 
         parser (parser ap (CommonTokenStream. lexer))
-        _ (.addErrorListener parser error-listener)]
-    (traverse (tree ap parser) parser)))
+        _ (doto parser
+            (.removeErrorListeners)
+            (.addErrorListener error-listener))
+
+        tree (tree ap parser)]
+
+    (when-let [errors @error-listener]
+      (throw (antlr/parse-error errors tree)))
+
+    (traverse tree parser)))
 
 (defn parse-failures
   [e]
