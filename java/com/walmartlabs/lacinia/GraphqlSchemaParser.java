@@ -1,4 +1,4 @@
-// Generated from /Users/namenu/Development/lacinia/resources/com/walmartlabs/lacinia/GraphqlSchema.g4 by ANTLR 4.13.1
+// Generated from java/com/walmartlabs/lacinia/GraphqlSchema.g4 by ANTLR 4.13.1
 package com.walmartlabs.lacinia;
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;
@@ -208,11 +208,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitGraphqlSchema(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitGraphqlSchema(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final GraphqlSchemaContext graphqlSchema() throws RecognitionException {
@@ -331,11 +326,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitDescription(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitDescription(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final DescriptionContext description() throws RecognitionException {
@@ -391,11 +381,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitSchemaDef(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitSchemaDef(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -472,11 +457,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitOperationTypeDef(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitOperationTypeDef(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final OperationTypeDefContext operationTypeDef() throws RecognitionException {
@@ -540,11 +520,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitQueryOperationDef(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitQueryOperationDef(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final QueryOperationDefContext queryOperationDef() throws RecognitionException {
@@ -590,11 +565,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitMutationOperationDef(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitMutationOperationDef(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final MutationOperationDefContext mutationOperationDef() throws RecognitionException {
@@ -639,11 +609,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitSubscriptionOperationDef(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitSubscriptionOperationDef(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -691,11 +656,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitDirectiveLocationList(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitDirectiveLocationList(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -759,11 +719,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitDirectiveLocation(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitDirectiveLocation(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final DirectiveLocationContext directiveLocation() throws RecognitionException {
@@ -817,11 +772,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitExecutableDirectiveLocation(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitExecutableDirectiveLocation(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final ExecutableDirectiveLocationContext executableDirectiveLocation() throws RecognitionException {
@@ -859,11 +809,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitTypeSystemDirectiveLocation(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitTypeSystemDirectiveLocation(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -915,11 +860,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitDirectiveDef(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitDirectiveDef(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -993,11 +933,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitDirectiveList(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitDirectiveList(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final DirectiveListContext directiveList() throws RecognitionException {
@@ -1054,11 +989,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitDirective(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitDirective(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final DirectiveContext directive() throws RecognitionException {
@@ -1114,11 +1044,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitDirectiveArgList(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitDirectiveArgList(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -1180,11 +1105,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitDirectiveArg(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitDirectiveArg(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final DirectiveArgContext directiveArg() throws RecognitionException {
@@ -1241,11 +1161,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitTypeDef(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitTypeDef(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -1344,11 +1259,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitTypeExtDef(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitTypeExtDef(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final TypeExtDefContext typeExtDef() throws RecognitionException {
@@ -1437,11 +1347,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitFieldDefs(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitFieldDefs(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final FieldDefsContext fieldDefs() throws RecognitionException {
@@ -1500,11 +1405,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitImplementationDef(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitImplementationDef(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -1584,11 +1484,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitInputTypeDef(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitInputTypeDef(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -1674,11 +1569,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitInputTypeExtDef(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitInputTypeExtDef(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final InputTypeExtDefContext inputTypeExtDef() throws RecognitionException {
@@ -1757,11 +1647,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitInputValueDefs(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitInputValueDefs(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final InputValueDefsContext inputValueDefs() throws RecognitionException {
@@ -1830,11 +1715,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitInputValueDef(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitInputValueDef(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -1921,11 +1801,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitInterfaceDef(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitInterfaceDef(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final InterfaceDefContext interfaceDef() throws RecognitionException {
@@ -2006,11 +1881,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitScalarDef(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitScalarDef(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final ScalarDefContext scalarDef() throws RecognitionException {
@@ -2083,11 +1953,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitUnionDef(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitUnionDef(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -2167,11 +2032,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitUnionExtDef(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitUnionExtDef(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final UnionExtDefContext unionExtDef() throws RecognitionException {
@@ -2244,11 +2104,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitUnionTypes(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitUnionTypes(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final UnionTypesContext unionTypes() throws RecognitionException {
@@ -2318,11 +2173,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitEnumDef(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitEnumDef(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final EnumDefContext enumDef() throws RecognitionException {
@@ -2391,11 +2241,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitEnumValueDefs(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitEnumValueDefs(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final EnumValueDefsContext enumValueDefs() throws RecognitionException {
@@ -2458,11 +2303,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitEnumValueDef(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitEnumValueDef(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -2536,11 +2376,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitFieldDef(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitFieldDef(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -2620,11 +2455,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitArgList(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitArgList(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final ArgListContext argList() throws RecognitionException {
@@ -2693,11 +2523,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitArgument(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitArgument(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -2779,11 +2604,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitTypeSpec(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitTypeSpec(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -2873,11 +2693,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitTypeName(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitTypeName(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final TypeNameContext typeName() throws RecognitionException {
@@ -2917,11 +2732,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitListType(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitListType(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -2964,11 +2774,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitRequired(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitRequired(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final RequiredContext required() throws RecognitionException {
@@ -3008,11 +2813,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitDefaultValue(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitDefaultValue(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -3058,11 +2858,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitAnyName(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitAnyName(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -3167,11 +2962,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitNameTokens(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitNameTokens(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final NameTokensContext nameTokens() throws RecognitionException {
@@ -3219,11 +3009,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitBooleanValue(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitBooleanValue(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -3289,11 +3074,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitValue(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitValue(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -3418,11 +3198,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitEnumValue(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitEnumValue(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final EnumValueContext enumValue() throws RecognitionException {
@@ -3465,11 +3240,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitArrayValue(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitArrayValue(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -3531,11 +3301,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitObjectValue(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitObjectValue(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final ObjectValueContext objectValue() throws RecognitionException {
@@ -3596,11 +3361,6 @@ public class GraphqlSchemaParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitObjectField(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitObjectField(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final ObjectFieldContext objectField() throws RecognitionException {
@@ -3642,11 +3402,6 @@ public class GraphqlSchemaParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof GraphqlSchemaListener ) ((GraphqlSchemaListener)listener).exitNullValue(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof GraphqlSchemaVisitor ) return ((GraphqlSchemaVisitor<? extends T>)visitor).visitNullValue(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 

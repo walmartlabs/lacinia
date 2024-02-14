@@ -1,4 +1,4 @@
-// Generated from /Users/namenu/Development/lacinia/resources/com/walmartlabs/lacinia/Graphql.g4 by ANTLR 4.13.1
+// Generated from java/com/walmartlabs/lacinia/Graphql.g4 by ANTLR 4.13.1
 package com.walmartlabs.lacinia;
 
 import org.antlr.v4.runtime.ParserRuleContext;
