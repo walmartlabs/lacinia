@@ -1,9 +1,0 @@
-{:deps {org.antlr/antlr4-runtime {:mvn/version "4.13.1"}}
- :paths ["src" "target/classes"]
- :deps/prep-lib {:ensure "target/classes"
-                 :alias :build
-                 :fn compile-java}
- :aliases
- {:build {:deps {io.github.hlship/build-tools
-                 {:git/tag "0.10.1" :git/sha "7ecff5"}}
-          :ns-default build}}}
