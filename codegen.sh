@@ -4,7 +4,10 @@ set -x
 
 pip install antlr4-tools
 
-PACKAGE_NAME='com/walmartlabs/lacinia'
+export ANTLR4_TOOLS_ANTLR_VERSION=4.13.1
 
-antlr4 resources/$PACKAGE_NAME/Graphql.g4 -o java/$PACKAGE_NAME -Xexact-output-dir -package com.walmartlabs.lacinia
-antlr4 resources/$PACKAGE_NAME/GraphqlSchema.g4 -o java/$PACKAGE_NAME -Xexact-output-dir -package com.walmartlabs.lacinia
+PACKAGE_NAME=com.walmartlabs.lacinia
+DIR=$(echo $PACKAGE_NAME | tr . /)
+
+antlr4 resources/$DIR/Graphql.g4 -o java/$DIR -Xexact-output-dir -package $PACKAGE_NAME
+antlr4 resources/$DIR/GraphqlSchema.g4 -o java/$DIR -Xexact-output-dir -package $PACKAGE_NAME
