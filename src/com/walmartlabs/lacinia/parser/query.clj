@@ -251,7 +251,7 @@
 
   Currently, the overall structure is best described by the tests.
 
-  Many nodes have meta data of keys :line and :column to describe thier location
+  Many nodes have meta data of keys :line and :column to describe their location
   in the input source (used for error reporting)."
   [input]
   (xform-query
