@@ -21,16 +21,25 @@
 
 (def lib 'com.walmartlabs/lacinia)
 (def version (-> "VERSION.txt" slurp string/trim))
+(def class-dir "target/classes")
 
 (def jar-params {:project-name lib
-                 :version version})
+                 :version version
+                 :class-dir class-dir})
 
 (defn clean
   [_params]
   (build/delete {:path "target"}))
 
+(defn compile-java [_]
+  (build/javac {:src-dirs ["java"]
+                :class-dir class-dir
+                :basis (build/create-basis)
+                :javac-opts ["--release" "11"]}))
+
 (defn jar
   [_params]
+  (compile-java nil)
   (b/create-jar jar-params))
 
 (defn deploy

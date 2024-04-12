@@ -1,8 +1,14 @@
 {:deps {org.clojure/clojure {:mvn/version "1.11.1"}
-        clj-antlr/clj-antlr {:mvn/version "0.2.12"}
+        org.antlr/antlr4-runtime {:mvn/version "4.13.1"}
         org.flatland/ordered {:mvn/version "1.15.10"}
         org.clojure/data.json {:mvn/version "2.4.0"}}
- :paths ["src" "resources"]
+ :paths ["src" "resources" "target/classes"]
+
+ :deps/prep-lib
+ {:ensure "target/classes"
+  :alias :build
+  :fn compile-java}
+
  :aliases
  {:dev
   {:extra-deps {criterium/criterium {:mvn/version "0.4.6"}

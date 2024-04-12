@@ -18,22 +18,19 @@
   (:require
     #_[io.pedestal.log :as log]
     [com.walmartlabs.lacinia.internal-utils :refer [remove-vals keepv q qualified-name]]
+    [com.walmartlabs.lacinia.parser.antlr :refer [AntlrParser]]
     [com.walmartlabs.lacinia.parser.common :as common]
     [com.walmartlabs.lacinia.util :refer [inject-descriptions]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.federation :as federation]
     [clojure.spec.alpha :as s]
     [clojure.string :as str])
-  (:import
-    (clj_antlr ParseError)))
+  (:import (com.walmartlabs.lacinia GraphqlSchemaLexer GraphqlSchemaParser ParseError)))
 
 ;; When using Clojure 1.8, the dependency on clojure-future-spec must be included,
 ;; and this code will trigger
 (when (-> *clojure-version* :minor (< 9))
   (require '[clojure.future :refer [simple-keyword?]]))
-
-(def ^:private grammar
-  (common/compile-grammar "com/walmartlabs/lacinia/schema.g4"))
 
 (def ^:private extension-meta {:extension true})
 
@@ -606,7 +603,14 @@
                         federation/foundation-types
                         {})
          antlr-tree (try
-                      (common/antlr-parse grammar schema-string)
+                      (let [ap (reify AntlrParser
+                                 (lexer [_ char-stream]
+                                   (GraphqlSchemaLexer. char-stream))
+                                 (parser [_ token-stream]
+                                   (GraphqlSchemaParser. token-stream))
+                                 (tree [_ parser]
+                                   (.graphqlSchema ^GraphqlSchemaParser parser)))]
+                        (common/antlr-parse ap schema-string))
                       (catch ParseError e
                         (let [failures (common/parse-failures e)]
                           (throw (ex-info "Failed to parse GraphQL schema."

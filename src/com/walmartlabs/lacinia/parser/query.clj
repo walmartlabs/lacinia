@@ -21,12 +21,12 @@
   (:require
     #_[io.pedestal.log :as log]
     #_[clojure.pprint :as pprint]
+    [com.walmartlabs.lacinia.parser.antlr :refer [AntlrParser]]
     [com.walmartlabs.lacinia.parser.common :as common])
   (:import
-    (clj_antlr ParseError)))
+    (com.walmartlabs.lacinia GraphqlParser GraphqlLexer ParseError)))
 
-(def ^:private grammar
-  (common/compile-grammar "com/walmartlabs/lacinia/Graphql.g4"))
+(set! *warn-on-reflection* true)
 
 (defmulti ^:private xform
   "Transform an Antlr production into a result.
@@ -256,9 +256,15 @@
   [input]
   (xform-query
     (try
-      (common/antlr-parse grammar input)
+      (let [ap (reify AntlrParser
+                 (lexer [_ char-stream]
+                   (GraphqlLexer. char-stream))
+                 (parser [_ token-stream]
+                   (GraphqlParser. token-stream))
+                 (tree [_ parser]
+                   (.document ^GraphqlParser parser)))]
+        (common/antlr-parse ap input))
       (catch ParseError e
         (let [failures (common/parse-failures e)]
           (throw (ex-info "Failed to parse GraphQL query."
                           {:errors failures})))))))
-
