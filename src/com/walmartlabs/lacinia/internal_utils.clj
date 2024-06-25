@@ -409,7 +409,8 @@
 
 (defn- null?
   [v]
-  (= v :com.walmartlabs.lacinia.schema/null))
+  (or (nil? v)
+      (= v :com.walmartlabs.lacinia.schema/null)))
 
 (defn deep-merge
   "Merges two maps together.  Later map override earlier.
