@@ -14,8 +14,8 @@
 
 (ns com.walmartlabs.lacinia.internal-utils-tests
   (:require
-    [clojure.test :refer [deftest is]]
-    [com.walmartlabs.lacinia.internal-utils :refer [assoc-in! update-in!]]
+    [clojure.test :refer [deftest testing is]]
+    [com.walmartlabs.lacinia.internal-utils :refer [assoc-in! update-in! deep-merge]]
     [clojure.string :as str])
   (:import
     (clojure.lang ExceptionInfo)))
@@ -63,3 +63,56 @@
              :map {:name {:type String}}
              :more-keys (:description)}
            (ex-data e)))))
+
+(deftest test-deep-merge
+  (testing "Basic map merge"
+    (is (= (deep-merge {:a 1} {:b 2})
+           {:a 1, :b 2}))
+    (is (= (deep-merge {:a 1} {:a 2})
+           {:a 2})))
+
+  (testing "Nested map merge"
+    (is (= (deep-merge {:a {:b 1}} {:a {:c 2}})
+           {:a {:b 1, :c 2}}))
+    (is (= (deep-merge {:a {:b 1}} {:a {:b 2}})
+           {:a {:b 2}})))
+
+  (testing "Mixed map and sequential"
+    (is (thrown-with-msg? ExceptionInfo #"unable to deep merge"
+                          (deep-merge {:a 1} [1 2 3])))
+    (is (thrown-with-msg? ExceptionInfo #"unable to deep merge"
+                          (deep-merge [1 2 3] {:a 1}))))
+
+  #_(testing "Merge with nil values"
+    (is (thrown-with-msg? ExceptionInfo #"unable to deep merge" (deep-merge {:a 1} nil)
+           {:a 1}))
+    (is (thrown-with-msg? ExceptionInfo #"unable to deep merge" (deep-merge nil {:a 1})
+           {:a 1})))
+
+  (testing "Merging with :com.walmartlabs.lacinia.schema/null values"
+    (is (= (deep-merge {:a 1} :com.walmartlabs.lacinia.schema/null)
+           :com.walmartlabs.lacinia.schema/null))
+    (is (= (deep-merge :com.walmartlabs.lacinia.schema/null {:a 1})
+           :com.walmartlabs.lacinia.schema/null))
+    (is (= (deep-merge :com.walmartlabs.lacinia.schema/null :com.walmartlabs.lacinia.schema/null)
+           :com.walmartlabs.lacinia.schema/null)))
+
+  (testing "Merging with empty maps"
+    (is (= (deep-merge {} {:a 1})
+           {:a 1}))
+    (is (= (deep-merge {:a 1} {})
+           {:a 1})))
+
+  (testing "Complex nested structures"
+    (is (= (deep-merge {:a {:b [1 2]}} {:a {:b [3 4]}})
+           {:a {:b [3 4]}}))
+    (is (= (deep-merge {:a [{:b 1} {:c 2}]} {:a [{:d 3} {:e 4}]})
+           {:a [{:b 1, :d 3} {:c 2, :e 4}]})))
+
+  (testing "Nested :com.walmartlabs.lacinia.schema/null values"
+    (is (= (deep-merge {:a {:b :com.walmartlabs.lacinia.schema/null}} {:a {:b 1}})
+           {:a {:b :com.walmartlabs.lacinia.schema/null}}))
+    (is (= (deep-merge {:a {:b 1}} {:a {:b :com.walmartlabs.lacinia.schema/null}})
+           {:a {:b :com.walmartlabs.lacinia.schema/null}}))
+    (is (= (deep-merge {:a {:b :com.walmartlabs.lacinia.schema/null, :c 2}} {:a {:b 1, :c :com.walmartlabs.lacinia.schema/null}})
+           {:a {:b :com.walmartlabs.lacinia.schema/null, :c :com.walmartlabs.lacinia.schema/null}}))))

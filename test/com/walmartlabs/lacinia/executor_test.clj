@@ -20,7 +20,7 @@
     [com.walmartlabs.test-utils :refer [execute]]
     [com.walmartlabs.lacinia.schema :as schema]))
 
-(deftest deep-merge-on-error
+(def compiled-schema
   (let [test-schema {:interfaces
                      {:Node
                       {:fields {:id {:type '(non-null String)}}}}
@@ -28,13 +28,16 @@
                      :objects
                      {:Post
                       {:implements [:Node]
-                       :fields     {:id     {:type '(non-null String)}
-                                    :author {:type    '(non-null :Author)
-                                             :resolve (fn [_ _ _]
-                                                        {:id "2000"})}
-                                    :title  {:type    'String
-                                             :resolve (fn [_ _ _]
-                                                        "Hello, World!")}}}
+                       :fields     {:id       {:type '(non-null String)}
+                                    :author   {:type    '(non-null :Author)
+                                               :resolve (fn [_ _ _]
+                                                          {:id "2000"})}
+                                    :title    {:type    'String
+                                               :resolve (fn [_ _ _]
+                                                          "Hello, World!")}
+                                    :comments {:type    '(list :Comment)
+                                               :resolve (fn [_ _ _]
+                                                          [{:id "3000"}])}}}
 
                       :Author
                       {:implements [:Node]
@@ -47,20 +50,24 @@
                                                             nil)}
                                     :alwaysFail {:type    '(non-null String)
                                                  :resolve (fn [_ _ _]
-                                                            (resolve-as nil {:message "This field can't be resolved."}))}}}}
+                                                            (resolve-as nil {:message "This field can't be resolved."}))}}}
+
+                      :Comment
+                      {:implements [:Node]
+                       :fields     {:id {:type '(non-null String)}}}}
 
                      :queries
                      {:node {:type    '(non-null :Node)
                              :args    {:id {:type '(non-null String)}}
                              :resolve (fn [ctx args v]
                                         (let [{:keys [episode]} args]
-                                          (schema/tag-with-type {:id "1000"} :Post)))}}}
-        ]
-    (def compiled-schema (schema/compile test-schema))
+                                          (schema/tag-with-type {:id "1000"} :Post)))}}}]
+    (schema/compile test-schema)))
 
-    (is (= {:data   nil,
-            :errors [{:message "This field can't be resolved.", :locations [{:line 4, :column 5}], :path [:node :author :alwaysFail]}]}
-           (execute compiled-schema "
+(deftest deep-merge-on-error
+  (is (= {:data   nil,
+          :errors [{:message "This field can't be resolved.", :locations [{:line 4, :column 5}], :path [:node :author :alwaysFail]}]}
+         (execute compiled-schema "
 fragment PostFragment on Post {
   author {
     alwaysFail
@@ -78,9 +85,9 @@ query MyQuery {
   }
 }")))
 
-    (is (= {:data   nil,
-            :errors [{:message "This field can't be resolved.", :locations [{:line 4, :column 5}], :path [:node :author :alwaysFail]}]}
-           (execute compiled-schema "
+  (is (= {:data   nil,
+          :errors [{:message "This field can't be resolved.", :locations [{:line 4, :column 5}], :path [:node :author :alwaysFail]}]}
+         (execute compiled-schema "
 fragment PostFragment on Post {
   author {
     alwaysFail
@@ -98,12 +105,12 @@ query MyQuery {
   }
 }")))
 
-    (testing "when non-null field is resolved to nil, deep-merge should return nil"
-      (is (= {:data   nil,
-              :errors [{:message   "This field can't be resolved.",
-                        :locations [{:line 13, :column 5}],
-                        :path      [:node :author :alwaysFail]}]}
-             (execute compiled-schema "
+  (testing "when non-null field is resolved to nil, deep-merge should return nil"
+    (is (= {:data   nil,
+            :errors [{:message   "This field can't be resolved.",
+                      :locations [{:line 13, :column 5}],
+                      :path      [:node :author :alwaysFail]}]}
+           (execute compiled-schema "
 query MyQuery {
   node(id: \"1000\") {
     ... on Post {
@@ -127,11 +134,11 @@ fragment PostFragment2 on Post {
 }
 ")))
 
-      (is (= {:data   nil,
-              :errors [{:message   "This field can't be resolved.",
-                        :locations [{:line 14, :column 5}],
-                        :path      [:node :author :alwaysFail]}]}
-             (execute compiled-schema "
+    (is (= {:data   nil,
+            :errors [{:message   "This field can't be resolved.",
+                      :locations [{:line 14, :column 5}],
+                      :path      [:node :author :alwaysFail]}]}
+           (execute compiled-schema "
 query MyQuery {
   node(id: \"1000\") {
     ... on Post {
@@ -153,6 +160,4 @@ fragment PostFragment2 on Post {
     name
   }
 }
-"))))
-
-    ))
+")))))
