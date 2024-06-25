@@ -15,7 +15,7 @@
 (ns com.walmartlabs.lacinia.executor-test
   "Tests for errors and exceptions inside field resolvers, and for the exception converter."
   (:require
-    [clojure.test :refer [deftest is]]
+    [clojure.test :refer [deftest is testing]]
     [com.walmartlabs.lacinia.resolve :refer [resolve-as]]
     [com.walmartlabs.test-utils :refer [execute]]
     [com.walmartlabs.lacinia.schema :as schema]))
@@ -38,13 +38,16 @@
 
                       :Author
                       {:implements [:Node]
-                       :fields     {:id     {:type '(non-null String)}
-                                    :name   {:type    '(non-null String)
-                                             :resolve (fn [_ _ _]
-                                                        "John Doe")}
-                                    :absurd {:type    '(non-null String)
-                                             :resolve (fn [_ _ _]
-                                                        (resolve-as nil {:message "This field can't be resolved."}))}}}}
+                       :fields     {:id         {:type '(non-null String)}
+                                    :name       {:type    '(non-null String)
+                                                 :resolve (fn [_ _ _]
+                                                            "John Doe")}
+                                    :alwaysNull {:type    'String
+                                                 :resolve (fn [_ _ _]
+                                                            nil)}
+                                    :alwaysFail {:type    '(non-null String)
+                                                 :resolve (fn [_ _ _]
+                                                            (resolve-as nil {:message "This field can't be resolved."}))}}}}
 
                      :queries
                      {:node {:type    '(non-null :Node)
@@ -52,14 +55,15 @@
                              :resolve (fn [ctx args v]
                                         (let [{:keys [episode]} args]
                                           (schema/tag-with-type {:id "1000"} :Post)))}}}
-        compiled-schema (schema/compile test-schema)]
+        ]
+    (def compiled-schema (schema/compile test-schema))
 
     (is (= {:data   nil,
-            :errors [{:message "This field can't be resolved.", :locations [{:line 4, :column 5}], :path [:node :author :absurd]}]}
+            :errors [{:message "This field can't be resolved.", :locations [{:line 4, :column 5}], :path [:node :author :alwaysFail]}]}
            (execute compiled-schema "
 fragment PostFragment on Post {
   author {
-    absurd
+    alwaysFail
   }
 }
 query MyQuery {
@@ -75,11 +79,11 @@ query MyQuery {
 }")))
 
     (is (= {:data   nil,
-            :errors [{:message "This field can't be resolved.", :locations [{:line 4, :column 5}], :path [:node :author :absurd]}]}
+            :errors [{:message "This field can't be resolved.", :locations [{:line 4, :column 5}], :path [:node :author :alwaysFail]}]}
            (execute compiled-schema "
 fragment PostFragment on Post {
   author {
-    absurd
+    alwaysFail
   }
 }
 query MyQuery {
@@ -92,4 +96,63 @@ query MyQuery {
     }
     id
   }
-}")))))
+}")))
+
+    (testing "when non-null field is resolved to nil, deep-merge should return nil"
+      (is (= {:data   nil,
+              :errors [{:message   "This field can't be resolved.",
+                        :locations [{:line 13, :column 5}],
+                        :path      [:node :author :alwaysFail]}]}
+             (execute compiled-schema "
+query MyQuery {
+  node(id: \"1000\") {
+    ... on Post {
+      id
+      ...PostFragment
+    }
+  }
+}
+
+fragment PostFragment on Post {
+  author {
+    alwaysFail
+  }
+  ...PostFragment2
+}
+
+fragment PostFragment2 on Post {
+  author {
+    name
+  }
+}
+")))
+
+      (is (= {:data   nil,
+              :errors [{:message   "This field can't be resolved.",
+                        :locations [{:line 14, :column 5}],
+                        :path      [:node :author :alwaysFail]}]}
+             (execute compiled-schema "
+query MyQuery {
+  node(id: \"1000\") {
+    ... on Post {
+      id
+      ...PostFragment
+    }
+  }
+}
+
+fragment PostFragment on Post {
+  ...PostFragment2
+  author {
+    alwaysFail
+  }
+}
+
+fragment PostFragment2 on Post {
+  author {
+    name
+  }
+}
+"))))
+
+    ))
