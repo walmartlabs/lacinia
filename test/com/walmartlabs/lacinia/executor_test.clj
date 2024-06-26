@@ -28,16 +28,22 @@
                      :objects
                      {:Post
                       {:implements [:Node]
-                       :fields     {:id       {:type '(non-null String)}
-                                    :author   {:type    '(non-null :Author)
-                                               :resolve (fn [_ _ _]
-                                                          {:id "2000"})}
-                                    :title    {:type    'String
-                                               :resolve (fn [_ _ _]
-                                                          "Hello, World!")}
-                                    :comments {:type    '(list :Comment)
-                                               :resolve (fn [_ _ _]
-                                                          [{:id "3000"}])}}}
+                       :fields     {:id     {:type '(non-null String)}
+                                    :author {:type    '(non-null :Author)
+                                             :resolve (fn [_ _ _]
+                                                        {:id "2000"})}
+                                    :title  {:type    'String
+                                             :resolve (fn [_ _ _]
+                                                        "Hello, World!")}}}
+
+                      :PublicDomainPost
+                      {:implements [:Node]
+                       :fields     {:id     {:type '(non-null String)}
+                                    :author {:type    :Author  ;; Author is nullable
+                                             :resolve (fn [_ _ _] nil)}
+                                    :title  {:type    'String
+                                             :resolve (fn [_ _ _]
+                                                        "Epic of Gilgamesh")}}}
 
                       :Author
                       {:implements [:Node]
@@ -50,18 +56,16 @@
                                                             nil)}
                                     :alwaysFail {:type    '(non-null String)
                                                  :resolve (fn [_ _ _]
-                                                            (resolve-as nil {:message "This field can't be resolved."}))}}}
-
-                      :Comment
-                      {:implements [:Node]
-                       :fields     {:id {:type '(non-null String)}}}}
+                                                            (resolve-as nil {:message "This field can't be resolved."}))}}}}
 
                      :queries
                      {:node {:type    '(non-null :Node)
                              :args    {:id {:type '(non-null String)}}
-                             :resolve (fn [ctx args v]
-                                        (let [{:keys [episode]} args]
-                                          (schema/tag-with-type {:id "1000"} :Post)))}}}]
+                             :resolve (fn [_ctx args _v]
+                                        (let [{:keys [id]} args]
+                                          (case id
+                                            "1000" (schema/tag-with-type {:id id} :Post)
+                                            "2000" (schema/tag-with-type {:id id} :PublicDomainPost))))}}}]
     (schema/compile test-schema)))
 
 (deftest deep-merge-on-error
@@ -160,4 +164,33 @@ fragment PostFragment2 on Post {
     name
   }
 }
-")))))
+")))
+
+    (testing "Nullable parent (PublicDomainPost) with failing non-null child (Author)"
+      (is (= {:data {:node {:id "2000", :author nil}}}
+             (execute compiled-schema "
+query MyQuery {
+  node(id: \"2000\") {
+    ... on PublicDomainPost {
+      id
+      ...PostFragment
+    }
+  }
+}
+
+fragment PostFragment on PublicDomainPost {
+  ...PostFragment2
+  author {
+    alwaysFail
+  }
+}
+
+fragment PostFragment2 on PublicDomainPost {
+  author {
+    name
+  }
+}
+"))))))
+
+(comment
+  (deep-merge-on-error))
