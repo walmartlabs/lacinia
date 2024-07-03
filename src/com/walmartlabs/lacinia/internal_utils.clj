@@ -420,9 +420,6 @@
     (null? left)
     left
 
-    (null? right)
-    right
-
     (and (map? left) (map? right))
     (merge-with deep-merge left right)
 
