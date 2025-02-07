@@ -181,17 +181,25 @@
          (parse-string "interface Flow { ebb : String }"))))
 
 (deftest schema-union
-  (is (= {:unions
-          {:Matter
-           {:members [:Solid :Liquid :Gas :Plasma :INPUT_OBJECT]}}}
-         (parse-string "union Matter = Solid | Liquid | Gas | Plasma | INPUT_OBJECT")))
+
+  (testing "basic union type"
+    (is (= {:unions
+            {:Matter
+             {:members [:Solid :Liquid :Gas :Plasma :INPUT_OBJECT]}}}
+           (parse-string "union Matter = Solid | Liquid | Gas | Plasma | INPUT_OBJECT"))))
+
+  (testing "leading pipe chars in union"
+    (is (= {:unions
+            {:Matter
+             {:members [:Solid :Liquid :Gas :Plasma :INPUT_OBJECT]}}}
+           (parse-string "union Matter = | Solid | Liquid | Gas | Plasma | INPUT_OBJECT"))))
 
   (testing "extensions"
-   (is (= {:unions
-           {:Matter
-            {:members [:Solid :Liquid :Gas :Plasma :INPUT_OBJECT]}}}
-          (parse-string (str "union Matter = Solid\n"
-                             "extend union Matter = Liquid | Gas | Plasma | INPUT_OBJECT"))))))
+    (is (= {:unions
+            {:Matter
+             {:members [:Solid :Liquid :Gas :Plasma :INPUT_OBJECT]}}}
+           (parse-string (str "union Matter = Solid\n"
+                              "extend union Matter = Liquid | Gas | Plasma | INPUT_OBJECT"))))))
 
 (deftest schema-field-args
   (is (= {:objects
