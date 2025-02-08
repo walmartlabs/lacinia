@@ -118,7 +118,7 @@ unionExtDef
   ;
 
 unionTypes
-  : (anyName '|')* anyName
+  : '|'? ( anyName '|')* anyName
   ;
 
 enumDef
