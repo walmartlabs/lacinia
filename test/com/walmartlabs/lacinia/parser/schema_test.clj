@@ -364,13 +364,13 @@
               :weight {:type (non-null Int)}
               :imperial {:type Boolean
                           :default-value false}
-              :category {:type String :default-value "feline"}}}}}
+              :category {:type String :default-value "\"feline\""}}}}}
          (parse-string "input Animal {
 	name: String!
 	keyword: String = null
 	weight: Int!
 	imperial: Boolean = false
-	category: String  = \"feline\"
+	category: String  = \"\\\"feline\\\"\"
 }"))))
 
 (deftest extend-input-object

@@ -1,0 +1,81 @@
+{:roots
+ {:query :Query
+  :mutation :Mutation
+  :subscription :Subscription}
+ :objects
+ {:_Service
+  {:fields
+   {:sdl
+    {:type (non-null String)}}}
+  :User
+  {:fields
+   {:id
+    {:type (non-null Int)}
+    :name
+    {:type (non-null String)}}
+   :directives [{:directive-type :key :directive-args {:fields "id"}}]}
+  :Query
+  {:fields
+   {:user_by_id
+    {:type :User :args
+     {:id
+      {:type (non-null Int)}}}}}
+  :Account
+  {:fields
+   {:acct_number
+    {:type (non-null String)} :name
+    {:type (non-null String)}}
+   :directives [{:directive-type :key :directive-args {:fields "acct_number"}}]}
+  :Product
+  {:fields
+   {:upc
+    {:type (non-null String) :directives [{:directive-type :external}]} :reviewed_by
+    {:type :User}}
+   :directives [{:directive-type :key :directive-args {:fields "upc"}}
+                {:directive-type :extends}]}}
+ :scalars
+ {:_Any
+  {:parse :_Any/parser,
+   :serialize :_Any/serializer},
+  :_FieldSet
+  {:parse :_FieldSet/parser,
+   :serialize :_FieldSet/serializer}
+  :link__Import
+  {:parse :link__Import/parser,
+   :serialize :link__Import/serializer}}
+
+ :enums
+ {:link__Purpose
+  {:values [{:enum-value :SECURITY} {:enum-value :EXECUTION}]}}
+
+ :directive-defs
+ {:external
+  {:locations #{:field-definition}}
+  :requires
+  {:locations #{:field-definition}
+   :args {:fields {:type (non-null _FieldSet)}}}
+  :provides
+  {:locations #{:field-definition}
+   :args {:fields {:type (non-null _FieldSet)}}}
+  :key
+  {:locations #{:object :interface}
+   :args {:fields {:type (non-null _FieldSet)}
+          :resolvable {:type Boolean :default-value true}}}
+  :link
+  {:locations #{:schema},
+   :args {:url {:type String}, :as {:type String}, :for {:type :link__Purpose}, :import {:type (list :link__Import)}}}
+  :shareable {:locations #{:field-definition :object}},
+  :inaccessible
+  {:locations
+   #{:enum
+     :input-field-definition
+     :interface
+     :input-object
+     :enum-value
+     :scalar
+     :argument-definition
+     :union
+     :field-definition
+     :object}},
+  :override {:locations #{:field-definition}, :args {:from {:type (non-null String)}}},
+  :extends {:locations #{:interface :object}}}}

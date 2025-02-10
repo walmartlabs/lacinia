@@ -156,7 +156,8 @@
     (let [token-name* (token-name t p)]
       (when-not (ignored-terminal? token-name*)
         (list (keyword (str/lower-case token-name*))
-              (.getText t))))))
+              (cond-> (.getText t)
+                (#{"StringValue" "BlockStringValue"} token-name*) (clojure.string/replace #"\\\"" "\"")))))))
 
 (defn antlr-parse
   [grammar input-document]
