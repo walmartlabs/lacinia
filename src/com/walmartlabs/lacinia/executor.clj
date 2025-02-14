@@ -182,7 +182,7 @@
   [left-value right-value]
   (if (su/is-result-tuple? right-value)
     (let [{:keys [alias value]} right-value
-      left-alias-value (alias left-value)]
+          left-alias-value (alias left-value)]
       (cond
         (= left-alias-value :com.walmartlabs.lacinia.schema/null)
         left-value
