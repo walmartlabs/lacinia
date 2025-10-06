@@ -28,6 +28,10 @@
               "-Dapple.awt.UIElement=true"]
    :extra-paths ["test" "dev-resources"]}
 
+  :clojure-11 {}
+
+  :clojure-12 {:override-deps {org.clojure/clojure {:mvn/version "1.12.3"}}}
+
   ;; clj -Mdev:perf
   :perf
   {:main-opts ["--main" "perf"]}
@@ -36,22 +40,22 @@
   :test
   {:extra-deps {io.github.cognitect-labs/test-runner {:git/tag "v0.5.1"
                                                       :git/sha "dfb30dd"}}
-   :exec-fn cognitect.test-runner.api/test
+   :exec-fn    cognitect.test-runner.api/test
    :exec-args
    {:patterns [".*-tests?$"]}}
 
   ;; clj -Mdev:test:coverage
-  :coverage {:extra-deps {cloverage/cloverage {:mvn/version "1.2.4"}}
-             :main-opts ["-m" "cloverage.coverage" "-p" "src" "-s" "test" "--codecov"]}
+  :coverage   {:extra-deps {cloverage/cloverage {:mvn/version "1.2.4"}}
+               :main-opts  ["-m" "cloverage.coverage" "-p" "src" "-s" "test" "--codecov"]}
 
   ;; clj -T:build <command>
-  :build {:deps {io.github.hlship/build-tools
-                 {:git/tag "0.12.1" :git/sha "05f3ae"}}
-          :ns-default build}}
+  :build      {:deps       {io.github.hlship/build-tools
+                            {:git/tag "0.12.1" :git/sha "05f3ae"}}
+               :ns-default build}}
 
  :net.lewisship.build/scm
  {:license :asl}
 
  :codox/config
  {:description "Clojure-native implementation of GraphQL"
-  :source-uri "https://github.com/walmartlabs/lacinia/blob/master/{filepath}#L{line}"}}
+  :source-uri  "https://github.com/walmartlabs/lacinia/blob/master/{filepath}#L{line}"}}

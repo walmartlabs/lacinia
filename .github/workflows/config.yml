@@ -8,6 +8,10 @@ on:
       - master
 jobs:
   build:
+    strategy:
+      matrix:
+        java-version: ["11", "17", "21", "24"]
+        clojure-version: ["11" "12"]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -15,7 +19,7 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
-          java-version: '11'
+          java-version: ${{ matrix.java-version }}
           distribution: 'corretto'
       - name: Setup Clojure
         uses: DeLaGuardo/setup-clojure@13.4
@@ -33,4 +37,4 @@ jobs:
           key: cljdeps-${{ hashFiles('deps.edn') }}
 
       - name: Execute tests
-        run: clojure -X:dev:test
+        run: clojure -X:dev:test:clojure-${{ matrix.clojure-version }}
