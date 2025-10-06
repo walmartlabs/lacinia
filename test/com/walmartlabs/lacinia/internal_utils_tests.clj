@@ -14,9 +14,10 @@
 
 (ns com.walmartlabs.lacinia.internal-utils-tests
   (:require
-    [clojure.test :refer [deftest is]]
-    [com.walmartlabs.lacinia.internal-utils :refer [assoc-in! update-in!]]
-    [clojure.string :as str])
+    [clojure.test :refer [deftest testing is]]
+    [com.walmartlabs.lacinia.internal-utils :refer [assoc-in! update-in! deep-merge]]
+    [clojure.string :as str]
+    [flatland.ordered.map :refer [ordered-map]])
   (:import
     (clojure.lang ExceptionInfo)))
 
@@ -63,3 +64,20 @@
              :map {:name {:type String}}
              :more-keys (:description)}
            (ex-data e)))))
+
+(deftest test-deep-merge
+  (= (ordered-map [[:author :com.walmartlabs.lacinia.schema/null]])
+     (deep-merge
+       (ordered-map [[:author (ordered-map [[:name "John Doe"]])]])
+       (ordered-map [[:author :com.walmartlabs.lacinia.schema/null]]))
+     (deep-merge
+       (ordered-map [[:author :com.walmartlabs.lacinia.schema/null]])
+       (ordered-map [[:author (ordered-map [[:name "John Doe"]])]])))
+
+  (= (ordered-map [[:author nil]])
+     (deep-merge
+       (ordered-map [[:author (ordered-map [[:name "John Doe"]])]])
+       (ordered-map [[:author nil]]))
+     (deep-merge
+       (ordered-map [[:author nil]])
+       (ordered-map [[:author (ordered-map [[:name "John Doe"]])]]))))

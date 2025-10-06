@@ -407,11 +407,19 @@
            nil
           coll))
 
+(defn- null?
+  [v]
+  (or (nil? v)
+      (= v :com.walmartlabs.lacinia.schema/null)))
+
 (defn deep-merge
   "Merges two maps together.  Later map override earlier.
   If a key is sequential, then each element in the list is merged."
   [left right]
   (cond
+    (null? left)
+    left
+
     (and (map? left) (map? right))
     (merge-with deep-merge left right)
 
