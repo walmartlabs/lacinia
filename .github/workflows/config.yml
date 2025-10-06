@@ -36,5 +36,5 @@ jobs:
           # List all files containing dependencies:
           key: cljdeps-${{ hashFiles('deps.edn') }}
 
-      - name: Execute tests
+      - name: Execute tests (JDK ${{ matrix.java-version}}, Clojure ${{matrix.clojure-version}})
         run: clojure -X:dev:test:clojure-${{ matrix.clojure-version }}
