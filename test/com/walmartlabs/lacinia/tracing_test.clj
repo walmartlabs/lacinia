@@ -41,7 +41,7 @@
   [_ _ value]
   (let [resolved-value (resolve/resolve-promise)
         f (fn []
-            (Thread/sleep (::delay value))
+            (Thread/sleep ^long (::delay value))
             (resolve/deliver! resolved-value (::slow value)))
         thread (Thread. ^Runnable f)]
     (.start thread)
@@ -100,4 +100,3 @@
                (let [durations (->> (get-in result [:extensions :tracing :execution :resolvers])
                                     (mapv :duration))]
                  (is (= 6 (count durations)))))))
-
