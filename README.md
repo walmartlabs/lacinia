@@ -218,6 +218,6 @@ More details are [in the manual](http://lacinia.readthedocs.io/en/latest/clojure
 
 ## License
 
-Copyright © 2017-2023 WalmartLabs
+Copyright © 2017-2025 WalmartLabs
 
 Distributed under the Apache License, Version 2.0.
