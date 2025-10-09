@@ -1,3 +1,8 @@
+(deftest union-supports-leading-vertical-bar
+  (let [sdl "union Searchable =\n  | Business\n  | Employee"
+        schema (ql/schema sdl)]
+    (is (= #{:Business :Employee}
+           (set (get-in schema [:unions :Searchable :members])))))
 ; Copyright (c) 2017-present Walmart, Inc.
 ;
 ; Licensed under the Apache License, Version 2.0 (the "License")

@@ -27,6 +27,13 @@ Lacinia features:
 - Efficient and asynchronous query execution.
 
 - Full support for GraphQL types, interfaces, unions, enums, input objects, and custom scalars.
+- Union types in SDL now support an optional leading vertical bar (|) before the first member, following the GraphQL specification. For example:
+
+  ```graphql
+  union Searchable =
+    | Business
+    | Employee
+  ```
 
 - Full support for GraphQL subscriptions.
 

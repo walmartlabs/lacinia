@@ -428,10 +428,13 @@
                     (apply-directives directiveList))]
                extension-meta)))
 
+
 (defmethod xform :unionTypes
   [prod]
   (->> prod
        rest
+       ;; Remove leading vertical bar if present
+       (drop-while #(= (first %) :verticalBar))
        (filter #(-> % first (= :anyName)))
        (mapv xform)))
 
