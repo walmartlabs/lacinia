@@ -55,6 +55,16 @@ for [Duct](https://github.com/duct-framework/duct).
 
 For more detailed documentation, [read the manual](http://lacinia.readthedocs.io/en/latest/).
 
+### Using as a Dependency
+
+When using Lacinia as a dependency, you may need to prepare the library:
+
+```bash
+clojure -X:deps prep
+```
+
+This is required because Lacinia uses precompiled ANTLR parsers that need to be built before use.
+
 GraphQL starts with a schema definition of types that can be queried.
 
 A schema starts as an EDN file; the example below demonstrates a small subset
@@ -215,6 +225,34 @@ To use this library with Clojure 1.8, you must include
 a dependency on [clojure-future-spec](https://github.com/tonsky/clojure-future-spec).
 
 More details are [in the manual](http://lacinia.readthedocs.io/en/latest/clojure.html).
+
+## Development
+
+Lacinia uses ANTLR-generated parsers for GraphQL query and schema parsing.
+
+### Building from Source
+
+Compile the Java sources:
+
+```bash
+clojure -T:build compile-java
+```
+
+This compiles the ANTLR-generated parser classes into `target/classes`.
+
+### Regenerating Parsers
+
+If you modify the ANTLR grammar files (`.g4`), regenerate the Java parsers:
+
+```bash
+./codegen.sh
+```
+
+### Running Tests
+
+```bash
+clojure -X:dev:test
+```
 
 ## License
 
