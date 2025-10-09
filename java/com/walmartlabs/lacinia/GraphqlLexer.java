@@ -1,4 +1,4 @@
-// Generated from resources/com/walmartlabs/lacinia/Graphql.g4 by ANTLR 4.13.1
+// Generated from resources/com/walmartlabs/lacinia/Graphql.g4 by ANTLR 4.13.2
 package com.walmartlabs.lacinia;
 import org.antlr.v4.runtime.Lexer;
 import org.antlr.v4.runtime.CharStream;
@@ -11,7 +11,7 @@ import org.antlr.v4.runtime.misc.*;
 
 @SuppressWarnings({"all", "warnings", "unchecked", "unused", "cast", "CheckReturnValue", "this-escape"})
 public class GraphqlLexer extends Lexer {
-	static { RuntimeMetaData.checkVersion("4.13.1", RuntimeMetaData.VERSION); }
+	static { RuntimeMetaData.checkVersion("4.13.2", RuntimeMetaData.VERSION); }
 
 	protected static final DFA[] _decisionToDFA;
 	protected static final PredictionContextCache _sharedContextCache =
