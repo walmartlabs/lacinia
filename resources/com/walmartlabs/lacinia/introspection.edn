@@ -61,7 +61,9 @@
    {:name {:type (non-null String)}
     :description {:type String}
     :locations {:type (non-null (list :__DirectiveLocation))}
-    :args {:type (non-null (list :__InputValue))}}}}
+    :args {:type (non-null (list :__InputValue))}
+    :isRepeatable {:type (non-null Boolean)
+                   :resolve :is-repeatable}}}}
 
  :enums
  {:__TypeKind
@@ -83,7 +85,19 @@
     "FIELD"
     "FRAGMENT_DEFINITION"
     "FRAGMENT_SPREAD"
-    "INLINE_FRAGMENT"]}}
+    "INLINE_FRAGMENT"
+    "VARIABLE_DEFINITION"
+    "SCHEMA"
+    "SCALAR"
+    "OBJECT"
+    "FIELD_DEFINITION"
+    "ARGUMENT_DEFINITION"
+    "INTERFACE"
+    "UNION"
+    "ENUM"
+    "ENUM_VALUE"
+    "INPUT_OBJECT"
+    "INPUT_FIELD_DEFINITION"]}}
 
  :queries
  {:__type {:type :__Type
