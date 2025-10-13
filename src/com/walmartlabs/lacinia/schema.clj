@@ -1574,44 +1574,101 @@
 
 (defn ^:private unknown-directive
   [location element-def directive-type]
-  (let [type-name (:type-name element-def)
-        category (-> element-def :category name str/capitalize)]
-    (throw (ex-info (format "%s %s references unknown directive @%s."
-                      category
-                      (q type-name)
-                      (name directive-type))
-             {location type-name
-              :directive-type directive-type}))))
+  (cond
+    ;; For arguments (check arg-name exists first since arguments also have qualified-name)
+    (:arg-name element-def)
+    (throw (ex-info (format "Argument %s references unknown directive @%s."
+                            (q (:qualified-name element-def))
+                            (name directive-type))
+                    {:arg-name (:qualified-name element-def)
+                     :directive-type directive-type}))
+  
+    ;; For fields (check field-name exists)
+    (:field-name element-def)
+    (throw (ex-info (format "Field %s references unknown directive @%s."
+                            (q (:qualified-name element-def))
+                            (name directive-type))
+                    {:field-name (:qualified-name element-def)
+                     :directive-type directive-type}))
+  
+    ;; For types (objects, interfaces, etc.)
+    :else
+    (let [type-name (:type-name element-def)
+          category (-> element-def :category name str/capitalize)]
+      (throw (ex-info (format "%s %s references unknown directive @%s."
+                              category
+                              (q type-name)
+                              (name directive-type))
+                      {location type-name
+                       :directive-type directive-type})))))
 
 (defn ^:private inapplicable-directive
   [location element-def directive-def]
-  (let [{:keys [directive-type locations]} directive-def
-        ;; TODO: If we add :qualified-name to types as well, then we can use that here
-        type-name (:type-name element-def)
-        category (-> element-def :category name)]
-    (throw (ex-info (format "Directive @%s on %s %s is not applicable."
-                      (name directive-type)
-                      category
-                      (q type-name))
-             {location type-name
-              :directive-type directive-type
-              :allowed-locations locations}))))
+  (let [{:keys [directive-type locations]} directive-def]
+    (cond
+      ;; For arguments
+      (:arg-name element-def)
+      (throw (ex-info (format "Directive @%s on argument %s is not applicable."
+                              (name directive-type)
+                              (q (:qualified-name element-def)))
+                      {:arg-name (:qualified-name element-def)
+                       :directive-type directive-type
+                       :allowed-locations locations}))
+  
+      ;; For fields
+      (:field-name element-def)
+      (throw (ex-info (format "Directive @%s on field %s is not applicable."
+                              (name directive-type)
+                              (q (:qualified-name element-def)))
+                      {:field-name (:qualified-name element-def)
+                       :directive-type directive-type
+                       :allowed-locations locations}))
+  
+      ;; For types
+      :else
+      (let [type-name (:type-name element-def)
+            category (-> element-def :category name)]
+        (throw (ex-info (format "Directive @%s on %s %s is not applicable."
+                                (name directive-type)
+                                category
+                                (q type-name))
+                        {location type-name
+                         :directive-type directive-type
+                         :allowed-locations locations}))))))
+
+(defn ^:private non-repeatable-directive
+  [element-def directive-def count]
+  (let [element-name (or (:qualified-name element-def) (:type-name element-def) (:arg-name element-def) "unknown")
+        directive-type (:directive-type directive-def)]
+    (throw (ex-info (format "The directive %s is defined as non-repeatable, but used %d times on %s."
+                            directive-type count element-name)
+                    {:directive-type directive-type
+                     :count count
+                     :element-name element-name}))))
 
 (defn ^:private validate-directives-in-def
-  [schema object-def location]
-  (doseq [{:keys [directive-type]} (:directives object-def)
-          :let [directive-def (get-nested schema [::directive-defs directive-type])]]
-    (when-not directive-def
-      (unknown-directive location object-def directive-type))
+  [schema element-def location]
+  (let [directive-counts (frequencies (map :directive-type (:directives element-def)))]
+    ;; Check each unique directive type
+    (doseq [directive-type (distinct (map :directive-type (:directives element-def)))
+            :let [directive-def (get-nested schema [::directive-defs directive-type])
+                  count (get directive-counts directive-type)]]
+      ;; Check directive existence
+      (when-not directive-def
+        (unknown-directive location element-def directive-type))
 
-    (when-not (-> directive-def :locations (contains? location))
-      (inapplicable-directive location object-def directive-def))))
+      ;; Check location applicability
+      (when-not (-> directive-def :locations (contains? location))
+        (inapplicable-directive location element-def directive-def))
+
+      ;; Check repeatability
+      (when (and (> count 1) (not (:repeatable directive-def false)))
+        (non-repeatable-directive element-def directive-def count)))))
 
 (defn ^:private verify-fields-and-args
   "Verifies that the type of every field and every field argument is valid."
   [schema object-def]
-  (let [directive-defs (::directive-defs schema)
-        input-object? (= :input-object (:category object-def))
+  (let [input-object? (= :input-object (:category object-def))
         location (if input-object?
                    :input-field-definition
                    :field-definition)]
@@ -1643,22 +1700,8 @@
                  {:field-name qualified-field-name
                   :schema-types (type-map schema)})))
 
-      (doseq [{:keys [directive-type]} (:directives field-def)
-              :let [directive (get directive-defs directive-type)]]
-        (when-not directive
-          (throw (ex-info (format "Field %s references unknown directive @%s."
-                            (q qualified-field-name)
-                            (name directive-type))
-                   {:field-name qualified-field-name
-                    :directive-type directive-type})))
-
-        (when-not (-> directive :locations (contains? location))
-          (throw (ex-info (format "Directive @%s on field %s is not applicable."
-                            (name directive-type)
-                            (q qualified-field-name))
-                   {:field-name qualified-field-name
-                    :directive-type directive-type
-                    :allowed-locations (:locations directive)}))))
+      ;; Validate field directives
+      (validate-directives-in-def schema field-def location)
 
       (doseq [arg-def (-> field-def :args vals)
               :let [arg-type-name (extract-type-name (:type arg-def))
@@ -1676,22 +1719,8 @@
                             (q qualified-arg-name))
                    {:arg-name qualified-arg-name})))
 
-        (doseq [{:keys [directive-type]} (:directives arg-def)
-                :let [directive (get directive-defs directive-type)]]
-          (when-not directive
-            (throw (ex-info (format "Argument %s references unknown directive @%s."
-                              (q qualified-arg-name)
-                              (name directive-type))
-                     {:arg-name qualified-arg-name
-                      :directive-type directive-type})))
-
-          (when-not (-> directive :locations (contains? :argument-definition))
-            (throw (ex-info (format "Directive @%s on argument %s is not applicable."
-                              (name directive-type)
-                              (q qualified-arg-name))
-                     {:arg-name qualified-arg-name
-                      :directive-type directive-type
-                      :allowed-locations (:locations directive)}))))))))
+        ;; Validate argument directives
+        (validate-directives-in-def schema arg-def :argument-definition)))))
 
 (defn ^:private prepare-and-validate-interfaces
   "Invoked after compilation to add a :members set identifying which concrete types implement
@@ -1768,10 +1797,10 @@
                             {:interface-name interface-name
                              :argument-name (-> object-field-args (get additional-arg-name) :qualified-name)}))))))
 
-    (-> (apply-directive-arg-defaults schema object-def)
-        (update-fields-in-object (fn [field-def]
-                                   (cond-> (prepare-field schema object-def field-def)
-                                     object-def? apply-deprecated-directive))))))
+    (let [object-def' (apply-directive-arg-defaults schema object-def)]
+      (update-fields-in-object object-def' (fn [field-def]
+                                             (cond-> (prepare-field schema object-def field-def)
+                                               object-def? apply-deprecated-directive))))))
 
 (defn ^:private prepare-and-validate-objects
   "Comes very late in the compilation process to prepare objects, including validation that
@@ -1874,11 +1903,17 @@
                                                      (assoc :directive-type directive-type)
                                                      (update :args (fn [args]
                                                                      (map-kvs #(compile-directive-arg directive-type %1 %2) args))))])]
+    ;; TODO: This only includes type system directives (@deprecated).
+    ;; Executable directives (@skip, @include) are defined separately in parser.clj.
+    ;; Future improvement: include all builtin directives here for consistency.
     (assoc schema ::directive-defs
-                  (map-kvs compile-directive-args
+           (map-kvs compile-directive-args
                     (assoc directive-defs
-                      :deprecated {:args {:reason {:type 'String}}
-                                   :locations #{:argument-definition :enum-value :field-definition :input-field-definition}})))))
+                           :deprecated {:args {:reason {:type 'String
+                                                        :default-value "No longer supported"
+                                                        :description "Reason for deprecation."}}
+                                        :description "Marks an element of a GraphQL schema as no longer supported."
+                                        :locations #{:argument-definition :enum-value :field-definition :input-field-definition}})))))
 
 (defn ^:private validate-directives-by-category
   [schema category]
