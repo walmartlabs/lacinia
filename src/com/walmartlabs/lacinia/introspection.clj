@@ -15,15 +15,15 @@
 (ns ^:no-doc com.walmartlabs.lacinia.introspection
   "Uses the compiled schema to expose introspection."
   (:require
-    [clojure.edn :as edn]
-    [clojure.java.io :as io]
-    [com.walmartlabs.lacinia.util :as util]
-    [com.walmartlabs.lacinia.internal-utils :refer [remove-keys is-internal-type-name? cond-let
-                                                    get-nested keepv]]
-    [com.walmartlabs.lacinia.constants :as constants]
-    [clojure.string :as str]
-    [clojure.data.json :as json]
-    [clojure.spec.alpha :as s]))
+   [clojure.edn :as edn]
+   [clojure.java.io :as io]
+   [com.walmartlabs.lacinia.util :as util]
+   [com.walmartlabs.lacinia.internal-utils :refer [remove-keys is-internal-type-name? cond-let
+                                                   get-nested keepv]]
+   [com.walmartlabs.lacinia.constants :as constants]
+   [clojure.string :as str]
+   [clojure.data.json :as json]
+   [clojure.spec.alpha :as s]))
 
 (def ^:private category->kind
   {:scalar :SCALAR
@@ -103,6 +103,68 @@
                              (-> % :deprecated is-deprecated? not)))
                 (sort-by :field-name))))))
 
+(defn ^:private convert-location
+  "Converts a directive location keyword to its GraphQL enum value format"
+  [location]
+  (-> location
+      name
+      str/upper-case
+      (str/replace "-" "_")
+      keyword))
+
+(defn ^:private convert-directive-arg
+  "Converts a directive argument definition to introspection format"
+  [arg-name arg-def]
+  (let [{:keys [kind type]} (:type arg-def)]
+    {:name (name arg-name)
+     :description (:description arg-def)
+     ::type-map {:kind kind :type type}
+     ::default-value (:default-value arg-def)}))
+
+(defn ^:private convert-directive
+  "Converts a directive definition to introspection format"
+  [[directive-name directive-def]]
+  {:name (name directive-name)
+   :description (:description directive-def)
+   :locations (vec (map convert-location (:locations directive-def)))
+   :repeatable (get directive-def :repeatable false)
+   :args (vec (map (fn [[arg-name arg-def]]
+                     (convert-directive-arg arg-name arg-def))
+                   (:args directive-def)))})
+
+(defn ^:private get-builtin-directives
+  "Returns the built-in GraphQL directives for introspection.
+  
+  TODO: This duplicates some logic from parser.clj's builtin-directives.
+  Future improvement: Consolidate all builtin directive definitions into
+  a single source of truth shared between parser and schema compilation."
+  []
+  (let [not-null-boolean {:kind :non-null
+                          :type {:kind :root
+                                 :type :Boolean}}]
+    [{:name "skip"
+      :description "Skip the selection only when the `if` argument is true."
+      :locations [:INLINE_FRAGMENT :FIELD :FRAGMENT_SPREAD]
+      :repeatable false
+      :args [{:name "if"
+              :description "Triggering argument for skip directive."
+              ::type-map not-null-boolean}]}
+     {:name "include"
+      :description "Include the selection only when the `if` argument is true."
+      :locations [:INLINE_FRAGMENT :FIELD :FRAGMENT_SPREAD]
+      :repeatable false
+      :args [{:name "if"
+              :description "Triggering argument for include directive."
+              ::type-map not-null-boolean}]}]))
+
+(defn ^:private get-all-directives
+  "Returns all directives (built-in and custom) for the schema."
+  [schema]
+  (let [directive-defs (:com.walmartlabs.lacinia.schema/directive-defs schema)
+        custom-directives (->> directive-defs
+                               (map convert-directive))]
+    (vec (concat (get-builtin-directives) custom-directives))))
+
 (defn ^:private resolve-root-schema
   [context _ _]
   (let [schema (get context constants/schema-key)
@@ -116,22 +178,8 @@
         omit-subs (-> subs-root :fields empty?)
         type-names' (cond-> (set type-names)
                       omit-mutations (disj (:mutation root))
-                      omit-subs (disj (:subscription root)))
-        not-null-boolean {:kind :non-null
-                          :type {:kind :root
-                                 :type :Boolean}}]
-    (cond-> {:directives [{:name "skip"
-                           :description "Skip the selection only when the `if` argument is true."
-                           :locations [:INLINE_FRAGMENT :FIELD :FRAGMENT_SPREAD]
-                           :args [{:name "if"
-                                   :description "Triggering argument for skip directive."
-                                   ::type-map not-null-boolean}]}
-                          {:name "include"
-                           :description "Include the selection only when the `if` argument is true."
-                           :locations [:INLINE_FRAGMENT :FIELD :FRAGMENT_SPREAD]
-                           :args [{:name "if"
-                                   :description "Triggering argument for include directive."
-                                   ::type-map not-null-boolean}]}]
+                      omit-subs (disj (:subscription root)))]
+    (cond-> {:directives (get-all-directives schema)
              :types (->> type-names'
                          sort
                          (map #(type-name->schema-type schema %)))
@@ -142,7 +190,6 @@
 
       (not omit-subs)
       (assoc :subscriptionType (schema-type schema subs-root)))))
-
 
 (defn ^:private resolve-root-type
   [context args _]
@@ -209,6 +256,11 @@
   [context _ value]
   (when (::type-map value)
     (resolve-nested-type context nil value)))
+
+(defn ^:private resolve-is-repeatable
+  "Resolves isRepeatable field for a directive"
+  [_ _ directive]
+  (:repeatable directive))
 
 (defmulti emit-default-value
   (fn [schema type-map value]
@@ -296,4 +348,5 @@
                               :interfaces resolve-interfaces
                               :of-type resolve-of-type
                               :possible-types resolve-possible-types
-                              :default-value default-value})))
+                              :default-value default-value
+                              :is-repeatable resolve-is-repeatable})))

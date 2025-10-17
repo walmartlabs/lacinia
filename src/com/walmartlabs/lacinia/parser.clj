@@ -58,6 +58,10 @@
 ;; At some point, this will move to the schema when we work out how to do extensible
 ;; directives. A directive effector is invoked during the prepare phase to modify
 ;; a node based on the directive arguments.
+;;
+;; TODO: This creates inconsistency with schema.clj's compile-directive-defs which
+;; defines @deprecated. Future improvement: consolidate all
+;; builtin directive definitions into schema directive-defs for consistency.
 (def ^:private builtin-directives
   (let [if-arg {:if {:type {:kind :non-null
                             :type {:kind :root
