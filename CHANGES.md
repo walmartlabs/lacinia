@@ -1,3 +1,13 @@
+## 1.3.0 -- UNRELEASED
+
+This release of Lacinia improves performance by providing a pre-built Antlr4J parser
+(this required generating and compiling Java classes, rather than using interpreted parsing).
+It also addresses missing support for certain GraphQL schema syntaxes, and improves
+schema introspection and validation.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/34?closed=1)
+
+
 ## 1.2.2 - 8 Feb 2024
 
 A few minor bug fixes.
