@@ -102,7 +102,7 @@ inputValueDef
   ;
 
 interfaceDef
-  : description? K_INTERFACE anyName directiveList? fieldDefs?
+  : description? K_INTERFACE anyName implementationDef? directiveList? fieldDefs?
   ;
 
 scalarDef

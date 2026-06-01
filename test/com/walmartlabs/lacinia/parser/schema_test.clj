@@ -180,6 +180,26 @@
              {:type 'String}}}}}
          (parse-string "interface Flow { ebb : String }"))))
 
+(deftest schema-interface-implements-interface
+  (is (= {:interfaces
+          {:Node {:fields {:id {:type 'ID}}}
+           :Post {:fields {:id {:type 'ID}
+                           :title {:type 'String}}
+                  :implements [:Node]}}}
+         (parse-string "interface Node { id: ID } interface Post implements Node { id: ID title: String }"))))
+
+(deftest schema-interface-implements-multiple-interfaces
+  (is (= {:interfaces
+          {:Node {:fields {:id {:type 'ID}}}
+           :Timestamped {:fields {:createdAt {:type 'String}}}
+           :Post {:fields {:id {:type 'ID}
+                           :createdAt {:type 'String}
+                           :title {:type 'String}}
+                  :implements [:Node :Timestamped]}}}
+         (parse-string (str "interface Node { id: ID } "
+                            "interface Timestamped { createdAt: String } "
+                            "interface Post implements Node & Timestamped { id: ID createdAt: String title: String }")))))
+
 (deftest schema-union
 
   (testing "basic union type"
