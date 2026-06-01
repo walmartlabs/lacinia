@@ -99,3 +99,49 @@
     (is (some? (compile compatible-field-nullability))
         "Object fields are allowed to be non-null, even if the interface field is nullable.")))
 
+(def interface-implements-interface
+  '{:interfaces {:node {:fields {:id {:type (non-null String)}}}
+                 :resource {:implements [:node]
+                            :fields {:id {:type (non-null String)}
+                                     :url {:type String}}}}
+    :objects {:article {:implements [:resource]
+                        :fields {:id {:type (non-null String)}
+                                 :url {:type String}
+                                 :title {:type String}}}}})
+
+(deftest interface-can-implement-interface
+  (is (some? (compile interface-implements-interface))
+      "schema with interface implementing interface should compile"))
+
+(deftest object-transitively-implements-parent-interface
+  (let [compiled (compile interface-implements-interface)]
+    ;; :article implements :resource which implements :node.
+    ;; :article should be a member of both :node and :resource.
+    (is (contains? (get-in compiled [:node :members]) :article)
+        "article should be a member of :node (transitively via :resource)")
+    (is (contains? (get-in compiled [:resource :members]) :article)
+        "article should be a member of :resource (directly)")))
+
+(deftest interface-implements-interface-missing-field
+  (let [invalid-schema (assoc-in interface-implements-interface
+                                  [:interfaces :resource :fields]
+                                  {:url {:type 'String}})]
+    ;; :resource implements :node but doesn't declare :id
+    (expect-exception
+      "Missing interface field in interface definition."
+      {:interface :resource
+       :field-name :id
+       :parent-interface-name :node}
+      (compile invalid-schema))))
+
+(deftest interface-implements-non-interface-fails
+  ;; :resource tries to implement :article which is an object, not an interface
+  (let [invalid-schema '{:interfaces {:node {:fields {:id {:type String}}}
+                                      :resource {:implements [:article]
+                                                 :fields {:id {:type String}}}}
+                         :objects {:article {:implements [:node]
+                                             :fields {:id {:type String}}}}}]
+    (is (thrown-with-msg? Throwable
+                          #"Interface `resource' implements type `article', which is not an interface."
+                          (compile invalid-schema)))))
+

@@ -400,13 +400,14 @@
 
 (defmethod xform :interfaceDef
   [prod]
-  (let [{:keys [anyName fieldDefs description directiveList]
+  (let [{:keys [anyName implementationDef fieldDefs description directiveList]
          :or {fieldDefs (list :fieldDefs)}} (tag prod)]
     [[:interfaces (xform anyName)]
      (-> {:fields (xform fieldDefs)}
          (common/copy-meta anyName)
          (apply-description description)
-         (apply-directives directiveList))]))
+         (apply-directives directiveList)
+         (cond-> implementationDef (assoc :implements (xform implementationDef))))]))
 
 (defmethod xform :unionDef
   [prod]

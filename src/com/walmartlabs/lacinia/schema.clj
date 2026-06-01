@@ -354,7 +354,8 @@
 ;; Here we'd prefer a version of ::fields where :resolve was not defined.
 (s/def ::interface (s/keys :opt-un [::description
                                     ::directives
-                                    ::fields]))
+                                    ::fields
+                                    ::implements]))
 ;; A list of keyword identifying objects that are part of a union.
 (s/def ::members (s/and (s/coll-of ::type-name)
                    seq))
@@ -686,6 +687,13 @@
 
 (defmethod check-compatible [:interface :object]
   [i-type f-type]
+  (contains? (:implements f-type) (:type-name i-type)))
+
+(defmethod check-compatible [:interface :interface]
+  [i-type f-type]
+  ;; An interface field type is compatible with an implementing-interface field type if
+  ;; the implementing interface (f-type) declares that it implements the constraining
+  ;; interface (i-type).
   (contains? (:implements f-type) (:type-name i-type)))
 
 ;; That's as far as the spec goes, but one could imagine additonal rules
@@ -1558,12 +1566,46 @@
         map->Type
         compile-directives)))
 
+(defn ^:private expand-implements
+  "Returns the transitive closure of implements for a type. Walks up the interface
+  hierarchy so that e.g. if B implements A, and C implements B, C's :implements
+  includes both :B and :A."
+  [schema type-name]
+  (loop [result #{}
+         queue (vec (:implements (get schema type-name)))]
+    (if (empty? queue)
+      result
+      (let [iface-name (first queue)
+            remaining (rest queue)
+            iface (get schema iface-name)]
+        (recur (conj result iface-name)
+               (into (vec remaining)
+                     (remove result (:implements iface))))))))
+
 (defmethod compile-type :interface
   [interface schema]
-  (->> interface
-    map->Interface
-    compile-directives
-    (compile-fields schema)))
+  (let [implements (->> interface :implements (map as-keyword) set)]
+    (doseq [iface-name implements
+            :let [type (get schema iface-name)]]
+      (when-not type
+        (throw (ex-info (format "Interface %s implements interface %s, which does not exist."
+                          (-> interface :type-name q)
+                          (q iface-name))
+                 {:interface (:type-name interface)
+                  :schema-types (type-map schema)})))
+      (when-not (= :interface (:category type))
+        (throw (ex-info (format "Interface %s implements type %s, which is not an interface."
+                          (-> interface :type-name q)
+                          (q iface-name))
+                 {:interface (:type-name interface)
+                  :schema-types (type-map schema)}))))
+    (->> interface
+      map->Interface
+      compile-directives
+      (compile-fields schema)
+      (#(if (seq implements)
+          (assoc % :implements implements)
+          %)))))
 
 (defn ^:private extract-type-name
   "Navigates a type map down to the root kind and returns the type name."
@@ -1722,28 +1764,75 @@
         ;; Validate argument directives
         (validate-directives-in-def schema arg-def :argument-definition)))))
 
+(defn ^:private all-implemented-interfaces
+  "Returns the transitive set of interface names implemented by the given type (by type-name keyword).
+  Walks up the interface hierarchy via :implements on each compiled interface definition."
+  [schema type-name]
+  (loop [result #{}
+         queue (vec (:implements (get schema type-name)))]
+    (if (empty? queue)
+      result
+      (let [iface-name (first queue)
+            remaining (subvec (vec queue) 1)]
+        (if (result iface-name)
+          (recur result remaining)
+          (recur (conj result iface-name)
+                 (into remaining
+                       (remove result (:implements (get schema iface-name))))))))))
+
 (defn ^:private prepare-and-validate-interfaces
   "Invoked after compilation to add a :members set identifying which concrete types implement
-  the interface.  Peforms final verification of types in fields and field arguments."
+  the interface.  Performs final verification of types in fields and field arguments.
+  Also validates that interfaces implementing other interfaces declare all required fields."
   [schema]
-  (let [objects (types-with-category schema :object)]
-    (map-types schema :interface
-      (fn [interface]
-        (verify-fields-and-args schema interface)
-        (validate-directives-in-def schema interface :interface)
-        (let [interface-name (:type-name interface)
-              implementors (->> objects
-                                (filter #(-> % :implements interface-name))
-                                (map :type-name)
-                                set)
-              fields' (->> interface
-                           :fields
-                           (map-vals #(assoc % :type-name interface-name))
-                           (map-vals apply-deprecated-directive))]
-          (-> interface
-              (assoc :members implementors
-                     :fields fields')
-              (dissoc :resolve)))))))
+  (let [objects (types-with-category schema :object)
+        interfaces (types-with-category schema :interface)
+        ;; Expand each object's :implements set to include transitively-inherited interfaces.
+        ;; This is needed so check-compatible [:interface :object] works when an object only
+        ;; directly lists a sub-interface but not its parent interfaces.
+        schema' (reduce (fn [s obj]
+                          (let [transitive (all-implemented-interfaces s (:type-name obj))
+                                expanded (into (:implements obj #{}) transitive)]
+                            (if (= expanded (:implements obj))
+                              s
+                              (update s (:type-name obj) assoc :implements expanded))))
+                        schema
+                        objects)]
+    ;; Validate that each interface implementing another interface declares all required fields.
+    (doseq [interface interfaces
+            :let [interface-name (:type-name interface)]
+            parent-name (:implements interface)
+            :let [parent (get schema parent-name)]
+            [field-name parent-field] (:fields parent)
+            :let [iface-field (get-nested interface [:fields field-name])]]
+      (when-not iface-field
+        (throw (ex-info "Missing interface field in interface definition."
+                 {:interface interface-name
+                  :field-name field-name
+                  :parent-interface-name parent-name})))
+      (when-not (is-assignable? schema parent-field iface-field)
+        (throw (ex-info "Interface field is not compatible with implemented interface field type."
+                 {:parent-interface-name parent-name
+                  :field-name (:qualified-name iface-field)}))))
+    (let [objects' (types-with-category schema' :object)]
+      (map-types schema' :interface
+        (fn [interface]
+          (verify-fields-and-args schema' interface)
+          (validate-directives-in-def schema' interface :interface)
+          (let [interface-name (:type-name interface)
+                ;; Use objects' (with expanded :implements) to catch transitive membership.
+                implementors (->> objects'
+                                  (filter #(-> % :implements interface-name))
+                                  (map :type-name)
+                                  set)
+                fields' (->> interface
+                             :fields
+                             (map-vals #(assoc % :type-name interface-name))
+                             (map-vals apply-deprecated-directive))]
+            (-> interface
+                (assoc :members implementors
+                       :fields fields')
+                (dissoc :resolve))))))))
 
 (defn ^:private update-fields-in-object
   [object-def f]
