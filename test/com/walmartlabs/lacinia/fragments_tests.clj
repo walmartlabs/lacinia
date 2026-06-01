@@ -90,8 +90,7 @@
                    }
                 }
               }
-           }
-         }"))))
+           }"))))
 
 (deftest named-fragments
   (is (= {:data {:characters [{:name "R2-D2"
