@@ -134,6 +134,33 @@
        :parent-interface-name :node}
       (compile invalid-schema))))
 
+(deftest interface-circular-implements-fails
+  (testing "direct cycle (A implements B, B implements A)"
+    (let [invalid-schema '{:interfaces {:A {:implements [:B]
+                                            :fields {:id {:type String}}}
+                                        :B {:implements [:A]
+                                            :fields {:id {:type String}}}}}]
+      (is (thrown-with-msg? Throwable #"circular implements chain"
+                            (compile invalid-schema)))))
+
+  (testing "indirect cycle (A implements B, B implements C, C implements A)"
+    (let [invalid-schema '{:interfaces {:A {:implements [:B]
+                                            :fields {:id {:type String}}}
+                                        :B {:implements [:C]
+                                            :fields {:id {:type String}}}
+                                        :C {:implements [:A]
+                                            :fields {:id {:type String}}}}}]
+      (is (thrown-with-msg? Throwable #"circular implements chain"
+                            (compile invalid-schema))))))
+
+(deftest interface-cannot-implement-itself
+  (let [invalid-schema '{:interfaces {:node {:implements [:node]
+                                             :fields {:id {:type String}}}}}]
+    (expect-exception
+      "Interface `node' cannot implement itself."
+      {:interface :node}
+      (compile invalid-schema))))
+
 (deftest interface-implements-non-interface-fails
   ;; :resource tries to implement :article which is an object, not an interface
   (let [invalid-schema '{:interfaces {:node {:fields {:id {:type String}}}

@@ -1584,20 +1584,25 @@
 
 (defmethod compile-type :interface
   [interface schema]
-  (let [implements (->> interface :implements (map as-keyword) set)]
+  (let [interface-name (:type-name interface)
+        implements (->> interface :implements (map as-keyword) set)]
     (doseq [iface-name implements
             :let [type (get schema iface-name)]]
+      (when (= iface-name interface-name)
+        (throw (ex-info (format "Interface %s cannot implement itself."
+                          (q iface-name))
+                 {:interface interface-name})))
       (when-not type
         (throw (ex-info (format "Interface %s implements interface %s, which does not exist."
-                          (-> interface :type-name q)
+                          (q interface-name)
                           (q iface-name))
-                 {:interface (:type-name interface)
+                 {:interface interface-name
                   :schema-types (type-map schema)})))
       (when-not (= :interface (:category type))
         (throw (ex-info (format "Interface %s implements type %s, which is not an interface."
-                          (-> interface :type-name q)
+                          (q interface-name)
                           (q iface-name))
-                 {:interface (:type-name interface)
+                 {:interface interface-name
                   :schema-types (type-map schema)}))))
     (->> interface
       map->Interface
@@ -1787,6 +1792,14 @@
   [schema]
   (let [objects (types-with-category schema :object)
         interfaces (types-with-category schema :interface)
+        ;; Detect cycles in the interface implements graph before doing anything else.
+        _ (doseq [interface interfaces
+                  :let [interface-name (:type-name interface)
+                        transitive (all-implemented-interfaces schema interface-name)]]
+            (when (transitive interface-name)
+              (throw (ex-info (format "Interface %s is part of a circular implements chain."
+                                (q interface-name))
+                       {:interface interface-name}))))
         ;; Expand each object's :implements set to include transitively-inherited interfaces.
         ;; This is needed so check-compatible [:interface :object] works when an object only
         ;; directly lists a sub-interface but not its parent interfaces.
