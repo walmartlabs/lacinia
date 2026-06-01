@@ -1,7 +1,7 @@
-{:deps {org.clojure/clojure {:mvn/version "1.11.1"}
+{:deps {org.clojure/clojure {:mvn/version "1.12.5"}
         org.antlr/antlr4-runtime {:mvn/version "4.13.2"}
         org.flatland/ordered {:mvn/version "1.15.12"}
-        org.clojure/data.json {:mvn/version "2.5.1"}}
+        org.clojure/data.json {:mvn/version "2.5.2"}}
  :paths ["src" "resources" "target/classes"]
 
  :deps/prep-lib
@@ -11,16 +11,16 @@
  :aliases
  {:dev
   {:extra-deps {criterium/criterium {:mvn/version "0.4.6"}
-                org.clojure/core.async {:mvn/version "1.8.741"}
+                org.clojure/core.async {:mvn/version "1.9.865"}
                 expound/expound {:mvn/version "0.9.0"}
-                joda-time/joda-time {:mvn/version "2.14.0"}
+                joda-time/joda-time {:mvn/version "2.14.2"}
                 com.walmartlabs/test-reporting {:mvn/version "1.2"}
                 io.github.hlship/trace {:mvn/version "1.4"}
-                io.pedestal/pedestal.log {:mvn/version "0.8.0"}
-                org.clojure/test.check {:mvn/version "1.1.1"}
-                org.clojure/data.csv {:mvn/version "1.1.0"}
-                org.clojure/tools.cli {:mvn/version "1.2.245"}
-                com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.6.2"}}
+                io.pedestal/pedestal.log {:mvn/version "0.8.1"}
+                org.clojure/test.check {:mvn/version "1.1.3"}
+                org.clojure/data.csv {:mvn/version "1.1.1"}
+                org.clojure/tools.cli {:mvn/version "1.4.256"}
+                com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.7.0"}}
    :jvm-opts ["-Xmx1g"
               "-Xms1g"
               "-XX:NewSize=200m"
@@ -35,7 +35,7 @@
 
   :clojure-11 {}
 
-  :clojure-12 {:override-deps {org.clojure/clojure {:mvn/version "1.12.3"}}}
+  :clojure-12 {:override-deps {org.clojure/clojure {:mvn/version "1.12.5"}}}
 
   ;; clj -Mdev:perf
   :perf
@@ -57,7 +57,6 @@
   :build      {:deps       {io.github.hlship/build-tools
                             {:git/tag "0.12.1" :git/sha "05f3ae"}}
                :ns-default build}}
-
  :net.lewisship.build/scm
  {:license :asl}
 
