@@ -57,9 +57,9 @@
     (resolve/resolve-as {:errors validation-errors})
 
     :else
-    (executor/execute-query (assoc context constants/parsed-query-key prepared
-                                           ::tracing/validation {:start-offset start-offset
-                                                                 :duration (tracing/duration start-nanos)}))))
+    (executor/execute-query (assoc context constants/parsed-query-key (assoc prepared
+                                                                             ::tracing/validation {:start-offset start-offset
+                                                                                                   :duration (tracing/duration start-nanos)})))))
 
 (defn execute-parsed-query
   "Prepares a query, by applying query variables to it, resulting in a prepared

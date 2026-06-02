@@ -417,7 +417,7 @@
                                                                  *resolver-tracing
                                                                  (tracing/inject-tracing timing-start
                                                                                          (::tracing/parsing parsed-query)
-                                                                                         (::tracing/validation context)
+                                                                                         (::tracing/validation parsed-query)
                                                                                          @*resolver-tracing)
                                                                  errors (assoc :errors (distinct errors))
                                                                  warnings (assoc-in [:extensions :warnings] (distinct warnings))))))))
