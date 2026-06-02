@@ -100,3 +100,13 @@
                (let [durations (->> (get-in result [:extensions :tracing :execution :resolvers])
                                     (mapv :duration))]
                  (is (= 6 (count durations)))))))
+
+(deftest parsing-and-validation-timings-are-non-nil
+  ;; Regression test for https://github.com/walmartlabs/lacinia/issues/448
+  (let [result (q "{ root(delay: 5) { simple }}" enable-timing)
+        {:keys [parsing validation]} (get-in result [:extensions :tracing])]
+    (reporting result
+               (is (some? (:startOffset parsing)) "parsing startOffset should not be nil")
+               (is (pos? (:duration parsing)) "parsing duration should be positive")
+               (is (some? (:startOffset validation)) "validation startOffset should not be nil")
+               (is (pos? (:duration validation)) "validation duration should be positive"))))
