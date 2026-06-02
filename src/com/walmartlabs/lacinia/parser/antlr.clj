@@ -5,7 +5,7 @@
            (java.util.concurrent ConcurrentHashMap)
            (org.antlr.v4.runtime ANTLRErrorListener
                                  CharStreams CommonTokenStream Lexer Parser
-                                 RecognitionException)
+                                 ParserRuleContext RecognitionException Token)
            (org.antlr.v4.runtime.tree ParseTree Tree)))
 
 (def ^ConcurrentHashMap fast-keyword-cache
@@ -132,7 +132,8 @@
             (.removeErrorListeners)
             (.addErrorListener error-listener))
 
-        parser (parser ap (CommonTokenStream. lexer))
+        token-stream (CommonTokenStream. lexer)
+        parser (parser ap token-stream)
         _ (doto parser
             (.removeErrorListeners)
             (.addErrorListener error-listener))
@@ -141,6 +142,28 @@
 
     (when-let [errors @error-listener]
       (throw (parse-error errors tree)))
+
+    ;; ANTLR's error recovery can silently produce a valid parse tree even when
+    ;; there are unconsumed tokens (e.g. unbalanced braces). Detect this case by
+    ;; checking that every non-EOF token was consumed by the document rule.
+    (.fill token-stream)
+    (let [tokens (.getTokens token-stream)
+          n (count tokens)
+          ;; tokens is [...real-tokens... EOF]; last-real-idx is the index of the
+          ;; last non-EOF token (n-2), or -1 when the input is empty.
+          last-real-idx (- n 2)
+          stop-token (.getStop ^ParserRuleContext tree)
+          stop-idx (if stop-token (.getTokenIndex ^Token stop-token) -1)]
+      (when (< stop-idx last-real-idx)
+        (let [first-unconsumed (.get token-stream (inc stop-idx))
+              line (.getLine ^Token first-unconsumed)
+              col (inc (.getCharPositionInLine ^Token first-unconsumed))]
+          (throw (parse-error [{:line line
+                                :char col
+                                :message (str "extraneous input '"
+                                              (.getText ^Token first-unconsumed)
+                                              "' expecting EOF")}]
+                               tree)))))
 
     {:tree tree
      :parser parser}))

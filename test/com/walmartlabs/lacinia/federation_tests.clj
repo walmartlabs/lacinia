@@ -52,7 +52,6 @@ query($reps : [_Any!]!) {
     ... on User { id name }
 
     ... on Account { acct_number name }
-    }
   }
 }")
 
