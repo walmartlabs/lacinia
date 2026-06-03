@@ -16,6 +16,7 @@
   "Internal utilities used in the implementation, subject to change without notice."
   {:no-doc true}
   (:require
+    [better-cond.core :as b]
     [clojure.string :as str])
   (:import
    (clojure.lang Named)
@@ -23,20 +24,6 @@
 
 (when (-> *clojure-version* :minor (< 9))
   (require '[clojure.future :refer [simple-keyword? boolean?]]))
-
-(defmacro cond-let
-  "A version of `cond` that allows for `:let` terms. There is hope that someday, perhaps
-  after Rich Hickey retires, this will make it into clojure.core."
-  [& forms]
-  {:pre [(even? (count forms))]}
-  (when forms
-    (let [[test-exp result-exp & more-forms] forms]
-      (if (= :let test-exp)
-        `(let ~result-exp
-           (cond-let ~@more-forms))
-        `(if ~test-exp
-           ~result-exp
-           (cond-let ~@more-forms))))))
 
 (defn keepv
   "Non-lazy version of clojure.core/keep that returns a vector."
@@ -342,7 +329,7 @@
 
    Returns an updated schema."
   [schema location description]
-  (cond-let
+  (b/cond
     :let [simple? (simple-keyword? location)
           type-name (if simple?
                       location

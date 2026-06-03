@@ -13,7 +13,7 @@
 ; limitations under the License.
 
 (ns ^:no-doc com.walmartlabs.lacinia.select-utils
-  (:require [com.walmartlabs.lacinia.internal-utils :refer [cond-let remove-vals]]))
+  (:require [com.walmartlabs.lacinia.internal-utils :refer [remove-vals]]))
 
 (defrecord ResultTuple [alias value])
 
@@ -25,7 +25,7 @@
 (defn ^:private ex-info-map
   [selection path]
   (remove-vals nil? {:locations [(:location selection)]
-                     :path path
+                     :path      path
                      :arguments (:reportable-arguments selection)}))
 
 (defn assert-error-map
@@ -42,9 +42,8 @@
     error-map
 
     :else
-    (throw (ex-info (str
-                      "Errors must be nil, or a map containing, at minimum, a :message key with a string value.")
-             {:error error-map}))))
+    (throw (ex-info "Errors must be nil, or a map containing, at minimum, a :message key with a string value."
+                    {:error error-map}))))
 
 (defn ^:private structured-error-map
   "Converts an error map and extra data about location, path, etc. into the
@@ -54,11 +53,11 @@
   (let [{:keys [message extensions]} error-map
         {:keys [locations path]} extra-data
         extensions' (merge (dissoc error-map :message :extensions)
-                      (dissoc extra-data :locations :path)
-                      extensions)]
-    (cond-> {:message message
+                           (dissoc extra-data :locations :path)
+                           extensions)]
+    (cond-> {:message   message
              :locations locations
-             :path path}
+             :path      path}
       (seq extensions') (assoc :extensions extensions'))))
 
 (defn enhance-error

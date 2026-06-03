@@ -1,0 +1,25 @@
+{:config-paths ["imports/better-cond/better-cond"
+                "imports/io.pedestal/pedestal.log"]
+
+ :linters
+ {;; Protocol/interface implementations routinely have unused bindings for
+  ;; parameters they must declare but don't use.
+  :unused-binding {:level :off}
+
+  ;; `coercion-failure` and `as-conformer` are deprecated for external use but are
+  ;; still used internally in schema.clj for default scalar definitions, in parser.clj
+  ;; as part of parsing, and in tests that validate backward-compatibility behaviour.
+  :deprecated-var {:level :off}
+
+  ;; `wrap-list` and `expand-implements` are private vars that appear unused to kondo
+  ;; but are exercised at runtime.
+  :unused-private-var {:exclude [com.walmartlabs.lacinia.schema/wrap-list
+                                  com.walmartlabs.lacinia.schema/expand-implements]}
+
+  ;; Some functions use {:added "x.y.z"} metadata maps in their body; kondo flags
+  ;; these as unused values. This pattern is valid in Clojure.
+  :unused-value {:level :off}
+
+  ;; Redundant-let warnings fire inside b/cond :let blocks; suppress globally since
+  ;; the false-positive rate is high and real redundant lets are trivially visible.
+  :redundant-let {:level :off}}}

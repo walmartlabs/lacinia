@@ -14,7 +14,7 @@
 
 (ns com.walmartlabs.lacinia.field-tests
   (:require
-    [clojure.test :refer [deftest is]]
+    [clojure.test :refer [deftest]]
     [com.walmartlabs.test-utils :refer [expect-exception]]
     [com.walmartlabs.lacinia.schema :as schema]))
 

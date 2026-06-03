@@ -1,8 +1,3 @@
-(deftest union-supports-leading-vertical-bar
-  (let [sdl "union Searchable =\n  | Business\n  | Employee"
-        schema (ql/schema sdl)]
-    (is (= #{:Business :Employee}
-           (set (get-in schema [:unions :Searchable :members])))))
 ; Copyright (c) 2017-present Walmart, Inc.
 ;
 ; Licensed under the Apache License, Version 2.0 (the "License")
@@ -20,9 +15,10 @@
 (ns com.walmartlabs.lacinia.unions-test
   (:refer-clojure :exclude [compile])
   (:require
-    [clojure.test :refer [deftest is testing]]
+    [clojure.test :refer [deftest is]]
     [com.walmartlabs.lacinia.schema :refer [compile tag-with-type]]
     [com.walmartlabs.lacinia :as ql]
+    [com.walmartlabs.lacinia.parser.schema :as parser.schema]
     [com.walmartlabs.test-utils :refer [expect-exception]]
     [com.walmartlabs.test-reporting :refer [reporting]]))
 
@@ -145,5 +141,11 @@
                             nil
                             {:id "2000" :family_name "Wu"}]}}
            result))))
+
+(deftest union-supports-leading-vertical-bar
+  (let [sdl "union Searchable =\n  | Business\n  | Employee"
+        schema (parser.schema/parse-schema sdl)]
+    (is (= #{:Business :Employee}
+           (set (get-in schema [:unions :Searchable :members]))))))
 
 

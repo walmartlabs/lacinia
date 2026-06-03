@@ -16,7 +16,8 @@
   {:no-doc true}
   (:require
     [com.walmartlabs.lacinia.describe :refer [description-for]]
-    [com.walmartlabs.lacinia.internal-utils :refer [q seek cond-let]]
+    [com.walmartlabs.lacinia.internal-utils :refer [q seek]]
+    [better-cond.core :as b]
     [com.walmartlabs.lacinia.selection :as selection]))
 
 (defn ^:private validate-fragment-spread
@@ -38,7 +39,7 @@
   ;; Fragment spreads define a fragment name but no nested selections
   ;; (those are inside the fragment definition).  Fields and
   ;; inline fragments do have nested selections.
-  (cond-let
+  (b/cond
     (:fragment-name sel)
     (validate-fragment-spread fragment-defs sel)
 

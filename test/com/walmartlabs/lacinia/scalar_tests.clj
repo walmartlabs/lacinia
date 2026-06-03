@@ -14,7 +14,7 @@
 
 (ns com.walmartlabs.lacinia.scalar-tests
   (:require
-    [clojure.test :refer :all]
+    [clojure.test :refer [deftest is]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.test-utils :as utils]))
 
@@ -22,7 +22,7 @@
 ;; exposed by schema/default-scalar-transformers, I prefer to verify that all the other machinery
 ;; around scalar parse/serialize is working.
 
-(def ^:private ^:dynamic *data*)
+(def ^:private ^:dynamic *data* nil)
 
 (def ^:private output-schema
   (schema/compile {:objects

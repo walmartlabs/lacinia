@@ -22,7 +22,6 @@
     [clojure.walk :refer [postwalk]]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.resolve :as resolve]
-    [com.walmartlabs.lacinia.util :as util]
     [com.walmartlabs.lacinia.selection :as sel])
   (:import (clojure.lang ExceptionInfo)))
 
@@ -120,7 +119,7 @@
         schema (schema/compile {:queries {:catchphrase {:type :String
                                                         :resolve (constantly return-value)}}})]
     (is (= {:data {:catchphrase return-value}}
-           (graphql/execute schema "{catchphrase}" nil nil))) 1))
+           (execute schema "{catchphrase}" nil nil))) 1))
 
 (deftest field-resolver-protocol
   (let [resolver (reify resolve/FieldResolver

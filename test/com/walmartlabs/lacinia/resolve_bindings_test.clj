@@ -37,8 +37,8 @@
 (use-fixtures :each
               reset-*states)
 
-(defn ^:private ^ExecutorService new-executor
-  []
+(defn ^:private new-executor
+  ^ExecutorService []
   (ThreadPoolExecutor. 1 5 1 TimeUnit/SECONDS (ArrayBlockingQueue. 1)))
 
 ;; First, normal case where there is no executor for the callback
