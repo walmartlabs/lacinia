@@ -19,9 +19,10 @@
   (:require
     [clojure.string :as str]
     [com.walmartlabs.lacinia.internal-utils
-     :refer [cond-let update? q map-vals filter-vals remove-vals
+     :refer [q map-vals filter-vals remove-vals
              with-exception-context throw-exception to-message seek
              keepv as-keyword *exception-context* get-nested]]
+    [better-cond.core :as b]
     [com.walmartlabs.lacinia.select-utils :as su]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.constants :as constants]
@@ -250,7 +251,7 @@
                                  (q type-name))
                          {:category (:category scalar-type)}))
 
-      (cond-let
+      (b/cond
         (nil? arg-value)
         nil
 
@@ -489,7 +490,7 @@
 
 (defn ^:private construct-literal-argument
   [schema result argument-type arg-value]
-  (cond-let
+  (b/cond
     :let [nested-type (:type argument-type)
           kind (:kind argument-type)]
 
@@ -584,7 +585,7 @@
 
       (fn [variables]
         (with-exception-context captured-context
-          (cond-let
+          (b/cond
             :let [result (get variables arg-value)]
 
             ;; So, when a client provides variables, sometimes you get a string
@@ -787,9 +788,9 @@
                           :arguments-extractor dynamic-arguments-extractor)
                         map->Directive))
                   (throw-exception (format "Unknown directive %s."
-                                           (q directive-name)
+                                           (q directive-name))
                                            {:unknown-directive directive-name
-                                            :available-directives (-> all-directive-defs keys sort)}))))))]
+                                            :available-directives (-> all-directive-defs keys sort)})))))]
     (mapv f parsed-directives)))
 
 (def ^:private typename-field-definition
@@ -894,7 +895,7 @@
   "Given a collection of parsed operation definitions and an operation name (which
   might be nil), retrieve the requested operation definition from the document."
   [operations operation-name]
-  (cond-let
+  (b/cond
     :let [operation-key (when-not (str/blank? operation-name)
                           (as-keyword operation-name))
           operation-count (count operations)

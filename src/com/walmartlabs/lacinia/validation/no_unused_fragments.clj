@@ -16,16 +16,17 @@
   {:no-doc true}
   (:require
     [clojure.set :as set]
-    [com.walmartlabs.lacinia.internal-utils  :refer [q cond-let]])
+    [better-cond.core :as b]
+    [com.walmartlabs.lacinia.internal-utils  :refer [q]])
   (:import (clojure.lang PersistentQueue)))
 
 (defn ^:private all-fragments-used
   [fragments root-selections]
   (loop [result (transient #{})
-         queue (-> (PersistentQueue/EMPTY)
+         queue (-> PersistentQueue/EMPTY
                    (into root-selections)
                    (into (vals fragments)))]
-    (cond-let
+    (b/cond
 
       :let [selection (peek queue)]
 

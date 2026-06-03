@@ -15,7 +15,7 @@
 (ns com.walmartlabs.lacinia.query-ops-test
   (:require
     [clojure.test :refer [deftest is]]
-    [com.walmartlabs.test-utils :refer [compile-schema execute]]
+    [com.walmartlabs.test-utils :refer [execute]]
     [com.walmartlabs.test-schema :refer [test-schema]]
     [com.walmartlabs.lacinia.schema :as schema]))
 

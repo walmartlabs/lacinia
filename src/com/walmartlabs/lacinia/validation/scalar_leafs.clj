@@ -15,7 +15,8 @@
 (ns com.walmartlabs.lacinia.validation.scalar-leafs
   {:no-doc true}
   (:require
-    [com.walmartlabs.lacinia.internal-utils :refer [q cond-let]]
+    [com.walmartlabs.lacinia.internal-utils :refer [q]]
+    [better-cond.core :as b]
     [com.walmartlabs.lacinia.selection :as selection]))
 
 (defn ^:private validate-selection
@@ -28,7 +29,7 @@
   `[{:message \"Field `friends' (of type `character')must have at least one selection.\"
      :locations [{:line 1 :column 7}]}]`"
   [selection]
-  (cond-let
+  (b/cond
     ;; Fragment spreads do not ever have sub-selections, and are validated
     ;; elsewhere.
     (= :named-fragment (selection/selection-kind selection))

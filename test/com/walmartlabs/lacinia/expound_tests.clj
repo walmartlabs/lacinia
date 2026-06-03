@@ -15,7 +15,7 @@
 (ns com.walmartlabs.lacinia.expound-tests
   "Tests that useful Expound messages are emitted for spec failures."
   (:require
-    [clojure.test :refer [deftest is use-fixtures]]
+    [clojure.test :refer [deftest is]]
     [com.walmartlabs.test-reporting :refer [reporting]]
     com.walmartlabs.lacinia.expound
     [com.walmartlabs.lacinia.schema :as schema]

@@ -17,7 +17,7 @@
   {:added "0.27.0"}
   (:require
     [clojure.string :as str]
-    [com.walmartlabs.lacinia.internal-utils :refer [cond-let]]))
+    [better-cond.core :as b]))
 
 (def ^:private header-re
   ;; Don't really care how deep the heading is
@@ -39,7 +39,7 @@
          result {}
          header nil
          block []]
-    (cond-let
+    (b/cond
       (nil? lines)
       (if header
         (assoc result header (combine-block block))

@@ -16,6 +16,7 @@
 
 (ns build
   (:require [clojure.string :as string]
+            [clj-commons.ansi :refer [pout]]
             [clojure.tools.build.api :as build]
             [net.lewisship.build :as b]))
 
@@ -69,3 +70,21 @@
   (println "Pushing changes ...")
   (build/process {:dir publish-dir
               :command-args ["git" "push"]}))
+
+(defn lint
+      "Lint source files using clj-kondo."
+      [opts]
+      (let [lint-options (merge {:lint ["src" "test"]
+                                 :config
+                                 {:linters
+                                  {:unresolved-symbol
+                                   {:exclude '[(clojure.test/is [match?])]}}}}
+                                opts)
+            kondo-run!   (requiring-resolve 'clj-kondo.core/run!)
+            kondo-print! (requiring-resolve 'clj-kondo.core/print!)
+            results      (kondo-run! lint-options)]
+           (kondo-print! results)
+           (when (pos? (get-in results [:summary :errors] 0))
+                 (pout [:red [:bold "ERROR"] ": clj-kondo found errors 😢"])
+                 (System/exit -1))
+           (pout [:bold.green "clj-kondo approves ☺️"])))

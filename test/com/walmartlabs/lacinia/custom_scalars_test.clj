@@ -16,11 +16,10 @@
   (:require [clojure.test :refer [deftest is testing]]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.test-schema :refer [test-schema]]
-            [com.walmartlabs.test-utils :refer [execute]]
+            [com.walmartlabs.test-utils :as utils :refer [execute]]
             [clojure.java.io :as io]
             [clojure.edn :as edn]
-            [com.walmartlabs.lacinia.util :as util]
-            [com.walmartlabs.test-utils :as utils])
+            [com.walmartlabs.lacinia.util :as util])
   (:import (java.text SimpleDateFormat)
            (java.util Date)
            (org.joda.time DateTime DateTimeConstants)
@@ -60,7 +59,7 @@
 
                                       :queries
                                       {:events {:type :galaxy_event
-                                                :resolve (fn [ctx args v]
+                                                :resolve (fn [_ctx _args _v]
                                                            {:lookup "200"})}}})
               q "{ events { lookup }}"]
           (is (= {:data {:events {:lookup "OK"}}} (execute schema q nil nil))
@@ -81,7 +80,7 @@
 
                                       :queries
                                       {:events {:type :galaxy_event
-                                                :resolve (fn [ctx args v]
+                                                :resolve (fn [_ctx _args _v]
                                                            ;; type of :lookup is :Event
                                                            ;; that is a custom scalar with
                                                            ;; a serialize function that
@@ -142,7 +141,7 @@
 
                                       :queries
                                       {:events {:type :galaxy_event
-                                                :resolve (fn [ctx args v]
+                                                :resolve (fn [_ctx _args _v]
                                                            {:lookup "200"})}}})
               q "{ events { lookup }}"]
           (is (= {:data {:events {:lookup "OK"}}} (execute schema q nil nil))
@@ -163,7 +162,7 @@
 
                                       :queries
                                       {:events {:type :galaxy_event
-                                                :resolve (fn [ctx args v]
+                                                :resolve (fn [_ctx _args _v]
                                                            ;; type of :lookup is :Event
                                                            ;; that is a custom scalar with
                                                            ;; a serialize function that
@@ -174,7 +173,7 @@
                                                            {:lookup 1})}
                                        :human {:type '(non-null :human)
                                                :args {:id {:type :EventId}}
-                                               :resolve (fn [ctx args v]
+                                               :resolve (fn [_ctx _args _v]
                                                           {:id "1000"
                                                            :name "Luke Skywalker"})}}})
               q1 "{ human(id: \"1003\") { id, name }}"
@@ -213,7 +212,7 @@
 
                  :queries {:today {:type :Date
                                    :args {:asOf {:type :Date}}
-                                   :resolve (fn [ctx args v] (:asOf args))}}})]
+                                   :resolve (fn [_ctx args _v] (:asOf args))}}})]
     (is (= {:data {:today "2017-04-05"}}
            (execute schema "query ($asOf : Date =  \"2017-04-05\") {
                               today (asOf: $asOf)
@@ -266,7 +265,7 @@
                                                  :serialize serialize-date}}
                                 :queries {:sundays {:type '(list (non-null :Date))
                                                     :args {:between {:type '(non-null (list (non-null :Date)))}}
-                                                    :resolve (fn [ctx args v]
+                                                    :resolve (fn [_ctx args _v]
                                                                (let [[start end] (:between args)]
                                                                  (sundays start end)))}}})]
     (is (= {:data {:sundays ["2017-03-05" "2017-03-12" "2017-03-19" "2017-03-26"]}}
@@ -420,7 +419,7 @@
           schema (schema/compile {:scalars scalars
                                   :queries {:shout {:type '(list (list (list :CustomType)))
                                                     :args {:words {:type '(list (list (list (non-null :CustomType))))}}
-                                                    :resolve (fn [ctx args v]
+                                                    :resolve (fn [_ctx args _v]
                                                                (:words args))}}})]
       (is (= {:errors [{:extensions {:argument :Query/shout.words
                                      :field-name :Query/shout
@@ -462,7 +461,7 @@
           schema (schema/compile {:scalars scalars
                                   :queries {:shout {:type '(list (list (list :CustomType)))
                                                     :args {:words {:type '(non-null (list (non-null (list (non-null (list :CustomType))))))}}
-                                                    :resolve (fn [ctx args v]
+                                                    :resolve (fn [_ctx args _v]
                                                                (:words args))}}})]
       (is (= {:data {:shout [[[nil]]]}}
              (execute schema "query ($words: [[[CustomType]!]!]!) {

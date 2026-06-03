@@ -246,17 +246,6 @@
 
 ;; Validation of directives and elements using directives.
 
-(defn ^:private merge-exception-data
-  ([e]
-   (merge-exception-data e (ex-data e)))
-  ([^Throwable e data]
-   (let [next-e (.getCause e)]
-     (if (or (nil? next-e)
-             (identical? e next-e))
-       ;; This just makes the test verbose, so it's removed:
-       (dissoc data :schema-types)
-       (merge-exception-data next-e (merge data (ex-data e)))))))
-
 (defmacro directive-test
   [expected-msg expected-ex-data schema]
   `(expect-exception ~expected-msg ~expected-ex-data (schema/compile ~schema)))

@@ -18,12 +18,11 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [com.walmartlabs.lacinia.util :as util]
-   [com.walmartlabs.lacinia.internal-utils :refer [remove-keys is-internal-type-name? cond-let
-                                                   get-nested keepv]]
+   [com.walmartlabs.lacinia.internal-utils :refer [remove-keys is-internal-type-name? get-nested keepv]]
+   [better-cond.core :as b]
    [com.walmartlabs.lacinia.constants :as constants]
    [clojure.string :as str]
-   [clojure.data.json :as json]
-   [clojure.spec.alpha :as s]))
+   [clojure.data.json :as json]))
 
 (def ^:private category->kind
   {:scalar :SCALAR
@@ -272,7 +271,7 @@
 
 (defmulti emit-default-value
   (fn [schema type-map value]
-    (cond-let
+    (b/cond
       (nil? value)
       ::null
 
