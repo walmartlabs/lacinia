@@ -12,14 +12,29 @@ container's resolved value, and format it:
 
 .. code-block:: clojure
 
-    (fn [context args resolved-value]
-        (->> resolved-value
-             :updated-at
-             (format "%tm-%<td-%<tY")))
+    (defn resolve-updated-at
+      [context args resolved-value]
+      (->> resolved-value
+           :updated-at
+           (format "%tm-%<td-%<tY")))
+
+        ...
+        (inject-resolvers {:MyType/updatedAt resolve-updated-at})
 
 This example is tied to a specific key (``:updated-at``) and a specific format.
-A :ref:`resolver factory <resolver-factory>` could be used to make this a more general
-pattern.
+
+If this kind of transformation will apply to many different fields, you could
+easily create a function factory:
+
+.. code-block:: clojure
+
+    (defn resolve-date-field
+      [k fmt]
+      (fn [context args resolved-value]
+        (format fmt (get resolved-value k))))
+
+      ...
+      (inject-resolvers {:MyType/updatedAt (resolve-date-field :updated-at "%tm-%<td-%<tY)})
 
 Accessing a Java Instance Method
 --------------------------------
@@ -29,9 +44,9 @@ This fights against the grain of Lacinia, which expects schema objects to be Clo
 
 It would be tedious to write a custom field resolver function for each and every
 Java instance method that needs to be invoked.
-Instead, we can use a :ref:`resolver factory <resolver-factory>`.
+Instead, we can use a factory function:
 
-.. literalinclude:: ../_examples/resolve-method.edn
+.. literalinclude:: /_examples/resolve-method.edn
    :language: clojure
 
 This won't be the most efficient approach, since it has to lookup a method on each use and then

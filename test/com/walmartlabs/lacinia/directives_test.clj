@@ -59,6 +59,44 @@
              (execute compiled-schema q {:include true} nil))
           "should return both fields"))))
 
+(deftest external-fragments
+  (testing "when @skip is set on an external fragment"
+    (let [q "fragment IdFrag on human {
+               id @skip(if: $skip)
+             }
+             query ($skip : Boolean!) {
+               human(id: \"1000\") {
+                 name
+                 ... IdFrag
+               }
+             }
+             "]
+      (is (= {:data {:human {:name "Luke Skywalker"}}}
+             (execute compiled-schema q {:skip true} nil))
+          "should return name only")
+      (is (= {:data {:human {:name "Luke Skywalker"
+                             :id "1000"}}}
+             (execute compiled-schema q {:skip false} nil))
+          "should return both fields")))
+
+  (testing "when @include is set on an external fragment"
+    (let [q "fragment IdFrag on human {
+               id @include(if: $include)
+             }
+             query ($include : Boolean!) {
+               human(id: \"1000\") {
+                 name
+                 ... IdFrag
+               }
+             }"]
+      (is (= {:data {:human {:name "Luke Skywalker"}}}
+             (execute compiled-schema q {:include false} nil))
+          "should return name only")
+      (is (= {:data {:human {:name "Luke Skywalker"
+                             :id "1000"}}}
+             (execute compiled-schema q {:include true} nil))
+          "should return both fields"))))
+
 (deftest mixed-directives
   (testing "when both @skip and @include are set"
     (let [q "query ($skip: Boolean!, $include: Boolean!) {
@@ -208,17 +246,6 @@
 
 ;; Validation of directives and elements using directives.
 
-(defn ^:private merge-exception-data
-  ([e]
-   (merge-exception-data e (ex-data e)))
-  ([^Throwable e data]
-   (let [next-e (.getCause e)]
-     (if (or (nil? next-e)
-             (identical? e next-e))
-       ;; This just makes the test verbose, so it's removed:
-       (dissoc data :schema-types)
-       (merge-exception-data next-e (merge data (ex-data e)))))))
-
 (defmacro directive-test
   [expected-msg expected-ex-data schema]
   `(expect-exception ~expected-msg ~expected-ex-data (schema/compile ~schema)))
@@ -310,8 +337,10 @@
 (deftest union-directive-inapplicable
   (directive-test
     "Directive @deprecated on union `Ebb' is not applicable."
-    {:allowed-locations #{:enum-value
-                          :field-definition}
+    {:allowed-locations #{:argument-definition
+                          :enum-value
+                          :field-definition
+                          :input-field-definition}
      :directive-type :deprecated
      :union :Ebb}
     {:objects
@@ -336,8 +365,10 @@
 (deftest scalar-directive-inapplicable
   (directive-test
     "Directive @deprecated on scalar `Ebb' is not applicable."
-    {:allowed-locations #{:enum-value
-                          :field-definition}
+    {:allowed-locations #{:argument-definition
+                          :enum-value
+                          :field-definition
+                          :input-field-definition}
      :directive-type :deprecated
      :scalar :Ebb}
     {:scalars
@@ -455,6 +486,18 @@
     (is (= true
            (get-in schema [:Account :fields :id :deprecated])))))
 
+(deftest can-deprecate-input-fields
+  (let [schema (schema/compile
+                 {:input-objects
+                  {:Character
+                   {:description "A character"
+                    :fields {:name {:type '(non-null String)
+                                    :description "Character name"}
+                             :weapon {:type '(non-null String)
+                                      :directives [{:directive-type :deprecated}]
+                                      :description "Weapon of choice"}}}}})]
+    ;; Exception is not thrown
+    (is (any? schema))))
 
 (deftest can-deprecate-enum-values
   (let [schema (schema/compile
@@ -468,4 +511,3 @@
                     :enum-value :green}
             :red {:enum-value :red}}
            (get-in schema [:Color :values-detail])))))
-

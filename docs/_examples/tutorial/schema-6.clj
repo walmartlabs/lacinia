@@ -1,4 +1,4 @@
-(ns clojure-game-geek.schema
+(ns my.clojure-game-geek.schema
   "Contains custom resolvers and a function to provide the full schema."
   (:require
     [clojure.java.io :as io]
@@ -22,8 +22,8 @@
 (defn rate-game
   [db]
   (fn [_ args _]
-    (let [{game-id :game_id
-           member-id :member_id
+    (let [{game-id :gameId
+           member-id :memberId
            rating :rating} args
           game (db/find-game-by-id db game-id)
           member (db/find-member-by-id db member-id)]
@@ -79,11 +79,11 @@
 (defn resolver-map
   [component]
   (let [db (:db component)]
-    {:query/game-by-id (game-by-id db)
-     :query/member-by-id (member-by-id db)
-     :mutation/rate-game (rate-game db)
+    {:Query/gameById (game-by-id db)
+     :Query/memberById (member-by-id db)
+     :Mutation/rateGame (rate-game db)
      :BoardGame/designers (board-game-designers db)
-     :BoardGame/rating-summary (rating-summary db)
+     :BoardGame/ratingSummary (rating-summary db)
      :GameRating/game (game-rating->game db)
      :Designer/games (designer-games db)
      :Member/ratings (member-ratings db)}))

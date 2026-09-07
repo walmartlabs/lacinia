@@ -14,16 +14,15 @@
 
 (ns com.walmartlabs.lacinia.util
   "Useful utility functions."
-  (:require
-    [com.walmartlabs.lacinia.internal-utils
-     :as internal
-     :refer [to-message map-vals cond-let update? apply-description
-             name->path assoc-in!]]))
+  (:require [com.walmartlabs.lacinia.internal-utils
+             :refer [to-message map-vals update? apply-description
+                     name->path assoc-in!]]
+            [better-cond.core :as b]))
 
 (defn ^:private attach-callbacks
   [field-container callbacks-map callback-kw error-name]
   (map-vals (fn [field]
-              (cond-let
+              (b/cond
                 :let [reference (get field callback-kw)]
 
                 (nil? reference)
@@ -68,8 +67,8 @@
   The first value in the seq is used to select the resolver factory function, which
   is then invoked, via `apply`, with the remaining values in the seq."
   [schema resolver-m]
-  (let [f (fn [field-container]
-            (attach-callbacks field-container resolver-m :resolve "Resolver"))
+  (let [f        (fn [field-container]
+                   (attach-callbacks field-container resolver-m :resolve "Resolver"))
         f-object #(update % :fields f)]
     (-> schema
         (update? :objects #(map-vals f-object %))
@@ -114,12 +113,12 @@
   (let [f (fn [enums enum m]
             (when-not (contains? enums enum)
               (throw (ex-info "Undefined enum when injecting enum transformer."
-                              {:enum enum
+                              {:enum  enum
                                :enums (-> enums keys sort vec)})))
             (let [{:keys [parse serialize]} m]
               (update enums enum #(cond-> %
-                                          parse (assoc :parse parse)
-                                          serialize (assoc :serialize serialize)))))]
+                                    parse (assoc :parse parse)
+                                    serialize (assoc :serialize serialize)))))]
     (update schema :enums #(reduce-kv f % transform-m))))
 
 (defn inject-scalar-transformers
@@ -134,7 +133,7 @@
   (let [f (fn [scalars scalar m]
             (when-not (contains? scalars scalar)
               (throw (ex-info "Undefined scalar when injecting scalar transformer"
-                              {:scalar scalar
+                              {:scalar  scalar
                                :scalars (-> scalars keys sort vec)})))
             (let [{:keys [parse serialize]} m]
               (update scalars scalar assoc :parse parse :serialize serialize)))]
@@ -151,11 +150,11 @@
    (as-error-map t nil))
   ([^Throwable t more-data]
    (let [extension-data (merge (ex-data t) more-data)
-         locations (:locations extension-data)
+         locations      (:locations extension-data)
          remaining-data (dissoc extension-data :locations)]
      (cond-> {:message (to-message t)}
-             locations (assoc :locations locations)
-             (seq remaining-data) (assoc :extensions remaining-data)))))
+       locations (assoc :locations locations)
+       (seq remaining-data) (assoc :extensions remaining-data)))))
 
 (defn inject-descriptions
   "Injects documentation into a schema, as `:description` keys on various elements

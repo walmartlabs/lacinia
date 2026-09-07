@@ -19,9 +19,10 @@
   (:require
     [clojure.string :as str]
     [com.walmartlabs.lacinia.internal-utils
-     :refer [cond-let update? q map-vals filter-vals remove-vals
+     :refer [q map-vals filter-vals remove-vals
              with-exception-context throw-exception to-message seek
              keepv as-keyword *exception-context* get-nested]]
+    [better-cond.core :as b]
     [com.walmartlabs.lacinia.select-utils :as su]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.constants :as constants]
@@ -58,6 +59,10 @@
 ;; At some point, this will move to the schema when we work out how to do extensible
 ;; directives. A directive effector is invoked during the prepare phase to modify
 ;; a node based on the directive arguments.
+;;
+;; TODO: This creates inconsistency with schema.clj's compile-directive-defs which
+;; defines @deprecated. Future improvement: consolidate all
+;; builtin directive definitions into schema directive-defs for consistency.
 (def ^:private builtin-directives
   (let [if-arg {:if {:type {:kind :non-null
                             :type {:kind :root
@@ -246,7 +251,7 @@
                                  (q type-name))
                          {:category (:category scalar-type)}))
 
-      (cond-let
+      (b/cond
         (nil? arg-value)
         nil
 
@@ -359,8 +364,10 @@
       (throw-exception "Provided argument value is an array, but the argument is not a list.")
 
       :list
-      (let [fake-argument-def (use-nested-type argument-definition)]
-        (mapv #(process-literal-argument schema fake-argument-def %) arg-value)))))
+      ;; if arg-value is nil, should return nil (no coercion is required)
+      (when (some? arg-value)
+        (let [fake-argument-def (use-nested-type argument-definition)]
+          (mapv #(process-literal-argument schema fake-argument-def %) arg-value))))))
 
 (defn ^:private decapitalize
   [s]
@@ -483,7 +490,7 @@
 
 (defn ^:private construct-literal-argument
   [schema result argument-type arg-value]
-  (cond-let
+  (b/cond
     :let [nested-type (:type argument-type)
           kind (:kind argument-type)]
 
@@ -527,18 +534,23 @@
     [:enum (as-keyword result)]
 
     (= category :input-object)
-    [:object (let [object-fields (get-nested schema [nested-type :fields])]
-               (reduce (fn [acc k]
-                         (let [v (get result k)
-                               field-type (get object-fields k)]
-                           (when-not (contains? object-fields k)
-                             (throw-exception "Field not defined for input object."
-                                              {:field-name k
-                                               :input-object-type nested-type
-                                               :input-object-fields (-> object-fields keys sort vec)}))
-                           (assoc acc k (construct-literal-argument schema v field-type arg-value))))
-                       {}
-                       (keys result)))]
+    [:object (if-not (map? result)
+               (throw-exception (format "Invalid value for input object %s."
+                                        (q nested-type))
+                                {:input-object-type nested-type
+                                 :value result})
+               (let [object-fields (get-nested schema [nested-type :fields])]
+                 (reduce (fn [acc k]
+                           (let [v (get result k)
+                                 field-type (get object-fields k)]
+                             (when-not (contains? object-fields k)
+                               (throw-exception "Field not defined for input object."
+                                                {:field-name k
+                                                 :input-object-type nested-type
+                                                 :input-object-fields (-> object-fields keys sort vec)}))
+                             (assoc acc k (construct-literal-argument schema v field-type arg-value))))
+                         {}
+                         (keys result))))]
 
     :else
     (throw (IllegalStateException. "Sanity check - no option in construct-literal-argument."))))
@@ -573,7 +585,7 @@
 
       (fn [variables]
         (with-exception-context captured-context
-          (cond-let
+          (b/cond
             :let [result (get variables arg-value)]
 
             ;; So, when a client provides variables, sometimes you get a string
@@ -633,8 +645,9 @@
 
 (defmethod process-dynamic-argument :array
   [schema argument-definition arg]
-  ;; Sneaky: strip off the outer layer of `(list T)` to be just `T`:
-  (let [argument-definition' (update argument-definition :type :type)
+  ;; Sneaky: strip off the outer layer of `(list T)` or `(non-null (list T))` to be just `T`:
+  (let [argument-definition' (cond-> (use-nested-type argument-definition)
+                               (non-null-kind? argument-definition) use-nested-type)
         extractors (mapv #(process-dynamic-argument schema argument-definition' %)
                          ;; The list of values for the array argument
                          (second arg))]
@@ -775,9 +788,9 @@
                           :arguments-extractor dynamic-arguments-extractor)
                         map->Directive))
                   (throw-exception (format "Unknown directive %s."
-                                           (q directive-name)
+                                           (q directive-name))
                                            {:unknown-directive directive-name
-                                            :available-directives (-> all-directive-defs keys sort)}))))))]
+                                            :available-directives (-> all-directive-defs keys sort)})))))]
     (mapv f parsed-directives)))
 
 (def ^:private typename-field-definition
@@ -882,7 +895,7 @@
   "Given a collection of parsed operation definitions and an operation name (which
   might be nil), retrieve the requested operation definition from the document."
   [operations operation-name]
-  (cond-let
+  (b/cond
     :let [operation-key (when-not (str/blank? operation-name)
                           (as-keyword operation-name))
           operation-count (count operations)
@@ -1434,4 +1447,3 @@
   (->> parsed-query
        :selections
        (summarize-selections parsed-query)))
-

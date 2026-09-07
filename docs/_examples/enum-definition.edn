@@ -1,4 +1,4 @@
 {:enums
- {:episode
+ {:Episode
   {:description "The episodes of the original Star Wars trilogy."
    :values [:NEWHOPE :EMPIRE :JEDI]}}}

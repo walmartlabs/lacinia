@@ -41,7 +41,7 @@
   [_ _ value]
   (let [resolved-value (resolve/resolve-promise)
         f (fn []
-            (Thread/sleep (::delay value))
+            (Thread/sleep ^long (::delay value))
             (resolve/deliver! resolved-value (::slow value)))
         thread (Thread. ^Runnable f)]
     (.start thread)
@@ -101,3 +101,12 @@
                                     (mapv :duration))]
                  (is (= 6 (count durations)))))))
 
+(deftest parsing-and-validation-timings-are-non-nil
+  ;; Regression test for https://github.com/walmartlabs/lacinia/issues/448
+  (let [result (q "{ root(delay: 5) { simple }}" enable-timing)
+        {:keys [parsing validation]} (get-in result [:extensions :tracing])]
+    (reporting result
+               (is (some? (:startOffset parsing)) "parsing startOffset should not be nil")
+               (is (pos? (:duration parsing)) "parsing duration should be positive")
+               (is (some? (:startOffset validation)) "validation startOffset should not be nil")
+               (is (pos? (:duration validation)) "validation duration should be positive"))))

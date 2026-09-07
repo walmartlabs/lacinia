@@ -14,7 +14,7 @@
 
 (ns ^:no-doc com.walmartlabs.lacinia.resolve-utils
   (:require [com.walmartlabs.lacinia.resolve :as resolve]
-            [com.walmartlabs.lacinia.internal-utils :refer [cond-let]])
+            [better-cond.core :as b])
   (:import (com.walmartlabs.lacinia.resolve ResolverResultImpl)))
 
 (defn aggregate-results
@@ -26,7 +26,7 @@
   ([resolver-results]
    (aggregate-results resolver-results identity))
   ([resolver-results xf]
-   (cond-let
+   (b/cond
      :let [results (if (vector? resolver-results)
                      resolver-results
                      (vec resolver-results))

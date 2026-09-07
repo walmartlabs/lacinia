@@ -16,7 +16,7 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [clojure.test :refer [deftest testing is]]
+            [clojure.test :refer [deftest is]]
             [com.walmartlabs.lacinia :as lacinia]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.lacinia.util :as util]
@@ -517,7 +517,15 @@
                                                   :name "Boolean"
                                                   :ofType nil}}}]
                           :description "Include the selection only when the `if` argument is true."
-                          :name "include"}]
+                          :name "include"}
+                         {:args [{:defaultValue "\"No longer supported\""
+                                  :description "Reason for deprecation."
+                                  :name "reason"
+                                  :type {:kind :SCALAR
+                                         :name "String"
+                                         :ofType nil}}]
+                          :description "Marks an element of a GraphQL schema as no longer supported."
+                          :name "deprecated"}]
             :mutationType {:name "Mutation"}
             :queryType {:name "Query"}
             :types [{:description nil
@@ -1478,7 +1486,7 @@
 
 (deftest enum-transformer-default-value
   (let [;; Create kebab-cased namespaced keywords for enum values
-        parse-country     (fn [code] (keyword :country-code (str/lower-case (name code))))
+        parse-country     (fn [code] (keyword "country-code" (str/lower-case (name code))))
         ;; upper case, non namespaced keywords are in the schema
         serialize-country (fn [code] (str/upper-case (name code)))
         schema (-> (io/resource "enum-default-value-with-transformer-schema.edn")

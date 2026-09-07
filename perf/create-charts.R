@@ -1,4 +1,4 @@
-#!/usr/local/bin/Rscript 
+#!Rscript
 
 # Execute with `Rscript create-charts.R`
 # Reads perf/benchmarks.csv and generates two PNG charts into perf

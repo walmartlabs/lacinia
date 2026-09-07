@@ -2,6 +2,7 @@
 
 
 [![Clojars Project](https://img.shields.io/clojars/v/com.walmartlabs/lacinia.svg)](https://clojars.org/com.walmartlabs/lacinia)
+[![CI](https://github.com/walmartlabs/lacinia/actions/workflows/config.yml/badge.svg)](https://github.com/walmartlabs/lacinia/actions/workflows/config.yml)
 
 [Lacinia Manual](http://lacinia.readthedocs.io/en/latest/) |
 [Lacinia Tutorial](http://lacinia.readthedocs.io/en/latest/tutorial) |
@@ -18,13 +19,21 @@ sitting between the GraphQL client and your data.
 
 Lacinia features:
 
-- An [EDN](https://github.com/edn-format/edn)-based schema language.
+- An [EDN](https://github.com/edn-format/edn)-based schema language, or use
+  GraphQL's [Interface Definition Language](http://spec.graphql.org/June2018/#sec-Type-System).
 
 - High performance parser for GraphQL queries, built on [Antlr4](http://www.antlr.org/).
 
 - Efficient and asynchronous query execution.
 
 - Full support for GraphQL types, interfaces, unions, enums, input objects, and custom scalars.
+- Union types in SDL now support an optional leading vertical bar (|) before the first member, following the GraphQL specification. For example:
+
+  ```graphql
+  union Searchable =
+    | Business
+    | Employee
+  ```
 
 - Full support for GraphQL subscriptions.
 
@@ -34,7 +43,7 @@ Lacinia features:
 
 Lacinia has been developed with a set of core philosophies:
 
-- Prefer data over macros and other tricks. Compose your schema in whatever mix of data and code works for you.
+- Prefer data over macros and other tricks: Compose your schema in whatever mix of data and code works for you.
 
 - Embrace Clojure: Use EDN data, keywords, functions, and persistent data structures.
 
@@ -53,78 +62,74 @@ for [Duct](https://github.com/duct-framework/duct).
 
 For more detailed documentation, [read the manual](http://lacinia.readthedocs.io/en/latest/).
 
-GraphQL starts with a schema definition of exposed types.
+### Using as a Dependency
+
+When using Lacinia as a dependency, you may need to prepare the library:
+
+```bash
+clojure -X:deps prep
+```
+
+This is required because Lacinia uses precompiled ANTLR parsers that need to be built before use.
+
+GraphQL starts with a schema definition of types that can be queried.
 
 A schema starts as an EDN file; the example below demonstrates a small subset
 of the available options:
 
 ```clojure
 {:enums
- {:episode
+ {:Episode
   {:description "The episodes of the original Star Wars trilogy."
    :values [:NEWHOPE :EMPIRE :JEDI]}}
 
  :objects
- {:droid
-  {:fields {:primary_functions {:type (list String)}
-            :id {:type Int}
+ {:Droid
+  {:fields {:id {:type Int}
+            :primaryFunctions {:type (list String)}
             :name {:type String}
-            :appears_in {:type (list :episode)}}}
+            :appearsIn {:type (list :Episode)}}}
 
-  :human
+  :Human
   {:fields {:id {:type Int}
             :name {:type String}
-            :home_planet {:type String}
-            :appears_in {:type (list :episode)}}}}
-
- :queries
- {:hero {:type (non-null :human)
-         :args {:episode {:type :episode}}
-         :resolve :get-hero}
-  :droid {:type :droid
-          :args {:id {:type String :default-value "2001"}}
-          :resolve :get-droid}}}
+            :homePlanet {:type String}
+            :appearsIn {:type (list :Episode)}}}
+  :Query
+  {:fields {:hero {:type (non-null :Human)
+                   :args {:episode {:type :Episode}}}
+            :droid {:type :Droid
+                    :args {:id {:type String 
+                                :default-value "2001"}}}}}}}
 ```
-
+The fields of the special Query object define the query operations available; with this schema,
+a client can find the Human `hero` of an episode, or find a `Droid` by its id.
 
 A schema alone describes what data is available to clients, but doesn't identify where
-the data comes from; that's the job of a field resolver, provided by the
-:resolve key inside fields such as the :hero and :droid query.
-
-The values here, :get-hero and :get-droid, are placeholders; the startup code
-of the application will use
-`com.walmartlabs.lacinia.util/attach-resolvers` to attach the actual
-field resolver function.
+the data comes from; that's the job of a field resolver.
 
 A field resolver is just a function which is passed the application context,
 a map of arguments values, and a resolved value from a
 parent field.
-The field resolver returns a value. If it's a scalar type, it should return a value
-that conforms to the defined type in the schema.
-If not, it's a type error.
+The field resolver returns a value consistent with the type of the field; most field resolvers
+return a Clojure map or record, or a list of those.  Lacinia then uses the GraphQL query to 
+select fields of that value to return in the response.
 
-The field resolver is totally responsible for obtaining the data from whatever
-external store you use: whether it is a database, a web service, or something
-else.
-
-It's important to understand that _every_ field has a field resolver, even if
-you don't define it explicitly.  If you don't supply a field resolver,
-Lacinia provides a default field resolver, customized to the field.
-
-Here's what the `get-hero` field resolver might look like:
+Here's what a very opinionated `get-hero` field resolver might look like:
 
 ```clojure
-(defn get-hero [context arguments value]
+(defn get-hero 
+  [context arguments value]
   (let [{:keys [episode]} arguments]
     (if (= episode :NEWHOPE)
       {:id 1000
        :name "Luke"
-       :home_planet "Tatooine"
-       :appears_in ["NEWHOPE" "EMPIRE" "JEDI"]}
+       :homePlanet "Tatooine"
+       :appearsIn ["NEWHOPE" "EMPIRE" "JEDI"]}
       {:id 2000
        :name "Lando Calrissian"
-       :home_planet "Socorro"
-       :appears_in ["EMPIRE" "JEDI"]})))
+       :homePlanet "Socorro"
+       :appearsIn ["EMPIRE" "JEDI"]})))
 ```
 
 In this greatly simplified example, the field resolver can simply return the resolved value.
@@ -133,8 +138,8 @@ Field resolvers that return multiple values return a list, vector, or set of val
 In real applications, a field resolver might execute a query against a database,
 or send a request to another web service.
 
-After attaching resolvers, it is necessary to compile the schema; this
-step performs validations, provide defaults, and organizes the schema
+After injecting resolvers, it is necessary to compile the schema; this
+step performs validations, provides defaults, and organizes the schema
 for efficient execution of queries.
 
 This needs only be done once, in application startup code:
@@ -142,15 +147,15 @@ This needs only be done once, in application startup code:
 
 ```clojure
 (require '[clojure.edn :as edn]
-         '[com.walmartlabs.lacinia.util :refer [attach-resolvers]]
+         '[com.walmartlabs.lacinia.util :refer [inject-resolvers]]
          '[com.walmartlabs.lacinia.schema :as schema])
 
 (def star-wars-schema
   (-> "schema.edn"
       slurp
       edn/read-string
-      (attach-resolvers {:get-hero get-hero
-                         :get-droid (constantly {})})
+      (inject-resolvers {:Query/hero get-hero
+                         :Query/droid (constantly {})})
       schema/compile))
 ```
 
@@ -206,7 +211,7 @@ fields in the response:
 ```
 {
   hero(episode: NEWHOPE) {
-    movies: appears_in
+    movies: appearsIn
   }
 }
 ```
@@ -228,8 +233,36 @@ a dependency on [clojure-future-spec](https://github.com/tonsky/clojure-future-s
 
 More details are [in the manual](http://lacinia.readthedocs.io/en/latest/clojure.html).
 
+## Development
+
+Lacinia uses ANTLR-generated parsers for GraphQL query and schema parsing.
+
+### Building from Source
+
+Compile the Java sources:
+
+```bash
+clojure -T:build compile-java
+```
+
+This compiles the ANTLR-generated parser classes into `target/classes`.
+
+### Regenerating Parsers
+
+If you modify the ANTLR grammar files (`.g4`), regenerate the Java parsers:
+
+```bash
+./codegen.sh
+```
+
+### Running Tests
+
+```bash
+clojure -X:dev:test
+```
+
 ## License
 
-Copyright © 2017-2021 WalmartLabs
+Copyright © 2017-2025 WalmartLabs
 
 Distributed under the Apache License, Version 2.0.

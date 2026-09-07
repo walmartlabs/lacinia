@@ -1,19 +1,20 @@
-{:objects
- {:person
+{:unions
+ {:SearchResult
+  {:members [:Person :Photo]}}
+
+ :objects
+ {:Person
   {:fields {:name {:type String}
             :age {:type Int}}}
 
-  :photo
+  :Photo
   {:fields {:imageURL {:type String}
             :title {:type String}
             :height {:type Int}
-            :width {:type Int}}}}
+            :width {:type Int}}}
 
- :unions
- {:search_result
-  {:members [:person :photo]}}
-
- :queries
- {:search
-  {:type (list :search_result)
-   :args {:term String}}}}
+  :Query
+  {:fields
+   {:search
+    {:type (list :SearchResult)
+     :args {:term String}}}}}}

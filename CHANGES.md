@@ -1,4 +1,39 @@
-## 1.2 - Not Released
+## 1.3.0 -- 2 Jun 2026
+
+This release of Lacinia improves performance by providing a pre-built Antlr4J parser
+(this required generating and compiling Java classes, rather than using interpreted parsing).
+It also addresses missing support for certain GraphQL schema syntaxes, and improves
+schema introspection and validation.
+
+It also updates compliance with the specification, including allowing interfaces to
+implement other interfaces.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/34?closed=1)
+
+## 1.2.2 - 8 Feb 2024
+
+A few minor bug fixes.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/31?closed=1)
+
+## 1.2.1 - 5 Apr 2023
+
+Fixed a bug that could prevent subscriptions for operating correctly.
+
+[Closed Issues](https://github.com/walmartlabs/lacinia/milestone/30?closed=1)
+
+## 1.2 - 3 Feb 2023
+
+A new schema compile option, :executor, has been added;
+this is an `Executor` used primarily when invoking
+`ResolverResultPromise` callbacks.  If omitted, a default executor is provided.
+Most applications, especially those that make heavy use of 
+`com.walmartlabs.lacinia.resolve/resolve-promise`, will want to provide their own executor. 
+
+Subscription streamer functions can now be wrapped to implement field definition directives
+using a new schema compilation option.
+
+Subscription streamer functions can now access the field selections (via the _preview api_).
 
 [Closed Issues](https://github.com/walmartlabs/lacinia/issues?q=is%3Aclosed+milestone%3A1.2)
 

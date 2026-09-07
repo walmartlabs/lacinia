@@ -18,12 +18,12 @@ For example, in this query::
         product {
           upc
           name
-          highlighted_name
+          highlightedName
         }
      }
   }
 
-Here, the search term is provided to the ``products`` field, but is again needed by the ``highlighted_name``
+Here, the search term is provided to the ``products`` field, but is again needed by the ``highlightedName``
 field, to highlight the parts of the name that match the search term.
 
 The resolver for the ``products`` field can communicate this information

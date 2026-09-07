@@ -27,7 +27,7 @@ After at least two core committers provide the traditional feedback LGTM (looks 
 
 It is the submitter's responsibility to keep a PR up to date when it has conflicts with master.
 
-Please do not change the version number in :file:`project.clj`; the core committers will handle version number changes.
+Please do not change the version number in :file:`VERSION.txt`; the core committers will handle version number changes.
 Generally, we advance the version number immediately after a release.
 
 Please close PRs that are not ready to merge, or need other refinements, and re-open when ready.

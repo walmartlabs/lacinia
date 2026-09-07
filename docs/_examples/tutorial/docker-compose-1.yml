@@ -2,6 +2,7 @@ version: '3'
 services:
   db:
     ports:
-    - 25432:5432
-    image: postgres:10.2-alpine
-
+      - 25432:5432
+    image: postgres:15.1-alpine
+    environment:
+      POSTGRES_PASSWORD: supersecret

@@ -14,9 +14,8 @@
 
 (ns com.walmartlabs.lacinia.variables-test
   (:require
-   [clojure.test :refer [deftest is are testing]]
+   [clojure.test :refer [deftest is testing]]
    [com.walmartlabs.test-schema :refer [test-schema]]
-   [com.walmartlabs.test-utils :refer [compile-schema execute]]
    [com.walmartlabs.lacinia :refer [execute-parsed-query]]
    [com.walmartlabs.lacinia.schema :as schema]
    [com.walmartlabs.lacinia.parser :as parser]))
@@ -117,13 +116,13 @@
                                          :args {:id {:type 'String}
                                                 :new_name {:type 'String}}
                                          :resolve (fn [ctx args v]
-                                                    (let [{:keys [id new_name]} args]
-                                                      (let [new-name (if (contains? args :new_name)
-                                                                       new_name
-                                                                       "Darth Bane")]
-                                                        (-> (get villains id)
-                                                            (assoc :name new-name)
-                                                            (with-tag)))))}}
+                                                    (let [{:keys [id new_name]} args
+                                                          new-name (if (contains? args :new_name)
+                                                                     new_name
+                                                                     "Darth Bane")]
+                                                      (-> (get villains id)
+                                                          (assoc :name new-name)
+                                                          (with-tag))))}}
                 :queries {:villain {:type :villain
                                     :args {:episode {:type 'String}}
                                     :resolve (fn [ctx args v]

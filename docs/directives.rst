@@ -34,7 +34,7 @@ to directive definition.  A directive defintion defines the types of any argumen
 .. literalinclude:: _examples/directive-defs.edn
    :language: clojure
 
-This defines a field definition directive, ``@access``, and applies it to the  ``ultimate_answer``
+This defines a field definition directive, ``@access``, and applies it to the  ``ultimateAnswer``
 query field.
 
 Directive Validation

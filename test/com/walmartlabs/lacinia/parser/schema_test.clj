@@ -162,7 +162,7 @@
 
 (deftest schema-extend-missing-type-fails
   (is (thrown-with-msg? Throwable #"Cannot extend type `Ebb' because it does not exist in the existing schema."
-                        (parse-string (str "extend type Ebb { b: String }")))))
+                        (parse-string "extend type Ebb { b: String }"))))
 
 (deftest schema-enums
   (is (= {:enums
@@ -180,18 +180,46 @@
              {:type 'String}}}}}
          (parse-string "interface Flow { ebb : String }"))))
 
+(deftest schema-interface-implements-interface
+  (is (= {:interfaces
+          {:Node {:fields {:id {:type 'ID}}}
+           :Post {:fields {:id {:type 'ID}
+                           :title {:type 'String}}
+                  :implements [:Node]}}}
+         (parse-string "interface Node { id: ID } interface Post implements Node { id: ID title: String }"))))
+
+(deftest schema-interface-implements-multiple-interfaces
+  (is (= {:interfaces
+          {:Node {:fields {:id {:type 'ID}}}
+           :Timestamped {:fields {:createdAt {:type 'String}}}
+           :Post {:fields {:id {:type 'ID}
+                           :createdAt {:type 'String}
+                           :title {:type 'String}}
+                  :implements [:Node :Timestamped]}}}
+         (parse-string (str "interface Node { id: ID } "
+                            "interface Timestamped { createdAt: String } "
+                            "interface Post implements Node & Timestamped { id: ID createdAt: String title: String }")))))
+
 (deftest schema-union
-  (is (= {:unions
-          {:Matter
-           {:members [:Solid :Liquid :Gas :Plasma :INPUT_OBJECT]}}}
-         (parse-string "union Matter = Solid | Liquid | Gas | Plasma | INPUT_OBJECT")))
+
+  (testing "basic union type"
+    (is (= {:unions
+            {:Matter
+             {:members [:Solid :Liquid :Gas :Plasma :INPUT_OBJECT]}}}
+           (parse-string "union Matter = Solid | Liquid | Gas | Plasma | INPUT_OBJECT"))))
+
+  (testing "leading pipe chars in union"
+    (is (= {:unions
+            {:Matter
+             {:members [:Solid :Liquid :Gas :Plasma :INPUT_OBJECT]}}}
+           (parse-string "union Matter = | Solid | Liquid | Gas | Plasma | INPUT_OBJECT"))))
 
   (testing "extensions"
-   (is (= {:unions
-           {:Matter
-            {:members [:Solid :Liquid :Gas :Plasma :INPUT_OBJECT]}}}
-          (parse-string (str "union Matter = Solid\n"
-                             "extend union Matter = Liquid | Gas | Plasma | INPUT_OBJECT"))))))
+    (is (= {:unions
+            {:Matter
+             {:members [:Solid :Liquid :Gas :Plasma :INPUT_OBJECT]}}}
+           (parse-string (str "union Matter = Solid\n"
+                              "extend union Matter = Liquid | Gas | Plasma | INPUT_OBJECT"))))))
 
 (deftest schema-field-args
   (is (= {:objects
@@ -382,7 +410,7 @@
   }"))))
 
 
-(deftest schema-directives
+(deftest schema-level-directives
   (is (= {:roots {:query :Query}
           :directives [{:directive-type :Schema}]}
          (parse-string "schema @Schema { query : Query }"))))

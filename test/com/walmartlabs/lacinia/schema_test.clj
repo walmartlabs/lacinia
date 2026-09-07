@@ -15,9 +15,8 @@
 (ns com.walmartlabs.lacinia.schema-test
   "Tests schema functions."
   (:require
-    [clojure.test :refer [deftest testing is are try-expr do-report]]
+    [clojure.test :refer [deftest testing is try-expr do-report]]
     [com.walmartlabs.test-reporting :refer [reporting]]
-    [clojure.spec.alpha :as s]
     [com.walmartlabs.lacinia.schema :as schema]
     [com.walmartlabs.lacinia.executor :as executor]
     [com.walmartlabs.lacinia.util :as util]

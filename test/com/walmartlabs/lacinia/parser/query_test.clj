@@ -73,7 +73,12 @@
   (testing "unicode"
     (is (= {:id "1138"
             :newHomePlanet "❄ＨＯＴＨ❄"}
-           (args "mutation { changeHeroHomePlanet(id: \"1138\", newHomePlanet: \"\\u2744\\uff28\\uff2f\\uff34\\uff28\\u2744\") {name}}")))))
+           (args "mutation { changeHeroHomePlanet(id: \"1138\", newHomePlanet: \"\\u2744\\uff28\\uff2f\\uff34\\uff28\\u2744\") {name}}"))))
+
+  (testing "not unicode"
+    (is (= {:id "1139"
+            :newHomePlanet "\\u2744\\uff28\\uff2f\\uff34\\uff28\\u2744"}
+           (args "mutation { changeHeroHomePlanet(id: \"1139\", newHomePlanet: \"\\\\u2744\\\\uff28\\\\uff2f\\\\uff34\\\\uff28\\\\u2744\") {name}}")))))
 
 (deftest query-reserved-word
   ;; Use 'query', 'mutation', and 'subscription' in various unusual places.
@@ -90,7 +95,7 @@
         e (is (thrown? Throwable
                        (parser/parse-query schema "query [hero]")))]
     (when e
-      (is (= "Failed to parse GraphQL query." (.getMessage e)))
+      (is (= "Failed to parse GraphQL query." (ex-message e)))
       ;; TODO: See if we can get a proper column number here!
       (is (= {:errors [{:locations [{:column nil
                                      :line 1}]
@@ -99,6 +104,22 @@
                                      :line 1}]
                         :message "mismatched input ']' expecting {'(', '{', '@'}"}]}
              (ex-data e))))))
+
+(deftest unbalanced-braces
+  ;; Regression test for https://github.com/walmartlabs/lacinia/issues/445
+  ;; ANTLR's error recovery can silently produce a valid parse tree for
+  ;; certain malformed queries with unbalanced/missing braces.
+  (testing "missing opening brace after query keyword"
+    (let [e (is (thrown? Throwable
+                         (parse-query "query\n  myQuery {\n    name\n  }\n}")))]
+      (when e
+        (is (= "Failed to parse GraphQL query." (ex-message e))))))
+
+  (testing "missing opening brace for nested field"
+    (let [e (is (thrown? Throwable
+                         (parse-query "query {\n  myQuery\n    name\n  }\n}")))]
+      (when e
+        (is (= "Failed to parse GraphQL query." (ex-message e)))))))
 
 (deftest requires-compiled-schema
   (is (thrown-with-msg? IllegalStateException

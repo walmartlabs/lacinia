@@ -1,14 +1,8 @@
 (ns com.walmartlabs.lacinia.invariant-test
-  (:require [clojure.edn :as edn]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.test :refer [deftest testing is]]
-            [com.walmartlabs.lacinia :as lacinia]
+  (:require [clojure.test :refer [deftest is]]
             [com.walmartlabs.lacinia.schema :as schema]
-            [com.walmartlabs.lacinia.util :as util]
             [com.walmartlabs.lacinia.parser :refer [parse-query invariant? prepare-with-query-variables]]
-            [com.walmartlabs.test-schema :refer [test-schema]]
-            [com.walmartlabs.test-utils :as utils :refer [simplify]]))
+            [com.walmartlabs.test-schema :refer [test-schema]]))
 
 (def ^:private compiled-schema (schema/compile test-schema))
 

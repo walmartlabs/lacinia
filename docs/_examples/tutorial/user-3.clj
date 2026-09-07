@@ -1,11 +1,10 @@
 (ns user
-  (:require
-    [clojure-game-geek.schema :as s]
-    [com.walmartlabs.lacinia :as lacinia]
-    [com.walmartlabs.lacinia.pedestal :as lp]
-    [io.pedestal.http :as http]
-    [clojure.java.browse :refer [browse-url]]
-    [clojure.walk :as walk])
+  (:require [my.clojure-game-geek.schema :as s]
+            [com.walmartlabs.lacinia :as lacinia]
+            [com.walmartlabs.lacinia.pedestal2 :as lp]
+            [io.pedestal.http :as http]
+            [clojure.java.browse :refer [browse-url]]
+            [clojure.walk :as walk])
   (:import (clojure.lang IPersistentMap)))
 
 (def schema (s/load-schema))
@@ -36,12 +35,10 @@
 
 (defn start-server
   [_]
-  (let [server (-> schema
-                   (lp/service-map {:graphiql true
-                                    :host "0.0.0.0"})
+  (let [server (-> (lp/default-service schema nil)
                    http/create-server
                    http/start)]
-    (browse-url "http://localhost:8888/")
+    (browse-url "http://localhost:8888/ide")
     server))
 
 (defn stop-server

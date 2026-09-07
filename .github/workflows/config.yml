@@ -1,0 +1,40 @@
+name: CI
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+jobs:
+  build:
+    strategy:
+      matrix:
+        java-version: ["11", "17", "21", "24"]
+        clojure-version: ["11", "12"]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ matrix.java-version }}
+          distribution: 'corretto'
+      - name: Setup Clojure
+        uses: DeLaGuardo/setup-clojure@13.6.1
+        with:
+          cli: 1.12.5.1654
+
+      - name: Cache clojure dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+            ~/.deps.clj
+          # List all files containing dependencies:
+          key: cljdeps-${{ hashFiles('deps.edn') }}
+
+      - name: Execute tests (JDK ${{ matrix.java-version}}, Clojure ${{matrix.clojure-version}})
+        run: clojure -T:build compile-java && clojure -X:dev:test:clojure-${{ matrix.clojure-version }}

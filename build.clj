@@ -15,34 +15,44 @@
 ;; clj -T:build <var>
 
 (ns build
-  (:require [clojure.tools.build.api :as build]
+  (:require [clojure.string :as string]
+            [clj-commons.ansi :refer [pout]]
+            [clojure.tools.build.api :as build]
             [net.lewisship.build :as b]))
 
 (def lib 'com.walmartlabs/lacinia)
-(def version "1.2-alpha-2")
+(def version (-> "VERSION.txt" slurp string/trim))
+(def class-dir "target/classes")
 
 (def jar-params {:project-name lib
-                 :version version})
+                 :version version
+                 :class-dir class-dir})
 
 (defn clean
   [_params]
   (build/delete {:path "target"}))
 
+(defn compile-java [_]
+  (build/javac {:src-dirs ["java"]
+                :class-dir class-dir
+                :basis (build/create-basis)
+                :javac-opts ["--release" "11"]}))
+
 (defn jar
   [_params]
+  (compile-java nil)
   (b/create-jar jar-params))
 
 (defn deploy
   [_params]
   (clean nil)
-  (jar nil)
-  (b/deploy-jar jar-params))
+  (b/deploy-jar (jar nil)))
 
 (defn codox
   [_params]
-  (b/codox {:project-name lib
-            :version version
-            :aliases [:dev]}))
+  (b/generate-codox {:project-name lib
+                     :version version
+                     :aliases [:dev]}))
 
 (def publish-dir "../apidocs/lacinia")
 
@@ -53,10 +63,28 @@
   (codox nil)
   (println "Copying documentation to" publish-dir "...")
   (build/copy-dir {:target-dir publish-dir
-               :src-dirs ["target/doc"]})
+                   :src-dirs ["target/doc"]})
   (println "Committing changes ...")
   (build/process {:dir publish-dir
-              :command-args ["git" "commit" "-a" "-m" (str "lacinia " version)]})
+                  :command-args ["git" "commit" "-a" "-m" (str "lacinia " version)]})
   (println "Pushing changes ...")
   (build/process {:dir publish-dir
               :command-args ["git" "push"]}))
+
+(defn lint
+      "Lint source files using clj-kondo."
+      [opts]
+      (let [lint-options (merge {:lint ["src" "test"]
+                                 :config
+                                 {:linters
+                                  {:unresolved-symbol
+                                   {:exclude '[(clojure.test/is [match?])]}}}}
+                                opts)
+            kondo-run!   (requiring-resolve 'clj-kondo.core/run!)
+            kondo-print! (requiring-resolve 'clj-kondo.core/print!)
+            results      (kondo-run! lint-options)]
+           (kondo-print! results)
+           (when (pos? (get-in results [:summary :errors] 0))
+                 (pout [:red [:bold "ERROR"] ": clj-kondo found errors 😢"])
+                 (System/exit -1))
+           (pout [:bold.green "clj-kondo approves ☺️"])))

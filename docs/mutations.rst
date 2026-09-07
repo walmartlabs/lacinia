@@ -10,9 +10,7 @@ A mutation is expected to perform some state changing operation, then return a v
 indicates the new state; this value will be recursively resolved and selected, just as with
 a query.
 
-Mutations are defined in the schema using the top-level ``:mutations`` key.
-
-Mutations may also be defined as fields of the :doc:`root mutation object <roots>`.
+Mutations are defined as fields of the :doc:`Mutation object <roots>`.
 
 When a single query includes more than one mutation, the mutations *must* execute in the client-specified
 order.

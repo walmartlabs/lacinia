@@ -152,3 +152,18 @@ query ($who : String) {
     }
   }
 }"))))
+
+(deftest merge-list-in-fragment
+  (is (= {:data {:luke {:name "Luke Skywalker"
+                        :appears_in [:NEWHOPE :EMPIRE :JEDI]}}}
+         (q "
+{
+  luke: human(id: \"1000\") {
+    name
+    appears_in
+    ...props
+  }
+}
+fragment props on human {
+  appears_in
+}"))))

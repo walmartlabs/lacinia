@@ -15,14 +15,13 @@
 (ns com.walmartlabs.lacinia.resolver-result-test
   (:require
     [clojure.test :refer [deftest is]]
-    [com.walmartlabs.lacinia.resolve :as r :refer [FieldResolver]]
+    [com.walmartlabs.lacinia.resolve :as resolve :refer [FieldResolver]]
     [com.walmartlabs.lacinia.select-utils :as su]
-    [com.walmartlabs.lacinia.resolve-utils :refer [aggregate-results]]
-    [com.walmartlabs.lacinia.resolve :as resolve])
+    [com.walmartlabs.lacinia.resolve-utils :refer [aggregate-results]])
   (:import (java.util.concurrent Executor)))
 
 (deftest resolve-as-returns-resolver-result
-  (is (satisfies? r/ResolverResult (r/resolve-as nil))))
+  (is (satisfies? resolve/ResolverResult (resolve/resolve-as nil))))
 
 (defn ^:private thread-name
   []
@@ -33,41 +32,41 @@
         callback (fn [value]
                    (deliver capture {:value value
                                      :thread-name (thread-name)}))
-        r (r/resolve-as :a-value)]
+        r (resolve/resolve-as :a-value)]
     (is (identical? r
-                    (r/on-deliver! r callback)))
+                    (resolve/on-deliver! r callback)))
     (is (= {:value :a-value
             :thread-name (thread-name)}
            (deref capture 100 nil)))))
 
 (deftest promise-callback-is-invoked
-  (let [p (r/resolve-promise)
+  (let [p (resolve/resolve-promise)
         capture (atom nil)
         callback (fn [value]
                    (reset! capture {:value value}))]
     (is (identical? p
-                    (r/on-deliver! p callback)))
+                    (resolve/on-deliver! p callback)))
     (is (nil? @capture))
 
     (is (identical? p
-                    (r/deliver! p :async-value)))
+                    (resolve/deliver! p :async-value)))
 
     (is (= {:value :async-value}
            @capture))))
 
 (deftest may-only-deliver-once
-  (let [p (r/resolve-promise)]
-    (r/deliver! p :first)
+  (let [p (resolve/resolve-promise)]
+    (resolve/deliver! p :first)
     (is (thrown? IllegalStateException
-                 (r/deliver! p :second)))))
+                 (resolve/deliver! p :second)))))
 
 (deftest may-only-add-callback-once
-  (let [p (r/resolve-promise)
+  (let [p (resolve/resolve-promise)
         callback1 (fn [_])
         callback2 (fn [_])]
-    (r/on-deliver! p callback1)
+    (resolve/on-deliver! p callback1)
     (is (thrown? IllegalStateException
-                 (r/on-deliver! p callback2)))))
+                 (resolve/on-deliver! p callback2)))))
 
 (deftest will-invoke-callback-using-provided-executor
   (let [*callback-values (atom [])
@@ -79,11 +78,11 @@
                    (execute [_ runnable]
                      (swap! *execute-count inc)
                      (.run runnable)))
-        resolve-result (r/resolve-promise)]
-    (r/on-deliver! resolve-result callback)
+        resolve-result (resolve/resolve-promise)]
+    (resolve/on-deliver! resolve-result callback)
 
-    (binding [r/*callback-executor* executor]
-      (r/deliver! resolve-result resolved-value))
+    (binding [resolve/*callback-executor* executor]
+      (resolve/deliver! resolve-result resolved-value))
 
     (is (= 1 @*execute-count))
     (is (= [resolved-value] @*callback-values))))
@@ -95,7 +94,7 @@
 (defn ^:private as-promise
   [resolver-result]
   (let [p (promise)]
-    (r/on-deliver! resolver-result p)
+    (resolve/on-deliver! resolver-result p)
     p))
 
 (defn ^:private apply-wrapped-values
@@ -110,32 +109,32 @@
 
 (deftest wrapper-invoked-for-raw-value
   (let [resolver-fn (constantly 100)
-        wrapped (r/wrap-resolver-result resolver-fn inc-wrapper)
+        wrapped (resolve/wrap-resolver-result resolver-fn inc-wrapper)
         *result (as-promise (wrapped nil nil nil))]
     (is (= 101 @*result))))
 
 (deftest supports-field-resolvers
   (let [resolver-fn (reify FieldResolver
                       (resolve-value [_ _ _ _] 97))
-        wrapped (r/wrap-resolver-result resolver-fn inc-wrapper)
+        wrapped (resolve/wrap-resolver-result resolver-fn inc-wrapper)
         *result (as-promise (wrapped nil nil nil))]
     (is (= 98 @*result))))
 
 (deftest wrapper-invoked-with-value-unpacked-from-resolver-result
-  (let [resolver-fn (constantly (r/resolve-as 200))
-        wrapped (r/wrap-resolver-result resolver-fn inc-wrapper)
+  (let [resolver-fn (constantly (resolve/resolve-as 200))
+        wrapped (resolve/wrap-resolver-result resolver-fn inc-wrapper)
         *result (as-promise (wrapped nil nil nil))]
     (is (= 201 @*result))))
 
 (deftest restores-commands-around-wrapped-value
   (let [resolver-fn (constantly (-> 300
-                                    (r/with-context {:gnip :gnop})
-                                    (r/with-error {:message "fail 1"})
-                                    (r/with-error {:message "fail 2"})
-                                    (r/with-warning {:message "warn 1"})
-                                    (r/with-warning {:message "warn 2"})
-                                    (r/with-extensions assoc-in [:fie :fie :foe] :fum)))
-        wrapped (r/wrap-resolver-result resolver-fn inc-wrapper)
+                                    (resolve/with-context {:gnip :gnop})
+                                    (resolve/with-error {:message "fail 1"})
+                                    (resolve/with-error {:message "fail 2"})
+                                    (resolve/with-warning {:message "warn 1"})
+                                    (resolve/with-warning {:message "warn 2"})
+                                    (resolve/with-extensions assoc-in [:fie :fie :foe] :fum)))
+        wrapped (resolve/wrap-resolver-result resolver-fn inc-wrapper)
         *result (as-promise (wrapped nil nil nil))
         *extensions (atom {})
         *errors (atom [])
@@ -168,22 +167,22 @@
            context'))))
 
 (deftest wrapped-value-may-itself-be-resolver-result
-  (let [resolver-promise (r/resolve-promise)
+  (let [resolver-promise (resolve/resolve-promise)
         resolver-fn (constantly resolver-promise)
-        wrapped (r/wrap-resolver-result resolver-fn inc-wrapper)
+        wrapped (resolve/wrap-resolver-result resolver-fn inc-wrapper)
         *result (as-promise (wrapped nil nil nil))]
-    (r/deliver! resolver-promise 500)
+    (resolve/deliver! resolver-promise 500)
     (is (= 501 (deref *result 100 ::no-value)))))
 
 (deftest resolver-result-promise-has-to-string
-  (let [p (r/resolve-promise)]
+  (let [p (resolve/resolve-promise)]
     (is (re-matches #"ResolverResultPromise\[\d+\]" (str p)))
 
-    (r/on-deliver! p identity)
+    (resolve/on-deliver! p identity)
 
     (is (re-matches #"ResolverResultPromise\[\d+\, callback]" (str p)))
 
-    (r/deliver! p :anything)
+    (resolve/deliver! p :anything)
 
     (is (re-matches #"ResolverResultPromise\[\d+\, callback, resolved]" (str p)))))
 
@@ -288,15 +287,15 @@
 
 (defrecord ^:private NonStandardRR []
 
-  r/ResolverResult
+  resolve/ResolverResult
   (on-deliver! [_ _]))
 
 (def recogonizes-resolver-result
   ;; Test the very optimized version of is-resolver-result?
   (let [reified (reify
-             r/ResolverResult
+             resolve/ResolverResult
              (on-deliver! [_ _]))
         record (->NonStandardRR)]
-    (is (r/is-resolver-result? reified))
-    (is (r/is-resolver-result? record))))
+    (is (resolve/is-resolver-result? reified))
+    (is (resolve/is-resolver-result? record))))
 

@@ -23,6 +23,7 @@
     [com.walmartlabs.lacinia.constants :as constants]
     [com.walmartlabs.lacinia.resolve :as resolve]
     [com.walmartlabs.lacinia.schema :as schema]
+    [com.walmartlabs.lacinia.selection :as selection]
     [com.walmartlabs.test-utils :as test-utils :refer [simplify]]))
 
 ;; There's not a whole lot we can do here, as most of the support has to come from the web tier code, e.g.,
@@ -30,6 +31,7 @@
 
 (def ^:private *latest-log-event (atom nil))
 (def ^:private *latest-response (atom nil))
+(def ^:private *instrumentation (atom 0))
 
 (def ^:private ^:dynamic *verbose* false)
 
@@ -62,43 +64,57 @@
                    (source-stream log-event))))
     #(remove-watch *latest-log-event watch-key)))
 
+(defn ^:private apply-subscription-field-directives
+  [fdef streamer]
+  (let [directives (-> fdef
+                       selection/directives
+                       keys
+                       set)]
+    (when (directives :instrument)
+      (fn [context args source-stream]
+        (swap! *instrumentation inc)
+        (streamer context args source-stream)))))
 
 (def ^:private compiled-schema
   (-> (io/resource "subscriptions-schema.edn")
       slurp
       edn/read-string
       (util/attach-streamers {:stream-logs stream-logs})
-      schema/compile))
+      (schema/compile {:apply-subscription-field-directives apply-subscription-field-directives})))
 
 (defn ^:private execute
-  [query-string vars]
-  (let [prepared-query (-> (parser/parse-query compiled-schema query-string)
-                           (parser/prepare-with-query-variables vars))
-        *cleanup-callback (promise)
-        context {constants/parsed-query-key prepared-query}
-        ;; For compatibility reasons, the value may be a ResolvedValue.
-        source-stream (fn accept-value [value]
-                        (cond
-                          (nil? value)
-                          (do
-                            (@*cleanup-callback)
-                            (reset! *latest-response nil))
+  ([query-string vars]
+   (execute compiled-schema query-string vars))
+  ([schema query-string vars]
+   (let [prepared-query (-> (parser/parse-query schema query-string)
+                            (parser/prepare-with-query-variables vars))
+         *cleanup-callback (promise)
+         context {constants/parsed-query-key prepared-query}
+         ;; For compatibility reasons, the value may be a ResolvedValue.
+         source-stream (fn accept-value [value]
+                         (cond
+                           (nil? value)
+                           (do
+                             (@*cleanup-callback)
+                             (reset! *latest-response nil))
 
-                          (resolve/is-resolver-result? value)
-                          (resolve/on-deliver! value accept-value)
+                           (resolve/is-resolver-result? value)
+                           (resolve/on-deliver! value accept-value)
 
-                          :else
-                          (resolve/on-deliver!
-                            (executor/execute-query (assoc context
-                                                           ::executor/resolved-value value))
-                            (fn [result]
-                              (reset! *latest-response result)))))]
-    (deliver *cleanup-callback (executor/invoke-streamer context source-stream))))
+                           :else
+                           (resolve/on-deliver!
+                             (executor/execute-query (assoc context
+                                                            ::executor/resolved-value value))
+                             (fn [result]
+                               (reset! *latest-response result)))))]
+     (deliver *cleanup-callback (executor/invoke-streamer context source-stream)))))
 
 (deftest basic-subscription
+  (reset! *instrumentation 0)
 
   (execute "subscription { logs {  message }}" nil)
 
+  (is (zero? @*instrumentation))
   (is (nil? (latest-response)))
 
   (log-event {:message "first"})
@@ -178,6 +194,12 @@
                                :type {:name "Boolean"}}
                               {:name "severity"
                                :type {:name "String"}}]
+                       :name "directive_logs"
+                       :type {:name "LogEvent"}}
+                      {:args [{:name "fakeError"
+                               :type {:name "Boolean"}}
+                              {:name "severity"
+                               :type {:name "String"}}]
                        :name "logs"
                        :type {:name "LogEvent"}}]}
             :types [{:name "Boolean"}
@@ -189,3 +211,31 @@
                     {:name "String"}
                     {:name "Subscription"}]}}}
          (test-utils/execute compiled-schema "{ __schema { types { name } subscriptionType { description fields { name type { name } args { name type { name }}}}}}"))))
+
+(deftest subscription-with-directive
+  (reset! *instrumentation 0)
+  (execute "subscription { directive_logs { message }}" nil)
+  (is (= 1 @*instrumentation)))
+
+
+(deftest subscription-is-passed-selection
+  (let [*selections (atom nil)
+        *args (atom nil)
+        streamer (fn [context args _]
+                   (reset! *args args)
+                   (reset! *selections (executor/selections-seq context))
+                   nil)
+        schema (-> "subscription-selection.edn"
+                   io/resource
+                   slurp
+                   edn/read-string
+                   (util/inject-streamers {:Subscription/time_from streamer})
+                   schema/compile)]
+    (execute schema
+                    "subscription ($when : String!) { time_from (when: $when) { hour minute }}"
+                    {:when "now"})
+    (log-event nil)
+
+    (is (= {:when "now"
+            :interval 60} @*args))
+    (is (= [:Instant/hour :Instant/minute] @*selections))))

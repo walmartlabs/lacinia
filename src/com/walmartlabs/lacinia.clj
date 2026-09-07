@@ -17,7 +17,7 @@
             [com.walmartlabs.lacinia.constants :as constants]
             [com.walmartlabs.lacinia.executor :as executor]
             [com.walmartlabs.lacinia.validator :as validator]
-            [com.walmartlabs.lacinia.internal-utils :refer [cond-let]]
+            [better-cond.core :as b]
             [com.walmartlabs.lacinia.util :refer [as-error-map]]
             [com.walmartlabs.lacinia.resolve :as resolve]
             [com.walmartlabs.lacinia.tracing :as tracing])
@@ -37,7 +37,7 @@
   {:pre [(map? parsed-query)
          (or (nil? context)
              (map? context))]}
-  (cond-let
+  (b/cond
     :let [{:keys [::tracing/timing-start]} parsed-query
           ;; Validation phase encompasses preparing with query variables and actual validation.
           ;; It's somewhat all mixed together.
@@ -57,9 +57,9 @@
     (resolve/resolve-as {:errors validation-errors})
 
     :else
-    (executor/execute-query (assoc context constants/parsed-query-key prepared
-                                           ::tracing/validation {:start-offset start-offset
-                                                                 :duration (tracing/duration start-nanos)}))))
+    (executor/execute-query (assoc context constants/parsed-query-key (assoc prepared
+                                                                             ::tracing/validation {:start-offset start-offset
+                                                                                                   :duration     (tracing/duration start-nanos)})))))
 
 (defn execute-parsed-query
   "Prepares a query, by applying query variables to it, resulting in a prepared
@@ -72,19 +72,19 @@
   ([parsed-query variables context]
    (execute-parsed-query parsed-query variables context nil))
   ([parsed-query variables context options]
-   (let [*result (promise)
+   (let [*result          (promise)
          {:keys [timeout-ms timeout-error]
-          :or {timeout-ms 0
-               timeout-error {:message "Query execution timed out."}}} options
+          :or   {timeout-ms    0
+                 timeout-error {:message "Query execution timed out."}}} options
          execution-result (execute-parsed-query-async parsed-query variables context)
-         result (do
-                  (resolve/on-deliver! execution-result *result)
-                  ;; Block on that deliver, then return the final result.
-                  (if (pos? timeout-ms)
-                    (deref *result
-                           timeout-ms
-                           {:errors [timeout-error]})
-                    @*result))]
+         result           (do
+                            (resolve/on-deliver! execution-result *result)
+                            ;; Block on that deliver, then return the final result.
+                            (if (pos? timeout-ms)
+                              (deref *result
+                                     timeout-ms
+                                     {:errors [timeout-error]})
+                              @*result))]
      (when (instance? Throwable result)
        (throw result))
 

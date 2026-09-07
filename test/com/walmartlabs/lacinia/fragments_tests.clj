@@ -90,8 +90,7 @@
                    }
                 }
               }
-           }
-         }"))))
+           }"))))
 
 (deftest named-fragments
   (is (= {:data {:characters [{:name "R2-D2"
@@ -182,7 +181,7 @@
              }
              "))))
 
-(deftest detect-cycle-via-named-fragment
+(deftest detect-cycle-via-named-fragment-three-way
   (is (= {:errors [{:locations [{:column 19
                                  :line 8}]
                     :message "Fragment `commonFragment' is self-referential via named fragment `friendsFragment', forming a cycle."}

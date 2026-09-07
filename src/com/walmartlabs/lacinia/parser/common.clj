@@ -13,15 +13,12 @@
 ; limitations under the License.
 
 (ns ^:no-doc com.walmartlabs.lacinia.parser.common
-  (:require [clj-antlr.proto :as antlr.proto]
-            [clj-antlr.common :as antlr.common]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [com.walmartlabs.lacinia.internal-utils :refer [keepv]]
-            [clojure.java.io :as io]
-            [clj-antlr.core :as antlr.core])
+            [com.walmartlabs.lacinia.parser.antlr :as antlr])
   (:import (org.antlr.v4.runtime.tree ParseTree TerminalNode)
            (org.antlr.v4.runtime Parser ParserRuleContext Token)
-           (clj_antlr ParseError)))
+           (com.walmartlabs.lacinia ParseError)))
 
 (defn as-map
   "Converts a normal Antlr production into a map."
@@ -57,8 +54,12 @@
   (-> v
       ;; Because of how parsing works, the string literal includes the enclosing quotes
       (subs 1 (dec (.length v)))
-      (str/replace #"\\([\\\"\/bfnrt])" #(unescape-ascii (second %)))
-      (str/replace #"\\u([A-Fa-f0-9]{4})" #(unescape-unicode (second %)))))
+      (str/replace #"\\(\\|u[A-Fa-f0-9]{4}|[\"\/bfnrt])"
+                   #(let [s (second %)]
+                      (cond
+                        (= s "\\") "\\"
+                        (= (first s) \u) (unescape-unicode (subs s 1))
+                        :else (unescape-ascii s))))))
 
 (defn ^:private indent-of
   [s]
@@ -142,15 +143,15 @@
   [^ParseTree t ^Parser p]
   (if (instance? ParserRuleContext t)
     (let [node (cons (->> (.getRuleIndex ^ParserRuleContext t)
-                          (antlr.common/parser-rule-name p)
-                          antlr.common/fast-keyword)
+                          (antlr/parser-rule-name p)
+                          antlr/fast-keyword)
                      (keepv (comp
                              #(attach-location-as-meta t %)
                              #(traverse % p))
-                            (antlr.common/children t)))]
+                            (antlr/children t)))]
       (if-let [e (.exception ^ParserRuleContext t)]
         (with-meta (list :clj-antlr/error node)
-          {:error (antlr.common/recognition-exception->map e)})
+          {:error (antlr/recognition-exception->map e)})
         node))
 
     (let [token-name* (token-name t p)]
@@ -160,8 +161,8 @@
                 (#{"StringValue" "BlockStringValue"} token-name*) (clojure.string/replace #"\\\"" "\"")))))))
 
 (defn antlr-parse
-  [grammar input-document]
-  (let [{:keys [tree parser]} (antlr.proto/parse grammar nil input-document)]
+  [ap input]
+  (let [{:keys [tree parser]} (antlr/parse ap input)]
     (traverse tree parser)))
 
 (defn parse-failures
@@ -172,10 +173,3 @@
                          :column column}]
             :message message})
          errors)))
-
-(defn compile-grammar
-  [path]
-  (-> path
-      io/resource
-      slurp
-      antlr.core/parser))

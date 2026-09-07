@@ -15,6 +15,7 @@
 (ns com.walmartlabs.lacinia.federation-tests
   (:require
     [clojure.test :refer [deftest is]]
+    [clojure.walk :as walk]
     [clojure.string :refer [trim]]
     [com.walmartlabs.lacinia.parser.schema :refer [parse-schema]]
     [com.walmartlabs.lacinia.resolve :refer [FieldResolver resolve-as]]
@@ -22,7 +23,7 @@
     [com.walmartlabs.test-utils :refer [execute]]
     [com.walmartlabs.test-reporting :refer [reporting]]
     [com.walmartlabs.lacinia.schema :as schema]
-    [com.walmartlabs.lacinia.federation :refer [inject-federation generate-sdl]]))
+    [com.walmartlabs.lacinia.federation :refer [inject-federation generate-sdl foundation-types]]))
 
 (defn ^:private resolve-user
   [_ {:keys [id]} _]
@@ -54,7 +55,6 @@ query($reps : [_Any!]!) {
     ... on User { id name }
 
     ... on Account { acct_number name }
-    }
   }
 }")
 
@@ -341,25 +341,19 @@ query($reps : [_Any!]!) {
                          :args {:id {:type (non-null ID)}}}}
                        :roots
                        {:query :CustomQuery}}
-        sample-sdl-2 "schema {\n  query: CustomQuery\n}\n\ntype CustomQuery{\n  \"\"\"\n  node query\n  \"\"\"\n  node(id: ID!): Node\n}"]
+        sample-sdl-2 "schema {\n  query: CustomQuery\n}\n\ntype CustomQuery{\n  \"node query\"\n  node(id: ID!): Node\n}"]
     
     (is (= (-> sample-edn-1 generate-sdl parse-schema) sample-edn-1))
     (is (= (generate-sdl sample-edn-2) sample-sdl-2))))
 
-(deftest only-edn-schama-essential
+(deftest only-edn-schema-essential
   (let [edn (-> "dev-resources/edn-federation.edn" slurp read-string)
         sdl (-> "dev-resources/edn-federation.sdl" slurp trim)
-        schema (-> edn
+        schema (-> (merge-with merge foundation-types edn)
                    (inject-federation {:User always-nil
                                        :Account always-nil
                                        :Product always-nil})
                    (util/inject-resolvers {:Query/user_by_id resolve-user})
-                   (util/attach-scalar-transformers {:_Any/parser identity
-                                                     :_Any/serializer identity
-                                                     :_FieldSet/parser identity
-                                                     :_FieldSet/serializer identity
-                                                     :link__Import/parser identity
-                                                     :link__Import/serializer identity})
                    schema/compile)]
     (is (= {:data {:_service {:sdl sdl}}}
            (execute schema
@@ -376,3 +370,63 @@ query($reps : [_Any!]!) {
                                 :name "User #9998"}}}
            (execute schema
                     "{ user_by_id(id: 9998) { id name }}")))))
+
+(deftest sdl-is-independent-of-map-insertion-order
+  (let [fields (into {} (for [i (range 12)] [(keyword (str "field" i)) {:type 'String}]))
+        schema {:roots {:query :Root}
+                :queries fields
+                :objects {:Root {:fields {:lookup {:type 'String
+                                                    :args {:z {:type 'String} :a {:type 'String}}}}}
+                          :Zebra {:fields fields}
+                          :Alpha {:fields fields}}
+                :directive-defs {:zed {:locations #{:object :interface}}
+                                 :alpha {:locations #{:object :interface}}}
+                :interfaces {:Zulu {:fields fields} :Able {:fields fields}}
+                :input-objects {:ZuluInput {:fields fields} :AbleInput {:fields fields}}
+                :scalars {:ZuluScalar {} :AbleScalar {}}
+                :enums {:ZuluEnum {:values [:Z :A]} :AbleEnum {:values [:B :A]}}
+                :unions {:ZuluUnion {:members [:Zebra :Alpha]} :AbleUnion {:members [:Alpha :Zebra]}}}
+        reorder (fn [comparator]
+                  (walk/postwalk #(if (map? %) (into (sorted-map-by comparator) %) %) schema))
+        sdl (generate-sdl schema)]
+    (is (= sdl (generate-sdl (reorder compare)) (generate-sdl (reorder #(compare %2 %1)))))
+    (is (.contains sdl "lookup(a: String, z: String): String"))
+    (is (.contains sdl "ZuluEnum{\n  Z\n  A\n}"))
+    (is (= (parse-schema sdl) (parse-schema (generate-sdl (reorder compare)))))))
+
+(deftest descriptions-and-string-values-round-trip
+  (let [text "quotes \"\"\" and \\ slash\nline\rreturn\ttab\bbackspace\fformfeed"
+        input {:queries {:echo {:type 'String
+                                :description text
+                                :args {:value {:type 'String :description text :default-value text}}}}}
+        parsed (parse-schema (generate-sdl input))]
+    (is (= text (get-in parsed [:objects :Query :fields :echo :description])))
+    (is (= text (get-in parsed [:objects :Query :fields :echo :args :value :description])))
+    (is (= text (get-in parsed [:objects :Query :fields :echo :args :value :default-value])))))
+
+(deftest custom-roots-fold-all-operation-shorthands
+  (let [input '{:roots {:query :Read :mutation :Write :subscription :Watch}
+                :objects {:Read {:fields {:existing {:type String}}}}
+                :queries {:read {:type String}}
+                :mutations {:write {:type String}}
+                :subscriptions {:watch {:type String}}}
+        parsed (parse-schema (generate-sdl input))]
+    (is (= (:roots input) (:roots parsed)))
+    (is (= #{:existing :read} (-> parsed :objects :Read :fields keys set)))
+    (is (= #{:write} (-> parsed :objects :Write :fields keys set)))
+    (is (= #{:watch} (-> parsed :objects :Watch :fields keys set)))))
+
+(deftest generated-service-sdl-filters-only-foundation-definitions
+  (let [input (merge-with merge foundation-types
+                         '{:objects {:Query {:fields {:value {:type String}}}}
+                           :scalars {:Custom {}}
+                           :directive-defs {:custom {:locations #{:field-definition}}}})
+        generated (inject-federation input {})
+        resolver (get-in generated [:objects :Query :fields :_service :resolve])
+        sdl (:sdl (resolver nil nil nil))]
+    (is (.contains (generate-sdl input) "scalar _Any"))
+    (is (.contains sdl "scalar Custom"))
+    (is (.contains sdl "directive @custom"))
+    (is (not (re-find #"_Any|_FieldSet|_Service|_entities|_service|directive @external" sdl)))
+    (is (contains? (:scalars generated) :_Any))
+    (is (= sdl (-> sdl parse-schema generate-sdl)))))
