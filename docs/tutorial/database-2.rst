@@ -124,4 +124,4 @@ In the next chapter, we'll focus on testing the code we've just added.
 .. [#mapreduce] I've used this on another project where a bug manifested only
    at a large scale of operations; by hooking into Logback and capturing the
    logged maps, it was possible to quickly filter through megabytes of output
-   to the find the clues that revealed how the bug occured.
+   to the find the clues that revealed how the bug occurred.

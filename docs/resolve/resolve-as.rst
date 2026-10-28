@@ -46,7 +46,7 @@ as ``:locations``, ``:path``, and (sometimes) ``:extensions``.
    :language: clojure
 
 The ``:locations`` key identifies where in the query document, as a line and column address,
-the error occured.
+the error occurred.
 It's value is an array (normally, a single value) of location maps; each location map
 has ``:line`` and ``:column`` keys.
 

@@ -103,7 +103,7 @@ if you select a field that is a compound type, such as ``BoardGame/designers``, 
 
 
 Notice how the ``:data`` key is not present here ... that indicates that the error
-occured during the parse and prepare phases, before execution in earnest began.
+occurred during the parse and prepare phases, before execution in earnest began.
 
 To really demonstrate navigation, we can go from BoardGame to Designer and back::
 
