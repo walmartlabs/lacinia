@@ -130,7 +130,7 @@
   This function parses the query and invokes [[execute-parsed-query]].
 
   When a GraphQL query contains variables, the values for those variables
-  arrive seperately; for example, a JSON request may have the query
+  arrive separately; for example, a JSON request may have the query
   in the \"query\" property, and the variables in the \"variables\" property.
 
   The values for those variables are provided in the variables parameter.

@@ -17,7 +17,7 @@ any fields on the objects are automatically available operations.
 In the larger GraphQL world (beyond Lacinia), this is the typical way of defining operations.
 
 Beyond that, the operations from the ``:queries``, ``:mutations``, and ``:subscriptions`` maps of the input schema will be
-merged into the fields of the corresponding root object; this is supported, but not prefered.
+merged into the fields of the corresponding root object; this is supported, but not preferred.
 
 Name collisions are not allowed; a schema compile exception is thrown if an operation (via ``:queries``, etc.)
 conflicts with a field of the corresponding root object.
