@@ -187,7 +187,8 @@
         (= left-alias-value :com.walmartlabs.lacinia.schema/null)
         left-value
 
-        (map? left-alias-value)
+        (or (map? left-alias-value)
+            (sequential? left-alias-value))
         (update left-value alias deep-merge value)
 
         :else

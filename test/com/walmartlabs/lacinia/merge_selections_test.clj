@@ -167,3 +167,47 @@ query ($who : String) {
 fragment props on human {
   appears_in
 }"))))
+
+;; https://github.com/walmartlabs/lacinia/issues/457
+(deftest merge-object-list-in-fragment
+  ;; A field that resolves to a list of objects, selected both inside a
+  ;; fragment and inline, should merge element-wise rather than have
+  ;; whichever selection executes last replace the other.
+  (let [expected {:data {:luke {:friends [{:id   "1002"
+                                          :name "Han Solo"}
+                                         {:id   "1003"
+                                          :name "Leia Organa"}
+                                         {:id   "2000"
+                                          :name "C-3PO"}
+                                         {:id   "2001"
+                                          :name "R2-D2"}]}}}]
+    (is (= expected
+           (q "
+{
+  luke: human(id: \"1000\") {
+    ...props
+    friends {
+      name
+    }
+  }
+}
+fragment props on human {
+  friends {
+    id
+  }
+}")))
+    (is (= expected
+           (q "
+{
+  luke: human(id: \"1000\") {
+    friends {
+      name
+    }
+    ...props
+  }
+}
+fragment props on human {
+  friends {
+    id
+  }
+}")))))
